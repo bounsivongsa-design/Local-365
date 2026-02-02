@@ -2,20 +2,34 @@
 
 ## Overview
 
-Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. The application connects visitors and residents with local businesses, service providers, events, and community features including a loyalty program, quote request system, and AI-powered chatbot assistant named "Ziggy."
+Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. The application connects visitors and residents with local businesses, service providers, events, and community features including an elite status loyalty program, quote request system, and AI-powered chatbot assistant named "Ziggy."
 
 Key features include:
-- Business directory with categories, ratings, and reviews
+- Business directory with 26 categories, ratings, and reviews
 - Local events calendar
-- Quote request system connecting customers with service providers
+- Quote/bid system connecting customers with service providers
 - User validation through receipt uploads
-- Loyalty tier program (Explorer → Ambassador)
-- AI chatbot for local recommendations
+- Elite Status loyalty program (Member → Silver → Gold → Platinum → Ambassador)
+- AI chatbot "Ziggy" for local recommendations
 - Community feed with posts and engagement
+- Account types: Customer and Business with distinct features
+
+## Recent Changes
+
+### February 2026
+- **Loyalty Program Redesign**: Marriott Bonvoy-inspired elite status system
+  - 5 tiers: Member (free), Silver Elite (5 visits), Gold Elite (15 visits), Platinum Elite (30 visits), Ambassador (50 visits)
+  - Focus on point multipliers (+10% to +75% bonus) instead of heavy discounts
+  - Discounts only at top tiers (5% at Platinum, 10% at Ambassador)
+  - Perks include: priority reservations, early event access, exclusive experiences, personal concierge
+- **Quote/Bid System**: Customers post project requests, businesses submit competitive quotes
+- **Animated Video Logo**: Header now displays animated video logo
+- **Account Type System**: Customer vs Business accounts with server-side validation
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dune green (#8a9a5b)
 
 ## System Architecture
 
@@ -40,23 +54,36 @@ Preferred communication style: Simple, everyday language.
 - **Migrations**: Drizzle Kit with migrations stored in /migrations
 - **Key-Value Store**: Replit Database for simple key-value needs (categories, best-of data)
 
+### Key Database Tables
+- `users`: User accounts with accountType (customer/business), loyaltyPoints, loyaltyTier
+- `businesses`: Business listings with categories, ratings, reviews
+- `quoteRequests`: Customer project requests for quotes
+- `quotes`: Business bids on customer projects
+- `events`: Local events calendar
+- `posts`: Community feed posts
+
 ### Authentication System
 - Replit Auth handles user identity
 - Session storage in PostgreSQL (sessions table)
 - User accounts support two types: "customer" and "business"
 - Validation system requires proof-of-purchase receipt uploads
+- Server-side account type validation on quote endpoints
 
-### Shared Code Pattern
-- /shared directory contains code used by both client and server
-- Schema definitions, route types, and models are shared
-- TypeScript path aliases ensure consistent imports
+### Loyalty Program Structure
+| Tier | Visits | Points Bonus | Discount |
+|------|--------|--------------|----------|
+| Member | Free | 10 pts/$1 | None |
+| Silver Elite | 5 | +10% | None |
+| Gold Elite | 15 | +25% | None |
+| Platinum Elite | 30 | +50% | 5% off |
+| Ambassador | 50 | +75% | 10% off |
 
 ## External Dependencies
 
 ### Third-Party Services
 - **Supabase**: Client SDK configured (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
 - **OpenAI**: AI chat integration via Replit AI Integrations proxy
-- **Google Cloud Storage**: File storage capability
+- **Replit Object Storage**: File storage for receipts and uploads
 - **Weather API**: Open-Meteo for local weather data
 
 ### Key NPM Packages
@@ -70,5 +97,5 @@ Preferred communication style: Simple, everyday language.
 - DATABASE_URL: PostgreSQL connection string
 - AI_INTEGRATIONS_OPENAI_API_KEY: OpenAI API access
 - AI_INTEGRATIONS_OPENAI_BASE_URL: OpenAI proxy URL
-- VITE_SUPABASE_URL: Supabase project URL
-- VITE_SUPABASE_ANON_KEY: Supabase anonymous key
+- SESSION_SECRET: Session encryption key
+- DEFAULT_OBJECT_STORAGE_BUCKET_ID: Object storage bucket
