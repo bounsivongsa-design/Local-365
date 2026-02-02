@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import OpenAI from "openai";
+import db from "./lib/replitDb";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -119,6 +120,24 @@ export async function registerRoutes(
     }
   });
 
+  // Categories API (from Replit KV database)
+  app.get('/api/categories', async (req, res) => {
+    try {
+      const result = await db.get('categories');
+      // Replit DB returns { ok: true, value: [...] } or { ok: false, error: {...} }
+      if (result && result.ok && result.value) {
+        res.json(result.value);
+      } else if (Array.isArray(result)) {
+        res.json(result);
+      } else {
+        res.json([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      res.status(500).json({ message: 'Failed to fetch categories' });
+    }
+  });
+
   // Weather API (using Open-Meteo - free, no API key needed)
   app.get('/api/weather', async (req, res) => {
     try {
@@ -203,6 +222,46 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
 }
 
 async function seedDatabase() {
+  // Seed categories in Replit KV database
+  console.log("Checking for existing categories...");
+  const existingCategories = await db.get('categories');
+  console.log("Existing categories result:", existingCategories);
+  if (!existingCategories || (existingCategories && existingCategories.ok === false)) {
+    console.log("Seeding categories...");
+    const categories = [
+      { id: 1, name: "Concrete", subs: ["Driveways", "Patios", "Foundations"] },
+      { id: 2, name: "Home Repair", subs: ["General Repairs", "Handyman", "Renovations"] },
+      { id: 3, name: "HVAC", subs: ["AC Installation", "Heating", "Duct Cleaning"] },
+      { id: 4, name: "Cleaning", subs: ["House Cleaning", "Deep Clean", "Move-out"] },
+      { id: 5, name: "Auto Repair", subs: ["Mechanics", "Body Shops", "Oil Change"] },
+      { id: 6, name: "Event Planning", subs: ["Weddings", "Parties", "Corporate"] },
+      { id: 7, name: "Landscaping", subs: ["Lawn Care", "Tree Service", "Hardscaping"] },
+      { id: 8, name: "Plumbing", subs: ["Repairs", "Installation", "Emergency"] },
+      { id: 9, name: "Electrical", subs: ["Wiring", "Panel Upgrades", "Lighting"] },
+      { id: 10, name: "Roofing", subs: ["Shingles", "Metal", "Repairs"] },
+      { id: 11, name: "Painting", subs: ["Interior", "Exterior", "Staining"] },
+      { id: 12, name: "Flooring", subs: ["Hardwood", "Tile", "Carpet"] },
+      { id: 13, name: "Pest Control", subs: ["Termites", "Rodents", "Mosquitoes"] },
+      { id: 14, name: "Pool Services", subs: ["Cleaning", "Repairs", "Installation"] },
+      { id: 15, name: "Decks & Patios", subs: ["Building", "Repairs", "Staining"] },
+      { id: 16, name: "Windows", subs: ["Replacement", "Cleaning", "Tinting"] },
+      { id: 17, name: "Gutters", subs: ["Installation", "Cleaning", "Guards"] },
+      { id: 18, name: "Fencing", subs: ["Wood", "Vinyl", "Chain Link"] },
+      { id: 19, name: "Garage Doors", subs: ["Installation", "Repairs", "Openers"] },
+      { id: 20, name: "Appliance Repair", subs: ["Washer/Dryer", "Refrigerator", "Dishwasher"] },
+      { id: 21, name: "Security", subs: ["Cameras", "Alarms", "Smart Home"] },
+      { id: 22, name: "Moving", subs: ["Local", "Long Distance", "Packing"] },
+      { id: 23, name: "Storage", subs: ["Self Storage", "Climate Control", "Boat/RV"] },
+      { id: 24, name: "Catering", subs: ["Weddings", "BBQ", "Seafood"] },
+      { id: 25, name: "Photography", subs: ["Weddings", "Portraits", "Real Estate"] },
+      { id: 26, name: "Pet Services", subs: ["Grooming", "Boarding", "Walking"] },
+      { id: 27, name: "Boat Services", subs: ["Repairs", "Detailing", "Storage"] },
+      { id: 28, name: "Real Estate", subs: ["Agents", "Property Management", "Rentals"] },
+    ];
+    await db.set('categories', categories);
+    console.log("Categories seeded!");
+  }
+
   const existingBusinesses = await storage.getBusinesses();
   if (existingBusinesses.length === 0) {
     console.log("Seeding database...");

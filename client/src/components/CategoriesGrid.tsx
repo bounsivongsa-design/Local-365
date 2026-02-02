@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import supabase from '@/lib/supabase';
 
 interface Category {
   id: number;
   name: string;
-  subs: string[] | null;
+  subs: string[];
 }
 
 function CategoriesGrid() {
@@ -14,13 +13,16 @@ function CategoriesGrid() {
 
   useEffect(() => {
     async function fetchCategories() {
-      const { data, error } = await supabase.from('categories').select('*');
-      if (error) {
-        console.error(error);
-        setError('Failed to load categories');
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+        setCategories(data || []);
+      } catch (err) {
+        setError('Failed to load categories — try refreshing.');
+      } finally {
+        setLoading(false);
       }
-      setCategories(data || []);
-      setLoading(false);
     }
     fetchCategories();
   }, []);
