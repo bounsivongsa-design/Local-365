@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Award, Star, Crown, Gem, AlertCircle, Sparkles } from "lucide-react";
+import { Award, Star, Crown, Gem, AlertCircle, Sparkles, Check } from "lucide-react";
 
 interface Badge {
   level: string;
@@ -16,44 +15,44 @@ const iconMap: Record<string, typeof Award> = {
 };
 
 const styleMap: Record<string, { 
-  iconColor: string; 
-  iconBg: string;
-  gradient: string;
-  border: string;
-  glow: string;
-  badge: string;
+  cardBg: string;
+  iconGradient: string;
+  accentColor: string;
+  glowColor: string;
+  ringColor: string;
+  textGradient: string;
 }> = {
   'Silver Visitor': { 
-    iconColor: 'text-slate-500', 
-    iconBg: 'bg-gradient-to-br from-slate-200 to-slate-400',
-    gradient: 'bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900',
-    border: 'border-slate-300 dark:border-slate-600',
-    glow: 'hover:shadow-slate-300/50 dark:hover:shadow-slate-500/30',
-    badge: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+    cardBg: 'from-slate-100 via-gray-50 to-slate-200 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800',
+    iconGradient: 'from-slate-400 via-gray-300 to-slate-500',
+    accentColor: 'text-slate-600 dark:text-slate-300',
+    glowColor: 'shadow-slate-400/40',
+    ringColor: 'ring-slate-300 dark:ring-slate-600',
+    textGradient: 'from-slate-600 to-gray-500'
   },
   'Gold Visitor': { 
-    iconColor: 'text-amber-600', 
-    iconBg: 'bg-gradient-to-br from-yellow-300 to-amber-500',
-    gradient: 'bg-gradient-to-br from-amber-50 via-white to-yellow-50 dark:from-amber-950 dark:via-amber-900/50 dark:to-yellow-950',
-    border: 'border-amber-300 dark:border-amber-600',
-    glow: 'hover:shadow-amber-300/50 dark:hover:shadow-amber-500/30',
-    badge: 'bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200'
+    cardBg: 'from-amber-100 via-yellow-50 to-orange-100 dark:from-amber-900/40 dark:via-yellow-900/30 dark:to-orange-900/40',
+    iconGradient: 'from-yellow-400 via-amber-500 to-orange-500',
+    accentColor: 'text-amber-700 dark:text-amber-300',
+    glowColor: 'shadow-amber-400/50',
+    ringColor: 'ring-amber-400 dark:ring-amber-500',
+    textGradient: 'from-amber-600 to-orange-600'
   },
   'Platinum Visitor': { 
-    iconColor: 'text-sky-500', 
-    iconBg: 'bg-gradient-to-br from-sky-300 to-blue-500',
-    gradient: 'bg-gradient-to-br from-sky-50 via-white to-blue-50 dark:from-sky-950 dark:via-blue-900/50 dark:to-sky-950',
-    border: 'border-sky-300 dark:border-sky-600',
-    glow: 'hover:shadow-sky-300/50 dark:hover:shadow-sky-500/30',
-    badge: 'bg-sky-200 text-sky-800 dark:bg-sky-800 dark:text-sky-200'
+    cardBg: 'from-cyan-100 via-sky-50 to-blue-100 dark:from-cyan-900/40 dark:via-sky-900/30 dark:to-blue-900/40',
+    iconGradient: 'from-cyan-400 via-sky-500 to-blue-600',
+    accentColor: 'text-sky-700 dark:text-sky-300',
+    glowColor: 'shadow-sky-400/50',
+    ringColor: 'ring-sky-400 dark:ring-sky-500',
+    textGradient: 'from-cyan-600 to-blue-600'
   },
   'Titanium Visitor': { 
-    iconColor: 'text-violet-500', 
-    iconBg: 'bg-gradient-to-br from-violet-400 to-purple-600',
-    gradient: 'bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-violet-950 dark:via-purple-900/50 dark:to-violet-950',
-    border: 'border-violet-300 dark:border-violet-600',
-    glow: 'hover:shadow-violet-300/50 dark:hover:shadow-violet-500/30',
-    badge: 'bg-violet-200 text-violet-800 dark:bg-violet-800 dark:text-violet-200'
+    cardBg: 'from-violet-100 via-purple-50 to-fuchsia-100 dark:from-violet-900/40 dark:via-purple-900/30 dark:to-fuchsia-900/40',
+    iconGradient: 'from-violet-500 via-purple-500 to-fuchsia-600',
+    accentColor: 'text-purple-700 dark:text-purple-300',
+    glowColor: 'shadow-purple-400/50',
+    ringColor: 'ring-purple-400 dark:ring-purple-500',
+    textGradient: 'from-violet-600 to-fuchsia-600'
   },
 };
 
@@ -88,12 +87,16 @@ function LoyaltyBadges() {
   return (
     <div className="py-12">
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-sand/30 text-primary text-sm font-semibold mb-4 shadow-sm">
           <Sparkles className="h-4 w-4" />
-          Loyalty Program
+          Exclusive Rewards
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold mb-3">Your OBX Insider Badges</h2>
-        <p className="text-muted-foreground max-w-xl mx-auto">Earn exclusive perks and discounts with every visit to the Outer Banks!</p>
+        <h2 className="text-3xl md:text-4xl font-bold mb-3 bg-gradient-to-r from-primary via-primary to-sand bg-clip-text text-transparent">
+          OBX Insider Loyalty Tiers
+        </h2>
+        <p className="text-muted-foreground max-w-xl mx-auto">
+          Unlock exclusive perks and savings with every visit to the Outer Banks
+        </p>
       </div>
       
       {error && (
@@ -103,37 +106,63 @@ function LoyaltyBadges() {
         </div>
       )}
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {badges.map((badge, i) => {
           const IconComponent = iconMap[badge.level] || Award;
           const styles = styleMap[badge.level] || styleMap['Silver Visitor'];
+          const tierName = badge.level.replace(' Visitor', '');
           
           return (
-            <Card 
+            <div 
               key={i} 
-              className={`relative overflow-hidden p-6 text-center border-2 ${styles.gradient} ${styles.border} shadow-lg ${styles.glow} hover:shadow-2xl hover:scale-[1.02] transition-all duration-300`}
+              className={`group relative rounded-2xl p-[2px] bg-gradient-to-br ${styles.iconGradient} shadow-lg ${styles.glowColor} hover:shadow-2xl hover:scale-[1.03] transition-all duration-300`}
             >
-              {/* Decorative corner accent */}
-              <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full ${styles.iconBg} opacity-20 blur-xl`} />
-              
-              {/* Icon */}
-              <div className={`relative w-20 h-20 ${styles.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300`}>
-                <IconComponent className="h-10 w-10 text-white drop-shadow-md" />
+              {/* Inner card */}
+              <div className={`relative h-full rounded-[14px] bg-gradient-to-br ${styles.cardBg} p-6 overflow-hidden`}>
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+                
+                {/* Tier number */}
+                <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/50 dark:bg-white/10 flex items-center justify-center text-sm font-bold opacity-60">
+                  {i + 1}
+                </div>
+                
+                {/* Icon with ring */}
+                <div className="relative mx-auto mb-5 w-fit">
+                  <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${styles.iconGradient} p-[3px] shadow-xl ${styles.glowColor} ring-4 ${styles.ringColor} ring-offset-2 ring-offset-white dark:ring-offset-slate-900`}>
+                    <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
+                      <IconComponent className={`h-9 w-9 bg-gradient-to-br ${styles.iconGradient} bg-clip-text`} style={{ color: 'transparent', background: `linear-gradient(to bottom right, var(--tw-gradient-stops))`, WebkitBackgroundClip: 'text', backgroundClip: 'text' }} />
+                    </div>
+                  </div>
+                  {/* Decorative dots */}
+                  <div className={`absolute -top-1 -left-1 w-3 h-3 rounded-full bg-gradient-to-br ${styles.iconGradient} opacity-60`} />
+                  <div className={`absolute -bottom-1 -right-1 w-2 h-2 rounded-full bg-gradient-to-br ${styles.iconGradient} opacity-40`} />
+                </div>
+                
+                {/* Title */}
+                <h3 className={`text-center text-xl font-extrabold mb-1 bg-gradient-to-r ${styles.textGradient} bg-clip-text text-transparent`}>
+                  {tierName}
+                </h3>
+                <p className="text-center text-xs text-muted-foreground mb-4 uppercase tracking-wider font-medium">
+                  Visitor Tier
+                </p>
+                
+                {/* Stays requirement */}
+                <div className="flex items-center justify-center gap-2 mb-5">
+                  <div className={`flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-sm`}>
+                    <Check className={`h-4 w-4 ${styles.accentColor}`} />
+                    <span className="text-sm font-semibold">{badge.stays} {badge.stays === 1 ? 'Stay' : 'Stays'}</span>
+                  </div>
+                </div>
+                
+                {/* Perk */}
+                <div className={`text-center py-3 px-4 rounded-xl bg-gradient-to-r ${styles.iconGradient} bg-opacity-10`} style={{ background: `linear-gradient(to right, rgba(var(--tw-gradient-stops)))` }}>
+                  <div className="bg-white/90 dark:bg-slate-900/90 rounded-lg py-2 px-3">
+                    <p className={`text-lg font-bold ${styles.accentColor}`}>{badge.perk}</p>
+                  </div>
+                </div>
               </div>
-              
-              {/* Title */}
-              <h3 className="text-xl font-bold mb-3">{badge.level}</h3>
-              
-              {/* Stays badge */}
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${styles.badge} text-xs font-semibold mb-4`}>
-                <span>{badge.stays} {badge.stays === 1 ? 'Stay' : 'Stays'} Required</span>
-              </div>
-              
-              {/* Perk */}
-              <div className="pt-4 border-t border-current/10">
-                <p className="text-lg font-bold text-primary">{badge.perk}</p>
-              </div>
-            </Card>
+            </div>
           );
         })}
       </div>
