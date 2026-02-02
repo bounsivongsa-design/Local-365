@@ -12,21 +12,16 @@ import Events from "@/pages/Events";
 import LocationPage from "@/pages/LocationPage";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
-import backgroundVideo from "@assets/grok-video-8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770062634628.mp4";
+import backgroundImage from "@assets/8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770063157367.jpg";
 
 function AppRouter() {
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased relative">
-      {/* Video Background */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="fixed inset-0 w-full h-full object-cover -z-10"
-      >
-        <source src={backgroundVideo} type="video/mp4" />
-      </video>
+      {/* Static Image Background */}
+      <div 
+        className="fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat -z-10"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      />
       {/* Dark overlay for readability */}
       <div className="fixed inset-0 bg-black/40 -z-10" />
       <Navigation />
