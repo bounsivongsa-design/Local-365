@@ -111,14 +111,9 @@ function CommunityFeed() {
       )}
 
       {activeTab === 'bestof' && (
-        <div className="animate-in fade-in duration-300">
-          <div className="flex items-center gap-3 mb-6">
-            <Trophy className="h-8 w-8 text-yellow-500" />
-            <div>
-              <h2 className="text-2xl font-bold">Best of OBX 2026</h2>
-              <p className="text-muted-foreground">Community-voted favorites in the Outer Banks</p>
-            </div>
-          </div>
+        <div className="py-8 animate-in fade-in duration-300">
+          <h2 className="text-3xl font-bold mb-6">Best of OBX 2026</h2>
+          <p className="mb-8 text-muted-foreground">Celebrating the top local businesses based on verified reviews & performance.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {bestOfCategories.map((item, index) => (
               <Card key={index} className="overflow-hidden shadow-lg shadow-black/5 hover:shadow-xl transition-shadow">
