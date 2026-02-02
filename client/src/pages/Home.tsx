@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import heroImage from "@assets/image_1770062898655.png";
 
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
@@ -68,17 +69,13 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section - OBX Theme with Video Background */}
+      {/* Hero Section - OBX Theme with Image Background */}
       <section className="text-center py-20 relative overflow-hidden min-h-[500px] flex items-center">
-        <video 
-          autoPlay 
-          muted 
-          loop 
-          playsInline
+        <img 
+          src={heroImage}
+          alt="Wild horses and lighthouse at sunset on Outer Banks beach"
           className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/videos/hero-bg.mp4" type="video/mp4" />
-        </video>
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
           <div className="flex justify-center mb-4">
