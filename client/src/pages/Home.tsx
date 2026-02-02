@@ -80,11 +80,6 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
-          <div className="flex justify-center mb-4">
-            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
             Discover Currituck County's Charm
           </h1>
