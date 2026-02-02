@@ -30,8 +30,13 @@ export function Navigation() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 font-display text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
-            Local List 365
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <img 
+              src="/assets/ChatGPT_Image_Jan_23,_2026,_01_16_31_PM_1770058614374.png" 
+              alt="Local List 365" 
+              className="h-12 w-auto"
+              data-testid="img-logo"
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
