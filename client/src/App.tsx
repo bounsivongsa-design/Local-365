@@ -10,6 +10,7 @@ import Directory from "@/pages/Directory";
 import BusinessDetails from "@/pages/BusinessDetails";
 import Events from "@/pages/Events";
 import NotFound from "@/pages/not-found";
+import { Chatbot } from "@/components/Chatbot";
 
 function Router() {
   return (
@@ -63,6 +64,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <Chatbot />
       </TooltipProvider>
     </QueryClientProvider>
   );
