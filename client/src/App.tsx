@@ -9,6 +9,7 @@ import Home from "@/pages/Home";
 import Directory from "@/pages/Directory";
 import BusinessDetails from "@/pages/BusinessDetails";
 import Events from "@/pages/Events";
+import LocationPage from "@/pages/LocationPage";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 
@@ -22,6 +23,7 @@ function AppRouter() {
           <Route path="/directory" element={<Directory />} />
           <Route path="/directory/:id" element={<BusinessDetails />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/location/:area" element={<LocationPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
