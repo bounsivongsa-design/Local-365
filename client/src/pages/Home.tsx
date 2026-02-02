@@ -1,15 +1,18 @@
+import { useState } from "react";
 import { usePosts, useLikePost } from "@/hooks/use-posts";
 import { useEvents } from "@/hooks/use-events";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { BusinessCard } from "@/components/BusinessCard";
 import { EventCard } from "@/components/EventCard";
+import { IntakeForm } from "@/components/IntakeForm";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -19,13 +22,50 @@ export default function Home() {
   const { data: events, isLoading: eventsLoading } = useEvents();
   const likePost = useLikePost();
   const { isAuthenticated } = useAuth();
+  const [showTripPlanner, setShowTripPlanner] = useState(false);
+  const [tripResult, setTripResult] = useState<any>(null);
 
   // Featured content: take first 3 of each
   const featuredBusinesses = businesses?.slice(0, 3) || [];
   const upcomingEvents = events?.slice(0, 3) || [];
 
+  const handleTripPlanSubmit = (data: any) => {
+    setTripResult(data);
+    setShowTripPlanner(false);
+  };
+
   return (
     <div className="min-h-screen bg-muted/30">
+      {/* Trip Planner Modal */}
+      <Dialog open={showTripPlanner} onOpenChange={setShowTripPlanner}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Plan Your OBX Trip</DialogTitle>
+          </DialogHeader>
+          <IntakeForm onSubmit={handleTripPlanSubmit} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Trip Result */}
+      {tripResult && (
+        <div className="bg-accent/10 border-b border-accent/20">
+          <div className="container py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg">Your Trip Preferences Saved!</h3>
+                <p className="text-muted-foreground">
+                  {tripResult.groupSize === '1' ? 'Solo trip' : tripResult.groupSize === '2' ? 'Couple trip' : `Group of ${tripResult.groupSize}`} 
+                  {' '}to {tripResult.staying} for {tripResult.tripLength} days
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setTripResult(null)}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="bg-primary text-primary-foreground py-16 md:py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=2069&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
@@ -36,24 +76,26 @@ export default function Home() {
             Welcome to Local 365
           </span>
           <h1 className="font-display text-4xl md:text-6xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100">
-            Discover the Heart of <br /> Your Community
+            Discover the Best of OBX
           </h1>
           <p className="text-lg md:text-xl text-primary-foreground/90 mb-8 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-            Connect with local businesses, join exciting events, and share moments with your neighbors every day of the year.
+            Trusted pros, stays, events, and more for Outer Banks visitors.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-7 duration-700 delay-300">
+            <Button 
+              size="lg" 
+              onClick={() => setShowTripPlanner(true)}
+              className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+              data-testid="button-plan-trip"
+            >
+              <Compass className="mr-2 h-5 w-5" />
+              Plan Your OBX Trip
+            </Button>
             <Link href="/directory">
               <Button size="lg" className="rounded-full bg-white text-primary hover:bg-white/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
                 Explore Directory
               </Button>
             </Link>
-            {!isAuthenticated && (
-              <a href="/api/login">
-                <Button size="lg" variant="outline" className="rounded-full border-white/40 text-white hover:bg-white/10 font-semibold px-8 h-12 backdrop-blur-sm">
-                  Join Community
-                </Button>
-              </a>
-            )}
           </div>
         </div>
       </section>

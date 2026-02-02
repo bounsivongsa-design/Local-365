@@ -1,0 +1,94 @@
+import { useState } from 'react';
+
+function IntakeForm({ onSubmit }) {
+  const [formData, setFormData] = useState({
+    groupSize: '2',
+    tripLength: '3',
+    interests: [],
+    budget: 'medium',
+    staying: 'Nags Head',
+    mustHaves: []
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked ? [...prev[name], value] : prev[name].filter(v => v !== value)
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow">
+      <h3 className="text-xl font-bold mb-4">Plan Your OBX Trip</h3>
+      <div className="mb-4">
+        <label className="block mb-2">Group Size</label>
+        <select name="groupSize" onChange={handleChange} className="w-full p-2 border rounded">
+          <option value="1">Solo</option>
+          <option value="2">Couple</option>
+          <option value="3-4">Small Group</option>
+          <option value="5+">Large Group</option>
+        </select>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Trip Length</label>
+        <select name="tripLength" onChange={handleChange} className="w-full p-2 border rounded">
+          <option value="2">Weekend</option>
+          <option value="3">3 Days</option>
+          <option value="5">5 Days</option>
+          <option value="7">7+ Days</option>
+        </select>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Interests (select multiple)</label>
+        <div className="space-y-2">
+          <label><input type="checkbox" name="interests" value="beach" onChange={handleChange} /> Beach & Relax</label>
+          <label><input type="checkbox" name="interests" value="food" onChange={handleChange} /> Food & Dining</label>
+          <label><input type="checkbox" name="interests" value="adventure" onChange={handleChange} /> Outdoor Adventure</label>
+          <label><input type="checkbox" name="interests" value="golf" onChange={handleChange} /> Golf & Sports</label>
+          <label><input type="checkbox" name="interests" value="family" onChange={handleChange} /> Family Activities</label>
+        </div>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Budget Level</label>
+        <select name="budget" onChange={handleChange} className="w-full p-2 border rounded">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="luxury">Luxury</option>
+        </select>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Where Staying</label>
+        <select name="staying" onChange={handleChange} className="w-full p-2 border rounded">
+          <option value="Nags Head">Nags Head</option>
+          <option value="Kill Devil Hills">Kill Devil Hills</option>
+          <option value="Corolla">Corolla</option>
+          <option value="Manteo">Manteo</option>
+          <option value="Not Sure">Not Sure</option>
+        </select>
+      </div>
+      <div className="mb-4">
+        <label className="block mb-2">Must-Haves (select multiple)</label>
+        <div className="space-y-2">
+          <label><input type="checkbox" name="mustHaves" value="kid-friendly" onChange={handleChange} /> Kid-Friendly</label>
+          <label><input type="checkbox" name="mustHaves" value="pet-friendly" onChange={handleChange} /> Pet-Friendly</label>
+          <label><input type="checkbox" name="mustHaves" value="wheelchair-accessible" onChange={handleChange} /> Wheelchair Accessible</label>
+          <label><input type="checkbox" name="mustHaves" value="outdoor-seating" onChange={handleChange} /> Outdoor Seating</label>
+        </div>
+      </div>
+      <button type="submit" className="bg-accent text-gray-900 px-8 py-4 rounded-lg font-semibold w-full">Generate Itinerary</button>
+    </form>
+  );
+}
+
+export default IntakeForm;
