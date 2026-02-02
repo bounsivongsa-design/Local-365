@@ -6,6 +6,7 @@ import { CreatePostForm } from "@/components/CreatePostForm";
 import { BusinessCard } from "@/components/BusinessCard";
 import { EventCard } from "@/components/EventCard";
 import { IntakeForm } from "@/components/IntakeForm";
+import { ItineraryBuilder } from "@/components/ItineraryBuilder";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -46,22 +47,23 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      {/* Trip Result */}
+      {/* Trip Result - Itinerary */}
       {tripResult && (
         <div className="bg-accent/10 border-b border-accent/20">
-          <div className="container py-6">
-            <div className="flex items-center justify-between">
+          <div className="container py-8">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-bold text-lg">Your Trip Preferences Saved!</h3>
+                <h3 className="font-bold text-xl">Your OBX Itinerary is Ready!</h3>
                 <p className="text-muted-foreground">
                   {tripResult.groupSize === '1' ? 'Solo trip' : tripResult.groupSize === '2' ? 'Couple trip' : `Group of ${tripResult.groupSize}`} 
                   {' '}to {tripResult.staying} for {tripResult.tripLength} days
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => setTripResult(null)}>
-                Clear
+                Start Over
               </Button>
             </div>
+            <ItineraryBuilder formData={tripResult} />
           </div>
         </div>
       )}
