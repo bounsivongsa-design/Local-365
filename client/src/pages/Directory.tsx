@@ -3,7 +3,12 @@ import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Building2 } from "lucide-react";
+import { 
+  Search, Plus, Building2, Layers, Wrench, Droplets, Wind, Zap, Home,
+  Trees, Sparkles, Paintbrush, TreePine, HardHat, Construction, Baby,
+  Printer, Palette, Camera, Car, Settings, Trash2, GraduationCap,
+  Heart, Calculator, Scale, Hammer, ChefHat, Truck, PartyPopper
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -28,33 +33,33 @@ export default function Directory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const categories = [
-    "All",
-    "Home Repair",
-    "Plumbing",
-    "HVAC",
-    "Electrical",
-    "Roofing",
-    "Landscaping",
-    "Cleaning",
-    "Painting",
-    "Tree Care",
-    "Remodeling & Addition",
-    "New Construction",
-    "Baby Sitting & Nanny",
-    "Printing",
-    "Web Design & Logo Design",
-    "Photo & Video",
-    "Auto Repair",
-    "Small Engine Repair",
-    "Trash & Junk Removal",
-    "Tutor & Mentor Counseling",
-    "Mind Body Soul",
-    "Tax CPA",
-    "Legal",
-    "Woodworking & Lazer CNC",
-    "Baking & Cooking",
-    "Catering Food Trucks",
-    "Event Planning & Rentals",
+    { name: "All", icon: Layers },
+    { name: "Home Repair", icon: Wrench },
+    { name: "Plumbing", icon: Droplets },
+    { name: "HVAC", icon: Wind },
+    { name: "Electrical", icon: Zap },
+    { name: "Roofing", icon: Home },
+    { name: "Landscaping", icon: Trees },
+    { name: "Cleaning", icon: Sparkles },
+    { name: "Painting", icon: Paintbrush },
+    { name: "Tree Care", icon: TreePine },
+    { name: "Remodeling & Addition", icon: HardHat },
+    { name: "New Construction", icon: Construction },
+    { name: "Baby Sitting & Nanny", icon: Baby },
+    { name: "Printing", icon: Printer },
+    { name: "Web Design & Logo Design", icon: Palette },
+    { name: "Photo & Video", icon: Camera },
+    { name: "Auto Repair", icon: Car },
+    { name: "Small Engine Repair", icon: Settings },
+    { name: "Trash & Junk Removal", icon: Trash2 },
+    { name: "Tutor & Mentor Counseling", icon: GraduationCap },
+    { name: "Mind Body Soul", icon: Heart },
+    { name: "Tax CPA", icon: Calculator },
+    { name: "Legal", icon: Scale },
+    { name: "Woodworking & Lazer CNC", icon: Hammer },
+    { name: "Baking & Cooking", icon: ChefHat },
+    { name: "Catering Food Trucks", icon: Truck },
+    { name: "Event Planning & Rentals", icon: PartyPopper },
   ];
 
   return (
@@ -115,24 +120,39 @@ export default function Directory() {
                   <h2 className="font-semibold text-sm uppercase tracking-wide">Categories</h2>
                 </div>
               </div>
-              <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-2">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setCategory(cat)}
-                      data-testid={`button-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
-                      className={`w-full text-left px-3 py-2.5 rounded-md text-sm transition-all ${
-                        category === cat 
-                          ? "bg-primary text-primary-foreground font-medium shadow-md" 
-                          : "text-foreground/80 hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      {cat}
-                      {cat === "All" && businesses && (
-                        <span className="ml-2 text-xs opacity-70">({businesses.length})</span>
-                      )}
-                    </button>
-                  ))}
+              <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-2 space-y-1">
+                  {categories.map((cat) => {
+                    const IconComponent = cat.icon;
+                    const isActive = category === cat.name;
+                    return (
+                      <button
+                        key={cat.name}
+                        onClick={() => setCategory(cat.name)}
+                        data-testid={`button-category-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group ${
+                          isActive 
+                            ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/25" 
+                            : "text-foreground/70 hover:bg-primary/10 hover:text-foreground"
+                        }`}
+                      >
+                        <span className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+                          isActive 
+                            ? "bg-white/20" 
+                            : "bg-muted group-hover:bg-primary/10"
+                        }`}>
+                          <IconComponent className="h-4 w-4" />
+                        </span>
+                        <span className="flex-1 text-left truncate">{cat.name}</span>
+                        {cat.name === "All" && businesses && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            isActive ? "bg-white/20" : "bg-muted"
+                          }`}>
+                            {businesses.length}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
             </Card>
           </aside>
@@ -145,7 +165,7 @@ export default function Directory() {
               data-testid="select-category-mobile"
             >
               {categories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat.name} value={cat.name}>{cat.name}</option>
               ))}
             </select>
           </div>
