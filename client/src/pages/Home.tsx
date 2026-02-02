@@ -177,13 +177,15 @@ export default function Home() {
 
       {/* Promotional Banner */}
       <div className="container pt-12">
-        <div className="bg-primary text-white p-6 rounded-lg shadow-3d-lg" data-testid="promo-banner">
-          <h3 className="text-2xl font-bold mb-2">Romantic Winter Getaway</h3>
-          <p className="mb-4 text-white/90">Cozy fireplaces, quiet beaches, 40% off — escape the cold!</p>
-          <Button className="bg-sand text-primary-dark hover:bg-sand/80 font-semibold">
-            Learn More
-          </Button>
-        </div>
+        <Link to="/romantic-getaway">
+          <div className="bg-primary text-white p-6 rounded-lg shadow-3d-lg hover:shadow-xl transition-shadow cursor-pointer" data-testid="promo-banner">
+            <h3 className="text-2xl font-bold mb-2">Romantic Winter Getaway</h3>
+            <p className="mb-4 text-white/90">Cozy fireplaces, quiet beaches, 40% off — escape the cold!</p>
+            <Button className="bg-sand text-primary-dark hover:bg-sand/80 font-semibold">
+              Learn More
+            </Button>
+          </div>
+        </Link>
       </div>
 
       {/* Loyalty Badges */}

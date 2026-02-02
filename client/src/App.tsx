@@ -10,6 +10,7 @@ import Directory from "@/pages/Directory";
 import BusinessDetails from "@/pages/BusinessDetails";
 import Events from "@/pages/Events";
 import LocationPage from "@/pages/LocationPage";
+import RomanticGetaway from "@/pages/RomanticGetaway";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import backgroundImage from "@assets/8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770063157367.jpg";
@@ -30,6 +31,7 @@ function AppRouter() {
           <Route path="/directory/:id" element={<BusinessDetails />} />
           <Route path="/events" element={<Events />} />
           <Route path="/location/:area" element={<LocationPage />} />
+          <Route path="/romantic-getaway" element={<RomanticGetaway />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

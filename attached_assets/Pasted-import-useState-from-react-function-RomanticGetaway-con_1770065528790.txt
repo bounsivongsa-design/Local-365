@@ -1,0 +1,61 @@
+import { useState } from 'react';
+
+function RomanticGetaway() {
+  const [expanded, setExpanded] = useState({});
+
+  const stays = [
+    { name: 'Ocean View Hotel', features: 'Fireplace, Hot Tub, Oceanfront', rate: '$149/night (40% off)', image: 'placeholder.co/300x200?text=Fireplace+Suite' },
+    { name: 'Lighthouse Motel', features: 'Cozy Wood-Burning Stove, Sunset Views', rate: '$129/night (50% off)', image: 'placeholder.co/300x200?text=Cozy+Motel' },
+    // Add more
+  ];
+
+  const activities = [
+    { name: 'Sunset Cruise', desc: 'Private sail with wine', price: '$100/couple (30% off)' },
+    { name: 'Horseback Riding on Beach', desc: 'Romantic trot at dusk', price: '$80/couple (25% off)' },
+    // Add more
+  ];
+
+  return (
+    <div className="py-8 bg-gradient-to-b from-orange-200 to-blue-200">  {/* Sunset glow gradient */}
+      {/* Hero */}
+      <div className="text-center py-20 bg-wave-pattern bg-cover">
+        <h1 className="text-4xl font-bold mb-4 text-primary-dark">Romantic Winter Getaway</h1>
+        <p className="text-xl mb-8">Cozy fireplaces, quiet beaches, 40% off — escape the cold!</p>
+        <button className="bg-accent text-primary-dark px-8 py-4 rounded-lg font-semibold hover:bg-accent/80">Learn More</button>
+      </div>
+
+      {/* Featured Stays */}
+      <h2 className="text-3xl font-bold mb-6">Featured Cozy Stays</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {stays.map((stay, i) => (
+          <div key=i className="bg-white p-6 rounded-xl shadow-pop hover:scale-105 transition">
+            <img src={stay.image} alt={stay.name} className="w-full h-48 object-cover mb-4 rounded" />
+            <h3 className="text-xl font-semibold">{stay.name}</h3>
+            <p className="text-gray-600">{stay.features}</p>
+            <p className="text-accent font-bold">{stay.rate}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Activities */}
+      <h2 className="text-3xl font-bold mt-12 mb-6">Romantic Activities</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {activities.map((act, i) => (
+          <div key=i className="bg-white p-6 rounded-xl shadow-pop hover:scale-105 transition">
+            <h3 className="text-xl font-semibold">{act.name}</h3>
+            <p className="text-gray-600">{act.desc}</p>
+            <p className="text-accent font-bold">{act.price}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <div className="text-center mt-12">
+        <h3 className="text-2xl font-bold mb-4">Ready to Plan Your Escape?</h3>
+        <button className="bg-primary text-white px-8 py-4 rounded-lg font-semibold hover:bg-primary-dark">Book Now</button>
+      </div>
+    </div>
+  );
+}
+
+export default RomanticGetaway;
