@@ -13,11 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import heroImage from "@assets/image_1770062898655.png";
-import LoyaltyBadges from "@/components/LoyaltyBadges";
 
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
@@ -183,11 +182,22 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* Loyalty Badges */}
-      <div className="container">
-        <div className="bg-white/80 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-          <LoyaltyBadges />
-        </div>
+      {/* Loyalty Program Promo */}
+      <div className="container pt-6">
+        <Link to="/loyalty">
+          <div className="bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white p-6 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.15)] hover:shadow-xl transition-shadow cursor-pointer" data-testid="promo-loyalty">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
+                <Sparkles className="h-7 w-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold mb-1">OBX Insider Loyalty Program</h3>
+                <p className="text-white/90">Earn up to 20% off your bookings! Unlock exclusive rewards with every stay.</p>
+              </div>
+              <ArrowRight className="h-6 w-6 text-white/80" />
+            </div>
+          </div>
+        </Link>
       </div>
 
       <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
