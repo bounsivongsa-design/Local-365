@@ -122,7 +122,7 @@ export default function Home() {
       {/* Video Showcase Section */}
       <div className="container pt-12">
         <h2 className="font-display text-2xl font-bold mb-6 text-center">Experience Currituck County</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
             <video 
               autoPlay muted loop playsInline
@@ -162,6 +162,16 @@ export default function Home() {
             </video>
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Sunset Magic</span>
+          </div>
+          <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
+            <video 
+              autoPlay muted loop playsInline
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            >
+              <source src="/videos/video-5.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Wild Horses</span>
           </div>
         </div>
       </div>
