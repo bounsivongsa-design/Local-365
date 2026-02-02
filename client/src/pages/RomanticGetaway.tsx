@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Flame, Sunset, Wine, Music, Sparkles } from "lucide-react";
 
@@ -26,50 +25,64 @@ function RomanticGetaway() {
       {/* Hero */}
       <div className="text-center py-20">
         <div className="flex justify-center mb-4">
-          <Heart className="h-16 w-16 text-red-400 fill-red-400" />
+          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.3),0_4px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <Heart className="h-10 w-10 text-red-400 fill-red-400 drop-shadow-lg" />
+          </div>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Romantic Winter Getaway</h1>
-        <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto px-4">Cozy fireplaces, quiet beaches, up to 50% off — escape the cold!</p>
-        <Button size="lg" className="bg-teal-300 text-teal-900 hover:bg-teal-200 px-8 py-6 rounded-lg font-semibold shadow-pop">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">Romantic Winter Getaway</h1>
+        <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto px-4 drop-shadow">Cozy fireplaces, quiet beaches, up to 50% off — escape the cold!</p>
+        <Button size="lg" className="bg-teal-300 text-teal-900 hover:bg-teal-200 px-8 py-6 rounded-lg font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.3),0_4px_8px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)] transition-shadow">
           Learn More
         </Button>
       </div>
 
       {/* Featured Stays */}
-      <h2 className="text-3xl font-bold mb-6 text-center flex items-center justify-center gap-3">
-        <Flame className="h-8 w-8 text-orange-400" />
+      <h2 className="text-3xl font-bold mb-8 text-center flex items-center justify-center gap-3 drop-shadow-lg">
+        <Flame className="h-8 w-8 text-orange-400 drop-shadow" />
         Featured Cozy Stays
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto px-4 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto px-4 mb-16">
         {stays.map((stay, i) => (
-          <div key={i} className="bg-white/60 backdrop-blur p-6 rounded-xl shadow-pop hover:scale-105 transition-transform duration-300">
-            <img src={stay.image} alt={stay.name} className="w-full h-48 object-cover mb-4 rounded-lg shadow-md" />
-            <h3 className="text-xl font-semibold text-gray-900">{stay.name}</h3>
-            <p className="text-gray-700 text-sm mb-2">{stay.features}</p>
-            <p className="text-teal-700 font-bold text-lg">{stay.rate}</p>
-            <Button className="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white">View Details</Button>
+          <div 
+            key={i} 
+            className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-white/30 shadow-[0_10px_40px_rgba(0,0,0,0.25),0_6px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.5)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.35),0_10px_20px_rgba(0,0,0,0.2)] hover:translate-y-[-4px] transition-all duration-300"
+          >
+            <img 
+              src={stay.image} 
+              alt={stay.name} 
+              className="w-full h-48 object-cover mb-4 rounded-xl shadow-[0_6px_20px_rgba(0,0,0,0.2),0_3px_6px_rgba(0,0,0,0.15)]" 
+            />
+            <h3 className="text-xl font-bold text-gray-900">{stay.name}</h3>
+            <p className="text-gray-600 text-sm mb-2">{stay.features}</p>
+            <p className="text-teal-700 font-bold text-lg mb-4">{stay.rate}</p>
+            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-[0_4px_12px_rgba(0,128,128,0.3)] hover:shadow-[0_6px_16px_rgba(0,128,128,0.4)]">
+              View Details
+            </Button>
           </div>
         ))}
       </div>
 
       {/* Activities */}
-      <h2 className="text-3xl font-bold mb-6 text-center flex items-center justify-center gap-3">
-        <Heart className="h-8 w-8 text-red-400" />
+      <h2 className="text-3xl font-bold mb-8 text-center flex items-center justify-center gap-3 drop-shadow-lg">
+        <Heart className="h-8 w-8 text-red-400 drop-shadow" />
         Romantic Activities
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto px-4 mb-16">
         {activities.map((act, i) => {
           const IconComponent = act.icon;
           return (
-            <div key={i} className="bg-white/60 backdrop-blur p-6 rounded-xl shadow-pop hover:scale-105 transition-transform duration-300">
+            <div 
+              key={i} 
+              className="bg-white/70 backdrop-blur-sm p-5 rounded-2xl border border-white/30 shadow-[0_10px_40px_rgba(0,0,0,0.25),0_6px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.5)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.35),0_10px_20px_rgba(0,0,0,0.2)] hover:translate-y-[-4px] transition-all duration-300"
+            >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-teal-600/20 flex items-center justify-center flex-shrink-0">
-                  <IconComponent className="h-6 w-6 text-teal-700" />
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-[0_6px_16px_rgba(0,128,128,0.4),inset_0_1px_0_rgba(255,255,255,0.3)]">
+                  <IconComponent className="h-7 w-7 text-white drop-shadow" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">{act.name}</h3>
-                  <p className="text-gray-700 text-sm mb-2">{act.desc}</p>
-                  <p className="text-teal-700 font-bold">{act.price}</p>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">{act.name}</h3>
+                  <p className="text-gray-600 text-sm mb-2">{act.desc}</p>
+                  <p className="text-teal-700 font-bold text-lg">{act.price}</p>
                 </div>
               </div>
             </div>
@@ -78,13 +91,15 @@ function RomanticGetaway() {
       </div>
 
       {/* CTA */}
-      <div className="text-center mt-12 pb-8">
-        <Heart className="h-12 w-12 text-red-400 fill-red-400 mx-auto mb-4" />
-        <h3 className="text-3xl font-bold mb-4">Ready to Plan Your Escape?</h3>
-        <p className="text-white/80 mb-6 max-w-lg mx-auto px-4">Book your romantic OBX getaway today and save up to 50% on cozy winter stays and activities.</p>
-        <Button size="lg" className="bg-teal-300 text-teal-900 hover:bg-teal-200 px-8 py-6 rounded-lg font-semibold shadow-pop">
-          Book Now
-        </Button>
+      <div className="text-center mt-12 pb-12 px-4">
+        <div className="max-w-2xl mx-auto bg-white/20 backdrop-blur-sm rounded-3xl p-10 border border-white/30 shadow-[0_16px_48px_rgba(0,0,0,0.3),0_8px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)]">
+          <Heart className="h-14 w-14 text-red-400 fill-red-400 mx-auto mb-5 drop-shadow-lg" />
+          <h3 className="text-3xl font-bold mb-4 drop-shadow">Ready to Plan Your Escape?</h3>
+          <p className="text-white/90 mb-8 max-w-lg mx-auto">Book your romantic OBX getaway today and save up to 50% on cozy winter stays and activities.</p>
+          <Button size="lg" className="bg-teal-300 text-teal-900 hover:bg-teal-200 px-10 py-6 rounded-xl font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.3),0_4px_8px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)] transition-shadow">
+            Book Now
+          </Button>
+        </div>
       </div>
     </div>
   );
