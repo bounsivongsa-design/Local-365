@@ -20,6 +20,49 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  // Best of OBX
+  app.get("/api/bestof", async (req, res) => {
+    try {
+      const result = await db.get("bestof");
+      if (result.ok && result.value) {
+        res.json(result.value);
+      } else {
+        // Return default data if none in DB
+        const defaultBestOf = [
+          { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'OBX Handyman Services', honorable: 'Beach House Fixers', rating: '4.9' },
+          { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Currituck Plumbing Pros', honorable: 'Island Pipe Works', rating: '4.8' },
+          { category: 'HVAC', winner: 'OBX HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Beach Breeze HVAC', rating: '4.9' },
+          { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'OBX Power Solutions', rating: '4.7' },
+          { category: 'Roofing', winner: 'Barrier Island Roofing', runnerUp: 'Coastal Storm Roofing', honorable: 'OBX Top Roofers', rating: '4.8' },
+          { category: 'Landscaping', winner: 'Sandy Shores Landscaping', runnerUp: 'Dune Gardens', honorable: 'Coastal Green Thumb', rating: '4.9' },
+          { category: 'Cleaning', winner: 'Crystal Clean OBX', runnerUp: 'Beach Sparkle Cleaning', honorable: 'Tidy Shores Services', rating: '4.8' },
+          { category: 'Painting', winner: 'Outer Banks Painters', runnerUp: 'Coastal Colors Pro', honorable: 'Beach House Painting', rating: '4.7' },
+          { category: 'Tree Care', winner: 'Coastal Tree Care', runnerUp: 'OBX Arborists', honorable: 'Maritime Tree Service', rating: '4.8' },
+          { category: 'Remodeling & Addition', winner: 'Beach House Remodeling', runnerUp: 'OBX Renovations', honorable: 'Coastal Makeover Co', rating: '4.9' },
+          { category: 'New Construction', winner: 'OBX Custom Builders', runnerUp: 'Barrier Island Construction', honorable: 'Soundside Builders', rating: '4.8' },
+          { category: 'Baby Sitting & Nanny', winner: 'Trusted Nannies OBX', runnerUp: 'Beach Kids Care', honorable: 'Coastal Sitters', rating: '4.9' },
+          { category: 'Printing', winner: 'Coastal Print Shop', runnerUp: 'OBX Graphics', honorable: 'Beach Signs & Print', rating: '4.6' },
+          { category: 'Web Design & Logo Design', winner: 'Beach Digital Design', runnerUp: 'OBX Web Studio', honorable: 'Coastal Creative Co', rating: '4.8' },
+          { category: 'Photo & Video', winner: 'OBX Photo & Video', runnerUp: 'Lighthouse Lens', honorable: 'Sunset Shots OBX', rating: '4.9' },
+          { category: 'Auto Repair', winner: 'Reliable Auto Repair', runnerUp: 'Beach Garage', honorable: 'OBX Auto Care', rating: '4.7' },
+          { category: 'Small Engine Repair', winner: 'Small Engine Experts', runnerUp: 'OBX Power Equipment', honorable: 'Coastal Motor Works', rating: '4.6' },
+          { category: 'Trash & Junk Removal', winner: 'Junk Be Gone OBX', runnerUp: 'Coastal Cleanout', honorable: 'Beach Haul Away', rating: '4.8' },
+          { category: 'Tutor & Mentor Counseling', winner: 'OBX Tutoring Center', runnerUp: 'Bright Minds OBX', honorable: 'Coastal Learning', rating: '4.9' },
+          { category: 'Mind Body Soul', winner: 'Serenity Wellness', runnerUp: 'Ocean Yoga Studio', honorable: 'Coastal Zen Center', rating: '4.9' },
+          { category: 'Tax CPA', winner: 'Coastal Tax Services', runnerUp: 'OBX Accounting', honorable: 'Beach Business CPAs', rating: '4.7' },
+          { category: 'Legal', winner: 'Beach Law Group', runnerUp: 'OBX Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
+          { category: 'Woodworking & Lazer CNC', winner: 'OBX Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Beach Timber Creations', rating: '4.9' },
+          { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Duck Donuts', honorable: 'OBX Bread Company', rating: '4.9' },
+          { category: 'Catering Food Trucks', winner: 'Taco Truck OBX', runnerUp: 'Coastal Catering Co', honorable: 'Beach Bites Mobile', rating: '4.8' },
+          { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'OBX Party Pros', honorable: 'Beach Celebration Co', rating: '4.8' },
+        ];
+        res.json(defaultBestOf);
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch best of data" });
+    }
+  });
+
   // Loyalty Badges
   app.get("/api/loyalty-badges", async (req, res) => {
     try {
