@@ -123,7 +123,7 @@ export default function Home() {
       <div className="container pt-12">
         <h2 className="font-display text-2xl font-bold mb-6 text-center">Experience Currituck County</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
+          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
             <video 
               autoPlay muted loop playsInline
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -133,7 +133,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Coastal Views</span>
           </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
+          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
             <video 
               autoPlay muted loop playsInline
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -143,7 +143,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Beach Life</span>
           </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
+          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
             <video 
               autoPlay muted loop playsInline
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -153,7 +153,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Local Adventures</span>
           </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
+          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
             <video 
               autoPlay muted loop playsInline
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -163,7 +163,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Sunset Magic</span>
           </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-lg group">
+          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
             <video 
               autoPlay muted loop playsInline
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -178,7 +178,7 @@ export default function Home() {
 
       {/* Promotional Banner */}
       <div className="container pt-12">
-        <div className="bg-primary text-white p-6 rounded-lg shadow" data-testid="promo-banner">
+        <div className="bg-primary text-white p-6 rounded-lg shadow-3d-lg" data-testid="promo-banner">
           <h3 className="text-2xl font-bold mb-2">Romantic Winter Getaway</h3>
           <p className="mb-4 text-white/90">Cozy fireplaces, quiet beaches, 40% off — escape the cold!</p>
           <Button className="bg-sand text-primary-dark hover:bg-sand/80 font-semibold">
@@ -222,7 +222,7 @@ export default function Home() {
             </div>
           ) : (
             posts?.map((post) => (
-              <Card key={post.id} className="overflow-hidden border-border/50 hover:shadow-md transition-shadow duration-200">
+              <Card key={post.id} className="overflow-hidden border-border/50 shadow-3d">
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <Avatar>
