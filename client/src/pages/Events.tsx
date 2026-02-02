@@ -107,7 +107,7 @@ export default function Events() {
             ))}
           </div>
         ) : viewMode === 'calendar' ? (
-          <div className="bg-white rounded-2xl border p-6 shadow-sm" data-testid="calendar-container">
+          <div className="bg-white rounded-2xl border p-6 shadow-3d-lg" data-testid="calendar-container">
             <FullCalendar 
               plugins={[dayGridPlugin, timeGridPlugin, listPlugin]} 
               initialView="dayGridMonth"
