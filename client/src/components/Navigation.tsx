@@ -32,9 +32,12 @@ export function Navigation() {
       <div className="container flex h-24 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <img 
-              src="/assets/ChatGPT_Image_Jan_23,_2026,_01_16_31_PM_1770058614374.png" 
-              alt="Local List 365" 
+            <video 
+              src="/assets/grok-video-0378b597-5935-4cf5-9109-d8b3597d0012_1770068362370.mp4" 
+              autoPlay
+              loop
+              muted
+              playsInline
               className="h-20 w-auto"
               data-testid="img-logo"
             />
