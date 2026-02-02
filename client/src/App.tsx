@@ -12,10 +12,23 @@ import Events from "@/pages/Events";
 import LocationPage from "@/pages/LocationPage";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
+import backgroundVideo from "@assets/grok-video-8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770062634628.mp4";
 
 function AppRouter() {
   return (
-    <div className="flex min-h-screen flex-col font-sans antialiased">
+    <div className="flex min-h-screen flex-col font-sans antialiased relative">
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover -z-10"
+      >
+        <source src={backgroundVideo} type="video/mp4" />
+      </video>
+      {/* Dark overlay for readability */}
+      <div className="fixed inset-0 bg-black/40 -z-10" />
       <Navigation />
       <main className="flex-1">
         <Routes>
@@ -29,30 +42,30 @@ function AppRouter() {
       </main>
       
       {/* Footer */}
-      <footer className="border-t bg-white py-12 text-muted-foreground">
+      <footer className="border-t border-white/20 bg-black/60 backdrop-blur-sm py-12 text-white/80">
         <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <h3 className="font-display text-xl font-bold text-foreground mb-4">Local 365</h3>
+            <h3 className="font-display text-xl font-bold text-white mb-4">Local 365</h3>
             <p className="max-w-xs">Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
           </div>
           <div>
-            <h4 className="font-bold text-foreground mb-4">Discover</h4>
+            <h4 className="font-bold text-white mb-4">Discover</h4>
             <ul className="space-y-2">
-              <li><Link to="/directory" className="hover:text-primary">Local Businesses</Link></li>
-              <li><Link to="/events" className="hover:text-primary">Events Calendar</Link></li>
-              <li><Link to="/" className="hover:text-primary">Community Feed</Link></li>
+              <li><Link to="/directory" className="hover:text-[#d4a373]">Local Businesses</Link></li>
+              <li><Link to="/events" className="hover:text-[#d4a373]">Events Calendar</Link></li>
+              <li><Link to="/" className="hover:text-[#d4a373]">Community Feed</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="font-bold text-foreground mb-4">Community</h4>
+            <h4 className="font-bold text-white mb-4">Community</h4>
             <ul className="space-y-2">
-              <li><a href="/api/login" className="hover:text-primary">Sign In</a></li>
-              <li><a href="#" className="hover:text-primary">Help Center</a></li>
-              <li><a href="#" className="hover:text-primary">Guidelines</a></li>
+              <li><a href="/api/login" className="hover:text-[#d4a373]">Sign In</a></li>
+              <li><a href="#" className="hover:text-[#d4a373]">Help Center</a></li>
+              <li><a href="#" className="hover:text-[#d4a373]">Guidelines</a></li>
             </ul>
           </div>
         </div>
-        <div className="container mt-12 pt-8 border-t text-sm text-center">
+        <div className="container mt-12 pt-8 border-t border-white/20 text-sm text-center">
           &copy; {new Date().getFullYear()} Local 365. Built for the community.
         </div>
       </footer>
