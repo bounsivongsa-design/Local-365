@@ -128,7 +128,7 @@ export default function Home() {
               autoPlay muted loop playsInline
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             >
-              <source src="/videos/hero-bg.mp4" type="video/mp4" />
+              <source src="/videos/coastal-views.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Coastal Views</span>
