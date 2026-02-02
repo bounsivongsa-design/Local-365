@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Directory() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -116,8 +115,7 @@ export default function Directory() {
                   <h2 className="font-semibold text-sm uppercase tracking-wide">Categories</h2>
                 </div>
               </div>
-              <ScrollArea className="h-[calc(100vh-220px)]">
-                <div className="p-2">
+              <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-2">
                   {categories.map((cat) => (
                     <button
                       key={cat}
@@ -136,7 +134,6 @@ export default function Directory() {
                     </button>
                   ))}
                 </div>
-              </ScrollArea>
             </Card>
           </aside>
 
