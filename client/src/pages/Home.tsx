@@ -75,7 +75,7 @@ export default function Home() {
         <img 
           src={heroImage}
           alt="Wild horses and lighthouse at sunset on Outer Banks beach"
-          className="absolute inset-0 w-full h-full object-cover object-bottom"
+          className="absolute inset-0 w-full h-full object-cover object-top"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
