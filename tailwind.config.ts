@@ -6,9 +6,13 @@ export default {
   theme: {
     extend: {
       borderRadius: {
+        xl: "1rem",
         lg: ".5625rem", /* 9px */
         md: ".375rem", /* 6px */
         sm: ".1875rem", /* 3px */
+      },
+      boxShadow: {
+        'pop': '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
       },
       colors: {
         // Flat / base colors (regular buttons)
