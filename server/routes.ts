@@ -4,6 +4,12 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -123,6 +129,70 @@ export async function registerRoutes(
       res.json(data);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch weather data' });
+    }
+  });
+
+  // Ziggy AI Chat API (streaming)
+  app.post('/api/chat/ziggy', async (req, res) => {
+    try {
+      const { message, history = [] } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ message: 'Message is required' });
+      }
+
+      // Build conversation with Ziggy's system prompt
+      const systemPrompt = `You are Ziggy, a friendly and knowledgeable AI assistant who is an expert on the Outer Banks (OBX), North Carolina. You help visitors and locals with:
+
+- Restaurant recommendations (Sam & Omie's, Coastal Provisions, The Blue Point, etc.)
+- Beach information and activities (Corolla wild horses, Jockey's Ridge, surfing, fishing)
+- Local attractions (Wright Brothers Memorial, NC Aquarium, lighthouses)
+- Vacation planning (rentals, hotels, best times to visit)
+- Weather and seasonal information
+- Contractor and home service referrals (deck building $6K-$15K typical)
+- Fishing charters and water sports
+- Family-friendly activities
+
+Keep responses helpful, warm, and concise. Use a casual, friendly tone. When recommending businesses or services, offer to connect users with local pros when appropriate. If asked about something outside OBX, gently redirect to OBX topics.`;
+
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPrompt },
+        ...history.map((h: { sender: string; text: string }) => ({
+          role: h.sender === 'user' ? 'user' as const : 'assistant' as const,
+          content: h.text,
+        })),
+        { role: 'user', content: message },
+      ];
+
+      // Set up SSE
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-5.2',
+        messages,
+        stream: true,
+        max_completion_tokens: 500,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error) {
+      console.error('Ziggy chat error:', error);
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ error: 'Failed to get response' })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ message: 'Failed to get AI response' });
+      }
     }
   });
 

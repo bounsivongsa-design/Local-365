@@ -94,3 +94,7 @@ export type CreateReviewRequest = z.infer<typeof insertReviewSchema>;
 export type BusinessWithRating = Business & { averageRating: number; reviewCount: number };
 export type PostWithAuthor = Post & { author: typeof users.$inferSelect };
 export type ReviewWithUser = Review & { user: typeof users.$inferSelect };
+
+// Re-export chat models for AI chat feature
+export { conversations, messages, insertConversationSchema, insertMessageSchema } from "./models/chat";
+export type { Conversation, Message, InsertConversation, InsertMessage } from "./models/chat";

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -27,54 +27,70 @@ export function Chatbot() {
     scrollToBottom();
   }, [messages]);
 
-  const getBotResponse = (userMessage: string): string => {
-    const lowerMsg = userMessage.toLowerCase();
-    
-    if (lowerMsg.includes('deck') || lowerMsg.includes('build')) {
-      return "For decks in OBX, typical range is $6K–$15K depending on size and materials. Want me to connect you to a local pro?";
-    }
-    if (lowerMsg.includes('restaurant') || lowerMsg.includes('food') || lowerMsg.includes('eat')) {
-      return "Great seafood spots include Sam & Omie's in Nags Head, Coastal Provisions in Southern Shores, and The Blue Point in Duck. What cuisine are you craving?";
-    }
-    if (lowerMsg.includes('beach') || lowerMsg.includes('swim')) {
-      return "The best beaches depend on what you're looking for! Corolla for wild horses, Nags Head for classic vibes, or Hatteras for less crowds. Need specific recommendations?";
-    }
-    if (lowerMsg.includes('weather')) {
-      return "OBX weather can be unpredictable! Generally mild winters (40-50°F) and warm summers (80-90°F). Always pack layers and check the forecast before heading out!";
-    }
-    if (lowerMsg.includes('wild horse') || lowerMsg.includes('corolla')) {
-      return "Wild horse tours in Corolla are amazing! Book with Corolla Wild Horse Tours or Wild Horse Adventure Tours. Best times are early morning or late afternoon.";
-    }
-    if (lowerMsg.includes('fish') || lowerMsg.includes('charter')) {
-      return "OBX is a fishing paradise! Inshore, offshore, and pier fishing all available. Oregon Inlet has great charter options. What type of fishing interests you?";
-    }
-    if (lowerMsg.includes('stay') || lowerMsg.includes('hotel') || lowerMsg.includes('rental')) {
-      return "Vacation rentals are popular here! Check VRBO, Airbnb, or local companies like Sun Realty and Twiddy. Which town are you interested in staying?";
-    }
-    if (lowerMsg.includes('kid') || lowerMsg.includes('family') || lowerMsg.includes('children')) {
-      return "Family fun! NC Aquarium on Roanoke Island, Jockey's Ridge for sandboarding, Wright Brothers Memorial, and mini golf everywhere. Kids love it here!";
-    }
-    if (lowerMsg.includes('hi') || lowerMsg.includes('hello') || lowerMsg.includes('hey')) {
-      return "Hey there! Welcome to OBX! I can help with restaurants, beaches, activities, contractors, and more. What brings you to the Outer Banks?";
-    }
-    
-    return "That's a great question! I can help with OBX restaurants, beaches, activities, local pros, and trip planning. What specifically would you like to know?";
-  };
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isTyping) return;
 
-  const handleSend = () => {
-    if (input.trim()) {
-      const userMessage = input.trim();
-      setMessages(prev => [...prev, { text: userMessage, sender: 'user' }]);
-      setInput('');
-      setIsTyping(true);
-      
-      setTimeout(() => {
-        const response = getBotResponse(userMessage);
-        setMessages(prev => [...prev, { text: response, sender: 'bot' }]);
-        setIsTyping(false);
-      }, 1000);
+    const userMessage = input.trim();
+    const updatedMessages = [...messages, { text: userMessage, sender: 'user' as const }];
+    setMessages(updatedMessages);
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      const response = await fetch('/api/chat/ziggy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage,
+          history: messages.slice(1), // Skip initial greeting
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to get response');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader');
+
+      const decoder = new TextDecoder();
+      let botResponse = '';
+
+      // Add empty bot message to stream into
+      setMessages(prev => [...prev, { text: '', sender: 'bot' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.content) {
+              botResponse += data.content;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { text: botResponse, sender: 'bot' };
+                return updated;
+              });
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, { 
+        text: "Sorry, I'm having trouble connecting right now. Please try again!", 
+        sender: 'bot' 
+      }]);
+    } finally {
+      setIsTyping(false);
     }
-  };
+  }, [input, messages, isTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -142,7 +158,7 @@ export function Chatbot() {
                     "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
                     msg.sender === 'user'
                       ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-white border rounded-bl-sm"
+                      : "bg-white dark:bg-card border rounded-bl-sm"
                   )}
                 >
                   {msg.text}
@@ -154,12 +170,12 @@ export function Chatbot() {
                 )}
               </div>
             ))}
-            {isTyping && (
+            {isTyping && messages[messages.length - 1]?.sender !== 'bot' && (
               <div className="flex gap-2 justify-start">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
-                <div className="bg-white border rounded-2xl rounded-bl-sm px-4 py-2">
+                <div className="bg-white dark:bg-card border rounded-2xl rounded-bl-sm px-4 py-2">
                   <div className="flex gap-1">
                     <span className="h-2 w-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                     <span className="h-2 w-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -172,20 +188,21 @@ export function Chatbot() {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t bg-white">
+          <div className="p-4 border-t bg-white dark:bg-card">
             <div className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me anything..."
+                placeholder="Ask me anything about OBX..."
                 className="flex-1"
+                disabled={isTyping}
                 data-testid="input-chat-message"
               />
               <Button 
                 onClick={handleSend} 
                 size="icon"
-                disabled={!input.trim()}
+                disabled={!input.trim() || isTyping}
                 data-testid="button-send-message"
               >
                 <Send className="h-4 w-4" />
