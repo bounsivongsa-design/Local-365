@@ -113,6 +113,19 @@ export async function registerRoutes(
     }
   });
 
+  // Weather API (using Open-Meteo - free, no API key needed)
+  app.get('/api/weather', async (req, res) => {
+    try {
+      const response = await fetch(
+        'https://api.open-meteo.com/v1/forecast?latitude=35.9575&longitude=-75.6243&current_weather=true&temperature_unit=fahrenheit'
+      );
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch weather data' });
+    }
+  });
+
   // Seed Data
   await seedDatabase();
 
