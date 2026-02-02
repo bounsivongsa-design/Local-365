@@ -12,7 +12,7 @@ export function EventCard({ event }: EventCardProps) {
   const date = new Date(event.date);
   
   return (
-    <Card className="group overflow-hidden border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg rounded-2xl flex flex-col h-full">
+    <Card className="group overflow-hidden border border-white/50 hover:border-primary/30 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_4px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.18),0_8px_16px_rgba(0,0,0,0.1)] hover:translate-y-[-4px] rounded-2xl flex flex-col h-full">
       <div className="relative h-48 overflow-hidden bg-muted">
         {event.imageUrl ? (
           <img 
@@ -26,12 +26,12 @@ export function EventCard({ event }: EventCardProps) {
           </div>
         )}
         
-        {/* Date Badge */}
-        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-xl p-2 shadow-sm text-center min-w-[3.5rem] border border-border/50">
+        {/* Date Badge - 3D effect */}
+        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-xl p-2.5 text-center min-w-[4rem] border border-white/50 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">
             {format(date, "MMM")}
           </div>
-          <div className="text-xl font-display font-bold text-foreground leading-none mt-0.5">
+          <div className="text-2xl font-display font-bold text-foreground leading-none mt-0.5">
             {format(date, "d")}
           </div>
         </div>
@@ -51,7 +51,10 @@ export function EventCard({ event }: EventCardProps) {
           {event.description}
         </p>
 
-        <Button variant="outline" className="w-full mt-auto group-hover:border-primary/50 group-hover:text-primary group-hover:bg-primary/5 rounded-xl">
+        <Button 
+          variant="outline" 
+          className="w-full mt-auto group-hover:border-primary/50 group-hover:text-primary group-hover:bg-primary/5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+        >
           Event Details
           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Button>

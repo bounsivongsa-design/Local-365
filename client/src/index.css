@@ -246,3 +246,77 @@
   @apply shadow-3d-sm rounded-lg bg-white dark:bg-card p-4;
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
+
+/* Metallic badge effects */
+.metallic-silver {
+  background: linear-gradient(145deg, #e8e8e8, #b8b8b8, #d0d0d0, #a0a0a0);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    inset 0 2px 4px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.metallic-gold {
+  background: linear-gradient(145deg, #ffd700, #ffb300, #ffc800, #cc9900);
+  box-shadow: 
+    0 4px 12px rgba(255, 193, 7, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.metallic-platinum {
+  background: linear-gradient(145deg, #e5e4e2, #c0c0c0, #d1d1d1, #a8a8a8);
+  box-shadow: 
+    0 4px 12px rgba(150, 150, 150, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.metallic-purple {
+  background: linear-gradient(145deg, #9c27b0, #7b1fa2, #8e24aa, #6a1b9a);
+  box-shadow: 
+    0 4px 12px rgba(156, 39, 176, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Trophy/medal metallic effects */
+.trophy-gold {
+  background: linear-gradient(145deg, #ffd700, #ffb300, #ffc800);
+  box-shadow: 
+    0 3px 8px rgba(255, 179, 0, 0.5),
+    inset 0 1px 2px rgba(255, 255, 255, 0.7);
+}
+
+.trophy-silver {
+  background: linear-gradient(145deg, #c0c0c0, #a0a0a0, #b0b0b0);
+  box-shadow: 
+    0 3px 8px rgba(128, 128, 128, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.trophy-bronze {
+  background: linear-gradient(145deg, #cd7f32, #a66628, #b87333);
+  box-shadow: 
+    0 3px 8px rgba(205, 127, 50, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Enhanced shadow for pop effect */
+.shadow-pop {
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1),
+    0 10px 15px -3px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.shadow-pop:hover {
+  box-shadow: 
+    0 8px 12px -2px rgba(0, 0, 0, 0.15),
+    0 4px 8px -4px rgba(0, 0, 0, 0.1),
+    0 20px 25px -5px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
