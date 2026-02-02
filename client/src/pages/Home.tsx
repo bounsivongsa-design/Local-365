@@ -68,26 +68,35 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section - OBX Theme */}
-      <section className="text-center py-20 bg-wave-pattern bg-cover bg-center bg-blend-overlay bg-gray-50 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-white/80 to-white/60"></div>
+      {/* Hero Section - OBX Theme with Video Background */}
+      <section className="text-center py-20 relative overflow-hidden min-h-[500px] flex items-center">
+        <video 
+          autoPlay 
+          muted 
+          loop 
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/videos/hero-bg.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
           <div className="flex justify-center mb-4">
-            <svg className="w-12 h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary-dark tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
             Discover Currituck County's Charm
           </h1>
-          <p className="text-xl mb-8 text-dune font-medium">
+          <p className="text-xl mb-8 text-white/90 font-medium drop-shadow-md">
             Trusted pros, stays, events, and more for Northeast NC visitors.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
             <input 
               type="text" 
               placeholder="Search for pros or events..." 
-              className="px-6 py-4 rounded-lg w-full border border-gray-300 focus:border-sand focus:ring-2 focus:ring-sand/20 outline-none transition-all shadow-sm"
+              className="px-6 py-4 rounded-lg w-full border-0 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-sand outline-none transition-all shadow-lg"
               data-testid="input-hero-search"
             />
           </div>
@@ -95,14 +104,14 @@ export default function Home() {
             <Button 
               size="lg" 
               onClick={() => setShowTripPlanner(true)}
-              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+              className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
               data-testid="button-plan-trip"
             >
               <Compass className="mr-2 h-5 w-5" />
               Plan Your Trip
             </Button>
             <Link href="/directory">
-              <Button size="lg" variant="outline" className="rounded-full border-primary text-primary hover:bg-primary/5 font-semibold px-8 h-12">
+              <Button size="lg" className="rounded-full bg-white/90 backdrop-blur-sm text-primary hover:bg-white font-semibold px-8 h-12 shadow-lg">
                 Explore Directory
               </Button>
             </Link>
