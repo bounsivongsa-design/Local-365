@@ -17,6 +17,7 @@ import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass } fr
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import heroImage from "@assets/image_1770062898655.png";
+import LoyaltyBadges from "@/components/LoyaltyBadges";
 
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
@@ -182,6 +183,11 @@ export default function Home() {
             Learn More
           </Button>
         </div>
+      </div>
+
+      {/* Loyalty Badges */}
+      <div className="container">
+        <LoyaltyBadges />
       </div>
 
       <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
