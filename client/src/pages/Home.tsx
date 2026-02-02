@@ -71,11 +71,11 @@ export default function Home() {
       )}
 
       {/* Hero Section - OBX Theme with Image Background */}
-      <section className="text-center py-20 relative overflow-hidden min-h-[500px] flex items-center">
+      <section className="text-center py-20 relative overflow-hidden min-h-[550px] flex items-center">
         <img 
           src={heroImage}
           alt="Wild horses and lighthouse at sunset on Outer Banks beach"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover object-bottom"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
