@@ -22,8 +22,6 @@ function AppRouter() {
         className="fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat -z-10"
         style={{ backgroundImage: `url(${backgroundImage})` }}
       />
-      {/* Dark overlay for readability */}
-      <div className="fixed inset-0 bg-black/40 -z-10" />
       <Navigation />
       <main className="flex-1">
         <Routes>
