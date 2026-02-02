@@ -18,10 +18,10 @@ export default function LoyaltyTiers() {
           </Link>
           <div className="flex items-center gap-3 mb-2">
             <Sparkles className="h-8 w-8 text-primary" />
-            <h1 className="font-display text-4xl font-bold tracking-tight">Loyalty Program</h1>
+            <h1 className="font-display text-4xl font-bold tracking-tight">Elite Status Program</h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Earn exclusive rewards and discounts with every visit to Currituck County. The more you explore, the more you save!
+            Earn bonus points, unlock exclusive perks, and elevate your status with every visit. Inspired by Marriott Bonvoy.
           </p>
         </div>
       </div>
@@ -34,27 +34,34 @@ export default function LoyaltyTiers() {
         {/* How It Works Section */}
         <div className="mt-12 bg-white/80 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
           <h2 className="text-2xl font-bold mb-6 text-center">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-primary">1</span>
               </div>
-              <h3 className="font-semibold mb-2">Book Your Stay</h3>
-              <p className="text-muted-foreground text-sm">Reserve accommodations through our partner businesses in Currituck County.</p>
+              <h3 className="font-semibold mb-2">Join Free</h3>
+              <p className="text-muted-foreground text-sm">Sign up and start earning 10 points per dollar spent at participating businesses.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-primary">2</span>
               </div>
-              <h3 className="font-semibold mb-2">Earn Points</h3>
-              <p className="text-muted-foreground text-sm">Every completed stay counts toward your loyalty tier progression.</p>
+              <h3 className="font-semibold mb-2">Visit & Earn</h3>
+              <p className="text-muted-foreground text-sm">Each visit to a participating business counts toward your elite status.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-primary">3</span>
               </div>
-              <h3 className="font-semibold mb-2">Unlock Rewards</h3>
-              <p className="text-muted-foreground text-sm">Advance through tiers to unlock increasing discounts on future bookings.</p>
+              <h3 className="font-semibold mb-2">Advance Tiers</h3>
+              <p className="text-muted-foreground text-sm">Move up through 5 elite tiers to earn bonus points (up to +75%) and exclusive perks.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-primary">4</span>
+              </div>
+              <h3 className="font-semibold mb-2">Redeem Rewards</h3>
+              <p className="text-muted-foreground text-sm">Use points for experiences, event tickets, and partner rewards. Top tiers get modest discounts.</p>
             </div>
           </div>
         </div>
@@ -63,7 +70,7 @@ export default function LoyaltyTiers() {
         <div className="mt-12 bg-white/80 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-2">Participating Businesses</h2>
-            <p className="text-muted-foreground">These local partners honor your loyalty tier discounts</p>
+            <p className="text-muted-foreground">Earn points and perks at these local partners</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -91,7 +98,7 @@ export default function LoyaltyTiers() {
                   <div className="pt-3 border-t space-y-3">
                     <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium">
                       <Check className="h-4 w-4" />
-                      Accepts all loyalty tiers
+                      Earn points here
                     </div>
                     <Button 
                       className="w-full" 
