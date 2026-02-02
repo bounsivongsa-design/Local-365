@@ -95,7 +95,7 @@ function RomanticGetaway() {
         <div className="max-w-2xl mx-auto bg-white/20 backdrop-blur-sm rounded-3xl p-10 border border-white/30 shadow-[0_16px_48px_rgba(0,0,0,0.3),0_8px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)]">
           <Heart className="h-14 w-14 text-red-400 fill-red-400 mx-auto mb-5 drop-shadow-lg" />
           <h3 className="text-3xl font-bold mb-4 drop-shadow">Ready to Plan Your Escape?</h3>
-          <p className="text-white/90 mb-8 max-w-lg mx-auto">Book your romantic OBX getaway today and save up to 50% on cozy winter stays and activities.</p>
+          <p className="text-white/90 mb-8 max-w-lg mx-auto">Book your romantic Currituck getaway today and save up to 50% on cozy winter stays and activities.</p>
           <Button size="lg" className="bg-teal-300 text-teal-900 hover:bg-teal-200 px-10 py-6 rounded-xl font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.3),0_4px_8px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)] transition-shadow">
             Book Now
           </Button>

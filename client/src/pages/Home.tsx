@@ -42,7 +42,7 @@ export default function Home() {
       <Dialog open={showTripPlanner} onOpenChange={setShowTripPlanner}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Plan Your OBX Trip</DialogTitle>
+            <DialogTitle className="text-2xl">Plan Your Currituck Trip</DialogTitle>
           </DialogHeader>
           <IntakeForm onSubmit={handleTripPlanSubmit} />
         </DialogContent>
@@ -54,7 +54,7 @@ export default function Home() {
           <div className="container py-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-bold text-xl">Your OBX Itinerary is Ready!</h3>
+                <h3 className="font-bold text-xl">Your Currituck Itinerary is Ready!</h3>
                 <p className="text-muted-foreground">
                   {tripResult.groupSize === '1' ? 'Solo trip' : tripResult.groupSize === '2' ? 'Couple trip' : `Group of ${tripResult.groupSize}`} 
                   {' '}to {tripResult.staying} for {tripResult.tripLength} days
@@ -191,7 +191,7 @@ export default function Home() {
                 <Sparkles className="h-7 w-7 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-1">OBX Insider Loyalty Program</h3>
+                <h3 className="text-2xl font-bold mb-1">Currituck Insider Loyalty Program</h3>
                 <p className="text-white/90">Earn up to 20% off your bookings! Unlock exclusive rewards with every stay.</p>
               </div>
               <ArrowRight className="h-6 w-6 text-white/80" />

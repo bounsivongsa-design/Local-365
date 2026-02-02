@@ -81,7 +81,7 @@ export function ItineraryBuilder({ formData }: ItineraryBuilderProps) {
       <CardHeader className="pb-4">
         <CardTitle className="text-2xl flex items-center gap-2">
           <Sun className="h-6 w-6 text-accent" />
-          Your Personalized OBX Itinerary
+          Your Personalized Currituck Itinerary
         </CardTitle>
         <div className="flex flex-wrap gap-2 mt-2">
           <Badge variant="secondary">{formData.staying}</Badge>
@@ -112,7 +112,7 @@ export function ItineraryBuilder({ formData }: ItineraryBuilderProps) {
             <CloudRain className="h-4 w-4" />
             <span className="font-medium">Backup if Rain:</span>
           </div>
-          <p>NC Aquarium on Roanoke Island, Outer Banks Brewing Station, or Shopping at Tanger Outlets</p>
+          <p>NC Aquarium on Roanoke Island, Currituck Brewing Station, or Shopping at Tanger Outlets</p>
         </div>
 
         {formData.mustHaves.length > 0 && (

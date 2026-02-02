@@ -70,7 +70,7 @@ export default function Directory() {
             <div className="space-y-1">
               <h1 className="font-display text-3xl font-bold tracking-tight">Local Directory</h1>
               <p className="text-muted-foreground">
-                Find trusted local businesses and services in the Outer Banks.
+                Find trusted local businesses and services in Currituck County.
               </p>
             </div>
             

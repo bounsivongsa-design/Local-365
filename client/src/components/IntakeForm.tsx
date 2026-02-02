@@ -64,7 +64,7 @@ export function IntakeForm({ onSubmit }: IntakeFormProps) {
   return (
     <Card className="w-full max-w-lg">
       <CardHeader>
-        <CardTitle className="text-2xl">Plan Your OBX Trip</CardTitle>
+        <CardTitle className="text-2xl">Plan Your Currituck Trip</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">

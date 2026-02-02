@@ -68,8 +68,8 @@ function BestOfEditor() {
 
   return (
     <Card className="p-6 shadow-pop">
-      <h2 className="text-2xl font-bold mb-6">Edit Best of OBX</h2>
-      <p className="text-muted-foreground mb-6">Add or update category winners for the Best of OBX awards.</p>
+      <h2 className="text-2xl font-bold mb-6">Edit Best of Currituck</h2>
+      <p className="text-muted-foreground mb-6">Add or update category winners for the Best of Currituck awards.</p>
       
       <div className="space-y-4">
         <div>

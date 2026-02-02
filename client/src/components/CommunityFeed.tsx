@@ -11,7 +11,7 @@ function CommunityFeed() {
 
   const upcomingEvents = [
     { title: "Community Farmers Market", date: "Feb 7, 2026", location: "Town Square, Manteo", description: "Fresh veggies, local crafts, and live music.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=300&fit=crop" },
-    { title: "OBX Home & Garden Show", date: "Feb 15, 2026", location: "Currituck Community Center", description: "Meet local contractors and home service providers.", image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop" },
+    { title: "Currituck Home & Garden Show", date: "Feb 15, 2026", location: "Currituck Community Center", description: "Meet local contractors and home service providers.", image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop" },
     { title: "Wright Brothers Day", date: "Dec 17, 2026", location: "Wright Brothers Memorial", description: "Celebrate the anniversary of powered flight.", image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop" },
   ];
 
@@ -38,7 +38,7 @@ function CommunityFeed() {
           className={`flex items-center gap-2 pb-2 border-b-2 transition ${activeTab === 'bestof' ? 'border-primary text-primary font-semibold' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
         >
           <Trophy className="h-4 w-4" />
-          Best of OBX
+          Best of Currituck
         </button>
         <button 
           onClick={() => setActiveTab('events')} 
@@ -52,7 +52,7 @@ function CommunityFeed() {
 
       {activeTab === 'feed' && (
         <div className="space-y-4 animate-in fade-in duration-300">
-          <h2 className="text-2xl font-bold text-foreground bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-sm">What's Happening in OBX</h2>
+          <h2 className="text-2xl font-bold text-foreground bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-sm">What's Happening in Currituck</h2>
           {communityPosts.map((post, index) => (
             <Card key={index} className="p-4 shadow-lg shadow-black/5">
               <div className="flex justify-between items-start">
@@ -74,7 +74,7 @@ function CommunityFeed() {
             <Card className="overflow-hidden shadow-lg shadow-black/5">
               <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400" alt="Green Leaf Market" className="w-full h-32 object-cover" />
               <div className="p-4">
-                <h4 className="font-bold">Outer Banks Pier</h4>
+                <h4 className="font-bold">Currituck Pier</h4>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <MapPin className="h-3 w-3" /> Nags Head
                   <Star className="h-3 w-3 ml-2 text-yellow-500" /> 4.8
@@ -107,7 +107,7 @@ function CommunityFeed() {
 
       {activeTab === 'bestof' && (
         <div className="py-8 animate-in fade-in duration-300">
-          <h2 className="text-3xl font-bold mb-6">Best of OBX 2026</h2>
+          <h2 className="text-3xl font-bold mb-6">Best of Currituck 2026</h2>
           <p className="mb-8 text-muted-foreground">Celebrating the top local businesses based on verified reviews & performance.</p>
           <BestOfGrid />
           

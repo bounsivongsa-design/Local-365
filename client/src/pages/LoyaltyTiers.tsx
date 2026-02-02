@@ -21,7 +21,7 @@ export default function LoyaltyTiers() {
             <h1 className="font-display text-4xl font-bold tracking-tight">Loyalty Program</h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Earn exclusive rewards and discounts with every visit to the Outer Banks. The more you explore, the more you save!
+            Earn exclusive rewards and discounts with every visit to Currituck County. The more you explore, the more you save!
           </p>
         </div>
       </div>
@@ -40,7 +40,7 @@ export default function LoyaltyTiers() {
                 <span className="text-2xl font-bold text-primary">1</span>
               </div>
               <h3 className="font-semibold mb-2">Book Your Stay</h3>
-              <p className="text-muted-foreground text-sm">Reserve accommodations through our partner businesses in the Outer Banks.</p>
+              <p className="text-muted-foreground text-sm">Reserve accommodations through our partner businesses in Currituck County.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -143,9 +143,9 @@ const participatingBusinesses = [
     referralCode: "LL365-DVI-002"
   },
   {
-    name: "OBX Adventure Tours",
+    name: "Currituck Adventure Tours",
     category: "Activities",
-    location: "Kitty Hawk, NC",
+    location: "Currituck, NC",
     rating: "4.9",
     reviews: 256,
     image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop",
