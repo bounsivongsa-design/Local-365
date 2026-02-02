@@ -5,6 +5,12 @@ import { z } from "zod";
 import { users } from "./models/auth";
 import { relations } from "drizzle-orm";
 
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  subs: text("subs").array().default([]),
+});
+
 export const businesses = pgTable("businesses", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -75,11 +81,13 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 }));
 
 // Schemas & Types
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true }); 
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true });
 
+export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type Post = typeof posts.$inferSelect;
