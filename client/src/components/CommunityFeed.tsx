@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp } from "lucide-react";
 import BestOfGrid from "./BestOfGrid";
+import BestOfEditor from "./BestOfEditor";
+import { useAuth } from "@/hooks/use-auth";
 
 function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'bestof' | 'events'>('feed');
+  const { isAuthenticated } = useAuth();
 
   const upcomingEvents = [
     { title: "Community Farmers Market", date: "Feb 7, 2026", location: "Town Square, Manteo", description: "Fresh veggies, local crafts, and live music.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=300&fit=crop" },
@@ -107,6 +110,12 @@ function CommunityFeed() {
           <h2 className="text-3xl font-bold mb-6">Best of OBX 2026</h2>
           <p className="mb-8 text-muted-foreground">Celebrating the top local businesses based on verified reviews & performance.</p>
           <BestOfGrid />
+          
+          {isAuthenticated && (
+            <div className="mt-12 pt-8 border-t">
+              <BestOfEditor />
+            </div>
+          )}
         </div>
       )}
 

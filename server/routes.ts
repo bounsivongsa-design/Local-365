@@ -21,6 +21,34 @@ export async function registerRoutes(
   registerAuthRoutes(app);
 
   // Best of OBX
+  app.post("/api/bestof", isAuthenticated, async (req, res) => {
+    try {
+      const { category, winner, runnerUp, honorable, rating } = req.body;
+      
+      if (!category || !winner) {
+        return res.status(400).json({ message: "Category and winner are required" });
+      }
+
+      const result = await db.get("bestof");
+      const currentBestOf = (result.ok && result.value) ? result.value as any[] : [];
+      
+      // Check if category exists and update, otherwise add new
+      const existingIndex = currentBestOf.findIndex((item: any) => item.category === category);
+      const newEntry = { category, winner, runnerUp, honorable, rating };
+      
+      if (existingIndex >= 0) {
+        currentBestOf[existingIndex] = newEntry;
+      } else {
+        currentBestOf.push(newEntry);
+      }
+      
+      await db.set("bestof", currentBestOf);
+      res.json({ message: "Entry saved successfully", entry: newEntry });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to save best of entry" });
+    }
+  });
+
   app.get("/api/bestof", async (req, res) => {
     try {
       const result = await db.get("bestof");
