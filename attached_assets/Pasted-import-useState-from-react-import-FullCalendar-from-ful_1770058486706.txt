@@ -1,0 +1,70 @@
+import { useState } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
+
+function App() {
+  const [activeTab, setActiveTab] = useState('home');
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+      {/* Header */}
+      <header className="bg-white shadow sticky top-0 z-50">
+        <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex items-center">
+              <span className="text-2xl font-bold text-primary">Local List 365</span>
+            </div>
+            <div className="hidden md:flex space-x-8">
+              <button onClick={() => setActiveTab('home')} className={`hover:text-accent transition ${activeTab === 'home' ? 'text-accent font-semibold' : ''}`}>Home</button>
+              <button onClick={() => setActiveTab('directory')} className={`hover:text-accent transition ${activeTab === 'directory' ? 'text-accent font-semibold' : ''}`}>Directory</button>
+              <button onClick={() => setActiveTab('events')} className={`hover:text-accent transition ${activeTab === 'events' ? 'text-accent font-semibold' : ''}`}>Local Events</button>
+              <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition">Sign In / Claim</button>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      {/* Content */}
+      <main className="max-w-7xl mx-auto p-4">
+        {activeTab === 'home' && (
+          <div className="text-center py-20">
+            <h1 className="text-4xl font-bold mb-4">Discover the Best of OBX</h1>
+            <p className="text-xl mb-8">Trusted pros, stays, events, and more for Northeast visitors.</p>
+            <input type="text" placeholder="Search for pros or events..." className="px-6 py-4 rounded-lg w-full max-w-md mx-auto border border-gray-300 focus:border-accent" />
+          </div>
+        )}
+
+        {activeTab === 'directory' && (
+          <div className="py-8">
+            <h2 className="text-3xl font-bold mb-6">Featured Businesses</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow hover:shadow-xl transition">
+                <h3 className="text-xl font-semibold">Smith Deck Builders</h3>
+                <p className="text-gray-600">4.9 ★ • Northeastern NC</p>
+              </div>
+              {/* Add more dummy cards */}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'events' && (
+          <div className="py-8">
+            <h2 className="text-3xl font-bold mb-6">Local Events Calendar</h2>
+            <FullCalendar 
+              plugins={[dayGridPlugin, timeGridPlugin, listPlugin]} 
+              initialView="dayGridMonth" 
+              events={[
+                { title: 'Corolla Car Show', date: '2026-02-15' },
+                // Add more
+              ]}
+            />
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default App;
