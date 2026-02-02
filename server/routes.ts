@@ -112,6 +112,53 @@ export async function registerRoutes(
     }
   });
 
+  // Affiliate Click Tracking
+  app.post("/api/affiliate-clicks", async (req, res) => {
+    try {
+      const { businessName, referralCode, category, timestamp } = req.body;
+      
+      if (!businessName || !referralCode) {
+        return res.status(400).json({ message: "Business name and referral code are required" });
+      }
+
+      // Get existing clicks
+      const result = await db.get("affiliate_clicks");
+      const clicks = (result.ok && result.value) ? result.value as any[] : [];
+      
+      // Add new click
+      clicks.push({
+        businessName,
+        referralCode,
+        category,
+        timestamp: timestamp || new Date().toISOString(),
+        userAgent: req.headers['user-agent'],
+        ip: req.ip
+      });
+      
+      await db.set("affiliate_clicks", clicks);
+      
+      console.log(`[Affiliate] Click tracked: ${referralCode} -> ${businessName}`);
+      res.json({ success: true, message: "Click tracked" });
+    } catch (err) {
+      console.error("Failed to track affiliate click:", err);
+      res.status(500).json({ message: "Failed to track click" });
+    }
+  });
+
+  // Get affiliate click stats (for admin)
+  app.get("/api/affiliate-clicks", isAuthenticated, async (req, res) => {
+    try {
+      const result = await db.get("affiliate_clicks");
+      if (result.ok && result.value) {
+        res.json(result.value);
+      } else {
+        res.json([]);
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch affiliate clicks" });
+    }
+  });
+
   // Businesses
   app.get(api.businesses.list.path, async (req, res) => {
     const category = req.query.category as string | undefined;

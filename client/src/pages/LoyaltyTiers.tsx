@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Sparkles, MapPin, Star, Check } from "lucide-react";
+import { ArrowLeft, Sparkles, MapPin, Star, Check, ExternalLink } from "lucide-react";
 
 export default function LoyaltyTiers() {
   return (
@@ -88,11 +88,23 @@ export default function LoyaltyTiers() {
                     <span className="font-medium">{business.rating}</span>
                     <span className="text-muted-foreground">({business.reviews} reviews)</span>
                   </div>
-                  <div className="pt-3 border-t">
+                  <div className="pt-3 border-t space-y-3">
                     <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium">
                       <Check className="h-4 w-4" />
                       Accepts all loyalty tiers
                     </div>
+                    <Button 
+                      className="w-full" 
+                      size="sm"
+                      onClick={() => {
+                        trackAffiliateClick(business);
+                        window.open(generateAffiliateLink(business), '_blank');
+                      }}
+                      data-testid={`button-visit-${business.referralCode}`}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Visit Website
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -116,7 +128,9 @@ const participatingBusinesses = [
     location: "Corolla, NC",
     rating: "4.9",
     reviews: 128,
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop"
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop",
+    website: "https://example.com/corolla-suites",
+    referralCode: "LL365-CBS-001"
   },
   {
     name: "Duck Village Inn",
@@ -124,7 +138,9 @@ const participatingBusinesses = [
     location: "Duck, NC",
     rating: "4.8",
     reviews: 94,
-    image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&h=300&fit=crop"
+    image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&h=300&fit=crop",
+    website: "https://example.com/duck-village",
+    referralCode: "LL365-DVI-002"
   },
   {
     name: "OBX Adventure Tours",
@@ -132,7 +148,9 @@ const participatingBusinesses = [
     location: "Kitty Hawk, NC",
     rating: "4.9",
     reviews: 256,
-    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop"
+    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop",
+    website: "https://example.com/obx-adventures",
+    referralCode: "LL365-OAT-003"
   },
   {
     name: "Sunset Grill & Oyster Bar",
@@ -140,7 +158,9 @@ const participatingBusinesses = [
     location: "Nags Head, NC",
     rating: "4.7",
     reviews: 312,
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop"
+    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop",
+    website: "https://example.com/sunset-grill",
+    referralCode: "LL365-SGO-004"
   },
   {
     name: "Wild Horse Safari",
@@ -148,7 +168,9 @@ const participatingBusinesses = [
     location: "Corolla, NC",
     rating: "4.9",
     reviews: 189,
-    image: "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=400&h=300&fit=crop"
+    image: "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=400&h=300&fit=crop",
+    website: "https://example.com/wild-horse-safari",
+    referralCode: "LL365-WHS-005"
   },
   {
     name: "Coastal Kayak Rentals",
@@ -156,6 +178,39 @@ const participatingBusinesses = [
     location: "Manteo, NC",
     rating: "4.8",
     reviews: 76,
-    image: "https://images.unsplash.com/photo-1472745942893-4b9f730c7668?w=400&h=300&fit=crop"
+    image: "https://images.unsplash.com/photo-1472745942893-4b9f730c7668?w=400&h=300&fit=crop",
+    website: "https://example.com/coastal-kayak",
+    referralCode: "LL365-CKR-006"
   }
 ];
+
+// Generate tracked affiliate link with UTM parameters
+function generateAffiliateLink(business: typeof participatingBusinesses[0]) {
+  const baseUrl = business.website;
+  const utmParams = new URLSearchParams({
+    utm_source: 'locallist365',
+    utm_medium: 'referral',
+    utm_campaign: 'loyalty_program',
+    utm_content: business.referralCode,
+    ref: business.referralCode
+  });
+  return `${baseUrl}?${utmParams.toString()}`;
+}
+
+// Log click to backend for tracking
+async function trackAffiliateClick(business: typeof participatingBusinesses[0]) {
+  try {
+    await fetch('/api/affiliate-clicks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessName: business.name,
+        referralCode: business.referralCode,
+        category: business.category,
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch (error) {
+    console.error('Failed to track click:', error);
+  }
+}
