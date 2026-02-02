@@ -190,14 +190,16 @@ export default function Home() {
 
       {/* Loyalty Badges */}
       <div className="container">
-        <LoyaltyBadges />
+        <div className="bg-white/80 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+          <LoyaltyBadges />
+        </div>
       </div>
 
       <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
         {/* Main Feed */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-2xl font-bold">Community Feed</h2>
+          <div className="flex items-center justify-between mb-4 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm">
+            <h2 className="font-display text-2xl font-bold text-foreground">Community Feed</h2>
             <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5">
               Latest Updates
             </Button>
@@ -289,9 +291,9 @@ export default function Home() {
         {/* Sidebar */}
         <div className="space-y-8">
           {/* Featured Businesses */}
-          <div>
+          <div className="bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-bold">Local Gems</h2>
+              <h2 className="font-display text-xl font-bold text-foreground">Local Gems</h2>
               <Link to="/directory" className="text-sm font-medium text-primary hover:underline flex items-center">
                 View All <ArrowRight className="h-3 w-3 ml-1" />
               </Link>
@@ -334,9 +336,9 @@ export default function Home() {
           </div>
 
           {/* Upcoming Events */}
-          <div>
+          <div className="bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-bold">Upcoming Events</h2>
+              <h2 className="font-display text-xl font-bold text-foreground">Upcoming Events</h2>
               <Link to="/events" className="text-sm font-medium text-primary hover:underline flex items-center">
                 View Calendar <ArrowRight className="h-3 w-3 ml-1" />
               </Link>

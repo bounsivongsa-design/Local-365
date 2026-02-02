@@ -23,7 +23,7 @@ function CommunityFeed() {
 
   return (
     <div className="py-8">
-      <div className="flex items-center gap-6 border-b mb-6 pb-2">
+      <div className="flex items-center gap-6 border-b mb-6 pb-2 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm">
         <button 
           onClick={() => setActiveTab('feed')} 
           data-testid="tab-feed"
@@ -52,7 +52,7 @@ function CommunityFeed() {
 
       {activeTab === 'feed' && (
         <div className="space-y-4 animate-in fade-in duration-300">
-          <h2 className="text-2xl font-bold">What's Happening in OBX</h2>
+          <h2 className="text-2xl font-bold text-foreground bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-sm">What's Happening in OBX</h2>
           {communityPosts.map((post, index) => (
             <Card key={index} className="p-4 shadow-lg shadow-black/5">
               <div className="flex justify-between items-start">
@@ -69,7 +69,7 @@ function CommunityFeed() {
             </Card>
           ))}
           
-          <h3 className="text-xl font-bold mt-8 mb-4">Local Gems</h3>
+          <h3 className="text-xl font-bold mt-8 mb-4 text-foreground bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-sm">Local Gems</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="overflow-hidden shadow-lg shadow-black/5">
               <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400" alt="Green Leaf Market" className="w-full h-32 object-cover" />
