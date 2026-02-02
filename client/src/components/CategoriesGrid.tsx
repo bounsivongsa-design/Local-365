@@ -6,6 +6,35 @@ interface Category {
   subs: string[];
 }
 
+const dummyCategories: Category[] = [
+  { id: 1, name: "Home Repair", subs: [] },
+  { id: 2, name: "Plumbing", subs: [] },
+  { id: 3, name: "HVAC", subs: [] },
+  { id: 4, name: "Electrical", subs: [] },
+  { id: 5, name: "Roofing", subs: [] },
+  { id: 6, name: "Landscaping", subs: [] },
+  { id: 7, name: "Cleaning", subs: [] },
+  { id: 8, name: "Painting", subs: [] },
+  { id: 9, name: "Tree Care", subs: [] },
+  { id: 10, name: "Remodeling & Addition", subs: [] },
+  { id: 11, name: "New Construction", subs: [] },
+  { id: 12, name: "Baby Sitting & Nanny", subs: [] },
+  { id: 13, name: "Printing", subs: [] },
+  { id: 14, name: "Web Design & Logo Design", subs: [] },
+  { id: 15, name: "Photo & Video", subs: [] },
+  { id: 16, name: "Auto Repair", subs: [] },
+  { id: 17, name: "Small Engine Repair", subs: [] },
+  { id: 18, name: "Trash & Junk Removal", subs: [] },
+  { id: 19, name: "Tutor & Mentor Counseling", subs: [] },
+  { id: 20, name: "Mind Body Soul", subs: [] },
+  { id: 21, name: "Tax CPA", subs: [] },
+  { id: 22, name: "Legal", subs: [] },
+  { id: 23, name: "Woodworking & Lazer CNC", subs: [] },
+  { id: 24, name: "Baking & Cooking", subs: [] },
+  { id: 25, name: "Catering Food Trucks", subs: [] },
+  { id: 26, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
+];
+
 function CategoriesGrid() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,9 +47,14 @@ function CategoriesGrid() {
         const response = await fetch('/api/categories');
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response.json();
-        setCategories(data || []);
+        if (data && data.length > 0) {
+          setCategories(data);
+        } else {
+          setCategories(dummyCategories);
+        }
       } catch (err) {
         setError('Failed to load categories — try refreshing.');
+        setCategories(dummyCategories);
       } finally {
         setLoading(false);
       }
@@ -52,12 +86,10 @@ function CategoriesGrid() {
         <div 
           key={cat.id} 
           className="bg-blue-100 p-4 rounded-lg text-center shadow-3d cursor-pointer transition-all hover:shadow-3d-lg"
+          onClick={() => toggleExpand(cat.id)}
           data-testid={`card-category-${cat.id}`}
         >
-          <h3 
-            className="font-bold hover:text-primary transition-colors"
-            onClick={() => toggleExpand(cat.id)}
-          >
+          <h3 className="font-bold hover:text-primary transition-colors">
             {cat.name}
           </h3>
           {expanded[cat.id] && (

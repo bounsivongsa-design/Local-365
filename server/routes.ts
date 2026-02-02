@@ -120,6 +120,16 @@ export async function registerRoutes(
     }
   });
 
+  // Reset categories (for updating)
+  app.post('/api/categories/reset', async (req, res) => {
+    try {
+      await db.delete('categories');
+      res.json({ message: 'Categories cleared. Restart to reseed.' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to reset categories' });
+    }
+  });
+
   // Categories API (from Replit KV database)
   app.get('/api/categories', async (req, res) => {
     try {
@@ -229,34 +239,32 @@ async function seedDatabase() {
   if (!existingCategories || (existingCategories && existingCategories.ok === false)) {
     console.log("Seeding categories...");
     const categories = [
-      { id: 1, name: "Concrete", subs: ["Driveways", "Patios", "Foundations"] },
-      { id: 2, name: "Home Repair", subs: ["General Repairs", "Handyman", "Renovations"] },
-      { id: 3, name: "HVAC", subs: ["AC Installation", "Heating", "Duct Cleaning"] },
-      { id: 4, name: "Cleaning", subs: ["House Cleaning", "Deep Clean", "Move-out"] },
-      { id: 5, name: "Auto Repair", subs: ["Mechanics", "Body Shops", "Oil Change"] },
-      { id: 6, name: "Event Planning", subs: ["Weddings", "Parties", "Corporate"] },
-      { id: 7, name: "Landscaping", subs: ["Lawn Care", "Tree Service", "Hardscaping"] },
-      { id: 8, name: "Plumbing", subs: ["Repairs", "Installation", "Emergency"] },
-      { id: 9, name: "Electrical", subs: ["Wiring", "Panel Upgrades", "Lighting"] },
-      { id: 10, name: "Roofing", subs: ["Shingles", "Metal", "Repairs"] },
-      { id: 11, name: "Painting", subs: ["Interior", "Exterior", "Staining"] },
-      { id: 12, name: "Flooring", subs: ["Hardwood", "Tile", "Carpet"] },
-      { id: 13, name: "Pest Control", subs: ["Termites", "Rodents", "Mosquitoes"] },
-      { id: 14, name: "Pool Services", subs: ["Cleaning", "Repairs", "Installation"] },
-      { id: 15, name: "Decks & Patios", subs: ["Building", "Repairs", "Staining"] },
-      { id: 16, name: "Windows", subs: ["Replacement", "Cleaning", "Tinting"] },
-      { id: 17, name: "Gutters", subs: ["Installation", "Cleaning", "Guards"] },
-      { id: 18, name: "Fencing", subs: ["Wood", "Vinyl", "Chain Link"] },
-      { id: 19, name: "Garage Doors", subs: ["Installation", "Repairs", "Openers"] },
-      { id: 20, name: "Appliance Repair", subs: ["Washer/Dryer", "Refrigerator", "Dishwasher"] },
-      { id: 21, name: "Security", subs: ["Cameras", "Alarms", "Smart Home"] },
-      { id: 22, name: "Moving", subs: ["Local", "Long Distance", "Packing"] },
-      { id: 23, name: "Storage", subs: ["Self Storage", "Climate Control", "Boat/RV"] },
-      { id: 24, name: "Catering", subs: ["Weddings", "BBQ", "Seafood"] },
-      { id: 25, name: "Photography", subs: ["Weddings", "Portraits", "Real Estate"] },
-      { id: 26, name: "Pet Services", subs: ["Grooming", "Boarding", "Walking"] },
-      { id: 27, name: "Boat Services", subs: ["Repairs", "Detailing", "Storage"] },
-      { id: 28, name: "Real Estate", subs: ["Agents", "Property Management", "Rentals"] },
+      { id: 1, name: "Home Repair", subs: [] },
+      { id: 2, name: "Plumbing", subs: [] },
+      { id: 3, name: "HVAC", subs: [] },
+      { id: 4, name: "Electrical", subs: [] },
+      { id: 5, name: "Roofing", subs: [] },
+      { id: 6, name: "Landscaping", subs: [] },
+      { id: 7, name: "Cleaning", subs: [] },
+      { id: 8, name: "Painting", subs: [] },
+      { id: 9, name: "Tree Care", subs: [] },
+      { id: 10, name: "Remodeling & Addition", subs: [] },
+      { id: 11, name: "New Construction", subs: [] },
+      { id: 12, name: "Baby Sitting & Nanny", subs: [] },
+      { id: 13, name: "Printing", subs: [] },
+      { id: 14, name: "Web Design & Logo Design", subs: [] },
+      { id: 15, name: "Photo & Video", subs: [] },
+      { id: 16, name: "Auto Repair", subs: [] },
+      { id: 17, name: "Small Engine Repair", subs: [] },
+      { id: 18, name: "Trash & Junk Removal", subs: [] },
+      { id: 19, name: "Tutor & Mentor Counseling", subs: [] },
+      { id: 20, name: "Mind Body Soul", subs: [] },
+      { id: 21, name: "Tax CPA", subs: [] },
+      { id: 22, name: "Legal", subs: [] },
+      { id: 23, name: "Woodworking & Lazer CNC", subs: [] },
+      { id: 24, name: "Baking & Cooking", subs: [] },
+      { id: 25, name: "Catering Food Trucks", subs: [] },
+      { id: 26, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
     ];
     await db.set('categories', categories);
     console.log("Categories seeded!");
