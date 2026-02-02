@@ -1,44 +1,48 @@
+import { useEffect, useState } from 'react';
+import supabase from '@/lib/supabase';
+
 interface Category {
+  id: number;
   name: string;
-  subs?: string[];
+  subs: string[] | null;
 }
 
 function CategoriesGrid() {
-  const categories: Category[] = [
-    { name: 'Concrete' },
-    { name: 'Home Repair' },
-    { name: 'Paint' },
-    { name: 'Landscaping' },
-    { name: 'Plumbing' },
-    { name: 'HVAC' },
-    { name: 'Cleaning', subs: ['Auto Detailing', 'House Cleaning', 'Business Cleaning'] },
-    { name: 'Roofing' },
-    { name: 'Electrical' },
-    { name: 'Tree' },
-    { name: 'Lawn Care' },
-    { name: 'Remodeling Addition' },
-    { name: 'New Construction' },
-    { name: 'Baby Sitting Home Sitting Dog Sitting Nanny', subs: ['Baby Sitting', 'Dog Sitting', 'Home Sitting', 'Nanny'] },
-    { name: 'Printing', subs: ['Apparel', 'Signs', 'Vinyl', 'Paper'] },
-    { name: 'Web Design Logo Design', subs: ['Web Design', 'Logo Design', 'IT Network'] },
-    { name: 'Photo Video' },
-    { name: 'Auto Repair', subs: ['Diesel Engine', 'Gas Engine', 'EV', 'Body'] },
-    { name: 'Small Engine Repair' },
-    { name: 'Trash Junk Removal' },
-    { name: 'Tutor Mentor Counseling' },
-    { name: 'Mind Body Soul' },
-    { name: 'Tax CPA' },
-    { name: 'Legal' },
-    { name: 'Woodworking Lazer CNC' },
-    { name: 'Baking Cooking' },
-    { name: 'Catering Food Trucks' },
-    { name: 'Event Planning & Rentals', subs: ['Event Planning', 'Event Rentals', 'Event Locations'] },
-  ];
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data, error } = await supabase.from('categories').select('*');
+      if (error) {
+        console.error(error);
+        setError('Failed to load categories');
+      }
+      setCategories(data || []);
+      setLoading(false);
+    }
+    fetchCategories();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="bg-blue-100/50 p-4 rounded-lg text-center animate-pulse h-24" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-destructive">{error}</p>;
+  }
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {categories.map((cat, i) => (
-        <div key={i} className="bg-blue-100 p-4 rounded-lg text-center" data-testid={`card-category-${i}`}>
+      {categories.map((cat) => (
+        <div key={cat.id} className="bg-blue-100 p-4 rounded-lg text-center" data-testid={`card-category-${cat.id}`}>
           <h3 className="font-bold">{cat.name}</h3>
           {cat.subs && cat.subs.map((sub, j) => <p key={j} className="text-sm">{sub}</p>)}
         </div>
