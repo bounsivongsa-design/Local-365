@@ -12,6 +12,7 @@ import Events from "@/pages/Events";
 import LocationPage from "@/pages/LocationPage";
 import RomanticGetaway from "@/pages/RomanticGetaway";
 import LoyaltyTiers from "@/pages/LoyaltyTiers";
+import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import backgroundImage from "@assets/8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770063157367.jpg";
@@ -34,6 +35,7 @@ function AppRouter() {
           <Route path="/location/:area" element={<LocationPage />} />
           <Route path="/romantic-getaway" element={<RomanticGetaway />} />
           <Route path="/loyalty" element={<LoyaltyTiers />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -56,6 +58,7 @@ function AppRouter() {
           <div>
             <h4 className="font-bold text-white mb-4">Community</h4>
             <ul className="space-y-2">
+              <li><Link to="/dashboard" className="hover:text-[#d4a373]">My Dashboard</Link></li>
               <li><a href="/api/login" className="hover:text-[#d4a373]">Sign In</a></li>
               <li><a href="#" className="hover:text-[#d4a373]">Help Center</a></li>
               <li><a href="#" className="hover:text-[#d4a373]">Guidelines</a></li>

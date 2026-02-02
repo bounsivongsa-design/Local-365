@@ -4,8 +4,12 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import OpenAI from "openai";
 import db from "./lib/replitDb";
+import { db as pgDb } from "./db";
+import { users, receipts } from "@shared/models/auth";
+import { eq } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -19,6 +23,77 @@ export async function registerRoutes(
   // Auth Setup
   await setupAuth(app);
   registerAuthRoutes(app);
+  
+  // Object Storage Routes
+  registerObjectStorageRoutes(app);
+
+  // User validation status
+  app.get("/api/user/validation-status", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const userReceipts = await pgDb.select().from(receipts).where(eq(receipts.userId, userId));
+      
+      res.json({
+        isValidated: user[0].isValidated || false,
+        receipts: userReceipts
+      });
+    } catch (err) {
+      console.error("Error fetching validation status:", err);
+      res.status(500).json({ message: "Failed to fetch validation status" });
+    }
+  });
+
+  // Submit receipt for validation
+  app.post("/api/user/receipts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { fileName, fileUrl } = req.body;
+      if (!fileName || !fileUrl) {
+        return res.status(400).json({ message: "File name and URL are required" });
+      }
+      
+      const [newReceipt] = await pgDb.insert(receipts).values({
+        userId,
+        fileName,
+        fileUrl,
+        status: "pending"
+      }).returning();
+      
+      res.status(201).json(newReceipt);
+    } catch (err) {
+      console.error("Error submitting receipt:", err);
+      res.status(500).json({ message: "Failed to submit receipt" });
+    }
+  });
+
+  // Get user's receipts
+  app.get("/api/user/receipts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const userReceipts = await pgDb.select().from(receipts).where(eq(receipts.userId, userId));
+      res.json(userReceipts);
+    } catch (err) {
+      console.error("Error fetching receipts:", err);
+      res.status(500).json({ message: "Failed to fetch receipts" });
+    }
+  });
 
   // Best of OBX
   app.post("/api/bestof", isAuthenticated, async (req, res) => {
@@ -220,10 +295,20 @@ export async function registerRoutes(
 
   app.post(api.posts.create.path, isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      
+      // Check if user is validated before allowing post
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || !user[0].isValidated) {
+        return res.status(403).json({ 
+          message: "You must verify your account by uploading a receipt before posting. Visit your dashboard to verify." 
+        });
+      }
+      
       const input = api.posts.create.input.parse(req.body);
       const post = await storage.createPost({
         ...input,
-        authorId: (req.user as any).claims.sub,
+        authorId: userId,
       });
       res.status(201).json(post);
     } catch (err) {
