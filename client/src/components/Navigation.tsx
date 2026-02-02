@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { MapPin, Calendar, Store, Home, Menu, LogOut, User as UserIcon } from "lucide-react";
+import { MapPin, Calendar, Store, Home, Menu, LogOut, User as UserIcon, Gavel } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
@@ -21,6 +21,7 @@ export function Navigation() {
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/directory", label: "Directory", icon: Store },
+    { href: "/quotes", label: "Get Quotes", icon: Gavel },
     { href: "/events", label: "Local Events", icon: Calendar },
   ];
 
@@ -28,13 +29,13 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-24 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
             <img 
               src="/assets/ChatGPT_Image_Jan_23,_2026,_01_16_31_PM_1770058614374.png" 
               alt="Local List 365" 
-              className="h-12 w-auto"
+              className="h-20 w-auto"
               data-testid="img-logo"
             />
           </Link>

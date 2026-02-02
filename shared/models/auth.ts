@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar, boolean, serial, text, integer } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, timestamp, varchar, boolean, serial, text, integer, decimal } from "drizzle-orm/pg-core";
 
 // Session storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
@@ -24,6 +24,8 @@ export const users = pgTable("users", {
   accountType: varchar("account_type").default("customer"), // customer, business
   isValidated: boolean("is_validated").default(false),
   linkedBusinessId: integer("linked_business_id"), // For business accounts - links to their business listing
+  loyaltyPoints: integer("loyalty_points").default(0), // Points earned through activity
+  loyaltyTier: varchar("loyalty_tier").default("explorer"), // explorer, resident, insider, local, ambassador
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -39,6 +41,38 @@ export const receipts = pgTable("receipts", {
   reviewedAt: timestamp("reviewed_at"),
 });
 
+// Quote requests - customers post requests for services
+export const quoteRequests = pgTable("quote_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: varchar("category").notNull(), // matches business categories
+  budget: varchar("budget"), // optional budget range
+  timeline: varchar("timeline"), // e.g., "Within a week", "Flexible"
+  location: text("location"),
+  status: varchar("status").default("open"), // open, in_progress, completed, cancelled
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+});
+
+// Quotes/bids from businesses
+export const quotes = pgTable("quotes", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull().references(() => quoteRequests.id),
+  businessId: integer("business_id").notNull(), // references businesses table
+  userId: varchar("user_id").notNull().references(() => users.id), // the business owner
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  message: text("message").notNull(),
+  estimatedDuration: varchar("estimated_duration"),
+  status: varchar("status").default("pending"), // pending, accepted, rejected, withdrawn
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Receipt = typeof receipts.$inferSelect;
+export type QuoteRequest = typeof quoteRequests.$inferSelect;
+export type InsertQuoteRequest = typeof quoteRequests.$inferInsert;
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = typeof quotes.$inferInsert;

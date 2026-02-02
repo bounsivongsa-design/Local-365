@@ -79,11 +79,21 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
-            Discover Currituck County's Charm
+          {/* Value Proposition Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            <span className="text-white text-sm font-medium">Your Local Connection to Currituck County</span>
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
+            Find Trusted Local Pros<br />
+            <span className="text-[#d4a373]">Support Your Community</span>
           </h1>
-          <p className="text-xl mb-8 text-white/90 font-medium drop-shadow-md">
-            Trusted pros, stays, events, and more for Northeast NC visitors.
+          <p className="text-xl md:text-2xl mb-4 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
+            Connect with verified local businesses, discover events, and earn rewards for shopping local in Currituck County.
+          </p>
+          <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
+            Post a project and get competitive quotes from local contractors. Earn loyalty points with every purchase. Join 500+ community members.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
             <input 

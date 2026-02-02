@@ -8,8 +8,8 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
-import { users, receipts } from "@shared/models/auth";
-import { eq } from "drizzle-orm";
+import { users, receipts, quoteRequests, quotes } from "@shared/models/auth";
+import { eq, desc, and } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -446,6 +446,317 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       } else {
         res.status(500).json({ message: 'Failed to get AI response' });
       }
+    }
+  });
+
+  // ============ ACCOUNT TYPE & LOYALTY ============
+  
+  // Update account type
+  app.post("/api/user/account-type", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { accountType } = req.body;
+      if (!accountType || !["customer", "business"].includes(accountType)) {
+        return res.status(400).json({ message: "Invalid account type" });
+      }
+      
+      await pgDb.update(users)
+        .set({ accountType, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+      
+      res.json({ message: "Account type updated", accountType });
+    } catch (err) {
+      console.error("Error updating account type:", err);
+      res.status(500).json({ message: "Failed to update account type" });
+    }
+  });
+
+  // Get user profile with loyalty info
+  app.get("/api/user/profile", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Calculate tier based on points
+      const points = user[0].loyaltyPoints || 0;
+      let tier = "explorer";
+      if (points >= 5000) tier = "ambassador";
+      else if (points >= 2500) tier = "local";
+      else if (points >= 1000) tier = "insider";
+      else if (points >= 250) tier = "resident";
+      
+      res.json({
+        ...user[0],
+        loyaltyTier: tier,
+        nextTierPoints: tier === "ambassador" ? null : 
+          tier === "local" ? 5000 :
+          tier === "insider" ? 2500 :
+          tier === "resident" ? 1000 : 250
+      });
+    } catch (err) {
+      console.error("Error fetching user profile:", err);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  // Helper function to calculate tier from points
+  function calculateTier(points: number): string {
+    if (points >= 5000) return "ambassador";
+    if (points >= 2500) return "local";
+    if (points >= 1000) return "insider";
+    if (points >= 250) return "resident";
+    return "explorer";
+  }
+
+  // Add loyalty points
+  app.post("/api/user/loyalty/add-points", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { points, reason } = req.body;
+      if (!points || points < 0) {
+        return res.status(400).json({ message: "Invalid points value" });
+      }
+      
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const newPoints = (user[0].loyaltyPoints || 0) + points;
+      const newTier = calculateTier(newPoints);
+      
+      await pgDb.update(users)
+        .set({ loyaltyPoints: newPoints, loyaltyTier: newTier, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+      
+      res.json({ points: newPoints, tier: newTier, added: points, reason });
+    } catch (err) {
+      console.error("Error adding points:", err);
+      res.status(500).json({ message: "Failed to add points" });
+    }
+  });
+
+  // ============ QUOTE REQUEST SYSTEM ============
+  
+  // Get all open quote requests (for businesses)
+  app.get("/api/quotes/requests", async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      
+      let query = pgDb.select().from(quoteRequests)
+        .where(eq(quoteRequests.status, "open"))
+        .orderBy(desc(quoteRequests.createdAt));
+      
+      const requests = await query;
+      res.json(requests);
+    } catch (err) {
+      console.error("Error fetching quote requests:", err);
+      res.status(500).json({ message: "Failed to fetch quote requests" });
+    }
+  });
+
+  // Get user's own quote requests
+  app.get("/api/user/quote-requests", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const requests = await pgDb.select().from(quoteRequests)
+        .where(eq(quoteRequests.userId, userId))
+        .orderBy(desc(quoteRequests.createdAt));
+      
+      res.json(requests);
+    } catch (err) {
+      console.error("Error fetching user quote requests:", err);
+      res.status(500).json({ message: "Failed to fetch quote requests" });
+    }
+  });
+
+  // Create a quote request (customer only)
+  app.post("/api/quotes/requests", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Verify user is a customer (not a business)
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length > 0 && user[0].accountType === "business") {
+        return res.status(403).json({ message: "Business accounts cannot create quote requests" });
+      }
+      
+      const { title, description, category, budget, timeline, location } = req.body;
+      if (!title || !description || !category) {
+        return res.status(400).json({ message: "Title, description, and category are required" });
+      }
+      
+      const [newRequest] = await pgDb.insert(quoteRequests).values({
+        userId,
+        title,
+        description,
+        category,
+        budget,
+        timeline,
+        location,
+        status: "open"
+      }).returning();
+      
+      // Award points for posting a quote request (user already fetched above)
+      if (user.length > 0) {
+        const newPoints = (user[0].loyaltyPoints || 0) + 10;
+        const newTier = calculateTier(newPoints);
+        await pgDb.update(users)
+          .set({ loyaltyPoints: newPoints, loyaltyTier: newTier })
+          .where(eq(users.id, userId));
+      }
+      
+      res.status(201).json(newRequest);
+    } catch (err) {
+      console.error("Error creating quote request:", err);
+      res.status(500).json({ message: "Failed to create quote request" });
+    }
+  });
+
+  // Get quotes for a specific request
+  app.get("/api/quotes/requests/:requestId/quotes", isAuthenticated, async (req, res) => {
+    try {
+      const requestId = Number(req.params.requestId);
+      
+      const requestQuotes = await pgDb.select().from(quotes)
+        .where(eq(quotes.requestId, requestId))
+        .orderBy(quotes.createdAt);
+      
+      res.json(requestQuotes);
+    } catch (err) {
+      console.error("Error fetching quotes:", err);
+      res.status(500).json({ message: "Failed to fetch quotes" });
+    }
+  });
+
+  // Submit a quote/bid (business accounts only)
+  app.post("/api/quotes/requests/:requestId/quotes", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Verify user is a business account
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (user[0].accountType !== "business") {
+        return res.status(403).json({ message: "Only business accounts can submit quotes" });
+      }
+      
+      const requestId = Number(req.params.requestId);
+      const { amount, message, estimatedDuration, businessId } = req.body;
+      
+      if (!amount || !message) {
+        return res.status(400).json({ message: "Amount and message are required" });
+      }
+      
+      // Use linked business ID if not provided, or validate ownership
+      const effectiveBusinessId = businessId || user[0].linkedBusinessId;
+      if (!effectiveBusinessId) {
+        return res.status(400).json({ message: "No business linked to your account. Please set up your business first." });
+      }
+      
+      // Check if request exists and is open
+      const request = await pgDb.select().from(quoteRequests)
+        .where(eq(quoteRequests.id, requestId)).limit(1);
+      
+      if (request.length === 0) {
+        return res.status(404).json({ message: "Quote request not found" });
+      }
+      
+      if (request[0].status !== "open") {
+        return res.status(400).json({ message: "This quote request is no longer accepting bids" });
+      }
+      
+      const [newQuote] = await pgDb.insert(quotes).values({
+        requestId,
+        businessId: effectiveBusinessId,
+        userId,
+        amount: amount.toString(),
+        message,
+        estimatedDuration,
+        status: "pending"
+      }).returning();
+      
+      res.status(201).json(newQuote);
+    } catch (err) {
+      console.error("Error submitting quote:", err);
+      res.status(500).json({ message: "Failed to submit quote" });
+    }
+  });
+
+  // Accept a quote (customer)
+  app.post("/api/quotes/:quoteId/accept", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const quoteId = Number(req.params.quoteId);
+      
+      // Get the quote
+      const quote = await pgDb.select().from(quotes)
+        .where(eq(quotes.id, quoteId)).limit(1);
+      
+      if (quote.length === 0) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Verify user owns the request
+      const request = await pgDb.select().from(quoteRequests)
+        .where(eq(quoteRequests.id, quote[0].requestId)).limit(1);
+      
+      if (request.length === 0 || request[0].userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to accept this quote" });
+      }
+      
+      // Accept the quote and update request status
+      await pgDb.update(quotes)
+        .set({ status: "accepted" })
+        .where(eq(quotes.id, quoteId));
+      
+      await pgDb.update(quoteRequests)
+        .set({ status: "in_progress" })
+        .where(eq(quoteRequests.id, quote[0].requestId));
+      
+      // Reject other quotes
+      await pgDb.update(quotes)
+        .set({ status: "rejected" })
+        .where(and(
+          eq(quotes.requestId, quote[0].requestId),
+          eq(quotes.status, "pending")
+        ));
+      
+      res.json({ message: "Quote accepted" });
+    } catch (err) {
+      console.error("Error accepting quote:", err);
+      res.status(500).json({ message: "Failed to accept quote" });
     }
   });
 

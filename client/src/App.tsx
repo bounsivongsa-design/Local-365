@@ -13,6 +13,8 @@ import LocationPage from "@/pages/LocationPage";
 import RomanticGetaway from "@/pages/RomanticGetaway";
 import LoyaltyTiers from "@/pages/LoyaltyTiers";
 import Dashboard from "@/pages/Dashboard";
+import AccountSetup from "@/pages/AccountSetup";
+import QuoteRequests from "@/pages/QuoteRequests";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import backgroundImage from "@assets/8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770063157367.jpg";
@@ -36,6 +38,8 @@ function AppRouter() {
           <Route path="/romantic-getaway" element={<RomanticGetaway />} />
           <Route path="/loyalty" element={<LoyaltyTiers />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/account-setup" element={<AccountSetup />} />
+          <Route path="/quotes" element={<QuoteRequests />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
