@@ -20,6 +20,27 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  // Loyalty Badges
+  app.get("/api/loyalty-badges", async (req, res) => {
+    try {
+      const result = await db.get("loyalty_badges");
+      if (result.ok && result.value) {
+        res.json(result.value);
+      } else {
+        // Return default badges if none in DB
+        const defaultBadges = [
+          { level: 'Silver Visitor', stays: 1, perk: '5% off next booking' },
+          { level: 'Gold Visitor', stays: 3, perk: '10% off next booking' },
+          { level: 'Platinum Visitor', stays: 5, perk: '15% off next booking' },
+          { level: 'Titanium Visitor', stays: 8, perk: '20% off next booking' }
+        ];
+        res.json(defaultBadges);
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch loyalty badges" });
+    }
+  });
+
   // Businesses
   app.get(api.businesses.list.path, async (req, res) => {
     const category = req.query.category as string | undefined;
