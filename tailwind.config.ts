@@ -81,6 +81,9 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        "primary-dark": "#1e40af",
+        "brand-primary": "#1e3a8a",
+        "brand-accent": "#f59e0b",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
