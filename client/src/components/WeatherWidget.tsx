@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { Cloud, Sun, CloudRain, Wind, Thermometer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
