@@ -138,3 +138,69 @@
 .fc .fc-event {
   @apply rounded-md px-2 py-1 text-sm font-medium cursor-pointer;
 }
+
+/* 3D Pop-out Shadow Effects */
+.shadow-3d {
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1),
+    0 10px 15px -3px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+.shadow-3d:hover {
+  box-shadow: 
+    0 8px 12px -2px rgba(0, 0, 0, 0.15),
+    0 4px 8px -4px rgba(0, 0, 0, 0.1),
+    0 20px 25px -5px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+}
+
+.shadow-3d-sm {
+  box-shadow: 
+    0 2px 4px -1px rgba(0, 0, 0, 0.1),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+  transition: all 0.3s ease;
+}
+
+.shadow-3d-lg {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1),
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+  transition: all 0.3s ease;
+}
+
+.shadow-3d-lg:hover {
+  box-shadow: 
+    0 15px 20px -5px rgba(0, 0, 0, 0.15),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1),
+    0 35px 60px -15px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transform: translateY(-6px);
+}
+
+/* Apply 3D effect to cards globally */
+.card-3d {
+  @apply shadow-3d rounded-lg bg-white dark:bg-card;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Image 3D effect */
+.img-3d {
+  @apply shadow-3d rounded-lg;
+  border: 3px solid white;
+}
+
+/* Text box 3D effect */
+.textbox-3d {
+  @apply shadow-3d-sm rounded-lg bg-white dark:bg-card p-4;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}

@@ -10,11 +10,11 @@ export function BusinessCard({ business }: BusinessCardProps) {
   return (
     <Link to={`/directory/${business.id}`}>
       <div 
-        className="bg-white p-6 rounded-lg shadow hover:shadow-xl transition border border-sand/20 cursor-pointer group"
+        className="card-3d p-6 cursor-pointer group"
         data-testid={`card-business-${business.id}`}
       >
         {business.imageUrl && (
-          <div className="mb-4 rounded-lg overflow-hidden aspect-video">
+          <div className="mb-4 overflow-hidden aspect-video img-3d">
             <img 
               src={business.imageUrl} 
               alt={business.name}

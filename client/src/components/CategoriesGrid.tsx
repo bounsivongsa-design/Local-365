@@ -42,7 +42,7 @@ function CategoriesGrid() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {categories.map((cat) => (
-        <div key={cat.id} className="bg-blue-100 p-4 rounded-lg text-center" data-testid={`card-category-${cat.id}`}>
+        <div key={cat.id} className="card-3d bg-blue-100 p-4 text-center" data-testid={`card-category-${cat.id}`}>
           <h3 className="font-bold">{cat.name}</h3>
           {cat.subs && cat.subs.map((sub, j) => <p key={j} className="text-sm">{sub}</p>)}
         </div>
