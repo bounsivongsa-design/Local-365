@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp } from "lucide-react";
+import BestOfGrid from "./BestOfGrid";
 
 function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'bestof' | 'events'>('feed');
-
-  const bestOfCategories = [
-    { title: "Best Seafood Restaurant", winner: "Awful Arthur's Oyster Bar", location: "Kill Devil Hills", rating: 4.9, image: "https://images.unsplash.com/photo-1579631542720-3a87824fff86?w=400&h=300&fit=crop" },
-    { title: "Best Beach Access", winner: "Coquina Beach", location: "Nags Head", rating: 4.8, image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop" },
-    { title: "Best Sunset Spot", winner: "Jockey's Ridge State Park", location: "Nags Head", rating: 5.0, image: "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=400&h=300&fit=crop" },
-    { title: "Best Coffee Shop", winner: "Front Porch Cafe", location: "Duck", rating: 4.7, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop" },
-    { title: "Best Wild Horse Tour", winner: "Corolla Wild Horse Tours", location: "Corolla", rating: 4.9, image: "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=400&h=300&fit=crop" },
-    { title: "Best Ice Cream", winner: "Surfin' Spoon", location: "Kitty Hawk", rating: 4.8, image: "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=400&h=300&fit=crop" },
-  ];
 
   const upcomingEvents = [
     { title: "Community Farmers Market", date: "Feb 7, 2026", location: "Town Square, Manteo", description: "Fresh veggies, local crafts, and live music.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=300&fit=crop" },
@@ -114,31 +106,7 @@ function CommunityFeed() {
         <div className="py-8 animate-in fade-in duration-300">
           <h2 className="text-3xl font-bold mb-6">Best of OBX 2026</h2>
           <p className="mb-8 text-muted-foreground">Celebrating the top local businesses based on verified reviews & performance.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bestOfCategories.map((item, index) => (
-              <Card key={index} className="overflow-hidden shadow-lg shadow-black/5 hover:shadow-xl transition-shadow">
-                <div className="relative">
-                  <img src={item.image} alt={item.winner} className="w-full h-40 object-cover" />
-                  <div className="absolute top-2 left-2 bg-yellow-500 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                    <Trophy className="h-3 w-3" />
-                    WINNER
-                  </div>
-                </div>
-                <div className="p-4">
-                  <p className="text-xs text-primary font-semibold uppercase tracking-wide">{item.title}</p>
-                  <h4 className="font-bold text-lg mt-1">{item.winner}</h4>
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {item.location}
-                    </p>
-                    <p className="text-sm flex items-center gap-1">
-                      <Star className="h-3 w-3 text-yellow-500" /> {item.rating}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <BestOfGrid />
         </div>
       )}
 
