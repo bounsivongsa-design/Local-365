@@ -110,6 +110,17 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Promotional Banner */}
+      <div className="container pt-12">
+        <div className="bg-primary text-white p-6 rounded-lg shadow" data-testid="promo-banner">
+          <h3 className="text-2xl font-bold mb-2">Romantic Winter Getaway</h3>
+          <p className="mb-4 text-white/90">Cozy fireplaces, quiet beaches, 40% off — escape the cold!</p>
+          <Button className="bg-sand text-primary-dark hover:bg-sand/80 font-semibold">
+            Learn More
+          </Button>
+        </div>
+      </div>
+
       <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
         {/* Main Feed */}
         <div className="lg:col-span-2 space-y-6">

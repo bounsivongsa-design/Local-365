@@ -105,7 +105,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       backgroundImage: {
-        'wave-pattern': "url('https://www.transparenttextures.com/patterns/wave.png')",
+        'wave-pattern': "url('https://pattern.monster/wp-content/uploads/2023/05/pattern-monster-647.svg')",
       },
     },
   },
