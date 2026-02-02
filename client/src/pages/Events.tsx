@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useEvents, useCreateEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,13 +18,27 @@ import { z } from "zod";
 import { insertEventSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
 
 export default function Events() {
   const { data: events, isLoading } = useEvents();
   const { isAuthenticated } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
+
+  const calendarEvents = events?.map(event => ({
+    id: String(event.id),
+    title: event.title,
+    date: event.date,
+    extendedProps: {
+      description: event.description,
+      location: event.location,
+    }
+  })) || [];
 
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
@@ -31,28 +46,51 @@ export default function Events() {
         <div className="container py-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-2">
-              <h1 className="font-display text-4xl font-bold tracking-tight">Community Events</h1>
+              <h1 className="font-display text-4xl font-bold tracking-tight">Local Events Calendar</h1>
               <p className="text-muted-foreground text-lg max-w-2xl">
                 Discover what's happening in your neighborhood. Concerts, markets, meetups, and more.
               </p>
             </div>
             
-            {isAuthenticated && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="rounded-full bg-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Event
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Event</DialogTitle>
-                  </DialogHeader>
-                  <CreateEventForm onSuccess={() => setIsDialogOpen(false)} />
-                </DialogContent>
-              </Dialog>
-            )}
+            <div className="flex items-center gap-3">
+              <div className="flex bg-muted rounded-lg p-1">
+                <Button 
+                  variant={viewMode === 'calendar' ? 'default' : 'ghost'} 
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                  data-testid="button-calendar-view"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Calendar
+                </Button>
+                <Button 
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'} 
+                  size="sm"
+                  onClick={() => setViewMode('cards')}
+                  data-testid="button-cards-view"
+                >
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Cards
+                </Button>
+              </div>
+
+              {isAuthenticated && (
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="rounded-full bg-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all" data-testid="button-create-event">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Event
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Event</DialogTitle>
+                    </DialogHeader>
+                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -67,6 +105,24 @@ export default function Events() {
                  <Skeleton className="h-4 w-1/2" />
                </div>
             ))}
+          </div>
+        ) : viewMode === 'calendar' ? (
+          <div className="bg-white rounded-2xl border p-6 shadow-sm" data-testid="calendar-container">
+            <FullCalendar 
+              plugins={[dayGridPlugin, timeGridPlugin, listPlugin]} 
+              initialView="dayGridMonth"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+              }}
+              events={calendarEvents}
+              eventColor="hsl(224, 66%, 33%)"
+              height="auto"
+              eventClick={(info) => {
+                alert(`${info.event.title}\n${info.event.extendedProps.location || ''}\n${info.event.extendedProps.description || ''}`);
+              }}
+            />
           </div>
         ) : events?.length === 0 ? (
           <div className="text-center py-20">
@@ -92,7 +148,6 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
   const createEvent = useCreateEvent();
   const { toast } = useToast();
   
-  // Extend schema to handle date input as string initially from form
   const formSchema = insertEventSchema.extend({
     date: z.string().transform((str) => new Date(str)), 
   });
@@ -110,7 +165,6 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     if (!data.imageUrl) {
       data.imageUrl = "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop"; 
-      // <!-- generic event crowd -->
     }
     
     createEvent.mutate(data, {
@@ -133,7 +187,7 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Event Title</FormLabel>
-              <FormControl><Input placeholder="Summer Night Market" {...field} /></FormControl>
+              <FormControl><Input placeholder="Summer Night Market" {...field} data-testid="input-event-title" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -150,7 +204,7 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
                     type="datetime-local" 
                     {...field} 
                     value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value} 
-                    // Need to handle string/date conversion for input value
+                    data-testid="input-event-date"
                   />
                 </FormControl>
                 <FormMessage />
@@ -163,7 +217,7 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Location</FormLabel>
-                <FormControl><Input placeholder="Town Square" {...field} /></FormControl>
+                <FormControl><Input placeholder="Town Square" {...field} data-testid="input-event-location" /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -175,7 +229,7 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Description</FormLabel>
-              <FormControl><Input placeholder="What's happening?" {...field} /></FormControl>
+              <FormControl><Input placeholder="What's happening?" {...field} data-testid="input-event-description" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -186,13 +240,13 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cover Image URL (Optional)</FormLabel>
-              <FormControl><Input placeholder="https://..." {...field} value={field.value || ""} /></FormControl>
+              <FormControl><Input placeholder="https://..." {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <div className="pt-2 flex justify-end">
-          <Button type="submit" disabled={createEvent.isPending}>
+          <Button type="submit" disabled={createEvent.isPending} data-testid="button-submit-event">
             {createEvent.isPending ? "Creating..." : "Create Event"}
           </Button>
         </div>

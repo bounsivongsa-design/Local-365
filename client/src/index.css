@@ -5,17 +5,17 @@
 @tailwind utilities;
 
 :root {
-  /* Vibrant, Community-Focused Palette */
-  /* Primary: Trustworthy Ocean Blue */
-  --primary: 215 90% 45%;
+  /* Deep Ocean Blue - Primary */
+  --primary: 224 66% 33%;
   --primary-foreground: 0 0% 100%;
+  --primary-dark: 224 71% 40%;
 
-  /* Secondary: Fresh Community Green */
-  --secondary: 150 60% 96%;
-  --secondary-foreground: 150 80% 25%;
+  /* Secondary */
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 224 66% 33%;
 
-  /* Accent: Energetic Coral/Orange for CTAs */
-  --accent: 25 95% 58%;
+  /* Sunrise Gold - Accent */
+  --accent: 38 92% 50%;
   --accent-foreground: 0 0% 100%;
 
   /* Backgrounds */
@@ -54,8 +54,9 @@
   --popover: 222 47% 11%;
   --popover-foreground: 210 40% 98%;
   
-  --primary: 215 90% 55%;
-  --primary-foreground: 222 47% 11%;
+  --primary: 224 66% 45%;
+  --primary-foreground: 0 0% 100%;
+  --primary-dark: 224 71% 50%;
   
   --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
@@ -63,7 +64,7 @@
   --muted: 217 33% 17%;
   --muted-foreground: 215 20% 65%;
   
-  --accent: 25 95% 65%;
+  --accent: 38 92% 55%;
   --accent-foreground: 222 47% 11%;
   
   --destructive: 0 62% 30%;
@@ -71,7 +72,7 @@
   
   --border: 217 33% 17%;
   --input: 217 33% 17%;
-  --ring: 224 76% 48%;
+  --ring: 224 66% 48%;
 }
 
 @layer base {
@@ -106,4 +107,34 @@
 
 .text-gradient {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+}
+
+/* FullCalendar Custom Styles */
+.fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-button-bg-color: hsl(var(--primary));
+  --fc-button-border-color: hsl(var(--primary));
+  --fc-button-hover-bg-color: hsl(224 71% 40%);
+  --fc-button-hover-border-color: hsl(224 71% 40%);
+  --fc-button-active-bg-color: hsl(224 66% 28%);
+  --fc-button-active-border-color: hsl(224 66% 28%);
+  --fc-today-bg-color: hsl(var(--accent) / 0.1);
+  --fc-event-bg-color: hsl(var(--primary));
+  --fc-event-border-color: hsl(var(--primary));
+}
+
+.fc .fc-button {
+  @apply rounded-md font-medium;
+}
+
+.fc .fc-toolbar-title {
+  @apply text-xl font-bold;
+}
+
+.fc .fc-daygrid-day-number {
+  @apply p-2;
+}
+
+.fc .fc-event {
+  @apply rounded-md px-2 py-1 text-sm font-medium cursor-pointer;
 }
