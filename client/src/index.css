@@ -5,18 +5,18 @@
 @tailwind utilities;
 
 :root {
-  /* Deep Ocean Blue - Primary */
-  --primary: 224 66% 33%;
+  /* Deep Ocean Blue - Primary (OBX) */
+  --primary: 206 82% 27%;
   --primary-foreground: 0 0% 100%;
-  --primary-dark: 224 71% 40%;
+  --primary-dark: 206 88% 19%;
 
   /* Secondary */
   --secondary: 210 40% 96%;
-  --secondary-foreground: 224 66% 33%;
+  --secondary-foreground: 206 82% 27%;
 
-  /* Sunrise Gold - Accent */
-  --accent: 38 92% 50%;
-  --accent-foreground: 0 0% 100%;
+  /* Sandy Beige - Accent (OBX) */
+  --accent: 30 50% 64%;
+  --accent-foreground: 206 82% 15%;
 
   /* Backgrounds */
   --background: 210 20% 98%;

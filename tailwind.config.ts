@@ -81,9 +81,9 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
-        "primary-dark": "#1e40af",
-        "brand-primary": "#1e3a8a",
-        "brand-accent": "#f59e0b",
+        "primary-dark": "#062f5e",
+        "dune": "#8a9a5b",
+        "sand": "#d4a373",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
@@ -103,6 +103,9 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      backgroundImage: {
+        'wave-pattern': "url('https://www.transparenttextures.com/patterns/wave.png')",
       },
     },
   },

@@ -68,33 +68,41 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="bg-primary text-primary-foreground py-16 md:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=2069&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
-        
-        <div className="container relative z-10 text-center max-w-3xl mx-auto px-4">
-          <span className="inline-block py-1 px-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-sm font-medium mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            Welcome to Local 365
-          </span>
-          <h1 className="font-display text-4xl md:text-6xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100">
-            Discover the Best of OBX
+      {/* Hero Section - OBX Theme */}
+      <section className="text-center py-20 bg-wave-pattern bg-cover bg-center bg-blend-overlay bg-gray-50 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/80 to-white/60"></div>
+        <div className="container relative z-10 max-w-3xl mx-auto px-4">
+          <div className="flex justify-center mb-4">
+            <svg className="w-12 h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary-dark tracking-tight">
+            Discover Currituck County's Charm
           </h1>
-          <p className="text-lg md:text-xl text-primary-foreground/90 mb-8 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-            Trusted pros, stays, events, and more for Outer Banks visitors.
+          <p className="text-xl mb-8 text-dune font-medium">
+            Trusted pros, stays, events, and more for Northeast NC visitors.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-7 duration-700 delay-300">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
+            <input 
+              type="text" 
+              placeholder="Search for pros or events..." 
+              className="px-6 py-4 rounded-lg w-full border border-gray-300 focus:border-sand focus:ring-2 focus:ring-sand/20 outline-none transition-all shadow-sm"
+              data-testid="input-hero-search"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
             <Button 
               size="lg" 
               onClick={() => setShowTripPlanner(true)}
-              className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
               data-testid="button-plan-trip"
             >
               <Compass className="mr-2 h-5 w-5" />
-              Plan Your OBX Trip
+              Plan Your Trip
             </Button>
             <Link href="/directory">
-              <Button size="lg" className="rounded-full bg-white text-primary hover:bg-white/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
+              <Button size="lg" variant="outline" className="rounded-full border-primary text-primary hover:bg-primary/5 font-semibold px-8 h-12">
                 Explore Directory
               </Button>
             </Link>
