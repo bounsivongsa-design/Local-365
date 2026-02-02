@@ -272,49 +272,64 @@ async function seedDatabase() {
 
   const existingBusinesses = await storage.getBusinesses();
   if (existingBusinesses.length === 0) {
-    console.log("Seeding database...");
+    console.log("Seeding businesses for all 26 categories...");
     
-    const b1 = await storage.createBusiness({
-      name: "The Daily Grind",
-      description: "Artisan coffee shop with locally sourced beans and fresh pastries.",
-      address: "123 Main St, Downtown",
-      category: "Food",
-      imageUrl: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-    });
+    // Placeholder businesses for each of the 26 categories
+    const businessData = [
+      { name: "Smith Home Repair", category: "Home Repair", description: "Quality home repair services for the OBX area.", address: "101 Beach Rd, Corolla" },
+      { name: "Coastal Plumbing Co", category: "Plumbing", description: "Licensed plumbers serving Currituck County.", address: "202 Ocean Blvd, Duck" },
+      { name: "OBX HVAC Pros", category: "HVAC", description: "Heating and cooling experts for beach homes.", address: "303 Dune Dr, Kitty Hawk" },
+      { name: "Shore Electric", category: "Electrical", description: "Certified electricians for residential and commercial.", address: "404 Lighthouse Ln, Nags Head" },
+      { name: "Barrier Island Roofing", category: "Roofing", description: "Storm-resistant roofing for coastal properties.", address: "505 Sunset Ave, Kill Devil Hills" },
+      { name: "Sandy Shores Landscaping", category: "Landscaping", description: "Native plant specialists and lawn care.", address: "606 Palmetto Way, Southern Shores" },
+      { name: "Crystal Clean OBX", category: "Cleaning", description: "Vacation rental and residential cleaning.", address: "707 Seabreeze Ct, Corolla" },
+      { name: "Outer Banks Painters", category: "Painting", description: "Interior and exterior painting for beach homes.", address: "808 Harbor Rd, Wanchese" },
+      { name: "Coastal Tree Care", category: "Tree Care", description: "Tree trimming and removal services.", address: "909 Pine Forest Dr, Manteo" },
+      { name: "Beach House Remodeling", category: "Remodeling & Addition", description: "Custom renovations and additions.", address: "110 Pelican Way, Duck" },
+      { name: "OBX Custom Builders", category: "New Construction", description: "New home construction specialists.", address: "211 Sandcastle Ln, Corolla" },
+      { name: "Trusted Nannies OBX", category: "Baby Sitting & Nanny", description: "Background-checked childcare providers.", address: "312 Family Cir, Kitty Hawk" },
+      { name: "Coastal Print Shop", category: "Printing", description: "Business cards, signs, and custom printing.", address: "413 Commerce St, Kill Devil Hills" },
+      { name: "Beach Digital Design", category: "Web Design & Logo Design", description: "Websites and branding for local businesses.", address: "514 Tech Park Dr, Nags Head" },
+      { name: "OBX Photo & Video", category: "Photo & Video", description: "Wedding and event photography.", address: "615 Shutter Ln, Manteo" },
+      { name: "Reliable Auto Repair", category: "Auto Repair", description: "Trusted mechanics for all makes and models.", address: "716 Motor Way, Kitty Hawk" },
+      { name: "Small Engine Experts", category: "Small Engine Repair", description: "Lawn mowers, boats, and power equipment.", address: "817 Workshop Rd, Wanchese" },
+      { name: "Junk Be Gone OBX", category: "Trash & Junk Removal", description: "Fast and affordable junk removal.", address: "918 Cleanup Ave, Kill Devil Hills" },
+      { name: "OBX Tutoring Center", category: "Tutor & Mentor Counseling", description: "Academic support for all ages.", address: "119 Learning Ln, Nags Head" },
+      { name: "Serenity Wellness", category: "Mind Body Soul", description: "Yoga, meditation, and holistic health.", address: "220 Zen Way, Duck" },
+      { name: "Coastal Tax Services", category: "Tax CPA", description: "Tax preparation and accounting.", address: "321 Finance Dr, Kitty Hawk" },
+      { name: "Beach Law Group", category: "Legal", description: "Real estate and business law.", address: "422 Justice Blvd, Manteo" },
+      { name: "OBX Woodworks", category: "Woodworking & Lazer CNC", description: "Custom furniture and laser engraving.", address: "523 Craft Ln, Wanchese" },
+      { name: "Sweet Coastal Bakery", category: "Baking & Cooking", description: "Fresh baked goods and custom cakes.", address: "624 Sugar St, Corolla" },
+      { name: "Taco Truck OBX", category: "Catering Food Trucks", description: "Mobile catering and food truck services.", address: "725 Flavor Ave, Duck" },
+      { name: "Coastal Events & Rentals", category: "Event Planning & Rentals", description: "Weddings, parties, and tent rentals.", address: "826 Celebration Way, Kill Devil Hills" },
+    ];
 
-    const b2 = await storage.createBusiness({
-      name: "Green Leaf Market",
-      description: "Organic grocery store specializing in local produce.",
-      address: "456 Oak Ave, Westside",
-      category: "Retail",
-      imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-    });
-
-    const b3 = await storage.createBusiness({
-      name: "City Yoga Studio",
-      description: "Peaceful yoga studio offering classes for all levels.",
-      address: "789 Pine Ln, Uptown",
-      category: "Service",
-      imageUrl: "https://images.unsplash.com/photo-1599447421405-0c1741427447?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-    });
+    for (const biz of businessData) {
+      await storage.createBusiness({
+        name: biz.name,
+        description: biz.description,
+        address: biz.address,
+        category: biz.category,
+        imageUrl: `https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop`,
+      });
+    }
 
     await storage.createEvent({
-      title: "Latte Art Workshop",
-      description: "Learn how to pour the perfect latte art with our head barista.",
-      date: new Date(Date.now() + 86400000 * 2), // 2 days from now
-      location: "The Daily Grind",
-      imageUrl: "https://images.unsplash.com/photo-1511920170033-f8396924c348?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      businessId: b1.id,
+      title: "OBX Home Show",
+      description: "Meet local contractors and home service providers.",
+      date: new Date(Date.now() + 86400000 * 3),
+      location: "Currituck Community Center",
+      imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     });
 
     await storage.createEvent({
       title: "Community Farmers Market",
       description: "Fresh veggies, local crafts, and live music.",
-      date: new Date(Date.now() + 86400000 * 5), // 5 days from now
+      date: new Date(Date.now() + 86400000 * 5),
       location: "Town Square",
-      imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800",
     });
 
-    console.log("Database seeded!");
+    console.log("Database seeded with 26 placeholder businesses!");
   }
 }

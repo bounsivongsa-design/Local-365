@@ -26,7 +26,35 @@ export default function Directory() {
   const { isAuthenticated } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const categories = ["All", "Food", "Retail", "Service", "Entertainment"];
+  const categories = [
+    "All",
+    "Home Repair",
+    "Plumbing",
+    "HVAC",
+    "Electrical",
+    "Roofing",
+    "Landscaping",
+    "Cleaning",
+    "Painting",
+    "Tree Care",
+    "Remodeling & Addition",
+    "New Construction",
+    "Baby Sitting & Nanny",
+    "Printing",
+    "Web Design & Logo Design",
+    "Photo & Video",
+    "Auto Repair",
+    "Small Engine Repair",
+    "Trash & Junk Removal",
+    "Tutor & Mentor Counseling",
+    "Mind Body Soul",
+    "Tax CPA",
+    "Legal",
+    "Woodworking & Lazer CNC",
+    "Baking & Cooking",
+    "Catering Food Trucks",
+    "Event Planning & Rentals",
+  ];
 
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
