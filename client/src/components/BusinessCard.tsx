@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { Star, MapPin } from "lucide-react";
 import { type BusinessWithRating } from "@shared/schema";
 
@@ -8,7 +8,7 @@ interface BusinessCardProps {
 
 export function BusinessCard({ business }: BusinessCardProps) {
   return (
-    <Link href={`/directory/${business.id}`}>
+    <Link to={`/directory/${business.id}`}>
       <div 
         className="bg-white p-6 rounded-lg shadow hover:shadow-xl transition border border-sand/20 cursor-pointer group"
         data-testid={`card-business-${business.id}`}

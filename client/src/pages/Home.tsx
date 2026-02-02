@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass } from "lucide-react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function Home() {
@@ -110,7 +110,7 @@ export default function Home() {
               <Compass className="mr-2 h-5 w-5" />
               Plan Your Trip
             </Button>
-            <Link href="/directory">
+            <Link to="/directory">
               <Button size="lg" className="rounded-full bg-white/90 backdrop-blur-sm text-primary hover:bg-white font-semibold px-8 h-12 shadow-lg">
                 Explore Directory
               </Button>
@@ -286,7 +286,7 @@ export default function Home() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-bold">Local Gems</h2>
-              <Link href="/directory" className="text-sm font-medium text-primary hover:underline flex items-center">
+              <Link to="/directory" className="text-sm font-medium text-primary hover:underline flex items-center">
                 View All <ArrowRight className="h-3 w-3 ml-1" />
               </Link>
             </div>
@@ -331,7 +331,7 @@ export default function Home() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-bold">Upcoming Events</h2>
-              <Link href="/events" className="text-sm font-medium text-primary hover:underline flex items-center">
+              <Link to="/events" className="text-sm font-medium text-primary hover:underline flex items-center">
                 View Calendar <ArrowRight className="h-3 w-3 ml-1" />
               </Link>
             </div>

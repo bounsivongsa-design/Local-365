@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Routes, Route, Link } from "react-router-dom";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,18 +12,18 @@ import Events from "@/pages/Events";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 
-function Router() {
+function AppRouter() {
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased">
       <Navigation />
       <main className="flex-1">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/directory" component={Directory} />
-          <Route path="/directory/:id" component={BusinessDetails} />
-          <Route path="/events" component={Events} />
-          <Route component={NotFound} />
-        </Switch>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/directory" element={<Directory />} />
+          <Route path="/directory/:id" element={<BusinessDetails />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </main>
       
       {/* Footer */}
@@ -36,9 +36,9 @@ function Router() {
           <div>
             <h4 className="font-bold text-foreground mb-4">Discover</h4>
             <ul className="space-y-2">
-              <li><a href="/directory" className="hover:text-primary">Local Businesses</a></li>
-              <li><a href="/events" className="hover:text-primary">Events Calendar</a></li>
-              <li><a href="/" className="hover:text-primary">Community Feed</a></li>
+              <li><Link to="/directory" className="hover:text-primary">Local Businesses</Link></li>
+              <li><Link to="/events" className="hover:text-primary">Events Calendar</Link></li>
+              <li><Link to="/" className="hover:text-primary">Community Feed</Link></li>
             </ul>
           </div>
           <div>
@@ -63,7 +63,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <AppRouter />
         <Chatbot />
       </TooltipProvider>
     </QueryClientProvider>

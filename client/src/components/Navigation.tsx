@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
 export function Navigation() {
-  const [location] = useLocation();
+  const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -24,13 +24,13 @@ export function Navigation() {
     { href: "/events", label: "Local Events", icon: Calendar },
   ];
 
-  const isActive = (path: string) => location === path;
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
             <img 
               src="/assets/ChatGPT_Image_Jan_23,_2026,_01_16_31_PM_1770058614374.png" 
               alt="Local List 365" 
@@ -41,7 +41,7 @@ export function Navigation() {
 
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} to={item.href}>
                 <span className={`
                   flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                   ${isActive(item.href) 
@@ -108,7 +108,7 @@ export function Navigation() {
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
               <nav className="flex flex-col gap-4 mt-8">
                 {navItems.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={() => setIsOpen(false)}>
+                  <Link key={item.href} to={item.href} onClick={() => setIsOpen(false)}>
                     <span className={`
                       flex items-center gap-3 px-4 py-3 rounded-xl text-lg font-medium transition-all
                       ${isActive(item.href)

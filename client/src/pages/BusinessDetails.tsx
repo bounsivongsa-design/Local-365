@@ -1,8 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
-import { useRoute } from "wouter";
+import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,8 +21,8 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function BusinessDetails() {
-  const [, params] = useRoute("/directory/:id");
-  const id = params ? parseInt(params.id) : 0;
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = paramId ? parseInt(paramId) : 0;
   const { data: business, isLoading } = useBusiness(id);
   const { isAuthenticated } = useAuth();
   
@@ -35,7 +34,7 @@ export default function BusinessDetails() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <h1 className="text-2xl font-bold mb-4">Business not found</h1>
-        <Link href="/directory"><Button>Back to Directory</Button></Link>
+        <Link to="/directory"><Button>Back to Directory</Button></Link>
       </div>
     );
   }
@@ -54,7 +53,7 @@ export default function BusinessDetails() {
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
         
         <div className="container absolute bottom-0 left-0 right-0 pb-8">
-           <Link href="/directory">
+           <Link to="/directory">
              <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10 mb-6 -ml-4">
                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Directory
              </Button>
@@ -106,7 +105,7 @@ export default function BusinessDetails() {
               {isAuthenticated ? (
                 <ReviewDialog businessId={business.id} businessName={business.name} />
               ) : (
-                <Link href="/api/login">
+                <Link to="/api/login">
                    <Button variant="outline">Sign in to Review</Button>
                 </Link>
               )}
