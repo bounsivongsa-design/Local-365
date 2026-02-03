@@ -41,23 +41,48 @@ export default function Events() {
   })) || [];
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-20">
-      <div className="bg-white border-b">
-        <div className="container py-16">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-2">
-              <h1 className="font-display text-4xl font-bold tracking-tight">Local Events Calendar</h1>
-              <p className="text-muted-foreground text-lg max-w-2xl">
+    <div className="min-h-screen pb-20">
+      {/* Stunning Hero Section with Gradient */}
+      <div className="relative overflow-hidden">
+        {/* Background gradient with coastal colors */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82] via-[#1e6bb8] to-[#2dd4bf]" />
+        
+        {/* Decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-[#f59e0b]/20 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-white/5 to-transparent rounded-full" />
+        </div>
+        
+        {/* Animated wave pattern */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
+          <svg viewBox="0 0 1440 120" className="w-full h-full" preserveAspectRatio="none">
+            <path fill="white" d="M0,64L48,69.3C96,75,192,85,288,80C384,75,480,53,576,48C672,43,768,53,864,64C960,75,1056,85,1152,80C1248,75,1344,53,1392,42.7L1440,32L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"/>
+          </svg>
+        </div>
+        
+        <div className="relative container py-20">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 text-white/90 text-sm font-medium">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                Live Events Near You
+              </div>
+              <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tight text-white drop-shadow-lg">
+                Local Events Calendar
+              </h1>
+              <p className="text-white/80 text-xl max-w-2xl leading-relaxed">
                 Discover what's happening in your neighborhood. Concerts, markets, meetups, and more.
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
-              <div className="flex bg-muted rounded-lg p-1">
+            <div className="flex items-center gap-4">
+              <div className="flex bg-white/15 backdrop-blur-md rounded-xl p-1.5 border border-white/20">
                 <Button 
                   variant={viewMode === 'calendar' ? 'default' : 'ghost'} 
                   size="sm"
                   onClick={() => setViewMode('calendar')}
+                  className={viewMode === 'calendar' ? 'bg-white text-[#0a4a82] shadow-lg' : 'text-white hover:bg-white/20'}
                   data-testid="button-calendar-view"
                 >
                   <Calendar className="h-4 w-4 mr-2" />
@@ -67,6 +92,7 @@ export default function Events() {
                   variant={viewMode === 'cards' ? 'default' : 'ghost'} 
                   size="sm"
                   onClick={() => setViewMode('cards')}
+                  className={viewMode === 'cards' ? 'bg-white text-[#0a4a82] shadow-lg' : 'text-white hover:bg-white/20'}
                   data-testid="button-cards-view"
                 >
                   <LayoutGrid className="h-4 w-4 mr-2" />
@@ -77,7 +103,7 @@ export default function Events() {
               {isAuthenticated && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="rounded-full bg-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all" data-testid="button-create-event">
+                    <Button className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-all border-0" data-testid="button-create-event">
                       <Plus className="mr-2 h-4 w-4" />
                       Create Event
                     </Button>
@@ -95,7 +121,7 @@ export default function Events() {
         </div>
       </div>
 
-      <div className="container py-12">
+      <div className="container py-12 -mt-8 relative z-10">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -107,22 +133,30 @@ export default function Events() {
             ))}
           </div>
         ) : viewMode === 'calendar' ? (
-          <div className="bg-white rounded-2xl border p-6 shadow-3d-lg" data-testid="calendar-container">
-            <FullCalendar 
-              plugins={[dayGridPlugin, timeGridPlugin, listPlugin]} 
-              initialView="dayGridMonth"
-              headerToolbar={{
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listWeek'
-              }}
-              events={calendarEvents}
-              eventColor="hsl(224, 66%, 33%)"
-              height="auto"
-              eventClick={(info) => {
-                alert(`${info.event.title}\n${info.event.extendedProps.location || ''}\n${info.event.extendedProps.description || ''}`);
-              }}
-            />
+          <div className="relative" data-testid="calendar-container">
+            {/* Decorative glow behind calendar */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-[#0a4a82]/20 via-[#2dd4bf]/20 to-[#f59e0b]/20 rounded-3xl blur-2xl opacity-50" />
+            
+            <div className="relative bg-white rounded-2xl border border-[#0a4a82]/10 p-8 shadow-[0_20px_60px_rgba(10,74,130,0.15)]">
+              {/* Custom calendar header accent */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0a4a82] via-[#2dd4bf] to-[#f59e0b] rounded-t-2xl" />
+              
+              <FullCalendar 
+                plugins={[dayGridPlugin, timeGridPlugin, listPlugin]} 
+                initialView="dayGridMonth"
+                headerToolbar={{
+                  left: 'prev,next today',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,listWeek'
+                }}
+                events={calendarEvents}
+                eventColor="#0a4a82"
+                height="auto"
+                eventClick={(info) => {
+                  alert(`${info.event.title}\n${info.event.extendedProps.location || ''}\n${info.event.extendedProps.description || ''}`);
+                }}
+              />
+            </div>
           </div>
         ) : events?.length === 0 ? (
           <div className="text-center py-20">
