@@ -8,14 +8,274 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
-import { users, receipts, quoteRequests, quotes } from "@shared/models/auth";
+import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
 import { locations, businesses, events, adPlacements, adPricing } from "@shared/schema";
-import { eq, desc, and, or, ilike, inArray } from "drizzle-orm";
+import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
+
+// Priority Queue Constants
+const PRIORITY_BATCH_SIZE = 5; // Top 5 premium businesses per round
+const STANDARD_RESPONSE_HOURS = 24; // 24 hours for standard requests
+const EMERGENCY_RESPONSE_HOURS = 2; // 2 hours for emergency categories
+
+// Helper: Get response window in hours based on category
+function getResponseWindowHours(category: string): number {
+  const isEmergency = EMERGENCY_CATEGORIES.some(cat => 
+    category.toLowerCase().includes(cat.toLowerCase())
+  );
+  return isEmergency ? EMERGENCY_RESPONSE_HOURS : STANDARD_RESPONSE_HOURS;
+}
+
+// Helper: Calculate priority expiry timestamp
+function calculatePriorityExpiry(category: string): Date {
+  const hours = getResponseWindowHours(category);
+  return new Date(Date.now() + hours * 60 * 60 * 1000);
+}
+
+// Helper: Assign priority to top premium businesses for a quote request
+async function assignPriorityToPremiumBusinesses(
+  requestId: number,
+  category: string,
+  customerRating: number,
+  priorityRound: number = 1
+): Promise<void> {
+  const expiresAt = calculatePriorityExpiry(category);
+  
+  // Get premium businesses in matching category, sorted by:
+  // 1. Membership tier (Premium > Standard > Basic)
+  // 2. Average rating (highest first)
+  // 3. Review count (most reviews first)
+  const eligibleBusinesses = await pgDb
+    .select({
+      id: businesses.id,
+      membershipTier: businesses.membershipTier,
+      averageRating: businesses.averageRating,
+      reviewCount: businesses.reviewCount,
+    })
+    .from(businesses)
+    .where(
+      and(
+        eq(businesses.category, category),
+        or(
+          eq(businesses.membershipTier, "premium"),
+          eq(businesses.membershipTier, "standard"),
+          eq(businesses.membershipTier, "basic")
+        )
+      )
+    )
+    .orderBy(
+      sql`CASE 
+        WHEN ${businesses.membershipTier} = 'premium' THEN 1 
+        WHEN ${businesses.membershipTier} = 'standard' THEN 2 
+        WHEN ${businesses.membershipTier} = 'basic' THEN 3 
+        ELSE 4 
+      END`,
+      desc(businesses.averageRating),
+      desc(businesses.reviewCount)
+    );
+  
+  // Calculate which businesses to assign for this round
+  const startIdx = (priorityRound - 1) * PRIORITY_BATCH_SIZE;
+  const endIdx = startIdx + PRIORITY_BATCH_SIZE;
+  const batchBusinesses = eligibleBusinesses.slice(startIdx, endIdx);
+  
+  // Create priority assignments for these businesses
+  if (batchBusinesses.length > 0) {
+    const assignments = batchBusinesses.map(biz => ({
+      requestId,
+      businessId: biz.id,
+      priorityRound,
+      expiresAt,
+      customerRatingAtTime: customerRating.toString(),
+    }));
+    
+    await pgDb.insert(quotePriorityAssignments).values(assignments);
+    
+    // Update the quote request with priority info
+    await pgDb.update(quoteRequests)
+      .set({ 
+        priorityRound,
+        priorityExpiresAt: expiresAt 
+      })
+      .where(eq(quoteRequests.id, requestId));
+  }
+}
+
+// Helper: Update vendor metrics when a quote is submitted
+async function updateVendorMetricsOnResponse(
+  businessId: number,
+  requestId: number,
+  responseTimeMinutes: number,
+  category: string,
+  customerRating: number
+): Promise<void> {
+  // Determine if response is on-time based on actual response window
+  const responseWindowMinutes = getResponseWindowHours(category) * 60;
+  const isOnTime = responseTimeMinutes <= responseWindowMinutes;
+  const isLowRatedCustomer = customerRating < LOW_RATING_THRESHOLD;
+  
+  // Get or create vendor metrics
+  let metrics = await pgDb.select().from(vendorMetrics)
+    .where(eq(vendorMetrics.businessId, businessId))
+    .limit(1);
+  
+  if (metrics.length === 0) {
+    // Create new metrics record
+    // For low-rated customers, late responses don't count against the vendor
+    await pgDb.insert(vendorMetrics).values({
+      businessId,
+      totalAssignments: 1,
+      responsesOnTime: isOnTime ? 1 : 0,
+      responsesLate: (isOnTime || isLowRatedCustomer) ? 0 : 1,
+      noResponses: 0,
+      averageResponseMinutes: responseTimeMinutes,
+      responseRating: "5.00",
+      penaltyExemptNoResponses: 0,
+    });
+  } else {
+    // Update existing metrics
+    const m = metrics[0];
+    const newTotal = (m.totalAssignments || 0) + 1;
+    const newOnTime = (m.responsesOnTime || 0) + (isOnTime ? 1 : 0);
+    // Don't penalize for late responses to low-rated customers
+    const newLate = (m.responsesLate || 0) + ((isOnTime || isLowRatedCustomer) ? 0 : 1);
+    
+    // Calculate new average response time
+    const prevAvg = m.averageResponseMinutes || responseTimeMinutes;
+    const newAvg = Math.round((prevAvg * (newTotal - 1) + responseTimeMinutes) / newTotal);
+    
+    // Calculate response rating (higher is better)
+    // Formula: (onTime responses / total countable responses) * 5
+    // Exclude low-rated customer late responses from the denominator
+    const totalCountableResponses = newOnTime + newLate + (m.noResponses || 0);
+    const newRating = totalCountableResponses > 0 
+      ? ((newOnTime / totalCountableResponses) * 5).toFixed(2)
+      : "5.00";
+    
+    await pgDb.update(vendorMetrics)
+      .set({
+        totalAssignments: newTotal,
+        responsesOnTime: newOnTime,
+        responsesLate: newLate,
+        averageResponseMinutes: newAvg,
+        responseRating: newRating,
+        lastUpdated: new Date(),
+      })
+      .where(eq(vendorMetrics.businessId, businessId));
+  }
+  
+  // Mark the priority assignment as responded
+  await pgDb.update(quotePriorityAssignments)
+    .set({ respondedAt: new Date() })
+    .where(
+      and(
+        eq(quotePriorityAssignments.requestId, requestId),
+        eq(quotePriorityAssignments.businessId, businessId)
+      )
+    );
+}
+
+// Helper: Check and advance expired priority rounds
+async function processExpiredPriorityAssignments(): Promise<void> {
+  const now = new Date();
+  
+  // Find requests with expired priority windows that haven't been advanced
+  const expiredRequests = await pgDb.select()
+    .from(quoteRequests)
+    .where(
+      and(
+        eq(quoteRequests.status, "open"),
+        lt(quoteRequests.priorityExpiresAt, now)
+      )
+    );
+  
+  for (const request of expiredRequests) {
+    // Mark expired assignments
+    await pgDb.update(quotePriorityAssignments)
+      .set({ expired: true })
+      .where(
+        and(
+          eq(quotePriorityAssignments.requestId, request.id),
+          isNull(quotePriorityAssignments.respondedAt),
+          lt(quotePriorityAssignments.expiresAt, now)
+        )
+      );
+    
+    // Update metrics for no-response (only if customer rating was good)
+    const expiredAssignments = await pgDb.select()
+      .from(quotePriorityAssignments)
+      .where(
+        and(
+          eq(quotePriorityAssignments.requestId, request.id),
+          eq(quotePriorityAssignments.expired, true),
+          isNull(quotePriorityAssignments.respondedAt)
+        )
+      );
+    
+    for (const assignment of expiredAssignments) {
+      const customerRating = Number(assignment.customerRatingAtTime) || 5.0;
+      const isLowRatedCustomer = customerRating < LOW_RATING_THRESHOLD;
+      
+      // Update vendor metrics
+      let metrics = await pgDb.select().from(vendorMetrics)
+        .where(eq(vendorMetrics.businessId, assignment.businessId))
+        .limit(1);
+      
+      if (metrics.length === 0) {
+        await pgDb.insert(vendorMetrics).values({
+          businessId: assignment.businessId,
+          totalAssignments: 1,
+          responsesOnTime: 0,
+          responsesLate: 0,
+          noResponses: isLowRatedCustomer ? 0 : 1,
+          penaltyExemptNoResponses: isLowRatedCustomer ? 1 : 0,
+          responseRating: isLowRatedCustomer ? "5.00" : "4.00",
+        });
+      } else {
+        const m = metrics[0];
+        const newTotal = (m.totalAssignments || 0) + 1;
+        const newNoResponse = (m.noResponses || 0) + (isLowRatedCustomer ? 0 : 1);
+        const newPenaltyExempt = (m.penaltyExemptNoResponses || 0) + (isLowRatedCustomer ? 1 : 0);
+        
+        // Recalculate rating (don't penalize for low-rated customers)
+        const countableResponses = (m.responsesOnTime || 0) + (m.responsesLate || 0) + newNoResponse;
+        const newRating = countableResponses > 0
+          ? (((m.responsesOnTime || 0) / countableResponses) * 5).toFixed(2)
+          : "5.00";
+        
+        await pgDb.update(vendorMetrics)
+          .set({
+            totalAssignments: newTotal,
+            noResponses: newNoResponse,
+            penaltyExemptNoResponses: newPenaltyExempt,
+            responseRating: newRating,
+            lastUpdated: new Date(),
+          })
+          .where(eq(vendorMetrics.businessId, assignment.businessId));
+      }
+    }
+    
+    // Get customer rating for next round
+    const customer = await pgDb.select({ customerRating: users.customerRating })
+      .from(users)
+      .where(eq(users.id, request.userId))
+      .limit(1);
+    const customerRating = Number(customer[0]?.customerRating) || 5.0;
+    
+    // Advance to next priority round
+    const nextRound = (request.priorityRound || 1) + 1;
+    await assignPriorityToPremiumBusinesses(
+      request.id,
+      request.category,
+      customerRating,
+      nextRound
+    );
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -660,21 +920,51 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       // Check if user is authenticated and is a business account
       const currentUserId = (req as any).user?.id;
       let currentUser = null;
+      let linkedBusinessId: number | null = null;
       if (currentUserId) {
         const userResult = await pgDb.select().from(users).where(eq(users.id, currentUserId)).limit(1);
         currentUser = userResult[0] || null;
+        linkedBusinessId = currentUser?.linkedBusinessId || null;
       }
       const isBusinessUser = currentUser?.accountType === "business";
+      
+      // Process expired priority assignments before returning results
+      await processExpiredPriorityAssignments();
       
       // Get all open requests with customer info
       const requests = await pgDb.select().from(quoteRequests)
         .where(eq(quoteRequests.status, "open"))
         .orderBy(desc(quoteRequests.createdAt));
       
-      // Enrich with customer info and quote counts
+      // Enrich with customer info, quote counts, and priority status
       const enrichedRequests = await Promise.all(requests.map(async (request) => {
+        // Check if this business has active priority access
+        let hasPriorityAccess = false;
+        let priorityExpiresAt: Date | null = null;
+        
+        if (isBusinessUser && linkedBusinessId) {
+          const priorityAssignment = await pgDb.select()
+            .from(quotePriorityAssignments)
+            .where(
+              and(
+                eq(quotePriorityAssignments.requestId, request.id),
+                eq(quotePriorityAssignments.businessId, linkedBusinessId),
+                eq(quotePriorityAssignments.expired, false),
+                isNull(quotePriorityAssignments.respondedAt)
+              )
+            )
+            .limit(1);
+          
+          if (priorityAssignment.length > 0 && priorityAssignment[0].expiresAt > new Date()) {
+            hasPriorityAccess = true;
+            priorityExpiresAt = priorityAssignment[0].expiresAt;
+          }
+        }
+        
         // Only include customer info for business users (privacy protection)
         let customerInfo = null;
+        let customerContact = null;
+        
         if (isBusinessUser || currentUserId === request.userId) {
           const customerResult = await pgDb.select({
             firstName: users.firstName,
@@ -686,6 +976,14 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
             totalSpent: users.totalSpent
           }).from(users).where(eq(users.id, request.userId)).limit(1);
           customerInfo = customerResult[0] || null;
+          
+          // Only include contact info for businesses with priority access
+          if (hasPriorityAccess) {
+            customerContact = {
+              phone: request.customerPhone,
+              email: request.customerEmail
+            };
+          }
         }
         
         // Get quote count for this request
@@ -699,11 +997,20 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
           ? Math.min(...allQuotes.map(q => Number(q.amount)))
           : null;
         
+        // Calculate response window info
+        const isEmergency = request.isEmergency || false;
+        const responseWindowHours = isEmergency ? EMERGENCY_RESPONSE_HOURS : STANDARD_RESPONSE_HOURS;
+        
         return {
           ...request,
           customer: customerInfo,
+          customerContact,
           quoteCount: quoteCount.length,
-          lowestQuote
+          lowestQuote,
+          hasPriorityAccess,
+          priorityExpiresAt,
+          isEmergency,
+          responseWindowHours
         };
       }));
       
@@ -747,10 +1054,18 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(403).json({ message: "Business accounts cannot create quote requests" });
       }
       
-      const { title, description, category, budget, timeline, location } = req.body;
+      const { title, description, category, budget, timeline, location, phone, email } = req.body;
       if (!title || !description || !category) {
         return res.status(400).json({ message: "Title, description, and category are required" });
       }
+      
+      // Check if this is an emergency category
+      const isEmergency = EMERGENCY_CATEGORIES.some(cat => 
+        category.toLowerCase().includes(cat.toLowerCase())
+      );
+      
+      // Calculate priority expiry for this request
+      const priorityExpiresAt = calculatePriorityExpiry(category);
       
       const [newRequest] = await pgDb.insert(quoteRequests).values({
         userId,
@@ -760,7 +1075,12 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         budget,
         timeline,
         location,
-        status: "open"
+        status: "open",
+        isEmergency,
+        customerPhone: phone || null,
+        customerEmail: email || user[0]?.email || null,
+        priorityRound: 1,
+        priorityExpiresAt
       }).returning();
       
       // Award points for posting a quote request (user already fetched above)
@@ -770,6 +1090,10 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         await pgDb.update(users)
           .set({ loyaltyPoints: newPoints, loyaltyTier: newTier })
           .where(eq(users.id, userId));
+        
+        // Assign priority to top premium businesses
+        const customerRating = Number(user[0].customerRating) || 5.0;
+        await assignPriorityToPremiumBusinesses(newRequest.id, category, customerRating, 1);
       }
       
       res.status(201).json(newRequest);
@@ -853,6 +1177,47 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(400).json({ message: "This quote request is no longer accepting bids" });
       }
       
+      // Check if this business has a priority assignment for this request
+      const priorityAssignment = await pgDb.select()
+        .from(quotePriorityAssignments)
+        .where(
+          and(
+            eq(quotePriorityAssignments.requestId, requestId),
+            eq(quotePriorityAssignments.businessId, effectiveBusinessId)
+          )
+        )
+        .limit(1);
+      
+      // Calculate response time and priority status
+      let responseTimeMinutes: number | null = null;
+      let wasPriorityResponse = false;
+      
+      if (priorityAssignment.length > 0) {
+        const assignment = priorityAssignment[0];
+        const assignedAt = assignment.assignedAt || new Date();
+        const now = new Date();
+        responseTimeMinutes = Math.round((now.getTime() - assignedAt.getTime()) / (1000 * 60));
+        
+        // Check if response is within priority window
+        wasPriorityResponse = now < assignment.expiresAt;
+        
+        // Get customer rating for metrics update
+        const customer = await pgDb.select({ customerRating: users.customerRating })
+          .from(users)
+          .where(eq(users.id, request[0].userId))
+          .limit(1);
+        const customerRating = Number(customer[0]?.customerRating) || 5.0;
+        
+        // Update vendor metrics - pass category for response window calculation
+        await updateVendorMetricsOnResponse(
+          effectiveBusinessId,
+          requestId,
+          responseTimeMinutes,
+          request[0].category,
+          customerRating
+        );
+      }
+      
       const [newQuote] = await pgDb.insert(quotes).values({
         requestId,
         businessId: effectiveBusinessId,
@@ -860,7 +1225,9 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         amount: amount.toString(),
         message,
         estimatedDuration,
-        status: "pending"
+        status: "pending",
+        responseTimeMinutes,
+        wasPriorityResponse
       }).returning();
       
       res.status(201).json(newQuote);
@@ -917,6 +1284,84 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     } catch (err) {
       console.error("Error accepting quote:", err);
       res.status(500).json({ message: "Failed to accept quote" });
+    }
+  });
+
+  // Get vendor response metrics ranking
+  app.get("/api/vendors/metrics", async (req, res) => {
+    try {
+      const metrics = await pgDb.select({
+        businessId: vendorMetrics.businessId,
+        totalAssignments: vendorMetrics.totalAssignments,
+        responsesOnTime: vendorMetrics.responsesOnTime,
+        responsesLate: vendorMetrics.responsesLate,
+        noResponses: vendorMetrics.noResponses,
+        averageResponseMinutes: vendorMetrics.averageResponseMinutes,
+        responseRating: vendorMetrics.responseRating,
+      })
+      .from(vendorMetrics)
+      .orderBy(desc(vendorMetrics.responseRating));
+      
+      // Enrich with business info
+      const enrichedMetrics = await Promise.all(metrics.map(async (m) => {
+        const businessInfo = await pgDb.select({
+          name: businesses.name,
+          category: businesses.category,
+          membershipTier: businesses.membershipTier,
+        }).from(businesses).where(eq(businesses.id, m.businessId)).limit(1);
+        
+        return {
+          ...m,
+          business: businessInfo[0] || null
+        };
+      }));
+      
+      res.json(enrichedMetrics);
+    } catch (err) {
+      console.error("Error fetching vendor metrics:", err);
+      res.status(500).json({ message: "Failed to fetch vendor metrics" });
+    }
+  });
+
+  // Get my business's vendor metrics
+  app.get("/api/my-business/metrics", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || user[0].accountType !== "business") {
+        return res.status(403).json({ message: "Only business accounts can access metrics" });
+      }
+      
+      const linkedBusinessId = user[0].linkedBusinessId;
+      if (!linkedBusinessId) {
+        return res.json(null);
+      }
+      
+      const metrics = await pgDb.select()
+        .from(vendorMetrics)
+        .where(eq(vendorMetrics.businessId, linkedBusinessId))
+        .limit(1);
+      
+      if (metrics.length === 0) {
+        return res.json({
+          businessId: linkedBusinessId,
+          totalAssignments: 0,
+          responsesOnTime: 0,
+          responsesLate: 0,
+          noResponses: 0,
+          averageResponseMinutes: null,
+          responseRating: "5.00"
+        });
+      }
+      
+      res.json(metrics[0]);
+    } catch (err) {
+      console.error("Error fetching my business metrics:", err);
+      res.status(500).json({ message: "Failed to fetch metrics" });
     }
   });
 

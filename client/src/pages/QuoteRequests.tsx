@@ -41,7 +41,12 @@ import {
   TrendingDown,
   Award,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Zap,
+  Phone,
+  Mail,
+  Shield,
+  Timer
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,10 +62,20 @@ interface CustomerInfo {
   totalSpent: string | null;
 }
 
+interface CustomerContact {
+  phone: string | null;
+  email: string | null;
+}
+
 interface EnrichedQuoteRequest extends QuoteRequest {
   customer: CustomerInfo | null;
+  customerContact: CustomerContact | null;
   quoteCount: number;
   lowestQuote: number | null;
+  hasPriorityAccess: boolean;
+  priorityExpiresAt: string | null;
+  isEmergency: boolean;
+  responseWindowHours: number;
 }
 
 interface QuoteWithBusiness {
@@ -509,6 +524,32 @@ export default function QuoteRequests() {
                           </div>
                         </div>
 
+                        {/* Priority Access Badge */}
+                        {req.hasPriorityAccess && user?.accountType === "business" && (
+                          <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-amber-600" />
+                                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                                  Priority Access
+                                </span>
+                                {req.isEmergency && (
+                                  <Badge className="bg-red-500 text-white text-xs">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Emergency
+                                  </Badge>
+                                )}
+                              </div>
+                              {req.priorityExpiresAt && (
+                                <div className="flex items-center gap-1 text-xs text-amber-600">
+                                  <Timer className="h-3 w-3" />
+                                  Expires {formatDistanceToNow(new Date(req.priorityExpiresAt), { addSuffix: true })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Customer Info Section - Visible to Businesses */}
                         {req.customer && user?.accountType === "business" && (
                           <div className="mb-4 p-3 bg-muted/50 rounded-lg">
@@ -537,6 +578,38 @@ export default function QuoteRequests() {
                                 </div>
                               </div>
                             </div>
+                            
+                            {/* Customer Contact - Only for Priority Access */}
+                            {req.hasPriorityAccess && req.customerContact && (req.customerContact.phone || req.customerContact.email) && (
+                              <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
+                                <div className="flex items-center gap-1 mb-2 text-xs text-amber-600 dark:text-amber-400">
+                                  <Shield className="h-3 w-3" />
+                                  <span className="font-medium">Priority Contact Access</span>
+                                </div>
+                                <div className="flex flex-wrap gap-4 text-sm">
+                                  {req.customerContact.phone && (
+                                    <a 
+                                      href={`tel:${req.customerContact.phone}`}
+                                      className="flex items-center gap-1.5 text-[#0a4a82] hover:underline"
+                                      data-testid={`link-phone-${req.id}`}
+                                    >
+                                      <Phone className="h-4 w-4" />
+                                      {req.customerContact.phone}
+                                    </a>
+                                  )}
+                                  {req.customerContact.email && (
+                                    <a 
+                                      href={`mailto:${req.customerContact.email}`}
+                                      className="flex items-center gap-1.5 text-[#0a4a82] hover:underline"
+                                      data-testid={`link-email-${req.id}`}
+                                    >
+                                      <Mail className="h-4 w-4" />
+                                      {req.customerContact.email}
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                         

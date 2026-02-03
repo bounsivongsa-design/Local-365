@@ -67,6 +67,12 @@ export const receipts = pgTable("receipts", {
   reviewedAt: timestamp("reviewed_at"),
 });
 
+// Emergency categories that require 2-hour response window instead of 24 hours
+export const EMERGENCY_CATEGORIES = ["HVAC", "Electrical", "Plumbing", "Roofing"];
+
+// Customer rating threshold below which vendors aren't penalized for slow response
+export const LOW_RATING_THRESHOLD = 3.0;
+
 // Quote requests - customers post requests for services
 export const quoteRequests = pgTable("quote_requests", {
   id: serial("id").primaryKey(),
@@ -78,8 +84,40 @@ export const quoteRequests = pgTable("quote_requests", {
   timeline: varchar("timeline"), // e.g., "Within a week", "Flexible"
   location: text("location"),
   status: varchar("status").default("open"), // open, in_progress, completed, cancelled
+  isEmergency: boolean("is_emergency").default(false), // True for HVAC, electrical, plumbing emergencies
+  customerPhone: text("customer_phone"), // Contact info for premium vendors
+  customerEmail: text("customer_email"), // Contact info for premium vendors
+  priorityRound: integer("priority_round").default(1), // Current priority round (1 = first 5 premium, 2 = next 5, etc.)
+  priorityExpiresAt: timestamp("priority_expires_at"), // When current priority round expires
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
+});
+
+// Priority queue assignments - tracks which businesses have priority access to quote requests
+export const quotePriorityAssignments = pgTable("quote_priority_assignments", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull().references(() => quoteRequests.id),
+  businessId: integer("business_id").notNull(), // references businesses table
+  priorityRound: integer("priority_round").notNull().default(1), // Which round (1 = first 5 premium, 2 = next 5)
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(), // When priority access expires (2h emergency, 24h standard)
+  respondedAt: timestamp("responded_at"), // When business submitted quote (null if no response)
+  expired: boolean("expired").default(false), // True if window expired without response
+  customerRatingAtTime: decimal("customer_rating_at_time", { precision: 2, scale: 1 }), // Customer rating when assigned
+});
+
+// Vendor response metrics - tracks overall response performance for ranking
+export const vendorMetrics = pgTable("vendor_metrics", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().unique(), // references businesses table
+  totalAssignments: integer("total_assignments").default(0), // Total priority assignments received
+  responsesOnTime: integer("responses_on_time").default(0), // Responses within window
+  responsesLate: integer("responses_late").default(0), // Responses after window expired
+  noResponses: integer("no_responses").default(0), // No response at all
+  averageResponseMinutes: integer("average_response_minutes"), // Average time to respond in minutes
+  responseRating: decimal("response_rating", { precision: 3, scale: 2 }).default("5.00"), // 0-5 rating based on timeliness
+  penaltyExemptNoResponses: integer("penalty_exempt_no_responses").default(0), // No responses to low-rated customers (not penalized)
+  lastUpdated: timestamp("last_updated").defaultNow(),
 });
 
 // Quotes/bids from businesses
@@ -92,6 +130,8 @@ export const quotes = pgTable("quotes", {
   message: text("message").notNull(),
   estimatedDuration: varchar("estimated_duration"),
   status: varchar("status").default("pending"), // pending, accepted, rejected, withdrawn
+  responseTimeMinutes: integer("response_time_minutes"), // How long it took to respond from assignment
+  wasPriorityResponse: boolean("was_priority_response").default(false), // True if responded during priority window
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -102,3 +142,7 @@ export type QuoteRequest = typeof quoteRequests.$inferSelect;
 export type InsertQuoteRequest = typeof quoteRequests.$inferInsert;
 export type Quote = typeof quotes.$inferSelect;
 export type InsertQuote = typeof quotes.$inferInsert;
+export type QuotePriorityAssignment = typeof quotePriorityAssignments.$inferSelect;
+export type InsertQuotePriorityAssignment = typeof quotePriorityAssignments.$inferInsert;
+export type VendorMetrics = typeof vendorMetrics.$inferSelect;
+export type InsertVendorMetrics = typeof vendorMetrics.$inferInsert;
