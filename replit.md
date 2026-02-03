@@ -17,6 +17,13 @@ Key features include:
 ## Recent Changes
 
 ### February 2026
+- **Location-Based Search**: Scalable location system for expanding to multiple regions
+  - LocationPicker component in navigation header for selecting city/zip/region
+  - Location context stores user's selected location in localStorage
+  - Homepage dynamically updates hero text and content based on selected location
+  - API endpoints: /api/locations, /api/locations/search, /api/businesses/by-location, /api/events/by-location
+  - Database fields: city, state, zipCode added to businesses and events tables
+  - Locations table stores supported regions with zipCodes array
 - **Loyalty Program Redesign**: Marriott Bonvoy-inspired elite status system
   - 5 tiers: Member (free), Silver Elite (5 visits), Gold Elite (15 visits), Platinum Elite (30 visits), Ambassador (50 visits)
   - Focus on point multipliers (+10% to +75% bonus) instead of heavy discounts

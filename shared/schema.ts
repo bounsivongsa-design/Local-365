@@ -16,9 +16,24 @@ export const businesses = pgTable("businesses", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   address: text("address").notNull(),
+  city: text("city").default("Currituck"),
+  state: text("state").default("NC"),
+  zipCode: text("zip_code").default("27929"),
   category: text("category").notNull(), // 'Food', 'Retail', 'Service', 'Entertainment'
   imageUrl: text("image_url").notNull(),
   verified: boolean("verified").default(false),
+});
+
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // Display name e.g., "Currituck County, NC"
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  zipCodes: text("zip_codes").array().default([]), // Array of zip codes in this location
+  region: text("region"), // e.g., "Outer Banks", "Piedmont"
+  heroImage: text("hero_image"),
+  tagline: text("tagline"),
+  isActive: boolean("is_active").default(true),
 });
 
 export const events = pgTable("events", {
@@ -27,6 +42,9 @@ export const events = pgTable("events", {
   description: text("description").notNull(),
   date: timestamp("date").notNull(),
   location: text("location").notNull(),
+  city: text("city").default("Currituck"),
+  state: text("state").default("NC"),
+  zipCode: text("zip_code").default("27929"),
   imageUrl: text("image_url"),
   businessId: integer("business_id").references(() => businesses.id),
 });
@@ -86,12 +104,15 @@ export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: tr
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true }); 
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true });
+export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
 
 export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
 
 export type CreateBusinessRequest = z.infer<typeof insertBusinessSchema>;
 export type CreateEventRequest = z.infer<typeof insertEventSchema>;

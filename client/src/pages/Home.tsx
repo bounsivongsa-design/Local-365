@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Loader2, Compass, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "@/context/LocationContext";
 import heroImage from "@assets/image_1770062898655.png";
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
   const { data: events, isLoading: eventsLoading } = useEvents();
   const likePost = useLikePost();
   const { isAuthenticated } = useAuth();
+  const { location: selectedLocation } = useLocation();
   const [showTripPlanner, setShowTripPlanner] = useState(false);
   const [tripResult, setTripResult] = useState<any>(null);
 
@@ -42,7 +44,7 @@ export default function Home() {
       <Dialog open={showTripPlanner} onOpenChange={setShowTripPlanner}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Plan Your Currituck Trip</DialogTitle>
+            <DialogTitle className="text-2xl">Plan Your {selectedLocation.city} Trip</DialogTitle>
           </DialogHeader>
           <IntakeForm onSubmit={handleTripPlanSubmit} />
         </DialogContent>
@@ -54,7 +56,7 @@ export default function Home() {
           <div className="container py-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-bold text-xl">Your Currituck Itinerary is Ready!</h3>
+                <h3 className="font-bold text-xl">Your {selectedLocation.city} Itinerary is Ready!</h3>
                 <p className="text-muted-foreground">
                   {tripResult.groupSize === '1' ? 'Solo trip' : tripResult.groupSize === '2' ? 'Couple trip' : `Group of ${tripResult.groupSize}`} 
                   {' '}to {tripResult.staying} for {tripResult.tripLength} days
@@ -81,16 +83,18 @@ export default function Home() {
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
           {/* Value Proposition Badge */}
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            <span className="text-white text-sm font-medium">Your Local Connection to Currituck County</span>
+            <MapPin className="h-4 w-4 text-white" />
+            <span className="text-white text-sm font-medium">
+              {selectedLocation.tagline || `Your Local Connection to ${selectedLocation.city}`}
+            </span>
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
-            Find Trusted Local Pros<br />
-            <span className="text-[#d4a373]">Support Your Community</span>
+            Find Trusted Local Pros in<br />
+            <span className="text-[#d4a373]">{selectedLocation.name}</span>
           </h1>
           <p className="text-xl md:text-2xl mb-4 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
-            Connect with verified local businesses, discover events, and earn rewards for shopping local in Currituck County.
+            Connect with verified local businesses, discover events, and earn rewards for shopping local in {selectedLocation.city}.
           </p>
           <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
             Post a project and get competitive quotes from local contractors. Earn loyalty points with every purchase. Join 500+ community members.
@@ -124,7 +128,7 @@ export default function Home() {
 
       {/* Video Showcase Section */}
       <div className="container pt-12">
-        <h2 className="font-display text-2xl font-bold mb-6 text-center">Experience Currituck County</h2>
+        <h2 className="font-display text-2xl font-bold mb-6 text-center">Experience {selectedLocation.city}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
             <video 
@@ -322,7 +326,7 @@ export default function Home() {
             ) : (
               <div className="space-y-4">
                 {featuredBusinesses.map(biz => (
-                  <Link key={biz.id} href={`/directory/${biz.id}`}>
+                  <Link key={biz.id} to={`/directory/${biz.id}`}>
                     <div className="flex gap-4 p-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-border transition-all cursor-pointer group">
                       <div className="h-16 w-16 rounded-lg bg-muted overflow-hidden shrink-0">
                         {biz.imageUrl ? (

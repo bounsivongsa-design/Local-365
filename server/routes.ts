@@ -9,7 +9,8 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes } from "@shared/models/auth";
-import { eq, desc, and } from "drizzle-orm";
+import { locations, businesses, events } from "@shared/schema";
+import { eq, desc, and, or, ilike, inArray } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -26,6 +27,104 @@ export async function registerRoutes(
   
   // Object Storage Routes
   registerObjectStorageRoutes(app);
+
+  // ============ LOCATION ROUTES ============
+  
+  // Get all active locations
+  app.get("/api/locations", async (req, res) => {
+    try {
+      const allLocations = await pgDb.select().from(locations).where(eq(locations.isActive, true));
+      res.json(allLocations);
+    } catch (err) {
+      console.error("Error fetching locations:", err);
+      res.status(500).json({ message: "Failed to fetch locations" });
+    }
+  });
+
+  // Search locations by zip, city, or state
+  app.get("/api/locations/search", async (req, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || typeof q !== "string") {
+        return res.status(400).json({ message: "Search query required" });
+      }
+      
+      const searchTerm = `%${q}%`;
+      // First try standard text fields
+      let results = await pgDb.select().from(locations).where(
+        and(
+          eq(locations.isActive, true),
+          or(
+            ilike(locations.city, searchTerm),
+            ilike(locations.state, searchTerm),
+            ilike(locations.name, searchTerm),
+            ilike(locations.region, searchTerm)
+          )
+        )
+      );
+      
+      // If no results and query looks like a zip code (5 digits), search zipCodes array
+      if (results.length === 0 && /^\d{5}$/.test(q)) {
+        const allLocations = await pgDb.select().from(locations).where(eq(locations.isActive, true));
+        results = allLocations.filter(loc => loc.zipCodes?.includes(q));
+      }
+      
+      res.json(results);
+    } catch (err) {
+      console.error("Error searching locations:", err);
+      res.status(500).json({ message: "Failed to search locations" });
+    }
+  });
+
+  // Get businesses by location
+  app.get("/api/businesses/by-location", async (req, res) => {
+    try {
+      const { city, state, zipCode } = req.query;
+      
+      let conditions = [];
+      if (city) conditions.push(ilike(businesses.city, `%${city}%`));
+      if (state) conditions.push(eq(businesses.state, state as string));
+      if (zipCode) conditions.push(eq(businesses.zipCode, zipCode as string));
+      
+      if (conditions.length === 0) {
+        // Default to all businesses if no filter
+        const allBusinesses = await storage.getBusinesses();
+        return res.json(allBusinesses);
+      }
+      
+      // Use AND to narrow results when multiple filters are provided
+      const locationBusinesses = await pgDb.select().from(businesses).where(and(...conditions));
+      res.json(locationBusinesses);
+    } catch (err) {
+      console.error("Error fetching businesses by location:", err);
+      res.status(500).json({ message: "Failed to fetch businesses" });
+    }
+  });
+
+  // Get events by location
+  app.get("/api/events/by-location", async (req, res) => {
+    try {
+      const { city, state, zipCode } = req.query;
+      
+      let conditions = [];
+      if (city) conditions.push(ilike(events.city, `%${city}%`));
+      if (state) conditions.push(eq(events.state, state as string));
+      if (zipCode) conditions.push(eq(events.zipCode, zipCode as string));
+      
+      if (conditions.length === 0) {
+        // Default to all events if no filter
+        const allEvents = await storage.getEvents();
+        return res.json(allEvents);
+      }
+      
+      // Use AND to narrow results when multiple filters are provided
+      const locationEvents = await pgDb.select().from(events).where(and(...conditions));
+      res.json(locationEvents);
+    } catch (err) {
+      console.error("Error fetching events by location:", err);
+      res.status(500).json({ message: "Failed to fetch events" });
+    }
+  });
 
   // User validation status
   app.get("/api/user/validation-status", isAuthenticated, async (req, res) => {

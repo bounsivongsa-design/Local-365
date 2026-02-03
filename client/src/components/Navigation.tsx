@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation as useRouterLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,12 +9,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { MapPin, Calendar, Store, Home, Menu, LogOut, User as UserIcon, Gavel } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { LocationPicker } from "./LocationPicker";
 
 export function Navigation() {
-  const location = useLocation();
+  const routerLocation = useRouterLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -25,7 +26,7 @@ export function Navigation() {
     { href: "/events", label: "Local Events", icon: Calendar },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => routerLocation.pathname === path;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
@@ -61,6 +62,8 @@ export function Navigation() {
         </div>
 
         <div className="flex items-center gap-4">
+          <LocationPicker />
+          
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
