@@ -102,7 +102,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 500,
     lifetimePoints: 1000000,
     pointsBonus: '+50% bonus',
-    perks: ['5% off at partners', 'Priority support', 'Seasonal local gifts'],
+    perks: ['5% off at partners', 'Free upgrades when available', 'Priority support'],
     discount: '5% off'
   },
   { 
@@ -112,7 +112,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 1000,
     lifetimePoints: 2000000,
     pointsBonus: '+75% bonus',
-    perks: ['10% off at partners', 'Ambassador badge', 'Invite-only events'],
+    perks: ['10% off at partners', 'Free upgrades when available', 'Invite-only events'],
     discount: '10% off'
   }
 ];

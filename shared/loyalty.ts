@@ -44,12 +44,12 @@ export const TIER_BENEFITS = {
   platinum: {
     pointsMultiplier: 1.5,
     discount: 0.05,
-    perks: ["5% off at partners", "Priority support", "Seasonal local gifts"],
+    perks: ["5% off at partners", "Free upgrades when available", "Priority support"],
   },
   ambassador: {
     pointsMultiplier: 1.75,
     discount: 0.10,
-    perks: ["10% off at partners", "Ambassador badge", "Invite-only events"],
+    perks: ["10% off at partners", "Free upgrades when available", "Invite-only events"],
   },
 };
 
