@@ -1096,7 +1096,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
   // Update ad status (admin)
   app.patch("/api/admin/ads/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       const { status, paymentStatus, paymentNotes, totalPaid, startDate, endDate } = req.body;
 
       const updateData: any = { updatedAt: new Date() };
