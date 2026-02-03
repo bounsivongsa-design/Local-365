@@ -22,6 +22,13 @@ export const businesses = pgTable("businesses", {
   category: text("category").notNull(), // 'Food', 'Retail', 'Service', 'Entertainment'
   imageUrl: text("image_url").notNull(),
   verified: boolean("verified").default(false),
+  
+  // Local 365 Partner Program - perks businesses offer to elite members
+  isLocal365Partner: boolean("is_local365_partner").default(false),
+  silverPerk: text("silver_perk"), // Perk offered to Silver+ members
+  goldPerk: text("gold_perk"), // Perk offered to Gold+ members  
+  platinumPerk: text("platinum_perk"), // Perk offered to Platinum+ (e.g., "Local rates", "Free upgrade")
+  ambassadorPerk: text("ambassador_perk"), // Exclusive Ambassador perk
 });
 
 export const locations = pgTable("locations", {
