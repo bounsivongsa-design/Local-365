@@ -23,50 +23,6 @@ const iconMap: Record<string, typeof Award> = {
   'Ambassador': Gem,
 };
 
-const styleMap: Record<string, { 
-  cardBg: string;
-  metallicClass: string;
-  accentColor: string;
-  borderGlow: string;
-  textColor: string;
-}> = {
-  'Member': { 
-    cardBg: 'from-slate-50 via-gray-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900',
-    metallicClass: 'metallic-silver',
-    accentColor: 'text-slate-500 dark:text-slate-400',
-    borderGlow: 'border-slate-200 shadow-slate-300/20',
-    textColor: 'text-slate-600'
-  },
-  'Silver Elite': { 
-    cardBg: 'from-slate-50 via-gray-100 to-slate-200 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800',
-    metallicClass: 'metallic-silver',
-    accentColor: 'text-slate-600 dark:text-slate-300',
-    borderGlow: 'border-slate-300 shadow-slate-400/30',
-    textColor: 'text-slate-700'
-  },
-  'Gold Elite': { 
-    cardBg: 'from-amber-50 via-yellow-100 to-orange-100 dark:from-amber-900/40 dark:via-yellow-900/30 dark:to-orange-900/40',
-    metallicClass: 'metallic-gold',
-    accentColor: 'text-amber-700 dark:text-amber-300',
-    borderGlow: 'border-amber-400 shadow-amber-400/40',
-    textColor: 'text-amber-800'
-  },
-  'Platinum Elite': { 
-    cardBg: 'from-sky-50 via-cyan-100 to-blue-100 dark:from-cyan-900/40 dark:via-sky-900/30 dark:to-blue-900/40',
-    metallicClass: 'metallic-platinum',
-    accentColor: 'text-sky-700 dark:text-sky-300',
-    borderGlow: 'border-sky-400 shadow-sky-400/40',
-    textColor: 'text-sky-700'
-  },
-  'Ambassador': { 
-    cardBg: 'from-violet-50 via-purple-100 to-fuchsia-100 dark:from-violet-900/40 dark:via-purple-900/30 dark:to-fuchsia-900/40',
-    metallicClass: 'metallic-purple',
-    accentColor: 'text-purple-700 dark:text-purple-300',
-    borderGlow: 'border-purple-400 shadow-purple-400/40',
-    textColor: 'text-purple-700'
-  },
-};
-
 const tierBadges: TierInfo[] = [
   { 
     level: 'Member', 
@@ -117,6 +73,56 @@ const tierBadges: TierInfo[] = [
   }
 ];
 
+const tierStyles: Record<string, {
+  gradient: string;
+  headerGradient: string;
+  iconBg: string;
+  iconColor: string;
+  ring: string;
+  textColor: string;
+}> = {
+  'Member': {
+    gradient: 'from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900',
+    headerGradient: 'from-slate-500 to-slate-700',
+    iconBg: 'bg-slate-100',
+    iconColor: 'text-slate-600',
+    ring: 'ring-slate-200 dark:ring-slate-700',
+    textColor: 'text-slate-600'
+  },
+  'Silver Elite': {
+    gradient: 'from-slate-100 to-gray-200 dark:from-slate-700 dark:to-slate-800',
+    headerGradient: 'from-slate-400 to-slate-600',
+    iconBg: 'bg-gradient-to-br from-slate-200 to-gray-300',
+    iconColor: 'text-slate-700',
+    ring: 'ring-slate-300 dark:ring-slate-600',
+    textColor: 'text-slate-700'
+  },
+  'Gold Elite': {
+    gradient: 'from-amber-50 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40',
+    headerGradient: 'from-amber-400 to-amber-600',
+    iconBg: 'bg-gradient-to-br from-amber-200 to-yellow-300',
+    iconColor: 'text-amber-700',
+    ring: 'ring-amber-300 dark:ring-amber-600',
+    textColor: 'text-amber-700'
+  },
+  'Platinum Elite': {
+    gradient: 'from-cyan-50 to-sky-100 dark:from-cyan-900/40 dark:to-sky-900/40',
+    headerGradient: 'from-cyan-400 to-sky-600',
+    iconBg: 'bg-gradient-to-br from-cyan-200 to-sky-300',
+    iconColor: 'text-cyan-700',
+    ring: 'ring-cyan-300 dark:ring-cyan-600',
+    textColor: 'text-cyan-700'
+  },
+  'Ambassador': {
+    gradient: 'from-purple-50 to-violet-100 dark:from-purple-900/40 dark:to-violet-900/40',
+    headerGradient: 'from-purple-500 to-violet-600',
+    iconBg: 'bg-gradient-to-br from-purple-200 to-violet-300',
+    iconColor: 'text-purple-700',
+    ring: 'ring-purple-300 dark:ring-purple-600',
+    textColor: 'text-purple-700'
+  }
+};
+
 function getTierIndex(tier: string | null): number {
   if (!tier) return 0;
   const tierName = tier === "silver" ? "Silver Elite" 
@@ -135,117 +141,115 @@ function LoyaltyBadges() {
   const effectiveTierIndex = Math.max(annualTierIndex, lifetimeTierIndex);
 
   return (
-    <div className="py-8">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-sand/30 text-primary text-sm font-semibold mb-4 shadow-sm">
-          <Sparkles className="h-4 w-4" />
-          Local 365 Rewards
-        </div>
-        <h2 className="text-3xl md:text-4xl font-bold mb-3">
-          Dual Elite Status System
-        </h2>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Earn both <strong>Annual Status</strong> (resets yearly) and <strong>Lifetime Status</strong> (accumulates forever). 
-          Your effective tier is always the higher of the two!
-        </p>
-      </div>
-
+    <div className="py-4">
       {/* User's Current Status */}
       {isAuthenticated && user && (
-        <div className="mb-10 bg-white/90 dark:bg-slate-800/90 rounded-2xl p-6 shadow-lg">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
+        <div className="mb-12">
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
+            <TrendingUp className="h-6 w-6 text-[#0a4a82]" />
             Your Elite Status
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Annual Status */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold">Annual Status ({new Date().getFullYear()})</span>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <Badge className={`${styleMap[tierBadges[annualTierIndex].level].accentColor} ${styleMap[tierBadges[annualTierIndex].level].cardBg} text-base py-1 px-3`}>
-                  {tierBadges[annualTierIndex].level}
-                </Badge>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Visits this year:</span>
-                  <span className="font-medium">{user.annualVisits || 0}</span>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-xl shadow-blue-200/30 dark:shadow-blue-900/30 ring-1 ring-blue-100 dark:ring-blue-800">
+              <div className="bg-gradient-to-br from-[#0a4a82] to-[#083a6a] p-4">
+                <div className="flex items-center gap-2 text-white">
+                  <Calendar className="h-5 w-5" />
+                  <span className="font-semibold">Annual Status ({new Date().getFullYear()})</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Points this year:</span>
-                  <span className="font-medium">{(user.annualPoints || 0).toLocaleString()}</span>
+              </div>
+              <div className="p-5">
+                <div className="mb-4">
+                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${tierStyles[tierBadges[annualTierIndex].level].iconBg} ${tierStyles[tierBadges[annualTierIndex].level].iconColor}`}>
+                    {tierBadges[annualTierIndex].level}
+                  </span>
                 </div>
-                {annualTierIndex < tierBadges.length - 1 && (
-                  <div className="pt-2">
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {tierBadges[annualTierIndex + 1].annualVisits - (user.annualVisits || 0)} more visits to {tierBadges[annualTierIndex + 1].level}
-                    </div>
-                    <Progress 
-                      value={(user.annualVisits || 0) / tierBadges[annualTierIndex + 1].annualVisits * 100} 
-                      className="h-2"
-                    />
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Visits this year:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{user.annualVisits || 0}</span>
                   </div>
-                )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Points this year:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{(user.annualPoints || 0).toLocaleString()}</span>
+                  </div>
+                  {annualTierIndex < tierBadges.length - 1 && (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                      <div className="text-xs text-slate-500 mb-2">
+                        {tierBadges[annualTierIndex + 1].annualVisits - (user.annualVisits || 0)} more visits to {tierBadges[annualTierIndex + 1].level}
+                      </div>
+                      <Progress 
+                        value={(user.annualVisits || 0) / tierBadges[annualTierIndex + 1].annualVisits * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Lifetime Status */}
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-              <div className="flex items-center gap-2 mb-3">
-                <Infinity className="h-5 w-5 text-purple-600" />
-                <span className="font-semibold">Lifetime Status</span>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <Badge className={`${styleMap[tierBadges[lifetimeTierIndex].level].accentColor} ${styleMap[tierBadges[lifetimeTierIndex].level].cardBg} text-base py-1 px-3`}>
-                  {tierBadges[lifetimeTierIndex].level}
-                </Badge>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total visits:</span>
-                  <span className="font-medium">{user.lifetimeVisits || 0}</span>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-xl shadow-purple-200/30 dark:shadow-purple-900/30 ring-1 ring-purple-100 dark:ring-purple-800">
+              <div className="bg-gradient-to-br from-purple-500 to-violet-600 p-4">
+                <div className="flex items-center gap-2 text-white">
+                  <Infinity className="h-5 w-5" />
+                  <span className="font-semibold">Lifetime Status</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total points:</span>
-                  <span className="font-medium">{(user.lifetimePoints || 0).toLocaleString()}</span>
+              </div>
+              <div className="p-5">
+                <div className="mb-4">
+                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${tierStyles[tierBadges[lifetimeTierIndex].level].iconBg} ${tierStyles[tierBadges[lifetimeTierIndex].level].iconColor}`}>
+                    {tierBadges[lifetimeTierIndex].level}
+                  </span>
                 </div>
-                {lifetimeTierIndex < tierBadges.length - 1 && (
-                  <div className="pt-2">
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {tierBadges[lifetimeTierIndex + 1].lifetimeVisits - (user.lifetimeVisits || 0)} more visits to Lifetime {tierBadges[lifetimeTierIndex + 1].level}
-                    </div>
-                    <Progress 
-                      value={(user.lifetimeVisits || 0) / tierBadges[lifetimeTierIndex + 1].lifetimeVisits * 100} 
-                      className="h-2"
-                    />
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Total visits:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{user.lifetimeVisits || 0}</span>
                   </div>
-                )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Total points:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{(user.lifetimePoints || 0).toLocaleString()}</span>
+                  </div>
+                  {lifetimeTierIndex < tierBadges.length - 1 && (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                      <div className="text-xs text-slate-500 mb-2">
+                        {tierBadges[lifetimeTierIndex + 1].lifetimeVisits - (user.lifetimeVisits || 0)} more visits to Lifetime {tierBadges[lifetimeTierIndex + 1].level}
+                      </div>
+                      <Progress 
+                        value={(user.lifetimeVisits || 0) / tierBadges[lifetimeTierIndex + 1].lifetimeVisits * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Effective Status */}
-            <div className={`bg-gradient-to-br ${styleMap[tierBadges[effectiveTierIndex].level].cardBg} rounded-xl p-4 border-2 ${styleMap[tierBadges[effectiveTierIndex].level].borderGlow}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-                <span className="font-semibold">Your Effective Tier</span>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-xl shadow-amber-200/30 dark:shadow-amber-900/30 ring-1 ring-amber-100 dark:ring-amber-800">
+              <div className="bg-gradient-to-br from-amber-400 to-amber-600 p-4">
+                <div className="flex items-center gap-2 text-white">
+                  <Star className="h-5 w-5 fill-white" />
+                  <span className="font-semibold">Your Effective Tier</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3 mb-3">
-                <Badge className={`${styleMap[tierBadges[effectiveTierIndex].level].accentColor} bg-white/80 dark:bg-slate-800/80 text-lg py-1.5 px-4`}>
-                  {tierBadges[effectiveTierIndex].level}
-                </Badge>
+              <div className="p-5">
+                <div className="mb-4">
+                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-base font-bold ${tierStyles[tierBadges[effectiveTierIndex].level].iconBg} ${tierStyles[tierBadges[effectiveTierIndex].level].iconColor}`}>
+                    {tierBadges[effectiveTierIndex].level}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  You enjoy the benefits of your highest status tier. 
+                  {annualTierIndex > lifetimeTierIndex 
+                    ? " Your annual status is currently higher!"
+                    : annualTierIndex < lifetimeTierIndex
+                    ? " Your lifetime status provides your benefits this year."
+                    : " Both tiers are equal."}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                You enjoy the benefits of your highest status tier. 
-                {annualTierIndex > lifetimeTierIndex 
-                  ? " Your annual status is currently higher!"
-                  : annualTierIndex < lifetimeTierIndex
-                  ? " Your lifetime status provides your benefits this year."
-                  : " Both tiers are equal."}
-              </p>
             </div>
           </div>
         </div>
@@ -253,22 +257,24 @@ function LoyaltyBadges() {
 
       {/* Tier Requirements Tabs */}
       <Tabs defaultValue="annual" className="mb-8">
-        <div className="flex justify-center mb-6">
-          <TabsList className="grid grid-cols-2 w-80">
-            <TabsTrigger value="annual" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Annual
-            </TabsTrigger>
-            <TabsTrigger value="lifetime" className="flex items-center gap-2">
-              <Infinity className="h-4 w-4" />
-              Lifetime
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex justify-center mb-8">
+          <div className="bg-white dark:bg-slate-800 p-1.5 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200/50 dark:border-slate-700/50">
+            <TabsList className="grid grid-cols-2 w-80 bg-transparent">
+              <TabsTrigger value="annual" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-[#0a4a82] data-[state=active]:text-white">
+                <Calendar className="h-4 w-4" />
+                Annual
+              </TabsTrigger>
+              <TabsTrigger value="lifetime" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+                <Infinity className="h-4 w-4" />
+                Lifetime
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         <TabsContent value="annual">
-          <div className="text-center mb-6">
-            <p className="text-muted-foreground text-sm">
+          <div className="text-center mb-8">
+            <p className="text-slate-600 dark:text-slate-400">
               Annual status resets January 1st. Earn it fresh each year!
             </p>
           </div>
@@ -276,8 +282,8 @@ function LoyaltyBadges() {
         </TabsContent>
 
         <TabsContent value="lifetime">
-          <div className="text-center mb-6">
-            <p className="text-muted-foreground text-sm">
+          <div className="text-center mb-8">
+            <p className="text-slate-600 dark:text-slate-400">
               Lifetime status accumulates forever. Once earned, it's your permanent floor.
             </p>
           </div>
@@ -286,13 +292,12 @@ function LoyaltyBadges() {
       </Tabs>
       
       {/* Explanation section */}
-      <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-6 text-center">
-        <h3 className="font-semibold mb-2">How It Works</h3>
-        <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
+      <div className="bg-gradient-to-br from-[#0a4a82]/5 to-purple-50 dark:from-[#0a4a82]/20 dark:to-purple-900/20 rounded-2xl p-8 text-center border border-[#0a4a82]/10 dark:border-[#0a4a82]/30">
+        <h3 className="font-bold text-lg mb-3 text-slate-900 dark:text-white">How It Works</h3>
+        <p className="text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
           Each year, you start fresh on annual status. Earn visits and points throughout the year to climb the tiers.
-          At year's end, if you don't re-qualify, you fall back to your <strong>Lifetime Status</strong> - which never decreases.
-          Your effective tier is always the <strong>higher</strong> of annual or lifetime. Example: 4 months of heavy visiting 
-          might earn you annual Platinum, but only lifetime Silver. Next year, if you visit less, you still keep Silver benefits!
+          At year's end, if you don't re-qualify, you fall back to your <strong className="text-slate-900 dark:text-white">Lifetime Status</strong> - which never decreases.
+          Your effective tier is always the <strong className="text-slate-900 dark:text-white">higher</strong> of annual or lifetime.
         </p>
       </div>
     </div>
@@ -301,73 +306,71 @@ function LoyaltyBadges() {
 
 function TierCards({ isLifetime }: { isLifetime: boolean }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
       {tierBadges.map((badge, i) => {
         const IconComponent = iconMap[badge.level] || Award;
-        const styles = styleMap[badge.level] || styleMap['Member'];
+        const styles = tierStyles[badge.level] || tierStyles['Member'];
         const visits = isLifetime ? badge.lifetimeVisits : badge.annualVisits;
         const points = isLifetime ? badge.lifetimePoints : badge.annualPoints;
         
         return (
           <div 
             key={i} 
-            className={`group relative rounded-2xl overflow-hidden border-2 ${styles.borderGlow} shadow-[0_10px_40px_-10px] hover:shadow-[0_20px_50px_-10px] hover:scale-[1.02] transition-all duration-300`}
+            className={`group relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 ring-1 ${styles.ring}`}
           >
-            <div className={`relative h-full bg-gradient-to-br ${styles.cardBg} p-5`}>
-              {/* Tier number badge */}
-              <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center text-xs font-bold">
+            {/* Gradient Header */}
+            <div className={`bg-gradient-to-br ${styles.headerGradient} p-5 text-white relative`}>
+              {/* Tier number */}
+              <div className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-sm font-bold">
                 {i + 1}
               </div>
               
-              {/* Metallic icon container */}
-              <div className="relative mx-auto mb-4 w-fit">
-                <div className={`w-16 h-16 rounded-full ${styles.metallicClass} flex items-center justify-center`}>
-                  <div className="w-12 h-12 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center shadow-inner">
-                    <IconComponent className={`h-6 w-6 ${styles.accentColor}`} />
-                  </div>
-                </div>
+              {/* Icon */}
+              <div className={`w-14 h-14 rounded-2xl ${styles.iconBg} flex items-center justify-center shadow-lg mx-auto mb-3`}>
+                <IconComponent className={`h-7 w-7 ${styles.iconColor}`} />
               </div>
               
               {/* Title */}
-              <h3 className={`text-center text-lg font-extrabold mb-1 ${styles.textColor} dark:text-white`}>
-                {badge.level}
-              </h3>
-              
-              {/* Visits/Points requirement */}
-              <div className="flex flex-col items-center gap-1 mb-3">
-                <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/80 dark:bg-white/10 border border-white/50 dark:border-white/20 text-xs font-medium">
+              <h3 className="text-center text-lg font-bold">{badge.level}</h3>
+            </div>
+            
+            {/* Content */}
+            <div className={`p-5 bg-gradient-to-b ${styles.gradient}`}>
+              {/* Visits requirement */}
+              <div className="text-center mb-4">
+                <div className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-slate-700 shadow-sm text-sm font-bold ${styles.textColor} dark:text-white`}>
                   {visits === 0 ? 'Free' : `${visits.toLocaleString()} Visits`}
                 </div>
                 {points > 0 && (
-                  <div className="text-xs text-muted-foreground">
-                    or {points.toLocaleString()} pts
-                  </div>
+                  <p className="text-xs text-slate-500 mt-2">or {points.toLocaleString()} pts</p>
                 )}
               </div>
               
               {/* Points Bonus */}
-              <div className="bg-white/90 dark:bg-slate-800/90 rounded-lg py-2 px-3 text-center mb-3 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
-                <div className="flex items-center justify-center gap-1">
-                  <Zap className={`h-4 w-4 ${styles.accentColor}`} />
-                  <span className={`text-sm font-bold ${styles.accentColor}`}>{badge.pointsBonus}</span>
+              <div className={`bg-white dark:bg-slate-700 rounded-xl py-3 px-4 text-center mb-4 shadow-sm`}>
+                <div className="flex items-center justify-center gap-1.5">
+                  <Zap className={`h-4 w-4 ${styles.textColor}`} />
+                  <span className={`font-bold ${styles.textColor}`}>{badge.pointsBonus}</span>
                 </div>
               </div>
               
               {/* Perks list */}
-              <div className="space-y-1.5 mb-3">
+              <div className="space-y-2 mb-4">
                 {badge.perks.map((perk, j) => (
-                  <div key={j} className="flex items-start gap-1.5 text-xs">
-                    <Check className={`h-3 w-3 mt-0.5 shrink-0 ${styles.accentColor}`} />
-                    <span className="text-muted-foreground">{perk}</span>
+                  <div key={j} className="flex items-start gap-2 text-sm">
+                    <div className={`w-4 h-4 rounded-full ${styles.iconBg} flex items-center justify-center shrink-0 mt-0.5`}>
+                      <Check className={`h-2.5 w-2.5 ${styles.iconColor}`} />
+                    </div>
+                    <span className="text-slate-600 dark:text-slate-400">{perk}</span>
                   </div>
                 ))}
               </div>
               
-              {/* Discount badge (only for higher tiers) */}
+              {/* Discount badge */}
               {badge.discount && (
                 <div className="flex items-center justify-center">
-                  <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold">
-                    <Gift className="h-3 w-3" />
+                  <div className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold shadow-lg shadow-green-500/25">
+                    <Gift className="h-4 w-4" />
                     {badge.discount}
                   </div>
                 </div>
