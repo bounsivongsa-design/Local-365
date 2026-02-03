@@ -39,7 +39,13 @@ import {
   LayoutGrid,
   Home,
   Building2,
-  ChevronRight
+  ChevronRight,
+  Users,
+  Calendar,
+  Zap,
+  ArrowRight,
+  Gift,
+  Check
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
@@ -59,6 +65,17 @@ const placementIcons: Record<string, any> = {
   featured_listing: Star,
   category_spotlight: LayoutGrid,
   directory_boost: TrendingUp,
+};
+
+const AD_PRICING = {
+  nonMember: {
+    monthly: { small: 500, medium: 1000, large: 2000 },
+    event: { small: 300, medium: 600, large: 1200 },
+  },
+  member: {
+    monthly: { small: 250, medium: 500, large: 1000 },
+    event: { small: 150, medium: 300, large: 600 },
+  }
 };
 
 function getStatusBadge(status: string) {
@@ -171,76 +188,236 @@ export default function Advertising() {
   const selectedPricing = pricing?.find(p => p.placementType === formData.placementType);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a4a82]/5 to-background">
-      <div className="bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/80 text-white py-16">
-        <div className="container">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
-              <Megaphone className="h-7 w-7" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+      {/* Premium Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82] via-[#0a4a82]/95 to-[#083a6a]" />
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&h=600&fit=crop')] bg-cover bg-center opacity-15" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a4a82] via-transparent to-transparent" />
+        
+        <div className="absolute top-20 left-10 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#d4a373]/10 rounded-full blur-3xl" />
+        
+        <div className="relative container py-20 md:py-28">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-white/20">
+              <Megaphone className="h-4 w-4 text-[#d4a373]" />
+              <span className="text-white/90 text-sm font-medium">Reach Thousands of Local Customers</span>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold">Advertise Your Business</h1>
-              <p className="text-white/80 mt-1">Reach more local customers with premium ad placements</p>
-            </div>
+            
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+              Advertise Your Business
+              <span className="block bg-gradient-to-r from-[#d4a373] to-amber-300 bg-clip-text text-transparent">
+                Where It Matters
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
+              Premium ad placements that put your business in front of customers 
+              actively searching for services in Currituck County and the Outer Banks.
+            </p>
           </div>
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" 
+              className="fill-slate-50 dark:fill-slate-950"/>
+          </svg>
         </div>
       </div>
 
-      <div className="container py-8">
-        <div className="mb-8 bg-gradient-to-r from-[#8a9a5b]/10 to-[#0a4a82]/10 rounded-xl p-6 border border-[#8a9a5b]/20">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#8a9a5b]/20 flex items-center justify-center">
-                <Crown className="h-6 w-6 text-[#8a9a5b]" />
+      <div className="container py-16">
+        {/* Member Savings Banner */}
+        <div className="relative mb-16 bg-gradient-to-r from-[#8a9a5b] to-[#6b7a4a] rounded-3xl overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920')] bg-cover bg-center opacity-10" />
+          <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+          
+          <div className="relative p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Crown className="h-8 w-8 text-white" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Members Save 50% on Advertising!</h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="text-white">
+                <h3 className="text-2xl font-bold">Members Save 50% on All Advertising</h3>
+                <p className="text-white/80 mt-1">
                   Plus get 2 months free when you prepay 6 months
                 </p>
               </div>
             </div>
             <Link to="/membership">
-              <Button variant="outline" className="border-[#8a9a5b] text-[#8a9a5b]" data-testid="button-view-membership">
-                <Building2 className="mr-2 h-4 w-4" />
-                View Membership Plans
-                <ChevronRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="bg-white text-[#8a9a5b] hover:bg-white/90 h-14 px-8 rounded-xl font-semibold shadow-lg" data-testid="button-view-membership">
+                <Building2 className="mr-2 h-5 w-5" />
+                View Membership
+                <ChevronRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>
         </div>
 
+        {/* Pricing Comparison Section */}
+        <div className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
+              Compare Advertising Rates
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Members enjoy exclusive discounts on all advertising options
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Non-Member Rates */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200/50 dark:border-slate-700/50">
+              <div className="bg-gradient-to-br from-slate-600 to-slate-800 p-6 text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Users className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Non-Member Rates</h3>
+                    <p className="text-white/70 text-sm">1 month free with 6 months prepaid</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calendar className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Advertising</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(AD_PRICING.nonMember.monthly).map(([size, price]) => (
+                      <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                    <h4 className="font-semibold text-slate-900 dark:text-white">2-Week Event Ads</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(AD_PRICING.nonMember.event).map(([size, price]) => (
+                      <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Member Rates */}
+            <div className="relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl shadow-[#8a9a5b]/20 ring-2 ring-[#8a9a5b]">
+              <div className="absolute -top-0 right-6 z-10">
+                <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-2 rounded-b-xl text-sm font-bold shadow-lg flex items-center gap-1.5">
+                  <Zap className="h-4 w-4" />
+                  50% OFF
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-[#8a9a5b] to-[#6b7a4a] p-6 text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Crown className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Member Rates</h3>
+                    <p className="text-white/70 text-sm">2 months free with 6 months prepaid</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calendar className="h-5 w-5 text-[#8a9a5b]" />
+                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Advertising</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(AD_PRICING.member.monthly).map(([size, price]) => (
+                      <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
+                        <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="h-5 w-5 text-[#8a9a5b]" />
+                    <h4 className="font-semibold text-slate-900 dark:text-white">2-Week Event Ads</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(AD_PRICING.member.event).map(([size, price]) => (
+                      <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
+                        <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {!isAuthenticated ? (
-          <Card className="max-w-2xl mx-auto text-center p-8">
-            <Megaphone className="h-16 w-16 mx-auto text-[#0a4a82]/30 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Sign In to Advertise</h2>
-            <p className="text-muted-foreground mb-6">
-              Create a business account to purchase ad space and promote your business.
-            </p>
-            <Link to="/api/login">
-              <Button size="lg" className="bg-[#0a4a82]">Sign In</Button>
-            </Link>
-          </Card>
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-[#0a4a82]/10 flex items-center justify-center">
+                <Megaphone className="h-10 w-10 text-[#0a4a82]" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Sign In to Advertise</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-8">
+                Create a business account to purchase ad space and promote your business.
+              </p>
+              <Link to="/api/login">
+                <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold">
+                  Sign In to Get Started
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
         ) : user?.accountType !== "business" ? (
-          <Card className="max-w-2xl mx-auto text-center p-8">
-            <Megaphone className="h-16 w-16 mx-auto text-[#0a4a82]/30 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Business Account Required</h2>
-            <p className="text-muted-foreground mb-6">
-              Switch to a business account to advertise on Local List 365.
-            </p>
-            <Link to="/dashboard">
-              <Button size="lg" className="bg-[#0a4a82]">Go to Dashboard</Button>
-            </Link>
-          </Card>
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-[#0a4a82]/10 flex items-center justify-center">
+                <Building2 className="h-10 w-10 text-[#0a4a82]" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Business Account Required</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-8">
+                Switch to a business account to advertise on Local List 365.
+              </p>
+              <Link to="/dashboard">
+                <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold">
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Available Ad Placements</h2>
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Ad Placement Options</h2>
+                  <p className="text-slate-600 dark:text-slate-400 mt-1">Choose where your ad appears</p>
+                </div>
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#0a4a82] hover:bg-[#093d6b]" data-testid="button-create-ad">
-                      <Megaphone className="mr-2 h-4 w-4" />
+                    <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-12 px-6 rounded-xl font-semibold" data-testid="button-create-ad">
+                      <Megaphone className="mr-2 h-5 w-5" />
                       Request Ad Space
                     </Button>
                   </DialogTrigger>
@@ -338,14 +515,14 @@ export default function Advertising() {
                       )}
 
                       {selectedPricing && (
-                        <div className="bg-muted p-4 rounded-lg">
+                        <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
                           <div className="flex justify-between items-center">
-                            <span className="font-medium">Price:</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">Price:</span>
                             <span className="text-2xl font-bold text-[#0a4a82]">
                               ${(selectedPricing.pricePerWeek / 100).toFixed(0)}/week
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-2">
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
                             After submitting, we'll contact you to arrange payment and activate your ad.
                           </p>
                         </div>
@@ -353,7 +530,7 @@ export default function Advertising() {
 
                       <Button 
                         type="submit" 
-                        className="w-full bg-[#0a4a82] hover:bg-[#093d6b]"
+                        className="w-full h-12 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] font-semibold"
                         disabled={createAdRequest.isPending}
                         data-testid="button-submit-ad"
                       >
@@ -370,39 +547,50 @@ export default function Advertising() {
               </div>
 
               {pricingLoading ? (
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-2 gap-6">
                   {[1, 2, 3, 4].map((i) => (
-                    <Card key={i}>
-                      <CardContent className="p-6">
-                        <Skeleton className="h-10 w-10 rounded-full mb-4" />
-                        <Skeleton className="h-6 w-3/4 mb-2" />
-                        <Skeleton className="h-4 w-full mb-4" />
-                        <Skeleton className="h-8 w-24" />
-                      </CardContent>
-                    </Card>
+                    <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+                      <Skeleton className="h-12 w-12 rounded-xl mb-4" />
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-4" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
                   ))}
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {pricing?.map((p) => {
+                <div className="grid md:grid-cols-2 gap-6">
+                  {pricing?.map((p, index) => {
                     const Icon = placementIcons[p.placementType] || Megaphone;
+                    const gradients = [
+                      "from-[#0a4a82] to-[#083a6a]",
+                      "from-[#8a9a5b] to-[#6b7a4a]",
+                      "from-[#d4a373] to-[#c49363]",
+                      "from-purple-600 to-purple-800"
+                    ];
                     return (
-                      <Card key={p.id} className="hover:shadow-lg transition-shadow" data-testid={`card-pricing-${p.placementType}`}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="w-12 h-12 rounded-full bg-[#0a4a82]/10 flex items-center justify-center">
-                              <Icon className="h-6 w-6 text-[#0a4a82]" />
+                      <div 
+                        key={p.id} 
+                        className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all hover:-translate-y-1 border border-slate-100 dark:border-slate-700"
+                        data-testid={`card-pricing-${p.placementType}`}
+                      >
+                        <div className={`bg-gradient-to-br ${gradients[index % 4]} p-5`}>
+                          <div className="flex items-center justify-between">
+                            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                              <Icon className="h-6 w-6 text-white" />
                             </div>
-                            <Badge variant="secondary" className="text-lg font-bold">
-                              ${(p.pricePerWeek / 100).toFixed(0)}/wk
-                            </Badge>
+                            <div className="text-right">
+                              <span className="text-3xl font-bold text-white">
+                                ${(p.pricePerWeek / 100).toFixed(0)}
+                              </span>
+                              <span className="text-white/70 text-sm">/week</span>
+                            </div>
                           </div>
-                          <CardTitle className="mt-4">{p.displayName}</CardTitle>
-                          <CardDescription>{p.description}</CardDescription>
-                        </CardHeader>
-                        <CardFooter>
+                        </div>
+                        <div className="p-5">
+                          <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">{p.displayName}</h3>
+                          <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{p.description}</p>
                           <Button 
-                            className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]"
+                            className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
                             onClick={() => {
                               setFormData({ ...formData, placementType: p.placementType });
                               setIsCreateOpen(true);
@@ -410,59 +598,67 @@ export default function Advertising() {
                             data-testid={`button-select-${p.placementType}`}
                           >
                             Select This Placement
+                            <ArrowRight className="ml-2 h-4 w-4" />
                           </Button>
-                        </CardFooter>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               )}
             </div>
 
+            {/* My Ads Sidebar */}
             <div>
-              <Card className="sticky top-28">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-[#0a4a82]" />
-                    My Ads
-                  </CardTitle>
-                  <CardDescription>Track your ad campaigns</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 sticky top-28 overflow-hidden">
+                <div className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="text-white">
+                      <h3 className="font-bold">My Ads</h3>
+                      <p className="text-white/70 text-sm">Track your campaigns</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-5">
                   {myAdsLoading ? (
                     <div className="space-y-3">
-                      <Skeleton className="h-20 w-full" />
-                      <Skeleton className="h-20 w-full" />
+                      <Skeleton className="h-20 w-full rounded-xl" />
+                      <Skeleton className="h-20 w-full rounded-xl" />
                     </div>
                   ) : !myAds || myAds.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Megaphone className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">No ads yet</p>
-                      <p className="text-xs mt-1">Request your first ad placement above!</p>
+                    <div className="text-center py-10 text-slate-500 dark:text-slate-400">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                        <Megaphone className="h-8 w-8 opacity-50" />
+                      </div>
+                      <p className="font-medium">No ads yet</p>
+                      <p className="text-sm mt-1">Request your first ad placement above!</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {myAds.map((ad) => (
-                        <div key={ad.id} className="p-3 bg-muted/50 rounded-lg" data-testid={`card-my-ad-${ad.id}`}>
-                          <div className="flex justify-between items-start gap-2 mb-2">
-                            <h4 className="font-medium text-sm line-clamp-1">{ad.title}</h4>
+                        <div key={ad.id} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl" data-testid={`card-my-ad-${ad.id}`}>
+                          <div className="flex justify-between items-start gap-2 mb-3">
+                            <h4 className="font-medium text-sm line-clamp-1 text-slate-900 dark:text-white">{ad.title}</h4>
                             {getStatusBadge(ad.status || "pending")}
                           </div>
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-3">
                             {getPaymentBadge(ad.paymentStatus || "unpaid")}
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Eye className="h-3 w-3" />
+                          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="flex items-center gap-1.5">
+                              <Eye className="h-3.5 w-3.5" />
                               {ad.impressions || 0} views
                             </span>
-                            <span className="flex items-center gap-1">
-                              <MousePointer className="h-3 w-3" />
+                            <span className="flex items-center gap-1.5">
+                              <MousePointer className="h-3.5 w-3.5" />
                               {ad.clicks || 0} clicks
                             </span>
                           </div>
                           {ad.createdAt && (
-                            <p className="text-xs text-muted-foreground mt-2">
+                            <p className="text-xs text-slate-400 mt-2">
                               Requested {formatDistanceToNow(new Date(ad.createdAt), { addSuffix: true })}
                             </p>
                           )}
@@ -470,41 +666,55 @@ export default function Advertising() {
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        <div className="mt-12 bg-gradient-to-br from-[#8a9a5b]/10 to-[#0a4a82]/5 rounded-2xl p-8 border border-[#8a9a5b]/20">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#0a4a82]/10 flex items-center justify-center">
-                <Eye className="h-8 w-8 text-[#0a4a82]" />
+        {/* Benefits Section */}
+        <div className="mt-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
+              Why Advertise With Us?
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Get your business in front of customers who are actively searching for local services
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              { 
+                icon: Eye, 
+                title: "Maximum Visibility", 
+                desc: "Reach thousands of local customers actively looking for services",
+                color: "text-[#0a4a82]",
+                bg: "bg-[#0a4a82]/10"
+              },
+              { 
+                icon: TrendingUp, 
+                title: "Track Performance", 
+                desc: "See exactly how many people view and click your ads in real-time",
+                color: "text-[#d4a373]",
+                bg: "bg-[#d4a373]/10"
+              },
+              { 
+                icon: Sparkles, 
+                title: "Flexible Options", 
+                desc: "Choose from multiple placement types to fit your budget and goals",
+                color: "text-[#8a9a5b]",
+                bg: "bg-[#8a9a5b]/10"
+              }
+            ].map((item, idx) => (
+              <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 text-center hover:shadow-xl transition-shadow">
+                <div className={`w-16 h-16 mx-auto mb-5 rounded-2xl ${item.bg} flex items-center justify-center`}>
+                  <item.icon className={`h-8 w-8 ${item.color}`} />
+                </div>
+                <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-3">{item.title}</h3>
+                <p className="text-slate-600 dark:text-slate-400">{item.desc}</p>
               </div>
-              <h3 className="font-bold text-lg mb-2">Maximum Visibility</h3>
-              <p className="text-sm text-muted-foreground">
-                Get your business in front of thousands of local customers actively looking for services.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#d4a373]/10 flex items-center justify-center">
-                <TrendingUp className="h-8 w-8 text-[#d4a373]" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Track Performance</h3>
-              <p className="text-sm text-muted-foreground">
-                See exactly how many people view and click on your ads with real-time analytics.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#8a9a5b]/10 flex items-center justify-center">
-                <Sparkles className="h-8 w-8 text-[#8a9a5b]" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Flexible Options</h3>
-              <p className="text-sm text-muted-foreground">
-                Choose from multiple placement types to fit your budget and marketing goals.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </div>
