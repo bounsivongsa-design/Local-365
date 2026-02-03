@@ -1,8 +1,9 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, ExternalLink, Building2 } from "lucide-react";
 import { TrustBadges } from "@/components/TrustBadges";
+import { MembershipBadge } from "@/components/MembershipBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,7 +98,41 @@ export default function BusinessDetails() {
                    <p className="text-muted-foreground">Open today: 9:00 AM - 6:00 PM</p>
                  </div>
                </div>
+               {business.phone && (
+                 <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
+                   <Phone className="h-5 w-5 text-primary mt-0.5" />
+                   <div>
+                     <h4 className="font-semibold mb-1">Phone</h4>
+                     <a href={`tel:${business.phone}`} className="text-[#0a4a82] hover:underline" data-testid="link-phone">
+                       {business.phone}
+                     </a>
+                   </div>
+                 </div>
+               )}
+               {business.websiteUrl && (
+                 <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
+                   <Globe className="h-5 w-5 text-primary mt-0.5" />
+                   <div>
+                     <h4 className="font-semibold mb-1">Website</h4>
+                     <a 
+                       href={business.websiteUrl} 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       className="text-[#0a4a82] hover:underline flex items-center gap-1"
+                       data-testid="link-website"
+                     >
+                       Visit Website <ExternalLink className="h-3 w-3" />
+                     </a>
+                   </div>
+                 </div>
+               )}
             </div>
+            
+            {business.membershipTier && business.membershipTier !== "none" && (
+              <div className="mt-6 pt-6 border-t">
+                <MembershipBadge tier={business.membershipTier} variant="full" />
+              </div>
+            )}
           </div>
 
           {/* Business Credentials - LLC & Insurance Status */}

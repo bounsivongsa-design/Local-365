@@ -37,7 +37,9 @@ import {
   Sparkles,
   Crown,
   LayoutGrid,
-  Home
+  Home,
+  Building2,
+  ChevronRight
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
@@ -185,6 +187,29 @@ export default function Advertising() {
       </div>
 
       <div className="container py-8">
+        <div className="mb-8 bg-gradient-to-r from-[#8a9a5b]/10 to-[#0a4a82]/10 rounded-xl p-6 border border-[#8a9a5b]/20">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#8a9a5b]/20 flex items-center justify-center">
+                <Crown className="h-6 w-6 text-[#8a9a5b]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Members Save 50% on Advertising!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Plus get 2 months free when you prepay 6 months
+                </p>
+              </div>
+            </div>
+            <Link to="/membership">
+              <Button variant="outline" className="border-[#8a9a5b] text-[#8a9a5b]" data-testid="button-view-membership">
+                <Building2 className="mr-2 h-4 w-4" />
+                View Membership Plans
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+
         {!isAuthenticated ? (
           <Card className="max-w-2xl mx-auto text-center p-8">
             <Megaphone className="h-16 w-16 mx-auto text-[#0a4a82]/30 mb-4" />

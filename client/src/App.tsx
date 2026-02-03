@@ -18,6 +18,7 @@ import AccountSetup from "@/pages/AccountSetup";
 import QuoteRequests from "@/pages/QuoteRequests";
 import Advertising from "@/pages/Advertising";
 import AdminAds from "@/pages/AdminAds";
+import BusinessMembership from "@/pages/BusinessMembership";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
@@ -46,6 +47,7 @@ function AppRouter() {
           <Route path="/quotes" element={<QuoteRequests />} />
           <Route path="/advertising" element={<Advertising />} />
           <Route path="/admin/ads" element={<AdminAds />} />
+          <Route path="/membership" element={<BusinessMembership />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

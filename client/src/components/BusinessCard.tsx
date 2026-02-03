@@ -3,6 +3,7 @@ import { Star, MapPin, ArrowRight, Building2, Award } from "lucide-react";
 import { type BusinessWithRating } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { TrustBadges } from "@/components/TrustBadges";
+import { MembershipBadge } from "@/components/MembershipBadge";
 
 interface BusinessCardProps {
   business: BusinessWithRating;
@@ -74,14 +75,17 @@ export function BusinessCard({ business }: BusinessCardProps) {
             {business.description}
           </p>
           
-          {/* Trust Badges & Bottom Accent */}
+          {/* Trust Badges, Membership & Bottom Accent */}
           <div className="mt-4 pt-4 border-t border-[#0a4a82]/10">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <TrustBadges 
-                hasLLC={business.hasLLC ?? false} 
-                hasInsurance={business.hasInsurance ?? false} 
-                variant="compact"
-              />
+              <div className="flex items-center gap-2 flex-wrap">
+                <TrustBadges 
+                  hasLLC={business.hasLLC ?? false} 
+                  hasInsurance={business.hasInsurance ?? false} 
+                  variant="compact"
+                />
+                <MembershipBadge tier={business.membershipTier} variant="compact" />
+              </div>
               <span className="text-xs text-[#0a4a82] font-medium group-hover:underline">View Details</span>
             </div>
           </div>

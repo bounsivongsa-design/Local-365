@@ -59,6 +59,18 @@ Key features include:
   - BusinessCard shows compact trust badge on each listing
   - BusinessDetails shows full Business Credentials section with warnings for unverified businesses
   - Helps customers identify legitimate businesses vs "shade tree" operators
+- **Business Membership Tiers**: Paid membership levels for business visibility
+  - 3 tiers: Basic ($50/mo), Standard ($100/mo), Premium ($200/mo)
+  - Basic: Business listing with phone and reviews
+  - Standard: + Logo and website link
+  - Premium: + Top of list placement based on reviews
+  - Payment options: Monthly (1st month free for new), Semi-Annual (20% off), Annual (45% off)
+  - Database fields: membershipTier, membershipPaymentFrequency, membershipStartDate, membershipEndDate, membershipTrialUsed, phone, websiteUrl, logoUrl
+  - MembershipBadge component displays tier on business cards and details
+  - BusinessDetails shows phone/website when available
+  - Advertising page shows member discount (50% off) promotion
+  - Member advertising rates: Small $250, Medium $500, Large $1000 (vs non-member $500/$1000/$2000)
+  - 2-week event ads: Member $150/$300/$600 (vs non-member $300/$600/$1200)
 
 ## User Preferences
 

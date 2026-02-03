@@ -33,6 +33,16 @@ export const businesses = pgTable("businesses", {
   goldPerk: text("gold_perk"), // Perk offered to Gold+ members  
   platinumPerk: text("platinum_perk"), // Perk offered to Platinum+ (e.g., "Local rates", "Free upgrade")
   ambassadorPerk: text("ambassador_perk"), // Exclusive Ambassador perk
+  
+  // Business Membership Tiers
+  membershipTier: text("membership_tier").default("none"), // 'none', 'basic', 'standard', 'premium'
+  membershipPaymentFrequency: text("membership_payment_frequency"), // 'monthly', 'semi_annual', 'annual'
+  membershipStartDate: timestamp("membership_start_date"),
+  membershipEndDate: timestamp("membership_end_date"),
+  membershipTrialUsed: boolean("membership_trial_used").default(false), // Track if 1st month free was used
+  phone: text("phone"), // Phone number for business listing
+  websiteUrl: text("website_url"), // Hyperlink to business website
+  logoUrl: text("logo_url"), // Business logo (standard+ tiers)
 });
 
 export const locations = pgTable("locations", {

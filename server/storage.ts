@@ -59,6 +59,14 @@ export class DatabaseStorage implements IStorage {
       goldPerk: businesses.goldPerk,
       platinumPerk: businesses.platinumPerk,
       ambassadorPerk: businesses.ambassadorPerk,
+      membershipTier: businesses.membershipTier,
+      membershipPaymentFrequency: businesses.membershipPaymentFrequency,
+      membershipStartDate: businesses.membershipStartDate,
+      membershipEndDate: businesses.membershipEndDate,
+      membershipTrialUsed: businesses.membershipTrialUsed,
+      phone: businesses.phone,
+      websiteUrl: businesses.websiteUrl,
+      logoUrl: businesses.logoUrl,
       averageRating: sql<number>`COALESCE(AVG(${reviews.rating}), 0)`,
       reviewCount: sql<number>`COUNT(${reviews.id})`
     })
