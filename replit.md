@@ -2,14 +2,14 @@
 
 ## Overview
 
-Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. The application connects visitors and residents with local businesses, service providers, events, and community features including an elite status loyalty program, quote request system, and AI-powered chatbot assistant named "Ziggy."
+Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. The application connects visitors and residents with local businesses, service providers, events, and community features including a customer elite status loyalty program, quote request system, and AI-powered chatbot assistant named "Ziggy."
 
 Key features include:
 - Business directory with 26 categories, ratings, and reviews
 - Local events calendar
 - Quote/bid system connecting customers with service providers
 - User validation through receipt uploads
-- Elite Status loyalty program (Member → Silver → Gold → Platinum → Ambassador)
+- Elite Status loyalty program for customers (Member → Silver → Gold → Platinum → Ambassador)
 - AI chatbot "Ziggy" for local recommendations
 - Community feed with posts and engagement
 - Account types: Customer and Business with distinct features

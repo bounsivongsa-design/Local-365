@@ -36,6 +36,16 @@ export function DevModePanel() {
                   </Badge>
                   <span className="font-medium">{user?.firstName} {user?.lastName}</span>
                 </div>
+                {user?.accountType === "customer" && (
+                  <div className="mt-2 text-xs flex flex-wrap gap-1">
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
+                      Tier: {user?.loyaltyTier}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+                      Pts: {user?.loyaltyPoints}
+                    </Badge>
+                  </div>
+                )}
               </div>
               <Button 
                 variant="outline" 

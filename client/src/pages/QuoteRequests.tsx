@@ -528,10 +528,6 @@ export default function QuoteRequests() {
                                     <Star className="h-3 w-3 mr-1 fill-current" />
                                     {req.customer.customerRating || "5.0"} {ratingBadge.label}
                                   </Badge>
-                                  <Badge className={loyaltyBadge.color}>
-                                    <loyaltyBadge.icon className="h-3 w-3 mr-1" />
-                                    {loyaltyBadge.label}
-                                  </Badge>
                                 </div>
                                 <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                                   <span>{req.customer.projectsCompleted || 0} projects completed</span>
