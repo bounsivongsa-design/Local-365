@@ -23,6 +23,10 @@ export const businesses = pgTable("businesses", {
   imageUrl: text("image_url").notNull(),
   verified: boolean("verified").default(false),
   
+  // Business credentials - helps customers identify legitimate businesses
+  hasLLC: boolean("has_llc").default(false), // Business is registered as LLC/Corp
+  hasInsurance: boolean("has_insurance").default(false), // Business has liability insurance
+  
   // Local 365 Partner Program - perks businesses offer to elite members
   isLocal365Partner: boolean("is_local365_partner").default(false),
   silverPerk: text("silver_perk"), // Perk offered to Silver+ members

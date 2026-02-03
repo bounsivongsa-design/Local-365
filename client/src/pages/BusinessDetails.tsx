@@ -1,7 +1,8 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield } from "lucide-react";
+import { TrustBadges } from "@/components/TrustBadges";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,6 +98,19 @@ export default function BusinessDetails() {
                  </div>
                </div>
             </div>
+          </div>
+
+          {/* Business Credentials - LLC & Insurance Status */}
+          <div className="bg-white dark:bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <Shield className="h-6 w-6 text-[#0a4a82]" />
+              <h2 className="font-display text-2xl font-bold">Business Credentials</h2>
+            </div>
+            <TrustBadges 
+              hasLLC={business.hasLLC ?? false} 
+              hasInsurance={business.hasInsurance ?? false}
+              variant="full"
+            />
           </div>
 
           {/* Local 365 Partner Perks */}

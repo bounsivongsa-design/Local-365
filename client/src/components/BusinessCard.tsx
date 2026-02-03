@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Star, MapPin, ArrowRight, Building2, Award } from "lucide-react";
 import { type BusinessWithRating } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { TrustBadges } from "@/components/TrustBadges";
 
 interface BusinessCardProps {
   business: BusinessWithRating;
@@ -73,10 +74,16 @@ export function BusinessCard({ business }: BusinessCardProps) {
             {business.description}
           </p>
           
-          {/* Bottom Accent */}
-          <div className="mt-4 pt-4 border-t border-[#0a4a82]/10 flex items-center justify-between">
-            <span className="text-xs font-medium text-[#8a9a5b]">Currituck County Local</span>
-            <span className="text-xs text-[#0a4a82] font-medium group-hover:underline">View Details</span>
+          {/* Trust Badges & Bottom Accent */}
+          <div className="mt-4 pt-4 border-t border-[#0a4a82]/10">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <TrustBadges 
+                hasLLC={business.hasLLC ?? false} 
+                hasInsurance={business.hasInsurance ?? false} 
+                variant="compact"
+              />
+              <span className="text-xs text-[#0a4a82] font-medium group-hover:underline">View Details</span>
+            </div>
           </div>
         </div>
       </div>
