@@ -24,7 +24,7 @@ Key features include:
   - API endpoints: /api/locations, /api/locations/search, /api/businesses/by-location, /api/events/by-location
   - Database fields: city, state, zipCode added to businesses and events tables
   - Locations table stores supported regions with zipCodes array
-- **Loyalty Program Redesign**: Marriott Bonvoy-inspired dual elite status system
+- **Loyalty Program Redesign**: Local 365 dual elite status system
   - **Dual Status System**: Annual status (resets yearly) + Lifetime status (accumulates forever)
   - Effective tier is the HIGHER of annual or lifetime status
   - 5 tiers: Member (free), Silver Elite, Gold Elite, Platinum Elite, Ambassador
@@ -81,7 +81,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - Validation system requires proof-of-purchase receipt uploads
 - Server-side account type validation on quote endpoints
 
-### Loyalty Program Structure (Dual Status - Marriott Bonvoy Inspired)
+### Loyalty Program Structure (Dual Status - Local 365)
 
 **Annual Status** (resets Jan 1):
 | Tier | Annual Visits | Annual Points | Points Bonus | Discount |

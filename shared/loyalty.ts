@@ -24,32 +24,32 @@ export const LIFETIME_TIER_REQUIREMENTS = {
   ambassador: { visits: 1000, points: 2000000, spent: 100000 },
 };
 
-// Tier benefits
+// Tier benefits - realistic perks for LOCAL small businesses
 export const TIER_BENEFITS = {
   member: {
     pointsMultiplier: 1.0,
     discount: 0,
-    perks: ["10 points per $1 spent", "Access to member-only deals"],
+    perks: ["Earn 10 pts per $1", "Local business deals", "Community updates"],
   },
   silver: {
     pointsMultiplier: 1.1,
     discount: 0,
-    perks: ["+10% bonus points", "Priority customer service", "Early access to events"],
+    perks: ["Priority scheduling", "Birthday deal from locals", "Early quote responses"],
   },
   gold: {
     pointsMultiplier: 1.25,
     discount: 0,
-    perks: ["+25% bonus points", "Exclusive Gold deals", "Free event upgrades when available"],
+    perks: ["First dibs on services", "Featured reviewer badge", "Event early access"],
   },
   platinum: {
     pointsMultiplier: 1.5,
     discount: 0.05,
-    perks: ["+50% bonus points", "5% discount at partners", "Priority reservations", "Annual local gift"],
+    perks: ["5% off at partners", "Priority support", "Seasonal local gifts"],
   },
   ambassador: {
     pointsMultiplier: 1.75,
     discount: 0.10,
-    perks: ["+75% bonus points", "10% discount at partners", "Personal concierge", "VIP experiences", "Ambassador lounge access"],
+    perks: ["10% off at partners", "Ambassador badge", "Invite-only events"],
   },
 };
 

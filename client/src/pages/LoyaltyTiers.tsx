@@ -21,7 +21,7 @@ export default function LoyaltyTiers() {
             <h1 className="font-display text-4xl font-bold tracking-tight">Elite Status Program</h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Earn bonus points, unlock exclusive perks, and elevate your status with every visit. Inspired by Marriott Bonvoy.
+            Support local businesses, earn points, and unlock member perks with every visit to Currituck County favorites.
           </p>
         </div>
       </div>

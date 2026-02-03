@@ -75,7 +75,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 0,
     lifetimePoints: 0,
     pointsBonus: '10 pts/$1',
-    perks: ['Member-only rates', 'Mobile check-in', 'Local event updates']
+    perks: ['Earn 10 pts per $1', 'Local business deals', 'Community updates']
   },
   { 
     level: 'Silver Elite', 
@@ -84,7 +84,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 100,
     lifetimePoints: 250000,
     pointsBonus: '+10% bonus',
-    perks: ['Priority reservations', 'Birthday bonus points', 'Extended cancellations']
+    perks: ['Priority scheduling', 'Birthday deal from locals', 'Early quote responses']
   },
   { 
     level: 'Gold Elite', 
@@ -93,7 +93,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 250,
     lifetimePoints: 500000,
     pointsBonus: '+25% bonus',
-    perks: ['Early event access', 'Welcome gift', 'Complimentary upgrades']
+    perks: ['First dibs on services', 'Featured reviewer badge', 'Event early access']
   },
   { 
     level: 'Platinum Elite', 
@@ -102,7 +102,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 500,
     lifetimePoints: 1000000,
     pointsBonus: '+50% bonus',
-    perks: ['Exclusive experiences', 'VIP event seating', 'Dedicated support'],
+    perks: ['5% off at partners', 'Priority support', 'Seasonal local gifts'],
     discount: '5% off'
   },
   { 
@@ -112,7 +112,7 @@ const tierBadges: TierInfo[] = [
     lifetimeVisits: 1000,
     lifetimePoints: 2000000,
     pointsBonus: '+75% bonus',
-    perks: ['Personal concierge', 'Annual choice benefit', 'Partner status'],
+    perks: ['10% off at partners', 'Ambassador badge', 'Invite-only events'],
     discount: '10% off'
   }
 ];
@@ -139,14 +139,14 @@ function LoyaltyBadges() {
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-sand/30 text-primary text-sm font-semibold mb-4 shadow-sm">
           <Sparkles className="h-4 w-4" />
-          Marriott Bonvoy-Inspired Rewards
+          Local 365 Rewards
         </div>
         <h2 className="text-3xl md:text-4xl font-bold mb-3">
           Dual Elite Status System
         </h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Like Marriott Bonvoy, earn both <strong>Annual Status</strong> (resets yearly) and <strong>Lifetime Status</strong> (forever). 
-          Your effective tier is the higher of the two!
+          Earn both <strong>Annual Status</strong> (resets yearly) and <strong>Lifetime Status</strong> (accumulates forever). 
+          Your effective tier is always the higher of the two!
         </p>
       </div>
 
