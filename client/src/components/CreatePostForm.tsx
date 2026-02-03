@@ -78,7 +78,7 @@ export function CreatePostForm() {
                 Verification Required
               </h3>
               <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                To post in the community, please verify your account by uploading a receipt or proof of purchase from a local Currituck business.
+                To post in the community, please verify your account by uploading a receipt or proof of purchase from a local Currituck business. Note: To leave a review for a specific business, you'll need to upload a receipt from that business.
               </p>
               <Link to="/dashboard">
                 <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" data-testid="button-verify-account">

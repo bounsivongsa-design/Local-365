@@ -201,7 +201,7 @@ export default function Dashboard() {
                 </div>
                 <h3 className="text-xl font-bold text-amber-600 dark:text-amber-400 mb-2">Pending Verification</h3>
                 <p className="text-muted-foreground text-sm mb-4">
-                  Upload a receipt or proof of purchase to verify your account and unlock posting.
+                  Upload a receipt to verify your account and unlock community posting. Remember: each business review requires a receipt from that specific business.
                 </p>
                 {pendingReceipts.length > 0 && (
                   <p className="text-sm text-muted-foreground">
@@ -221,7 +221,7 @@ export default function Dashboard() {
               Upload Proof of Purchase
             </CardTitle>
             <CardDescription>
-              Submit receipts or proof of purchase from local Currituck businesses to verify your account.
+              Submit receipts from local Currituck businesses to verify your account. To leave a review for a specific business, you must upload a receipt from that business.
             </CardDescription>
           </CardHeader>
           <CardContent>
