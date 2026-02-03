@@ -32,8 +32,8 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#0a4a82]/10 bg-gradient-to-r from-[#0a4a82] via-[#0a4a82]/95 to-[#0a4a82] shadow-lg shadow-[#0a4a82]/10">
-      <div className="container flex h-36 items-center justify-between">
-        <div className="flex items-center gap-8 -ml-4">
+      <div className="flex h-36 items-center justify-between px-4">
+        <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
             <video 
               src="/assets/logo-video.mp4" 
