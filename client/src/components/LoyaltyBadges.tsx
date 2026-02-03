@@ -9,7 +9,8 @@ interface TierInfo {
   annualPoints: number;
   lifetimeVisits: number;
   lifetimePoints: number;
-  pointsBonus: string;
+  pointsPerDollar: number;
+  bonusPercent: number;
   perks: string[];
   discount?: string;
 }
@@ -29,8 +30,9 @@ const tierBadges: TierInfo[] = [
     annualPoints: 0,
     lifetimeVisits: 0,
     lifetimePoints: 0,
-    pointsBonus: '10 pts/$1',
-    perks: ['Earn 10 pts per $1', 'Local business deals', 'Community updates']
+    pointsPerDollar: 10,
+    bonusPercent: 0,
+    perks: ['Local business deals', 'Community updates', 'Points never expire']
   },
   { 
     level: 'Silver Elite', 
@@ -38,7 +40,8 @@ const tierBadges: TierInfo[] = [
     annualPoints: 25000,
     lifetimeVisits: 100,
     lifetimePoints: 250000,
-    pointsBonus: '+10% bonus',
+    pointsPerDollar: 11,
+    bonusPercent: 10,
     perks: ['Priority scheduling', 'Birthday deal from locals', 'Early quote responses']
   },
   { 
@@ -47,7 +50,8 @@ const tierBadges: TierInfo[] = [
     annualPoints: 50000,
     lifetimeVisits: 250,
     lifetimePoints: 500000,
-    pointsBonus: '+25% bonus',
+    pointsPerDollar: 12.5,
+    bonusPercent: 25,
     perks: ['First dibs on services', 'Featured reviewer badge', 'Event early access']
   },
   { 
@@ -56,8 +60,9 @@ const tierBadges: TierInfo[] = [
     annualPoints: 100000,
     lifetimeVisits: 500,
     lifetimePoints: 1000000,
-    pointsBonus: '+50% bonus',
-    perks: ['5% off at partners', 'Free upgrades when available', 'Priority support'],
+    pointsPerDollar: 15,
+    bonusPercent: 50,
+    perks: ['Free upgrades when available', 'Priority support', 'Exclusive partner perks'],
     discount: '5% off'
   },
   { 
@@ -66,8 +71,9 @@ const tierBadges: TierInfo[] = [
     annualPoints: 200000,
     lifetimeVisits: 1000,
     lifetimePoints: 2000000,
-    pointsBonus: '+75% bonus',
-    perks: ['10% off at partners', 'Free upgrades when available', 'Invite-only events'],
+    pointsPerDollar: 17.5,
+    bonusPercent: 75,
+    perks: ['Free upgrades when available', 'Invite-only events', 'Concierge support'],
     discount: '10% off'
   }
 ];
@@ -369,12 +375,19 @@ function TierCards({ isLifetime }: { isLifetime: boolean }) {
                   <p className="text-xs text-white/40 mb-4">or {points.toLocaleString()} pts</p>
                 )}
                 
-                {/* Points Bonus */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl py-3 px-4 text-center mb-5 border border-white/10">
-                  <div className="flex items-center justify-center gap-2">
-                    <Zap className={`h-4 w-4 ${styles.textAccent}`} />
-                    <span className={`font-bold ${styles.textAccent}`}>{badge.pointsBonus}</span>
+                {/* Points Earning - Clear breakdown */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl py-4 px-4 text-center mb-5 border border-white/10">
+                  <div className="text-2xl font-black text-white mb-1">
+                    {badge.pointsPerDollar} <span className="text-base font-medium text-white/60">pts/$1</span>
                   </div>
+                  {badge.bonusPercent > 0 ? (
+                    <div className="flex items-center justify-center gap-1.5 text-xs">
+                      <span className="text-white/40">Base 10 pts</span>
+                      <span className={`font-bold ${styles.textAccent}`}>+{badge.bonusPercent}% bonus</span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/40">Base earning rate</div>
+                  )}
                 </div>
                 
                 {/* Perks list */}
