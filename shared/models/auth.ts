@@ -15,12 +15,12 @@ export const sessions = pgTable(
 
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
-// Loyalty tiers (Marriott Bonvoy inspired):
+// Local 365 Elite Status tiers:
 // - member: Free to join, base level
-// - silver: 10 nights/year OR 25,000 points/year (annual) | 100 nights lifetime (lifetime)
-// - gold: 25 nights/year OR 50,000 points/year (annual) | 250 nights lifetime (lifetime)
-// - platinum: 50 nights/year OR 100,000 points/year (annual) | 500 nights lifetime (lifetime)
-// - ambassador: 100 nights/year + $20k spend (annual) | 1000 nights + $100k lifetime (lifetime)
+// - silver: 10 visits/year OR 25,000 points/year (annual) | 100 visits lifetime (lifetime)
+// - gold: 25 visits/year OR 50,000 points/year (annual) | 250 visits lifetime (lifetime)
+// - platinum: 50 visits/year OR 100,000 points/year (annual) | 500 visits lifetime (lifetime)
+// - ambassador: 100 visits/year + $20k spend (annual) | 1000 visits + $100k lifetime (lifetime)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),

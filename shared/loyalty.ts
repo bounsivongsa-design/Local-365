@@ -1,4 +1,4 @@
-// Loyalty Program - Marriott Bonvoy Inspired Dual Status System
+// Local 365 Loyalty Program - Dual Status System
 // Annual status resets each year, Lifetime status accumulates forever
 
 export type LoyaltyTier = "member" | "silver" | "gold" | "platinum" | "ambassador";

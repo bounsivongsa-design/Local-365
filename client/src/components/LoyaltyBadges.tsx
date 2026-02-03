@@ -287,7 +287,7 @@ function LoyaltyBadges() {
       
       {/* Explanation section */}
       <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-6 text-center">
-        <h3 className="font-semibold mb-2">How It Works (Like Marriott Bonvoy)</h3>
+        <h3 className="font-semibold mb-2">How It Works</h3>
         <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
           Each year, you start fresh on annual status. Earn visits and points throughout the year to climb the tiers.
           At year's end, if you don't re-qualify, you fall back to your <strong>Lifetime Status</strong> - which never decreases.
