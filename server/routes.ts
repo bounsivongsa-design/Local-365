@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes } from "@shared/models/auth";
-import { locations, businesses, events } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray } from "drizzle-orm";
 
 const openai = new OpenAI({
@@ -920,10 +920,254 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     }
   });
 
+  // ============ ADVERTISING ROUTES ============
+
+  // Get ad pricing options (public)
+  app.get("/api/ads/pricing", async (req, res) => {
+    try {
+      const pricing = await pgDb.select().from(adPricing).where(eq(adPricing.isActive, true));
+      res.json(pricing);
+    } catch (err) {
+      console.error("Error fetching ad pricing:", err);
+      res.status(500).json({ message: "Failed to fetch ad pricing" });
+    }
+  });
+
+  // Get active ads for display (public, by placement type)
+  app.get("/api/ads/active", async (req, res) => {
+    try {
+      const { type, category } = req.query;
+      const now = new Date();
+      
+      let query = pgDb.select({
+        id: adPlacements.id,
+        businessId: adPlacements.businessId,
+        placementType: adPlacements.placementType,
+        title: adPlacements.title,
+        description: adPlacements.description,
+        imageUrl: adPlacements.imageUrl,
+        linkUrl: adPlacements.linkUrl,
+        category: adPlacements.category,
+        businessName: businesses.name,
+        businessImageUrl: businesses.imageUrl,
+      }).from(adPlacements)
+        .leftJoin(businesses, eq(adPlacements.businessId, businesses.id))
+        .where(and(
+          eq(adPlacements.status, "active"),
+          eq(adPlacements.paymentStatus, "paid")
+        ));
+      
+      const results = await query;
+      
+      // Filter by type and category if provided
+      let filtered = results;
+      if (type && typeof type === "string") {
+        filtered = filtered.filter(ad => ad.placementType === type);
+      }
+      if (category && typeof category === "string") {
+        filtered = filtered.filter(ad => !ad.category || ad.category === category);
+      }
+      
+      res.json(filtered);
+    } catch (err) {
+      console.error("Error fetching active ads:", err);
+      res.status(500).json({ message: "Failed to fetch ads" });
+    }
+  });
+
+  // Track ad impression (public)
+  app.post("/api/ads/:id/impression", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await pgDb.update(adPlacements)
+        .set({ impressions: adPlacements.impressions })
+        .where(eq(adPlacements.id, id));
+      
+      // Increment impressions using raw SQL for atomic update
+      await pgDb.execute(`UPDATE ad_placements SET impressions = impressions + 1 WHERE id = ${id}`);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error tracking impression:", err);
+      res.status(500).json({ message: "Failed to track impression" });
+    }
+  });
+
+  // Track ad click (public)
+  app.post("/api/ads/:id/click", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await pgDb.execute(`UPDATE ad_placements SET clicks = clicks + 1 WHERE id = ${id}`);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error tracking click:", err);
+      res.status(500).json({ message: "Failed to track click" });
+    }
+  });
+
+  // Get my ads (business account required)
+  app.get("/api/ads/my-ads", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (user.accountType !== "business" || !user.linkedBusinessId) {
+        return res.status(403).json({ message: "Business account required" });
+      }
+
+      const myAds = await pgDb.select().from(adPlacements)
+        .where(eq(adPlacements.businessId, user.linkedBusinessId))
+        .orderBy(desc(adPlacements.createdAt));
+      
+      res.json(myAds);
+    } catch (err) {
+      console.error("Error fetching my ads:", err);
+      res.status(500).json({ message: "Failed to fetch your ads" });
+    }
+  });
+
+  // Create ad request (business account required)
+  app.post("/api/ads/request", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (user.accountType !== "business" || !user.linkedBusinessId) {
+        return res.status(403).json({ message: "Business account required" });
+      }
+
+      const { placementType, title, description, imageUrl, linkUrl, category, startDate, endDate, pricePerWeek } = req.body;
+
+      if (!placementType || !title) {
+        return res.status(400).json({ message: "Placement type and title are required" });
+      }
+
+      const [newAd] = await pgDb.insert(adPlacements).values({
+        businessId: user.linkedBusinessId,
+        placementType,
+        title,
+        description,
+        imageUrl,
+        linkUrl,
+        category,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        pricePerWeek,
+        status: "pending",
+        paymentStatus: "unpaid",
+      }).returning();
+
+      res.json(newAd);
+    } catch (err) {
+      console.error("Error creating ad request:", err);
+      res.status(500).json({ message: "Failed to create ad request" });
+    }
+  });
+
+  // Get all ad requests (admin)
+  app.get("/api/admin/ads", isAuthenticated, async (req, res) => {
+    try {
+      const allAds = await pgDb.select({
+        id: adPlacements.id,
+        businessId: adPlacements.businessId,
+        placementType: adPlacements.placementType,
+        title: adPlacements.title,
+        description: adPlacements.description,
+        imageUrl: adPlacements.imageUrl,
+        linkUrl: adPlacements.linkUrl,
+        category: adPlacements.category,
+        status: adPlacements.status,
+        startDate: adPlacements.startDate,
+        endDate: adPlacements.endDate,
+        pricePerWeek: adPlacements.pricePerWeek,
+        totalPaid: adPlacements.totalPaid,
+        paymentStatus: adPlacements.paymentStatus,
+        paymentNotes: adPlacements.paymentNotes,
+        impressions: adPlacements.impressions,
+        clicks: adPlacements.clicks,
+        createdAt: adPlacements.createdAt,
+        businessName: businesses.name,
+      }).from(adPlacements)
+        .leftJoin(businesses, eq(adPlacements.businessId, businesses.id))
+        .orderBy(desc(adPlacements.createdAt));
+
+      res.json(allAds);
+    } catch (err) {
+      console.error("Error fetching all ads:", err);
+      res.status(500).json({ message: "Failed to fetch ads" });
+    }
+  });
+
+  // Update ad status (admin)
+  app.patch("/api/admin/ads/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status, paymentStatus, paymentNotes, totalPaid, startDate, endDate } = req.body;
+
+      const updateData: any = { updatedAt: new Date() };
+      if (status) updateData.status = status;
+      if (paymentStatus) updateData.paymentStatus = paymentStatus;
+      if (paymentNotes !== undefined) updateData.paymentNotes = paymentNotes;
+      if (totalPaid !== undefined) updateData.totalPaid = totalPaid;
+      if (startDate) updateData.startDate = new Date(startDate);
+      if (endDate) updateData.endDate = new Date(endDate);
+
+      const [updated] = await pgDb.update(adPlacements)
+        .set(updateData)
+        .where(eq(adPlacements.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating ad:", err);
+      res.status(500).json({ message: "Failed to update ad" });
+    }
+  });
+
+  // Seed ad pricing if not exists
+  await seedAdPricing();
+
   // Seed Data
   await seedDatabase();
 
   return httpServer;
+}
+
+async function seedAdPricing() {
+  try {
+    const existingPricing = await pgDb.select().from(adPricing);
+    if (existingPricing.length === 0) {
+      console.log("Seeding ad pricing...");
+      await pgDb.insert(adPricing).values([
+        {
+          placementType: "homepage_banner",
+          displayName: "Homepage Banner",
+          description: "Large banner ad displayed prominently on the homepage. Maximum visibility for your business.",
+          pricePerWeek: 9900, // $99/week
+          maxActive: 3,
+        },
+        {
+          placementType: "featured_listing",
+          displayName: "Featured Listing",
+          description: "Your business appears at the top of directory search results with a 'Featured' badge.",
+          pricePerWeek: 4900, // $49/week
+          maxActive: 10,
+        },
+        {
+          placementType: "category_spotlight",
+          displayName: "Category Spotlight",
+          description: "Featured placement within a specific category page. Perfect for targeting your niche.",
+          pricePerWeek: 2900, // $29/week
+          maxActive: 5,
+        },
+        {
+          placementType: "directory_boost",
+          displayName: "Directory Boost",
+          description: "Increased visibility in directory listings with priority placement.",
+          pricePerWeek: 1900, // $19/week
+          maxActive: 20,
+        },
+      ]);
+      console.log("Ad pricing seeded!");
+    }
+  } catch (err) {
+    console.error("Error seeding ad pricing:", err);
+  }
 }
 
 async function seedDatabase() {

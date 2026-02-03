@@ -105,6 +105,40 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
+// Advertising system - businesses can purchase ad placements
+export const adPlacements = pgTable("ad_placements", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").references(() => businesses.id).notNull(),
+  placementType: text("placement_type").notNull(), // 'homepage_banner', 'category_spotlight', 'directory_boost', 'featured_listing'
+  title: text("title").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  linkUrl: text("link_url"), // Optional custom link
+  category: text("category"), // For category-specific ads
+  status: text("status").default("pending"), // 'pending', 'active', 'expired', 'rejected'
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  pricePerWeek: integer("price_per_week"), // Price in cents
+  totalPaid: integer("total_paid").default(0), // Total paid in cents (for manual tracking)
+  paymentStatus: text("payment_status").default("unpaid"), // 'unpaid', 'paid', 'refunded'
+  paymentNotes: text("payment_notes"), // Admin notes about payment
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Ad pricing tiers (admin-configurable)
+export const adPricing = pgTable("ad_pricing", {
+  id: serial("id").primaryKey(),
+  placementType: text("placement_type").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  pricePerWeek: integer("price_per_week").notNull(), // Price in cents
+  maxActive: integer("max_active").default(1), // Max concurrent ads of this type
+  isActive: boolean("is_active").default(true),
+});
+
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
@@ -112,6 +146,18 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true });
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true }); 
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true });
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
+export const insertAdPlacementSchema = createInsertSchema(adPlacements).omit({ 
+  id: true, 
+  status: true, 
+  impressions: true, 
+  clicks: true, 
+  createdAt: true, 
+  updatedAt: true,
+  paymentStatus: true,
+  paymentNotes: true,
+  totalPaid: true
+});
+export const insertAdPricingSchema = createInsertSchema(adPricing).omit({ id: true });
 
 export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
@@ -119,7 +165,11 @@ export type Event = typeof events.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type Location = typeof locations.$inferSelect;
+export type AdPlacement = typeof adPlacements.$inferSelect;
+export type AdPricing = typeof adPricing.$inferSelect;
 export type InsertLocation = z.infer<typeof insertLocationSchema>;
+export type InsertAdPlacement = z.infer<typeof insertAdPlacementSchema>;
+export type InsertAdPricing = z.infer<typeof insertAdPricingSchema>;
 
 export type CreateBusinessRequest = z.infer<typeof insertBusinessSchema>;
 export type CreateEventRequest = z.infer<typeof insertEventSchema>;
