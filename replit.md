@@ -34,9 +34,20 @@ Key features include:
   - Discounts only at top tiers (5% at Platinum, 10% at Ambassador)
   - Status reversion: If you don't re-qualify annually, you fall back to lifetime status
   - Dev mode panel for testing customer/business account types
-- **Quote/Bid System**: Customers post project requests, businesses submit competitive quotes
+- **Quote/Bid System with Priority Queue**: Customers post project requests, businesses submit competitive quotes
   - Business accounts see customer ratings, projects completed, and total spent on each request
   - Helps businesses assess customer reliability before bidding
+  - **Priority Access System**: Premium/Standard/Basic tier businesses get first access to quote requests
+    - Top 5 businesses per round get priority access with customer contact info (phone/email)
+    - Sorted by: membership tier (Premium > Standard > Basic), then by averageRating, then reviewCount
+    - Emergency categories (HVAC, Electrical, Plumbing, Roofing) = 2-hour response window
+    - Standard categories = 24-hour response window
+    - When priority window expires, next batch of 5 businesses get access
+  - **Vendor Response Metrics**: Track vendor response times and reliability
+    - Database table: vendorMetrics tracks totalAssignments, responsesOnTime, responsesLate, noResponses
+    - Response rating (0-5) calculated based on on-time response percentage
+    - Low-rated customer exemption: vendors not penalized for slow responses to customers rated below 3.0
+    - API endpoints: /api/vendors/metrics, /api/my-business/metrics
 - **Local 365 Partner Program**: Businesses can offer exclusive perks to elite members
   - Database fields: isLocal365Partner, silverPerk, goldPerk, platinumPerk, ambassadorPerk
   - BusinessCard shows "Local 365 Partner" badge for participating businesses
