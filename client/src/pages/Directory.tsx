@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
+import { AdBanner } from "@/components/AdBanner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
@@ -186,6 +187,15 @@ export default function Directory() {
             </div>
           </aside>
 
+          {/* Category Spotlight Ad */}
+          {category !== "All" && (
+            <AdBanner 
+              placementType="category_spotlight" 
+              category={category}
+              className="hidden md:block mt-4" 
+            />
+          )}
+
           {/* Mobile Category Selector */}
           <div className="md:hidden mb-6">
             <div className="relative">
@@ -204,6 +214,12 @@ export default function Directory() {
           </div>
 
           <main className="flex-1 min-w-0">
+            {/* Featured Listings Ad */}
+            <AdBanner 
+              placementType="featured_listing" 
+              limit={2}
+              className="mb-6" 
+            />
             {/* Results Header */}
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">

@@ -7,6 +7,7 @@ import { BusinessCard } from "@/components/BusinessCard";
 import { EventCard } from "@/components/EventCard";
 import { IntakeForm } from "@/components/IntakeForm";
 import { ItineraryBuilder } from "@/components/ItineraryBuilder";
+import { AdBanner } from "@/components/AdBanner";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -183,8 +184,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Promotional Banner */}
+      {/* Sponsored Banner Ad */}
       <div className="container pt-12">
+        <AdBanner placementType="homepage_banner" className="mb-6" />
+        
         <Link to="/romantic-getaway">
           <div className="bg-primary text-white p-6 rounded-lg shadow-3d-lg hover:shadow-xl transition-shadow cursor-pointer" data-testid="promo-banner">
             <h3 className="text-2xl font-bold mb-2">Romantic Winter Getaway</h3>
