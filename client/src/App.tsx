@@ -18,6 +18,7 @@ import AccountSetup from "@/pages/AccountSetup";
 import QuoteRequests from "@/pages/QuoteRequests";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
+import { DevModePanel } from "@/components/DevModePanel";
 import backgroundImage from "@assets/8dfd34be-08ad-4d1d-87e2-46f52ec9bfc4_1770063157367.jpg";
 
 function AppRouter() {
@@ -86,6 +87,7 @@ function App() {
           <Toaster />
           <AppRouter />
           <Chatbot />
+          <DevModePanel />
         </LocationProvider>
       </TooltipProvider>
     </QueryClientProvider>

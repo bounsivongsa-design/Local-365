@@ -1,7 +1,62 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/models/auth";
 
+// Dev mode mock users for testing
+const DEV_MOCK_USERS: Record<string, User> = {
+  customer: {
+    id: "dev-customer-1",
+    email: "customer@test.com",
+    firstName: "Test",
+    lastName: "Customer",
+    profileImageUrl: null,
+    accountType: "customer",
+    isValidated: true,
+    linkedBusinessId: null,
+    loyaltyPoints: 250,
+    loyaltyTier: "silver",
+    customerRating: "4.8",
+    projectsCompleted: 5,
+    totalSpent: "1500.00",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  business: {
+    id: "dev-business-1",
+    email: "business@test.com",
+    firstName: "Local",
+    lastName: "Business",
+    profileImageUrl: null,
+    accountType: "business",
+    isValidated: true,
+    linkedBusinessId: 30,
+    loyaltyPoints: 0,
+    loyaltyTier: "member",
+    customerRating: null,
+    projectsCompleted: 0,
+    totalSpent: "0",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+};
+
+// Check localStorage for dev mode user
+function getDevModeUser(): User | null {
+  if (import.meta.env.DEV) {
+    const devUser = localStorage.getItem("dev_mode_user");
+    if (devUser && DEV_MOCK_USERS[devUser]) {
+      return DEV_MOCK_USERS[devUser];
+    }
+  }
+  return null;
+}
+
 async function fetchUser(): Promise<User | null> {
+  // Check for dev mode bypass first
+  const devUser = getDevModeUser();
+  if (devUser) {
+    return devUser;
+  }
+
   const response = await fetch("/api/auth/user", {
     credentials: "include",
   });
@@ -18,7 +73,26 @@ async function fetchUser(): Promise<User | null> {
 }
 
 async function logout(): Promise<void> {
+  // Clear dev mode user if set
+  if (import.meta.env.DEV) {
+    localStorage.removeItem("dev_mode_user");
+  }
   window.location.href = "/api/logout";
+}
+
+// Dev mode login helpers (only work in development)
+export function devModeLogin(userType: "customer" | "business") {
+  if (import.meta.env.DEV) {
+    localStorage.setItem("dev_mode_user", userType);
+    window.location.reload();
+  }
+}
+
+export function devModeLogout() {
+  if (import.meta.env.DEV) {
+    localStorage.removeItem("dev_mode_user");
+    window.location.reload();
+  }
 }
 
 export function useAuth() {
