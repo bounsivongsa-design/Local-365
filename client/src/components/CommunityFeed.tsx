@@ -1,13 +1,45 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp, MessageCircle, CheckCircle2, Award, Crown, Gem, Users } from "lucide-react";
 import BestOfGrid from "./BestOfGrid";
 import BestOfEditor from "./BestOfEditor";
 import { useAuth } from "@/hooks/use-auth";
+import { formatDistanceToNow } from "date-fns";
+
+interface PostWithAuthor {
+  id: number;
+  content: string;
+  imageUrl: string | null;
+  likes: number;
+  createdAt: string;
+  author: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    loyaltyTier: string | null;
+    isValidated: boolean | null;
+  } | null;
+}
+
+const tierConfig: Record<string, { label: string; color: string; icon: typeof Users; gradient: string }> = {
+  member: { label: 'Member', color: 'bg-slate-500', icon: Users, gradient: 'from-slate-500 to-slate-600' },
+  silver: { label: 'Silver', color: 'bg-gray-400', icon: Award, gradient: 'from-gray-300 to-gray-500' },
+  gold: { label: 'Gold', color: 'bg-amber-500', icon: Star, gradient: 'from-amber-400 to-amber-600' },
+  platinum: { label: 'Platinum', color: 'bg-cyan-500', icon: Crown, gradient: 'from-cyan-400 to-cyan-600' },
+  ambassador: { label: 'Ambassador', color: 'bg-purple-500', icon: Gem, gradient: 'from-purple-400 to-purple-600' },
+};
 
 function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'bestof' | 'events'>('feed');
   const { isAuthenticated } = useAuth();
+
+  const { data: posts, isLoading: postsLoading } = useQuery<PostWithAuthor[]>({
+    queryKey: ["/api/posts"],
+  });
 
   const upcomingEvents = [
     { title: "Community Farmers Market", date: "Feb 7, 2026", location: "Town Square, Manteo", description: "Fresh veggies, local crafts, and live music.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=300&fit=crop" },
@@ -15,11 +47,17 @@ function CommunityFeed() {
     { title: "Wright Brothers Day", date: "Dec 17, 2026", location: "Wright Brothers Memorial", description: "Celebrate the anniversary of powered flight.", image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop" },
   ];
 
-  const communityPosts = [
-    { author: "Sarah M.", content: "Just saw a pod of dolphins off Duck Pier! Amazing morning.", time: "2 hours ago", likes: 24 },
-    { author: "Mike T.", content: "Wild horse sighting in Corolla this morning - saw about 8 of them on the beach!", time: "5 hours ago", likes: 89 },
-    { author: "Local Tip", content: "The sunset at Jockey's Ridge tonight is going to be incredible - clear skies!", time: "6 hours ago", likes: 156 },
-  ];
+  const getTierBadge = (tier: string | null) => {
+    if (!tier || tier === 'member') return null;
+    const config = tierConfig[tier] || tierConfig.member;
+    const IconComponent = config.icon;
+    return (
+      <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0 text-xs font-semibold shadow-sm`}>
+        <IconComponent className="h-3 w-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
 
   return (
     <div className="py-8">
@@ -51,23 +89,105 @@ function CommunityFeed() {
       </div>
 
       {activeTab === 'feed' && (
-        <div className="space-y-4 animate-in fade-in duration-300">
+        <div className="space-y-6 animate-in fade-in duration-300">
           <h2 className="text-2xl font-bold text-foreground bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-sm">What's Happening in Currituck</h2>
-          {communityPosts.map((post, index) => (
-            <Card key={index} className="p-4 shadow-lg shadow-black/5">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-sm">{post.author}</p>
-                  <p className="text-foreground mt-1">{post.content}</p>
-                  <p className="text-xs text-muted-foreground mt-2">{post.time}</p>
-                </div>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Heart className="h-4 w-4" />
-                  <span className="text-sm">{post.likes}</span>
-                </div>
-              </div>
+          
+          {postsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="p-6 animate-pulse">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    <div className="flex-1 space-y-3">
+                      <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded" />
+                      <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded" />
+                      <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-700 rounded" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : posts && posts.length > 0 ? (
+            <div className="space-y-6">
+              {posts.map((post) => {
+                const authorName = post.author 
+                  ? `${post.author.firstName || ''} ${post.author.lastName || ''}`.trim() || 'Anonymous'
+                  : 'Anonymous';
+                const initials = post.author 
+                  ? `${post.author.firstName?.[0] || ''}${post.author.lastName?.[0] || ''}`.toUpperCase()
+                  : 'A';
+                
+                return (
+                  <Card key={post.id} className="overflow-hidden shadow-lg shadow-black/5 hover:shadow-xl transition-shadow duration-300">
+                    {/* Post Header */}
+                    <div className="p-5 pb-4">
+                      <div className="flex items-start gap-4">
+                        <div className="relative">
+                          <Avatar className="h-12 w-12 ring-2 ring-white dark:ring-slate-800 shadow-md">
+                            <AvatarImage src={post.author?.profileImageUrl || undefined} alt={authorName} />
+                            <AvatarFallback className="bg-gradient-to-br from-[#0a4a82] to-[#083a6a] text-white font-semibold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          {/* Verified checkmark */}
+                          {post.author?.isValidated && (
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#0a4a82] rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
+                              <CheckCircle2 className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-foreground">{authorName}</span>
+                            {post.author?.isValidated && (
+                              <span className="text-[#0a4a82] text-xs font-medium">Verified</span>
+                            )}
+                            {getTierBadge(post.author?.loyaltyTier || null)}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Post Content */}
+                      <p className="text-foreground mt-4 leading-relaxed">{post.content}</p>
+                    </div>
+                    
+                    {/* Post Image */}
+                    {post.imageUrl && (
+                      <div className="relative">
+                        <img 
+                          src={post.imageUrl} 
+                          alt="Post image" 
+                          className="w-full h-64 object-cover"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Post Actions */}
+                    <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-6">
+                      <button className="flex items-center gap-2 text-muted-foreground hover:text-rose-500 transition-colors group" data-testid={`button-like-${post.id}`}>
+                        <Heart className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-medium">{post.likes}</span>
+                      </button>
+                      <button className="flex items-center gap-2 text-muted-foreground hover:text-[#0a4a82] transition-colors group" data-testid={`button-comment-${post.id}`}>
+                        <MessageCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-medium">Comment</span>
+                      </button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="p-12 text-center">
+              <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="font-semibold text-lg mb-2">No posts yet</h3>
+              <p className="text-muted-foreground">Be the first to share something with the community!</p>
             </Card>
-          ))}
+          )}
           
           <h3 className="text-xl font-bold mt-8 mb-4 text-foreground bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-sm">Local Gems</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
