@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, MapPin, ArrowRight, Building2 } from "lucide-react";
+import { Star, MapPin, ArrowRight, Building2, Award } from "lucide-react";
 import { type BusinessWithRating } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,11 +32,19 @@ export function BusinessCard({ business }: BusinessCardProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
           {/* Category Badge */}
-          {business.category && (
-            <Badge className="absolute top-3 left-3 bg-white/90 dark:bg-card/90 backdrop-blur-sm text-[#0a4a82] border-0 shadow-lg">
-              {business.category}
-            </Badge>
-          )}
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+            {business.category && (
+              <Badge className="bg-white/90 dark:bg-card/90 backdrop-blur-sm text-[#0a4a82] border-0 shadow-lg">
+                {business.category}
+              </Badge>
+            )}
+            {business.isLocal365Partner && (
+              <Badge className="bg-[#8a9a5b] text-white border-0 shadow-lg">
+                <Award className="h-3 w-3 mr-1" />
+                Local 365 Partner
+              </Badge>
+            )}
+          </div>
           
           {/* Rating Badge */}
           <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-lg">

@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,6 +98,69 @@ export default function BusinessDetails() {
                </div>
             </div>
           </div>
+
+          {/* Local 365 Partner Perks */}
+          {business.isLocal365Partner && (
+            <div className="bg-gradient-to-br from-[#8a9a5b]/10 to-[#0a4a82]/5 rounded-2xl p-6 md:p-8 border border-[#8a9a5b]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-full bg-[#8a9a5b] flex items-center justify-center">
+                  <Award className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-display text-2xl font-bold">Local 365 Partner</h2>
+                  <p className="text-muted-foreground">Exclusive perks for Local 365 members</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {business.silverPerk && (
+                  <div className="flex items-start gap-3 p-4 bg-white/80 rounded-xl border border-gray-200">
+                    <Gift className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <Badge className="bg-gray-500 text-white mb-2">Silver Elite</Badge>
+                      <p className="text-sm text-muted-foreground">{business.silverPerk}</p>
+                    </div>
+                  </div>
+                )}
+                {business.goldPerk && (
+                  <div className="flex items-start gap-3 p-4 bg-white/80 rounded-xl border border-[#d4a373]/30">
+                    <Sparkles className="h-5 w-5 text-[#d4a373] mt-0.5 flex-shrink-0" />
+                    <div>
+                      <Badge className="bg-[#d4a373] text-white mb-2">Gold Elite</Badge>
+                      <p className="text-sm text-muted-foreground">{business.goldPerk}</p>
+                    </div>
+                  </div>
+                )}
+                {business.platinumPerk && (
+                  <div className="flex items-start gap-3 p-4 bg-white/80 rounded-xl border border-[#0a4a82]/30">
+                    <Crown className="h-5 w-5 text-[#0a4a82] mt-0.5 flex-shrink-0" />
+                    <div>
+                      <Badge className="bg-[#0a4a82] text-white mb-2">Platinum Elite</Badge>
+                      <p className="text-sm text-muted-foreground">{business.platinumPerk}</p>
+                    </div>
+                  </div>
+                )}
+                {business.ambassadorPerk && (
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-500/10 to-indigo-500/10 rounded-xl border border-purple-500/30">
+                    <Award className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <Badge className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white mb-2">Ambassador</Badge>
+                      <p className="text-sm text-muted-foreground">{business.ambassadorPerk}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-[#8a9a5b]/20">
+                <Link to="/elite-status">
+                  <Button variant="outline" className="border-[#8a9a5b] text-[#8a9a5b] hover:bg-[#8a9a5b] hover:text-white">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Learn About Local 365 Elite Status
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-6">
             <div className="flex items-center justify-between">
