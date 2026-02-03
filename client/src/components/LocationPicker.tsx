@@ -66,13 +66,13 @@ export function LocationPicker() {
       <DialogTrigger asChild>
         <Button 
           variant="ghost" 
-          className="gap-2 text-sm font-medium hover:bg-primary/5"
+          className="gap-2 text-sm font-medium text-white hover:bg-white/10"
           data-testid="button-location-picker"
         >
-          <MapPin className="h-4 w-4 text-primary" />
+          <MapPin className="h-4 w-4 text-[#d4a373]" />
           <span className="hidden sm:inline">{location.city}, {location.state}</span>
           <span className="sm:hidden">{location.city}</span>
-          <ChevronDown className="h-3 w-3 opacity-50" />
+          <ChevronDown className="h-3 w-3 opacity-70" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

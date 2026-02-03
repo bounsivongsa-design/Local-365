@@ -31,17 +31,17 @@ export function Navigation() {
   const isActive = (path: string) => routerLocation.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-24 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-[#0a4a82]/10 bg-gradient-to-r from-[#0a4a82] via-[#0a4a82]/95 to-[#0a4a82] shadow-lg shadow-[#0a4a82]/10">
+      <div className="container flex h-28 items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
             <video 
               src="/assets/grok-video-0378b597-5935-4cf5-9109-d8b3597d0012_1770068362370.mp4" 
               autoPlay
               loop
               muted
               playsInline
-              className="h-20 w-auto"
+              className="h-24 w-auto"
               data-testid="img-logo"
             />
           </Link>
@@ -52,8 +52,8 @@ export function Navigation() {
                 <span className={`
                   flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                   ${isActive(item.href) 
-                    ? "bg-primary/10 text-primary" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}
+                    ? "bg-white/20 text-white" 
+                    : "text-white/80 hover:text-white hover:bg-white/10"}
                 `}>
                   <item.icon className="h-4 w-4" />
                   {item.label}
@@ -69,10 +69,10 @@ export function Navigation() {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-offset-background transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                  <Avatar className="h-9 w-9 border border-border">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2">
+                  <Avatar className="h-10 w-10 border-2 border-white/30">
                     <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
-                    <AvatarFallback className="bg-primary/10 text-primary">
+                    <AvatarFallback className="bg-white/20 text-white">
                       {user?.firstName?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>
@@ -93,14 +93,14 @@ export function Navigation() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="hidden md:flex gap-2">
+            <div className="hidden md:flex gap-3">
               <a href="/api/login">
-                <Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-primary/5">
+                <Button variant="outline" className="rounded-full border-white/30 text-white hover:bg-white/10 hover:border-white/50">
                   Sign In
                 </Button>
               </a>
               <a href="/api/login">
-                <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
+                <Button className="rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] shadow-lg shadow-black/20">
                   Join Community
                 </Button>
               </a>
@@ -110,7 +110,7 @@ export function Navigation() {
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="md:hidden text-white hover:bg-white/10">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
