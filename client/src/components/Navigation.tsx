@@ -34,14 +34,14 @@ export function Navigation() {
     <header className="sticky top-0 z-50 w-full border-b border-[#0a4a82]/10 bg-gradient-to-r from-[#0a4a82] via-[#0a4a82]/95 to-[#0a4a82] shadow-lg shadow-[#0a4a82]/10">
       <div className="container flex h-36 items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
+          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity overflow-hidden h-24 w-32">
             <video 
               src="/assets/grok-video-0378b597-5935-4cf5-9109-d8b3597d0012_1770068362370.mp4" 
               autoPlay
               loop
               muted
               playsInline
-              className="h-32 w-auto"
+              className="h-40 w-auto object-cover scale-150"
               data-testid="img-logo"
             />
           </Link>
