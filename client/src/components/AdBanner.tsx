@@ -1,4 +1,5 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Megaphone } from "lucide-react";
@@ -12,6 +13,8 @@ interface AdBannerProps {
 }
 
 export function AdBanner({ placementType, category, className = "", limit = 1 }: AdBannerProps) {
+  const impressionsSent = useRef<Set<number>>(new Set());
+  
   const queryKey = category 
     ? ["/api/ads/active", placementType, category]
     : ["/api/ads/active", placementType];
@@ -30,14 +33,24 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
     },
   });
 
-  const recordImpression = useMutation({
-    mutationFn: async (adId: number) => {
-      await fetch(`/api/ads/${adId}/impression`, { method: "POST" });
-    },
-  });
+  // Track impressions when ads are loaded
+  useEffect(() => {
+    if (ads && ads.length > 0) {
+      ads.forEach(ad => {
+        if (!impressionsSent.current.has(ad.id)) {
+          impressionsSent.current.add(ad.id);
+          fetch(`/api/ads/${ad.id}/impression`, { method: "POST" }).catch(() => {
+            // Silently fail - impression tracking is non-critical
+          });
+        }
+      });
+    }
+  }, [ads]);
 
-  const handleClick = async (ad: AdPlacement) => {
-    await fetch(`/api/ads/${ad.id}/click`, { method: "POST" });
+  const handleClick = (ad: AdPlacement) => {
+    fetch(`/api/ads/${ad.id}/click`, { method: "POST" }).catch(() => {
+      // Silently fail - click tracking is non-critical
+    });
     if (ad.linkUrl) {
       window.open(ad.linkUrl, "_blank", "noopener,noreferrer");
     }

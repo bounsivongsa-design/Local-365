@@ -51,6 +51,7 @@ export const users = pgTable("users", {
   customerRating: decimal("customer_rating", { precision: 2, scale: 1 }).default("5.0"), // 1.0-5.0 rating from businesses
   projectsCompleted: integer("projects_completed").default(0), // Track completed projects
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"), // Total amount spent on projects
+  isAdmin: boolean("is_admin").default(false), // Admin access for managing ads, users, etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

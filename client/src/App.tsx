@@ -17,6 +17,7 @@ import Dashboard from "@/pages/Dashboard";
 import AccountSetup from "@/pages/AccountSetup";
 import QuoteRequests from "@/pages/QuoteRequests";
 import Advertising from "@/pages/Advertising";
+import AdminAds from "@/pages/AdminAds";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
@@ -44,6 +45,7 @@ function AppRouter() {
           <Route path="/account-setup" element={<AccountSetup />} />
           <Route path="/quotes" element={<QuoteRequests />} />
           <Route path="/advertising" element={<Advertising />} />
+          <Route path="/admin/ads" element={<AdminAds />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -44,6 +44,14 @@ Key features include:
   - Example perks: "Local rates for golf", "Free appetizer", "Priority scheduling"
 - **Animated Video Logo**: Header now displays animated video logo
 - **Account Type System**: Customer vs Business accounts with server-side validation
+- **Paid Advertising System**: Businesses can purchase ad placements
+  - 4 placement types: Homepage Banner ($99/wk), Featured Listing ($49/wk), Category Spotlight ($29/wk), Directory Boost ($19/wk)
+  - Business UI at /advertising for requesting ad placements
+  - Admin UI at /admin/ads for reviewing and approving ads (requires isAdmin flag)
+  - AdBanner component displays active ads on homepage and directory
+  - Tracks impressions and clicks for analytics
+  - Manual payment workflow (pending → paid → active)
+  - Server-side price validation (ignores client-provided prices)
 
 ## User Preferences
 

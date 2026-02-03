@@ -1031,10 +1031,19 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(403).json({ message: "Business account required" });
       }
 
-      const { placementType, title, description, imageUrl, linkUrl, category, startDate, endDate, pricePerWeek } = req.body;
+      const { placementType, title, description, imageUrl, linkUrl, category, startDate, endDate } = req.body;
 
       if (!placementType || !title) {
         return res.status(400).json({ message: "Placement type and title are required" });
+      }
+
+      // Get price from server-side pricing table (don't trust client)
+      const [pricing] = await pgDb.select()
+        .from(adPricing)
+        .where(eq(adPricing.placementType, placementType));
+      
+      if (!pricing) {
+        return res.status(400).json({ message: "Invalid placement type" });
       }
 
       const [newAd] = await pgDb.insert(adPlacements).values({
@@ -1047,7 +1056,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         category,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
-        pricePerWeek,
+        pricePerWeek: pricing.pricePerWeek, // Use server-side pricing
         status: "pending",
         paymentStatus: "unpaid",
       }).returning();
@@ -1062,6 +1071,20 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
   // Get all ad requests (admin)
   app.get("/api/admin/ads", isAuthenticated, async (req, res) => {
     try {
+      // Check if user is admin from database
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const [dbUser] = await pgDb.select({ isAdmin: users.isAdmin })
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      if (!dbUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
       const allAds = await pgDb.select({
         id: adPlacements.id,
         businessId: adPlacements.businessId,
@@ -1096,6 +1119,20 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
   // Update ad status (admin)
   app.patch("/api/admin/ads/:id", isAuthenticated, async (req, res) => {
     try {
+      // Check if user is admin from database
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const [dbUser] = await pgDb.select({ isAdmin: users.isAdmin })
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      if (!dbUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
       const id = parseInt(req.params.id as string);
       const { status, paymentStatus, paymentNotes, totalPaid, startDate, endDate } = req.body;
 
