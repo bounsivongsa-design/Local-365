@@ -1,18 +1,22 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp, MessageCircle, CheckCircle2, Award, Crown, Gem, Users } from "lucide-react";
+import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp, MessageCircle, CheckCircle2, Award, Crown, Gem, Users, Send, Sparkles, Flame, MessageSquare, HelpingHand, ChevronDown, ChevronUp } from "lucide-react";
 import BestOfGrid from "./BestOfGrid";
 import BestOfEditor from "./BestOfEditor";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDistanceToNow } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-interface PostWithAuthor {
+interface CommentWithAuthor {
   id: number;
+  postId: number;
   content: string;
-  imageUrl: string | null;
   likes: number;
   createdAt: string;
   author: {
@@ -22,6 +26,25 @@ interface PostWithAuthor {
     profileImageUrl: string | null;
     loyaltyTier: string | null;
     isValidated: boolean | null;
+    engagementBadge: string | null;
+  } | null;
+}
+
+interface PostWithAuthor {
+  id: number;
+  content: string;
+  imageUrl: string | null;
+  likes: number;
+  commentCount: number;
+  createdAt: string;
+  author: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    loyaltyTier: string | null;
+    isValidated: boolean | null;
+    engagementBadge: string | null;
   } | null;
 }
 
@@ -32,6 +55,216 @@ const tierConfig: Record<string, { label: string; color: string; icon: typeof Us
   platinum: { label: 'Platinum', color: 'bg-cyan-500', icon: Crown, gradient: 'from-cyan-400 to-cyan-600' },
   ambassador: { label: 'Ambassador', color: 'bg-purple-500', icon: Gem, gradient: 'from-purple-400 to-purple-600' },
 };
+
+const engagementBadgeConfig: Record<string, { label: string; icon: typeof Sparkles; gradient: string; description: string }> = {
+  top_contributor: { 
+    label: 'Top Contributor', 
+    icon: Sparkles, 
+    gradient: 'from-amber-500 to-orange-500',
+    description: '50+ comments or 20+ posts'
+  },
+  conversation_starter: { 
+    label: 'Conversation Starter', 
+    icon: MessageSquare, 
+    gradient: 'from-blue-500 to-indigo-500',
+    description: '10+ posts created'
+  },
+  rising_star: { 
+    label: 'Rising Star', 
+    icon: Flame, 
+    gradient: 'from-rose-500 to-pink-500',
+    description: '20+ comments or 5+ posts'
+  },
+  helpful_neighbor: { 
+    label: 'Helpful Neighbor', 
+    icon: HelpingHand, 
+    gradient: 'from-green-500 to-emerald-500',
+    description: '5+ helpful comments'
+  },
+};
+
+function CommentSection({ postId, commentCount }: { postId: number; commentCount: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: comments, isLoading: commentsLoading } = useQuery<CommentWithAuthor[]>({
+    queryKey: ["/api/posts", postId, "comments"],
+    queryFn: () => fetch(`/api/posts/${postId}/comments`).then(res => res.json()),
+    enabled: isExpanded,
+  });
+
+  const createCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await apiRequest("POST", `/api/posts/${postId}/comments`, { content });
+      return response.json();
+    },
+    onSuccess: () => {
+      setNewComment("");
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({
+        title: "Comment posted",
+        description: "Your comment has been added successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to post comment. You must be verified to comment.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmitComment = () => {
+    if (!newComment.trim()) return;
+    createCommentMutation.mutate(newComment.trim());
+  };
+
+  const getEngagementBadge = (badge: string | null | undefined) => {
+    if (!badge) return null;
+    const config = engagementBadgeConfig[badge];
+    if (!config) return null;
+    const IconComponent = config.icon;
+    return (
+      <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0 text-xs font-semibold shadow-sm`}>
+        <IconComponent className="h-3 w-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  return (
+    <div className="border-t border-slate-100 dark:border-slate-800">
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+        data-testid={`button-toggle-comments-${postId}`}
+      >
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <MessageCircle className="h-4 w-4" />
+          <span className="text-sm font-medium">
+            {commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}
+          </span>
+        </span>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="px-5 pb-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          {isAuthenticated && (
+            <div className="flex gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.profileImageUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-[#0a4a82] to-[#083a6a] text-white text-xs">
+                  {user?.firstName?.[0] || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-2">
+                <Textarea
+                  placeholder="Write a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  className="resize-none text-sm min-h-[60px]"
+                  data-testid={`input-comment-${postId}`}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleSubmitComment}
+                    disabled={!newComment.trim() || createCommentMutation.isPending}
+                    data-testid={`button-submit-comment-${postId}`}
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    {createCommentMutation.isPending ? "Posting..." : "Comment"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isAuthenticated && (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Sign in to join the conversation
+            </p>
+          )}
+
+          {commentsLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex gap-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                    <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : comments && comments.length > 0 ? (
+            <div className="space-y-4">
+              {comments.map((comment) => {
+                const authorName = comment.author 
+                  ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() || 'Anonymous'
+                  : 'Anonymous';
+                const initials = comment.author 
+                  ? `${comment.author.firstName?.[0] || ''}${comment.author.lastName?.[0] || ''}`.toUpperCase()
+                  : 'A';
+                
+                return (
+                  <div key={comment.id} className="flex gap-3" data-testid={`comment-${comment.id}`}>
+                    <div className="relative">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.author?.profileImageUrl || undefined} alt={authorName} />
+                        <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-500 text-white text-xs">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      {comment.author?.isValidated && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#0a4a82] rounded-full flex items-center justify-center ring-1 ring-white dark:ring-slate-800">
+                          <CheckCircle2 className="h-2 w-2 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-2.5">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-semibold text-sm">{authorName}</span>
+                          {getEngagementBadge(comment.author?.engagementBadge)}
+                        </div>
+                        <p className="text-sm text-foreground">{comment.content}</p>
+                      </div>
+                      <div className="flex items-center gap-4 mt-1 px-2">
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                        </span>
+                        <button className="text-xs text-muted-foreground hover:text-rose-500 transition-colors flex items-center gap-1">
+                          <Heart className="h-3 w-3" />
+                          Like
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No comments yet. Be the first to share your thoughts!
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'bestof' | 'events'>('feed');
@@ -50,6 +283,19 @@ function CommunityFeed() {
   const getTierBadge = (tier: string | null) => {
     if (!tier || tier === 'member') return null;
     const config = tierConfig[tier] || tierConfig.member;
+    const IconComponent = config.icon;
+    return (
+      <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0 text-xs font-semibold shadow-sm`}>
+        <IconComponent className="h-3 w-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getEngagementBadge = (badge: string | null | undefined) => {
+    if (!badge) return null;
+    const config = engagementBadgeConfig[badge];
+    if (!config) return null;
     const IconComponent = config.icon;
     return (
       <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0 text-xs font-semibold shadow-sm`}>
@@ -118,8 +364,7 @@ function CommunityFeed() {
                   : 'A';
                 
                 return (
-                  <Card key={post.id} className="overflow-hidden shadow-lg shadow-black/5 hover:shadow-xl transition-shadow duration-300">
-                    {/* Post Header */}
+                  <Card key={post.id} className="overflow-hidden shadow-lg shadow-black/5 hover:shadow-xl transition-shadow duration-300" data-testid={`post-${post.id}`}>
                     <div className="p-5 pb-4">
                       <div className="flex items-start gap-4">
                         <div className="relative">
@@ -129,7 +374,6 @@ function CommunityFeed() {
                               {initials}
                             </AvatarFallback>
                           </Avatar>
-                          {/* Verified checkmark */}
                           {post.author?.isValidated && (
                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#0a4a82] rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
                               <CheckCircle2 className="h-3 w-3 text-white" />
@@ -144,6 +388,7 @@ function CommunityFeed() {
                               <span className="text-[#0a4a82] text-xs font-medium">Verified</span>
                             )}
                             {getTierBadge(post.author?.loyaltyTier || null)}
+                            {getEngagementBadge(post.author?.engagementBadge)}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
@@ -151,11 +396,9 @@ function CommunityFeed() {
                         </div>
                       </div>
                       
-                      {/* Post Content */}
                       <p className="text-foreground mt-4 leading-relaxed">{post.content}</p>
                     </div>
                     
-                    {/* Post Image */}
                     {post.imageUrl && (
                       <div className="relative">
                         <img 
@@ -166,17 +409,18 @@ function CommunityFeed() {
                       </div>
                     )}
                     
-                    {/* Post Actions */}
                     <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-6">
                       <button className="flex items-center gap-2 text-muted-foreground hover:text-rose-500 transition-colors group" data-testid={`button-like-${post.id}`}>
                         <Heart className="h-5 w-5 group-hover:scale-110 transition-transform" />
                         <span className="text-sm font-medium">{post.likes}</span>
                       </button>
-                      <button className="flex items-center gap-2 text-muted-foreground hover:text-[#0a4a82] transition-colors group" data-testid={`button-comment-${post.id}`}>
-                        <MessageCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-medium">Comment</span>
-                      </button>
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <MessageCircle className="h-5 w-5" />
+                        <span className="text-sm font-medium">{post.commentCount || 0}</span>
+                      </span>
                     </div>
+                    
+                    <CommentSection postId={post.id} commentCount={post.commentCount || 0} />
                   </Card>
                 );
               })}

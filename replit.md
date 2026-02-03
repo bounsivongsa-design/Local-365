@@ -82,6 +82,18 @@ Key features include:
   - Advertising page shows member discount (50% off) promotion
   - Member advertising rates: Small $250, Medium $500, Large $1000 (vs non-member $500/$1000/$2000)
   - 2-week event ads: Member $150/$300/$600 (vs non-member $300/$600/$1200)
+- **Community Feed Comments System**: Facebook-style comments on community posts
+  - Only verified members can comment (validated account required)
+  - Database table: comments with postId, authorId, content, likes, createdAt
+  - Expandable comment section on each post with comment count
+  - Real-time comment count updates on posts
+  - User fields: postCount, commentCount, likesReceived for tracking engagement
+- **Community Engagement Badges**: Recognition badges like Facebook Groups
+  - Displayed next to user names on posts and comments
+  - Badge progression: helpful_neighbor (5+ comments) → rising_star (20+ comments or 5+ posts) → conversation_starter (10+ posts) → top_contributor (50+ comments or 20+ posts)
+  - Database field: engagementBadge on users table
+  - Automatic badge upgrades when thresholds are met
+  - Gradient-styled badges with icons (Sparkles, Flame, MessageSquare, HelpingHand)
 
 ## User Preferences
 

@@ -74,7 +74,18 @@ export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
   imageUrl: text("image_url"),
-  authorId: varchar("author_id").notNull().references(() => users.id), // Changed to varchar to match users.id
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  likes: integer("likes").default(0),
+  commentCount: integer("comment_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Comments on posts - only verified members can comment
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => posts.id),
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
   likes: integer("likes").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -101,9 +112,21 @@ export const eventsRelations = relations(events, ({ one }) => ({
   }),
 }));
 
-export const postsRelations = relations(posts, ({ one }) => ({
+export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, {
     fields: [posts.authorId],
+    references: [users.id],
+  }),
+  comments: many(comments),
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  post: one(posts, {
+    fields: [comments.postId],
+    references: [posts.id],
+  }),
+  author: one(users, {
+    fields: [comments.authorId],
     references: [users.id],
   }),
 }));
@@ -157,8 +180,9 @@ export const adPricing = pgTable("ad_pricing", {
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
-export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true }); 
+export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true, commentCount: true }); 
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true });
+export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, authorId: true, likes: true });
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
 export const insertAdPlacementSchema = createInsertSchema(adPlacements).omit({ 
   id: true, 
@@ -177,6 +201,7 @@ export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type Post = typeof posts.$inferSelect;
+export type Comment = typeof comments.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type Location = typeof locations.$inferSelect;
 export type AdPlacement = typeof adPlacements.$inferSelect;
@@ -192,8 +217,10 @@ export type CreateReviewRequest = z.infer<typeof insertReviewSchema>;
 
 // Complex response types
 export type BusinessWithRating = Business & { averageRating: number; reviewCount: number };
-export type PostWithAuthor = Post & { author: typeof users.$inferSelect };
+export type PostWithAuthor = Post & { author: typeof users.$inferSelect | null; comments?: CommentWithAuthor[] };
+export type CommentWithAuthor = Comment & { author: typeof users.$inferSelect | null };
 export type ReviewWithUser = Review & { user: typeof users.$inferSelect };
+export type CreateCommentRequest = z.infer<typeof insertCommentSchema>;
 
 // Re-export chat models for AI chat feature
 export { conversations, messages, insertConversationSchema, insertMessageSchema } from "./models/chat";

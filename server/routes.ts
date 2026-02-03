@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt } from "drizzle-orm";
 
 const openai = new OpenAI({
@@ -682,6 +682,89 @@ export async function registerRoutes(
       const postId = Number(req.params.id);
       const likes = await storage.likePost(postId);
       res.json({ likes });
+  });
+
+  // Comments on posts - only verified members can comment
+  app.get("/api/posts/:id/comments", async (req, res) => {
+    const postId = Number(req.params.id);
+    const comments = await pgDb.query.comments.findMany({
+      where: eq(commentsTable.postId, postId),
+      with: { author: true },
+      orderBy: desc(commentsTable.createdAt),
+    });
+    res.json(comments);
+  });
+
+  app.post("/api/posts/:id/comments", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const postId = Number(req.params.id);
+      
+      // Check if user is validated before allowing comment
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || !user[0].isValidated) {
+        return res.status(403).json({ 
+          message: "You must verify your account before commenting. Visit your dashboard to verify." 
+        });
+      }
+      
+      const { content } = req.body;
+      if (!content || content.trim().length === 0) {
+        return res.status(400).json({ message: "Comment content is required" });
+      }
+      
+      // Create comment
+      const [newComment] = await pgDb.insert(commentsTable).values({
+        postId,
+        authorId: userId,
+        content: content.trim(),
+      }).returning();
+      
+      // Update post comment count
+      await pgDb.update(postsTable).set({
+        commentCount: sql`${postsTable.commentCount} + 1`
+      }).where(eq(postsTable.id, postId));
+      
+      // Update user comment count
+      await pgDb.update(users).set({
+        commentCount: sql`${users.commentCount} + 1`
+      }).where(eq(users.id, userId));
+      
+      // Check and update engagement badge
+      const updatedUser = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (updatedUser.length > 0) {
+        const u = updatedUser[0];
+        const totalComments = u.commentCount || 0;
+        const totalPosts = u.postCount || 0;
+        let newBadge = u.engagementBadge;
+        
+        // Badge logic based on activity
+        if (totalComments >= 50 || totalPosts >= 20) {
+          newBadge = "top_contributor";
+        } else if (totalPosts >= 10) {
+          newBadge = "conversation_starter";
+        } else if (totalComments >= 20 || totalPosts >= 5) {
+          newBadge = "rising_star";
+        } else if (totalComments >= 5) {
+          newBadge = "helpful_neighbor";
+        }
+        
+        if (newBadge !== u.engagementBadge) {
+          await pgDb.update(users).set({ engagementBadge: newBadge }).where(eq(users.id, userId));
+        }
+      }
+      
+      // Fetch comment with author for response
+      const commentWithAuthor = await pgDb.query.comments.findFirst({
+        where: eq(commentsTable.id, newComment.id),
+        with: { author: true },
+      });
+      
+      res.status(201).json(commentWithAuthor);
+    } catch (err) {
+      console.error("Error creating comment:", err);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
   });
 
   // Reviews

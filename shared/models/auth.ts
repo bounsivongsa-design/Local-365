@@ -52,6 +52,15 @@ export const users = pgTable("users", {
   projectsCompleted: integer("projects_completed").default(0), // Track completed projects
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"), // Total amount spent on projects
   isAdmin: boolean("is_admin").default(false), // Admin access for managing ads, users, etc.
+  
+  // Community Engagement Badges (like Facebook Groups)
+  // Badges: top_contributor, conversation_starter, rising_star, founding_member, helpful_neighbor
+  engagementBadge: varchar("engagement_badge"), // Primary badge displayed
+  postCount: integer("post_count").default(0), // Total posts created
+  commentCount: integer("comment_count").default(0), // Total comments made
+  likesReceived: integer("likes_received").default(0), // Total likes received on posts/comments
+  memberSince: timestamp("member_since").defaultNow(), // For founding member badge
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
