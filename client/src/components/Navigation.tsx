@@ -32,7 +32,7 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#0a4a82]/10 bg-gradient-to-r from-[#0a4a82] via-[#0a4a82]/95 to-[#0a4a82] shadow-lg shadow-[#0a4a82]/10">
-      <div className="container flex h-28 items-center justify-between">
+      <div className="container flex h-36 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
             <video 
@@ -41,7 +41,7 @@ export function Navigation() {
               loop
               muted
               playsInline
-              className="h-24 w-auto"
+              className="h-32 w-auto"
               data-testid="img-logo"
             />
           </Link>
