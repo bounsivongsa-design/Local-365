@@ -26,7 +26,7 @@ export default function LoyaltyTiers() {
         <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-cyan-500/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
         
         {/* Content */}
-        <div className="relative z-10 container px-6 md:px-12 lg:px-20 pt-8 pb-20 flex flex-col min-h-[70vh]">
+        <div className="relative z-10 container pt-8 pb-20 flex flex-col min-h-[70vh]">
           <Link to="/">
             <Button variant="ghost" size="sm" className="mb-8 text-white/60 hover:text-white hover:bg-white/10 backdrop-blur-sm border border-white/10">
               <ArrowLeft className="h-4 w-4 mr-2" />
