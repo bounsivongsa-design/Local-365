@@ -35,6 +35,13 @@ Key features include:
   - Status reversion: If you don't re-qualify annually, you fall back to lifetime status
   - Dev mode panel for testing customer/business account types
 - **Quote/Bid System**: Customers post project requests, businesses submit competitive quotes
+  - Business accounts see customer ratings, projects completed, and total spent on each request
+  - Helps businesses assess customer reliability before bidding
+- **Local 365 Partner Program**: Businesses can offer exclusive perks to elite members
+  - Database fields: isLocal365Partner, silverPerk, goldPerk, platinumPerk, ambassadorPerk
+  - BusinessCard shows "Local 365 Partner" badge for participating businesses
+  - BusinessDetails page shows tier-specific perks with styled cards
+  - Example perks: "Local rates for golf", "Free appetizer", "Priority scheduling"
 - **Animated Video Logo**: Header now displays animated video logo
 - **Account Type System**: Customer vs Business accounts with server-side validation
 
