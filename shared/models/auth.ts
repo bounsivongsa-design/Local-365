@@ -15,6 +15,12 @@ export const sessions = pgTable(
 
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Loyalty tiers (Marriott Bonvoy inspired):
+// - member: Free to join, base level
+// - silver: 10 nights/year OR 25,000 points/year (annual) | 100 nights lifetime (lifetime)
+// - gold: 25 nights/year OR 50,000 points/year (annual) | 250 nights lifetime (lifetime)
+// - platinum: 50 nights/year OR 100,000 points/year (annual) | 500 nights lifetime (lifetime)
+// - ambassador: 100 nights/year + $20k spend (annual) | 1000 nights + $100k lifetime (lifetime)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -24,8 +30,24 @@ export const users = pgTable("users", {
   accountType: varchar("account_type").default("customer"), // customer, business
   isValidated: boolean("is_validated").default(false),
   linkedBusinessId: integer("linked_business_id"), // For business accounts - links to their business listing
-  loyaltyPoints: integer("loyalty_points").default(0), // Points earned through activity
-  loyaltyTier: varchar("loyalty_tier").default("explorer"), // explorer, resident, insider, local, ambassador
+  
+  // Annual Status (resets each year)
+  annualPoints: integer("annual_points").default(0), // Points earned this year
+  annualVisits: integer("annual_visits").default(0), // Business visits this year
+  annualSpent: decimal("annual_spent", { precision: 10, scale: 2 }).default("0"), // Spent this year
+  annualTier: varchar("annual_tier").default("member"), // member, silver, gold, platinum, ambassador
+  statusYear: integer("status_year"), // The year these annual stats are for (e.g., 2026)
+  
+  // Lifetime Status (accumulates forever)
+  lifetimePoints: integer("lifetime_points").default(0), // Total points ever earned
+  lifetimeVisits: integer("lifetime_visits").default(0), // Total business visits ever
+  lifetimeSpent: decimal("lifetime_spent", { precision: 10, scale: 2 }).default("0"), // Total spent lifetime
+  lifetimeTier: varchar("lifetime_tier").default("member"), // member, silver, gold, platinum, ambassador
+  
+  // Legacy fields (keeping for backwards compatibility)
+  loyaltyPoints: integer("loyalty_points").default(0), // Deprecated - use annualPoints/lifetimePoints
+  loyaltyTier: varchar("loyalty_tier").default("member"), // Effective tier (higher of annual or lifetime)
+  
   customerRating: decimal("customer_rating", { precision: 2, scale: 1 }).default("5.0"), // 1.0-5.0 rating from businesses
   projectsCompleted: integer("projects_completed").default(0), // Track completed projects
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"), // Total amount spent on projects

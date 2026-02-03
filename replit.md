@@ -24,11 +24,16 @@ Key features include:
   - API endpoints: /api/locations, /api/locations/search, /api/businesses/by-location, /api/events/by-location
   - Database fields: city, state, zipCode added to businesses and events tables
   - Locations table stores supported regions with zipCodes array
-- **Loyalty Program Redesign**: Marriott Bonvoy-inspired elite status system
-  - 5 tiers: Member (free), Silver Elite (5 visits), Gold Elite (15 visits), Platinum Elite (30 visits), Ambassador (50 visits)
-  - Focus on point multipliers (+10% to +75% bonus) instead of heavy discounts
+- **Loyalty Program Redesign**: Marriott Bonvoy-inspired dual elite status system
+  - **Dual Status System**: Annual status (resets yearly) + Lifetime status (accumulates forever)
+  - Effective tier is the HIGHER of annual or lifetime status
+  - 5 tiers: Member (free), Silver Elite, Gold Elite, Platinum Elite, Ambassador
+  - Annual requirements: 10/25/50/100 visits OR 25k/50k/100k/200k points per year
+  - Lifetime requirements: 100/250/500/1000 visits OR 250k/500k/1M/2M points total
+  - Point multipliers (+10% to +75% bonus) instead of heavy discounts
   - Discounts only at top tiers (5% at Platinum, 10% at Ambassador)
-  - Perks include: priority reservations, early event access, exclusive experiences, personal concierge
+  - Status reversion: If you don't re-qualify annually, you fall back to lifetime status
+  - Dev mode panel for testing customer/business account types
 - **Quote/Bid System**: Customers post project requests, businesses submit competitive quotes
 - **Animated Video Logo**: Header now displays animated video logo
 - **Account Type System**: Customer vs Business accounts with server-side validation
@@ -76,14 +81,27 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - Validation system requires proof-of-purchase receipt uploads
 - Server-side account type validation on quote endpoints
 
-### Loyalty Program Structure
-| Tier | Visits | Points Bonus | Discount |
-|------|--------|--------------|----------|
-| Member | Free | 10 pts/$1 | None |
-| Silver Elite | 5 | +10% | None |
-| Gold Elite | 15 | +25% | None |
-| Platinum Elite | 30 | +50% | 5% off |
-| Ambassador | 50 | +75% | 10% off |
+### Loyalty Program Structure (Dual Status - Marriott Bonvoy Inspired)
+
+**Annual Status** (resets Jan 1):
+| Tier | Annual Visits | Annual Points | Points Bonus | Discount |
+|------|---------------|---------------|--------------|----------|
+| Member | Free | Free | 10 pts/$1 | None |
+| Silver Elite | 10 | 25,000 | +10% | None |
+| Gold Elite | 25 | 50,000 | +25% | None |
+| Platinum Elite | 50 | 100,000 | +50% | 5% off |
+| Ambassador | 100 | 200,000 | +75% | 10% off |
+
+**Lifetime Status** (never resets):
+| Tier | Lifetime Visits | Lifetime Points |
+|------|-----------------|-----------------|
+| Member | Free | Free |
+| Silver Elite | 100 | 250,000 |
+| Gold Elite | 250 | 500,000 |
+| Platinum Elite | 500 | 1,000,000 |
+| Ambassador | 1,000 | 2,000,000 |
+
+Your effective tier is the HIGHER of your annual or lifetime status. If you don't re-qualify annually, you fall back to your lifetime tier.
 
 ## External Dependencies
 
