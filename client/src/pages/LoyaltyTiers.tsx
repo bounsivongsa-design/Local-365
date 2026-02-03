@@ -26,7 +26,7 @@ export default function LoyaltyTiers() {
         <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-cyan-500/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
         
         {/* Content */}
-        <div className="relative z-10 container pt-8 pb-20 flex flex-col min-h-[70vh]">
+        <div className="relative z-10 container px-6 md:px-12 lg:px-20 pt-8 pb-20 flex flex-col min-h-[70vh]">
           <Link to="/">
             <Button variant="ghost" size="sm" className="mb-8 text-white/60 hover:text-white hover:bg-white/10 backdrop-blur-sm border border-white/10">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -34,7 +34,7 @@ export default function LoyaltyTiers() {
             </Button>
           </Link>
           
-          <div className="flex-1 flex flex-col justify-center max-w-4xl">
+          <div className="flex-1 flex flex-col justify-center items-center text-center max-w-4xl mx-auto">
             {/* Premium badge */}
             <div className="inline-flex items-center gap-2 w-fit px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 backdrop-blur-xl border border-amber-500/30 text-amber-400 text-sm font-medium mb-8 shadow-lg shadow-amber-500/10">
               <Crown className="h-4 w-4" />
@@ -56,13 +56,13 @@ export default function LoyaltyTiers() {
             </p>
             
             {/* Stats row */}
-            <div className="flex flex-wrap gap-8 md:gap-12">
+            <div className="flex flex-wrap justify-center gap-8 md:gap-16">
               {[
                 { value: '5', label: 'Elite Tiers', color: 'from-slate-400 to-slate-200' },
                 { value: '+75%', label: 'Max Bonus', color: 'from-amber-400 to-amber-200' },
                 { value: 'Free', label: 'To Join', color: 'from-emerald-400 to-emerald-200' },
               ].map((stat, i) => (
-                <div key={i} className="group">
+                <div key={i} className="group text-center">
                   <div className={`text-4xl md:text-5xl font-black bg-gradient-to-b ${stat.color} bg-clip-text text-transparent mb-1 group-hover:scale-110 transition-transform duration-300`}>
                     {stat.value}
                   </div>
