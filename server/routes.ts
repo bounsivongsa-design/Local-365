@@ -657,12 +657,57 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     try {
       const category = req.query.category as string | undefined;
       
-      let query = pgDb.select().from(quoteRequests)
+      // Check if user is authenticated and is a business account
+      const currentUserId = (req as any).user?.id;
+      let currentUser = null;
+      if (currentUserId) {
+        const userResult = await pgDb.select().from(users).where(eq(users.id, currentUserId)).limit(1);
+        currentUser = userResult[0] || null;
+      }
+      const isBusinessUser = currentUser?.accountType === "business";
+      
+      // Get all open requests with customer info
+      const requests = await pgDb.select().from(quoteRequests)
         .where(eq(quoteRequests.status, "open"))
         .orderBy(desc(quoteRequests.createdAt));
       
-      const requests = await query;
-      res.json(requests);
+      // Enrich with customer info and quote counts
+      const enrichedRequests = await Promise.all(requests.map(async (request) => {
+        // Only include customer info for business users (privacy protection)
+        let customerInfo = null;
+        if (isBusinessUser || currentUserId === request.userId) {
+          const customerResult = await pgDb.select({
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileImageUrl: users.profileImageUrl,
+            customerRating: users.customerRating,
+            projectsCompleted: users.projectsCompleted,
+            loyaltyTier: users.loyaltyTier,
+            totalSpent: users.totalSpent
+          }).from(users).where(eq(users.id, request.userId)).limit(1);
+          customerInfo = customerResult[0] || null;
+        }
+        
+        // Get quote count for this request
+        const quoteCount = await pgDb.select({ count: quotes.id }).from(quotes)
+          .where(eq(quotes.requestId, request.id));
+        
+        // Get lowest quote amount
+        const allQuotes = await pgDb.select({ amount: quotes.amount }).from(quotes)
+          .where(eq(quotes.requestId, request.id));
+        const lowestQuote = allQuotes.length > 0 
+          ? Math.min(...allQuotes.map(q => Number(q.amount)))
+          : null;
+        
+        return {
+          ...request,
+          customer: customerInfo,
+          quoteCount: quoteCount.length,
+          lowestQuote
+        };
+      }));
+      
+      res.json(enrichedRequests);
     } catch (err) {
       console.error("Error fetching quote requests:", err);
       res.status(500).json({ message: "Failed to fetch quote requests" });
@@ -741,9 +786,25 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       
       const requestQuotes = await pgDb.select().from(quotes)
         .where(eq(quotes.requestId, requestId))
-        .orderBy(quotes.createdAt);
+        .orderBy(quotes.amount); // Order by price (lowest first for bidding war)
       
-      res.json(requestQuotes);
+      // Enrich with business info
+      const enrichedQuotes = await Promise.all(requestQuotes.map(async (quote) => {
+        const businessInfo = await pgDb.select({
+          id: businesses.id,
+          name: businesses.name,
+          imageUrl: businesses.imageUrl,
+          category: businesses.category,
+          verified: businesses.verified
+        }).from(businesses).where(eq(businesses.id, quote.businessId)).limit(1);
+        
+        return {
+          ...quote,
+          business: businessInfo[0] || null
+        };
+      }));
+      
+      res.json(enrichedQuotes);
     } catch (err) {
       console.error("Error fetching quotes:", err);
       res.status(500).json({ message: "Failed to fetch quotes" });

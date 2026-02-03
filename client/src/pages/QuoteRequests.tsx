@@ -34,10 +34,52 @@ import {
   AlertCircle,
   Gavel,
   Send,
-  Waves
+  Waves,
+  Star,
+  Trophy,
+  Users,
+  TrendingDown,
+  Award,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { QuoteRequest } from "@shared/models/auth";
+
+interface CustomerInfo {
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  customerRating: string | null;
+  projectsCompleted: number | null;
+  loyaltyTier: string | null;
+  totalSpent: string | null;
+}
+
+interface EnrichedQuoteRequest extends QuoteRequest {
+  customer: CustomerInfo | null;
+  quoteCount: number;
+  lowestQuote: number | null;
+}
+
+interface QuoteWithBusiness {
+  id: number;
+  requestId: number;
+  businessId: number;
+  amount: string;
+  message: string;
+  estimatedDuration: string | null;
+  status: string | null;
+  createdAt: Date | null;
+  business: {
+    id: number;
+    name: string;
+    imageUrl: string;
+    category: string;
+    verified: boolean | null;
+  } | null;
+}
 
 const CATEGORIES = [
   "Home Repair", "Plumbing", "HVAC", "Electrical", "Roofing",
@@ -86,10 +128,44 @@ export default function QuoteRequests() {
     timeline: "",
     location: ""
   });
+  const [expandedProject, setExpandedProject] = useState<number | null>(null);
 
-  const { data: allRequests, isLoading: allLoading } = useQuery({
+  const { data: allRequests, isLoading: allLoading } = useQuery<EnrichedQuoteRequest[]>({
     queryKey: ["/api/quotes/requests"],
   });
+
+  // Get quotes for expanded project
+  const { data: projectQuotes, isLoading: quotesLoading } = useQuery<QuoteWithBusiness[]>({
+    queryKey: ["/api/quotes/requests", expandedProject, "quotes"],
+    queryFn: async () => {
+      if (!expandedProject) return [];
+      const res = await fetch(`/api/quotes/requests/${expandedProject}/quotes`, {
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to fetch quotes");
+      return res.json();
+    },
+    enabled: expandedProject !== null && isAuthenticated,
+  });
+
+  const getCustomerRatingBadge = (rating: string | null) => {
+    const numRating = rating ? parseFloat(rating) : 5.0;
+    if (numRating >= 4.5) return { label: "Excellent", color: "bg-green-500/10 text-green-600 border-green-500/20", stars: 5 };
+    if (numRating >= 4.0) return { label: "Great", color: "bg-blue-500/10 text-blue-600 border-blue-500/20", stars: 4 };
+    if (numRating >= 3.5) return { label: "Good", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20", stars: 3 };
+    if (numRating >= 3.0) return { label: "Average", color: "bg-orange-500/10 text-orange-600 border-orange-500/20", stars: 3 };
+    return { label: "New", color: "bg-gray-500/10 text-gray-600 border-gray-500/20", stars: 0 };
+  };
+
+  const getLoyaltyBadge = (tier: string | null) => {
+    switch (tier) {
+      case "ambassador": return { label: "Ambassador", color: "bg-purple-500/10 text-purple-600 border-purple-500/20", icon: Trophy };
+      case "platinum": return { label: "Platinum Elite", color: "bg-slate-500/10 text-slate-600 border-slate-500/20", icon: Award };
+      case "gold": return { label: "Gold Elite", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20", icon: Award };
+      case "silver": return { label: "Silver Elite", color: "bg-gray-400/10 text-gray-500 border-gray-400/20", icon: Award };
+      default: return { label: "Member", color: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: Users };
+    }
+  };
 
   const { data: myRequests, isLoading: myLoading } = useQuery({
     queryKey: ["/api/user/quote-requests"],
@@ -408,58 +484,212 @@ export default function QuoteRequests() {
               </Card>
             ) : (
               <div className="grid gap-4">
-                {(allRequests as QuoteRequest[])?.map((req) => (
-                  <Card key={req.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-project-${req.id}`}>
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start gap-4 mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold mb-1">{req.title}</h3>
-                          <Badge variant="secondary" className="text-xs">{req.category}</Badge>
+                {allRequests?.map((req) => {
+                  const ratingBadge = getCustomerRatingBadge(req.customer?.customerRating || null);
+                  const loyaltyBadge = getLoyaltyBadge(req.customer?.loyaltyTier || null);
+                  const isExpanded = expandedProject === req.id;
+                  const isOwner = user?.id === req.userId;
+                  
+                  return (
+                    <Card key={req.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-project-${req.id}`}>
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start gap-4 mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold mb-1">{req.title}</h3>
+                            <Badge variant="secondary" className="text-xs">{req.category}</Badge>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {getStatusBadge(req.status || "open")}
+                            {req.quoteCount > 0 && (
+                              <Badge className="bg-[#0a4a82]/10 text-[#0a4a82] border-[#0a4a82]/20">
+                                <Gavel className="h-3 w-3 mr-1" />
+                                {req.quoteCount} {req.quoteCount === 1 ? "quote" : "quotes"}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        {getStatusBadge(req.status || "open")}
-                      </div>
-                      
-                      <p className="text-muted-foreground mb-4 line-clamp-2">{req.description}</p>
-                      
-                      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                        {req.budget && (
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4" />
-                            {req.budget}
-                          </span>
-                        )}
-                        {req.timeline && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {req.timeline}
-                          </span>
-                        )}
-                        {req.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            {req.location}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1 ml-auto">
-                          Posted {req.createdAt ? formatDistanceToNow(new Date(req.createdAt), { addSuffix: true }) : "recently"}
-                        </span>
-                      </div>
 
-                      {user?.accountType === "business" && (
-                        <div className="mt-4 pt-4 border-t">
-                          <Button 
-                            className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]" 
-                            data-testid={`button-submit-quote-${req.id}`}
-                            onClick={() => openQuoteDialog(req.id)}
-                          >
-                            <Gavel className="mr-2 h-4 w-4" />
-                            Submit a Quote
-                          </Button>
+                        {/* Customer Info Section - Visible to Businesses */}
+                        {req.customer && user?.accountType === "business" && (
+                          <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10 border-2 border-white">
+                                <AvatarImage src={req.customer.profileImageUrl || undefined} />
+                                <AvatarFallback className="bg-[#0a4a82]/10 text-[#0a4a82]">
+                                  {req.customer.firstName?.charAt(0) || "C"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">
+                                    {req.customer.firstName} {req.customer.lastName?.charAt(0)}.
+                                  </span>
+                                  <Badge className={ratingBadge.color}>
+                                    <Star className="h-3 w-3 mr-1 fill-current" />
+                                    {req.customer.customerRating || "5.0"} {ratingBadge.label}
+                                  </Badge>
+                                  <Badge className={loyaltyBadge.color}>
+                                    <loyaltyBadge.icon className="h-3 w-3 mr-1" />
+                                    {loyaltyBadge.label}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                                  <span>{req.customer.projectsCompleted || 0} projects completed</span>
+                                  {Number(req.customer.totalSpent) > 0 && (
+                                    <span>${Number(req.customer.totalSpent).toLocaleString()} spent</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <p className="text-muted-foreground mb-4 line-clamp-2">{req.description}</p>
+                        
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          {req.budget && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="h-4 w-4" />
+                              {req.budget}
+                            </span>
+                          )}
+                          {req.timeline && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {req.timeline}
+                            </span>
+                          )}
+                          {req.location && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {req.location}
+                            </span>
+                          )}
+                          {req.lowestQuote && (
+                            <span className="flex items-center gap-1 text-green-600 font-medium">
+                              <TrendingDown className="h-4 w-4" />
+                              Lowest: ${req.lowestQuote.toLocaleString()}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 ml-auto">
+                            Posted {req.createdAt ? formatDistanceToNow(new Date(req.createdAt), { addSuffix: true }) : "recently"}
+                          </span>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        {/* Business: Submit Quote Button */}
+                        {user?.accountType === "business" && (
+                          <div className="mt-4 pt-4 border-t">
+                            <Button 
+                              className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]" 
+                              data-testid={`button-submit-quote-${req.id}`}
+                              onClick={() => openQuoteDialog(req.id)}
+                            >
+                              <Gavel className="mr-2 h-4 w-4" />
+                              Submit a Quote
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Customer: View Quotes (Bidding War) */}
+                        {isOwner && req.quoteCount > 0 && (
+                          <div className="mt-4 pt-4 border-t">
+                            <Button 
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => setExpandedProject(isExpanded ? null : req.id)}
+                              data-testid={`button-view-quotes-${req.id}`}
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp className="mr-2 h-4 w-4" />
+                                  Hide Quotes
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="mr-2 h-4 w-4" />
+                                  View {req.quoteCount} {req.quoteCount === 1 ? "Quote" : "Competing Quotes"}
+                                </>
+                              )}
+                            </Button>
+
+                            {/* Bidding War Display */}
+                            {isExpanded && (
+                              <div className="mt-4 space-y-3">
+                                {quotesLoading ? (
+                                  <div className="space-y-2">
+                                    <Skeleton className="h-20 w-full" />
+                                    <Skeleton className="h-20 w-full" />
+                                  </div>
+                                ) : projectQuotes && projectQuotes.length > 0 ? (
+                                  <>
+                                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+                                      <span className="font-medium">Quotes ranked by price (lowest first)</span>
+                                      <Badge variant="outline" className="text-green-600">
+                                        <TrendingDown className="h-3 w-3 mr-1" />
+                                        Best Deal: ${Math.min(...projectQuotes.map(q => Number(q.amount))).toLocaleString()}
+                                      </Badge>
+                                    </div>
+                                    {projectQuotes.map((quote, index) => (
+                                      <div 
+                                        key={quote.id} 
+                                        className={`p-4 rounded-lg border ${index === 0 ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800" : "bg-card"}`}
+                                      >
+                                        <div className="flex items-start gap-3">
+                                          <Avatar className="h-10 w-10">
+                                            <AvatarImage src={quote.business?.imageUrl} />
+                                            <AvatarFallback className="bg-[#0a4a82]/10 text-[#0a4a82]">
+                                              {quote.business?.name?.charAt(0) || "B"}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-semibold">{quote.business?.name || "Business"}</span>
+                                                {quote.business?.verified && (
+                                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                )}
+                                                {index === 0 && (
+                                                  <Badge className="bg-green-500 text-white">
+                                                    <Trophy className="h-3 w-3 mr-1" />
+                                                    Best Price
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <span className={`text-xl font-bold ${index === 0 ? "text-green-600" : ""}`}>
+                                                ${Number(quote.amount).toLocaleString()}
+                                              </span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-1">{quote.message}</p>
+                                            {quote.estimatedDuration && (
+                                              <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                                                <Clock className="h-3 w-3" />
+                                                {quote.estimatedDuration}
+                                              </div>
+                                            )}
+                                            <div className="flex gap-2 mt-3">
+                                              <Button size="sm" className="bg-[#0a4a82]">
+                                                Accept Quote
+                                              </Button>
+                                              <Button size="sm" variant="outline">
+                                                Message
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </>
+                                ) : (
+                                  <p className="text-center text-muted-foreground py-4">No quotes yet</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

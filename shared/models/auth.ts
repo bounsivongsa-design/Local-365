@@ -26,6 +26,9 @@ export const users = pgTable("users", {
   linkedBusinessId: integer("linked_business_id"), // For business accounts - links to their business listing
   loyaltyPoints: integer("loyalty_points").default(0), // Points earned through activity
   loyaltyTier: varchar("loyalty_tier").default("explorer"), // explorer, resident, insider, local, ambassador
+  customerRating: decimal("customer_rating", { precision: 2, scale: 1 }).default("5.0"), // 1.0-5.0 rating from businesses
+  projectsCompleted: integer("projects_completed").default(0), // Track completed projects
+  totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"), // Total amount spent on projects
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
