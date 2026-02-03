@@ -52,6 +52,13 @@ Key features include:
   - Tracks impressions and clicks for analytics
   - Manual payment workflow (pending → paid → active)
   - Server-side price validation (ignores client-provided prices)
+- **Business Credentials & Trust Badges**: Visual indicators for LLC and insurance status
+  - Database fields: hasLLC, hasInsurance on businesses table
+  - TrustBadges component with compact (cards) and full (details) variants
+  - Badge types: "Verified" (both), "LLC" (registered only), "Insured" (insurance only), "Unverified" (neither)
+  - BusinessCard shows compact trust badge on each listing
+  - BusinessDetails shows full Business Credentials section with warnings for unverified businesses
+  - Helps customers identify legitimate businesses vs "shade tree" operators
 
 ## User Preferences
 
