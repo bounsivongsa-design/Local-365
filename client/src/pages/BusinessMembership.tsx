@@ -161,7 +161,8 @@ export default function BusinessMembership() {
             
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
               Join the premier business directory for Currituck County and the Outer Banks. 
-              Connect with local customers and watch your business thrive.
+              Connect with local customers and watch your business thrive. 
+              Pricing is per zip code — list in as many areas as you want.
             </p>
             
             {isNewMember && (
@@ -264,7 +265,7 @@ export default function BusinessMembership() {
                       )}
                       <div className="flex items-baseline gap-1">
                         <span className="text-5xl font-bold">${pricing.perMonth.toFixed(0)}</span>
-                        <span className="text-white/70 text-lg">/month</span>
+                        <span className="text-white/70 text-lg">/mo per zip code</span>
                       </div>
                       {selectedFrequency !== "monthly" && (
                         <p className="text-white/70 text-sm">

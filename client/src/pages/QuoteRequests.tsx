@@ -101,7 +101,9 @@ const CATEGORIES = [
   "Landscaping", "Cleaning", "Painting", "Tree Care", "Remodeling & Addition",
   "New Construction", "Baby Sitting & Nanny", "Printing", "Web Design & Logo Design",
   "Photo & Video", "Auto Repair", "Small Engine Repair", "Trash & Junk Removal",
-  "Tutor & Mentor Counseling", "Mind Body Soul", "Tax CPA", "Legal",
+  "Tutor & Mentor Counseling", "Health & Wellness", "Tax CPA", "Legal",
+  "Concrete", "Lawn Care", "Dog Sitting", "Real Estate / Realtors",
+  "Shopping / Retail", "Food & Drink",
   "Woodworking & Lazer CNC", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals"
 ];
 

@@ -56,7 +56,9 @@ const CATEGORIES = [
   "Landscaping", "Cleaning", "Painting", "Tree Care", "Remodeling & Addition",
   "New Construction", "Baby Sitting & Nanny", "Printing", "Web Design & Logo Design",
   "Photo & Video", "Auto Repair", "Small Engine Repair", "Trash & Junk Removal",
-  "Tutor & Mentor Counseling", "Mind Body Soul", "Tax CPA", "Legal",
+  "Tutor & Mentor Counseling", "Health & Wellness", "Tax CPA", "Legal",
+  "Concrete", "Lawn Care", "Dog Sitting", "Real Estate / Realtors",
+  "Shopping / Retail", "Food & Drink",
   "Woodworking & Lazer CNC", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals"
 ];
 
@@ -239,9 +241,9 @@ export default function Advertising() {
                 <Crown className="h-8 w-8 text-white" />
               </div>
               <div className="text-white">
-                <h3 className="text-2xl font-bold">Members Save 50% on All Advertising</h3>
+                <h3 className="text-2xl font-bold">Premier Member Rates — Save 50% on All Advertising</h3>
                 <p className="text-white/80 mt-1">
-                  Plus get 2 months free when you prepay 6 months
+                  Plus get 1 month free when you prepay 6 months
                 </p>
               </div>
             </div>
@@ -276,7 +278,7 @@ export default function Advertising() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold">Non-Member Rates</h3>
-                    <p className="text-white/70 text-sm">1 month free with 6 months prepaid</p>
+                    <p className="text-white/70 text-sm">Standard pricing</p>
                   </div>
                 </div>
               </div>
@@ -329,8 +331,8 @@ export default function Advertising() {
                     <Crown className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">Member Rates</h3>
-                    <p className="text-white/70 text-sm">2 months free with 6 months prepaid</p>
+                    <h3 className="text-xl font-bold">Premier Member Rates</h3>
+                    <p className="text-white/70 text-sm">1 month free with 6 months prepaid</p>
                   </div>
                 </div>
               </div>

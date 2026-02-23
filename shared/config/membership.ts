@@ -4,6 +4,7 @@ export interface MembershipTier {
   monthlyPrice: number;
   semiAnnualPrice: number;
   annualPrice: number;
+  pricingBasis: "per_zip_code";
   color: string;
   badgeGradient: string;
   features: string[];
@@ -28,6 +29,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     monthlyPrice: 50,
     semiAnnualPrice: 240,
     annualPrice: 330,
+    pricingBasis: "per_zip_code",
     color: "#cd7f32",
     badgeGradient: "from-amber-700 via-amber-500 to-amber-700",
     features: [
@@ -59,6 +61,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     monthlyPrice: 100,
     semiAnnualPrice: 480,
     annualPrice: 660,
+    pricingBasis: "per_zip_code",
     color: "#c0c0c0",
     badgeGradient: "from-gray-400 via-gray-200 to-gray-400",
     features: [
@@ -92,6 +95,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     monthlyPrice: 200,
     semiAnnualPrice: 960,
     annualPrice: 1320,
+    pricingBasis: "per_zip_code",
     color: "#ffd700",
     badgeGradient: "from-yellow-500 via-amber-300 to-yellow-500",
     features: [

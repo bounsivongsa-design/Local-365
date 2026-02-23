@@ -8,7 +8,8 @@ import {
   Search, Plus, Building2, Layers, Wrench, Droplets, Wind, Zap, Home,
   Trees, Sparkles, Paintbrush, TreePine, HardHat, Construction, Baby,
   Printer, Palette, Camera, Car, Settings, Trash2, GraduationCap,
-  Heart, Calculator, Scale, Hammer, ChefHat, Truck, PartyPopper, Waves
+  Heart, Calculator, Scale, Hammer, ChefHat, Truck, PartyPopper, Waves,
+  ShoppingBag, UtensilsCrossed
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -53,7 +54,13 @@ export default function Directory() {
     { name: "Small Engine Repair", icon: Settings },
     { name: "Trash & Junk Removal", icon: Trash2 },
     { name: "Tutor & Mentor Counseling", icon: GraduationCap },
-    { name: "Mind Body Soul", icon: Heart },
+    { name: "Health & Wellness", icon: Heart },
+    { name: "Concrete", icon: Hammer },
+    { name: "Lawn Care", icon: TreePine },
+    { name: "Dog Sitting", icon: Heart },
+    { name: "Real Estate / Realtors", icon: Home },
+    { name: "Shopping / Retail", icon: ShoppingBag },
+    { name: "Food & Drink", icon: UtensilsCrossed },
     { name: "Tax CPA", icon: Calculator },
     { name: "Legal", icon: Scale },
     { name: "Woodworking & Lazer CNC", icon: Hammer },
