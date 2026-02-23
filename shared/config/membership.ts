@@ -327,15 +327,29 @@ export const MEMBER_AD_RATES = {
   large: { member: 1000, nonMember: 2000 },
 } as const;
 
-export const EVENT_AD_RATES = {
-  small: { member: 150, nonMember: 300 },
-  medium: { member: 300, nonMember: 600 },
-  large: { member: 600, nonMember: 1200 },
+export const EVENT_2WEEK_AD_RATES = {
+  small: { member: 75, nonMember: 150 },
+  medium: { member: 150, nonMember: 300 },
+  large: { member: 300, nonMember: 600 },
+} as const;
+
+export const EVENT_MONTHLY_AD_RATES = {
+  small: { member: 125, nonMember: 250 },
+  medium: { member: 250, nonMember: 500 },
+  large: { member: 450, nonMember: 900 },
 } as const;
 
 export type AdSize = keyof typeof MEMBER_AD_RATES;
 
-export function getAdRate(size: AdSize, isMember: boolean, isEventAd: boolean = false): number {
-  const rates = isEventAd ? EVENT_AD_RATES : MEMBER_AD_RATES;
+export function getAdRate(
+  size: AdSize,
+  isMember: boolean,
+  adType: "monthly" | "event2Week" | "eventMonthly" = "monthly"
+): number {
+  const rates = adType === "event2Week"
+    ? EVENT_2WEEK_AD_RATES
+    : adType === "eventMonthly"
+    ? EVENT_MONTHLY_AD_RATES
+    : MEMBER_AD_RATES;
   return isMember ? rates[size].member : rates[size].nonMember;
 }

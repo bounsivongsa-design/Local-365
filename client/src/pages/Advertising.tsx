@@ -72,11 +72,13 @@ const placementIcons: Record<string, any> = {
 const AD_PRICING = {
   nonMember: {
     monthly: { small: 500, medium: 1000, large: 2000 },
-    event: { small: 300, medium: 600, large: 1200 },
+    event2Week: { small: 150, medium: 300, large: 600 },
+    eventMonthly: { small: 250, medium: 500, large: 900 },
   },
   member: {
     monthly: { small: 250, medium: 500, large: 1000 },
-    event: { small: 150, medium: 300, large: 600 },
+    event2Week: { small: 75, medium: 150, large: 300 },
+    eventMonthly: { small: 125, medium: 250, large: 450 },
   }
 };
 
@@ -305,7 +307,22 @@ export default function Advertising() {
                     <h4 className="font-semibold text-slate-900 dark:text-white">2-Week Event Ads</h4>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.nonMember.event).map(([size, price]) => (
+                    {Object.entries(AD_PRICING.nonMember.event2Week).map(([size, price]) => (
+                      <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calendar className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Event Ads</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(AD_PRICING.nonMember.eventMonthly).map(([size, price]) => (
                       <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
                         <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
@@ -359,7 +376,22 @@ export default function Advertising() {
                     <h4 className="font-semibold text-slate-900 dark:text-white">2-Week Event Ads</h4>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.member.event).map(([size, price]) => (
+                    {Object.entries(AD_PRICING.member.event2Week).map(([size, price]) => (
+                      <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
+                        <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calendar className="h-5 w-5 text-[#8a9a5b]" />
+                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Event Ads</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(AD_PRICING.member.eventMonthly).map(([size, price]) => (
                       <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
                         <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
                         <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
