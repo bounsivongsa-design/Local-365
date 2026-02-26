@@ -13,12 +13,51 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Plane, Truck, Bug, Camera, Church, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import heroImage from "@assets/image_1770062898655.png";
+
+const CATEGORY_ICONS: Record<string, any> = {
+  "restaurants-dining": UtensilsCrossed,
+  "home-services": HomeIcon,
+  "automotive": Car,
+  "health-wellness": HeartPulse,
+  "beauty-personal-care": Scissors,
+  "real-estate": Building2,
+  "legal-services": Scale,
+  "financial-services": Landmark,
+  "education-tutoring": GraduationCap,
+  "fitness-recreation": Dumbbell,
+  "shopping-retail": ShoppingBag,
+  "pet-services": PawPrint,
+  "wedding-events": PartyPopper,
+  "cleaning-services": Sparkle,
+  "landscaping": TreePine,
+  "technology": Monitor,
+  "travel-tourism": Plane,
+  "moving-storage": Truck,
+  "pest-control": Bug,
+  "photography": Camera,
+  "religious-spiritual": Church,
+  "government-nonprofit": Landmark,
+  "child-care": Baby,
+  "security-services": Shield,
+  "animal-pet": PawPrint,
+  "garage-door": DoorOpen,
+  "moving-hauling": Truck,
+  "metal-work": Hammer,
+  "fencing": Fence,
+  "woodworking": Wrench,
+};
 
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
@@ -27,12 +66,37 @@ export default function Home() {
   const likePost = useLikePost();
   const { isAuthenticated } = useAuth();
   const { location: selectedLocation } = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [showTripPlanner, setShowTripPlanner] = useState(false);
   const [tripResult, setTripResult] = useState<any>(null);
+  const [heroSearch, setHeroSearch] = useState("");
+  const [showCategoryRequest, setShowCategoryRequest] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ categoryName: "", description: "", submitterName: "", submitterEmail: "" });
 
-  // Featured content: take first 3 of each
+  const categoryRequestMutation = useMutation({
+    mutationFn: async (data: typeof categoryForm) => {
+      const res = await apiRequest("POST", "/api/category-requests", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Category Suggestion Submitted", description: "Thank you! We'll review your suggestion soon." });
+      setShowCategoryRequest(false);
+      setCategoryForm({ categoryName: "", description: "", submitterName: "", submitterEmail: "" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to submit suggestion. Please try again.", variant: "destructive" });
+    }
+  });
+
   const featuredBusinesses = businesses?.slice(0, 3) || [];
   const upcomingEvents = events?.slice(0, 3) || [];
+
+  const handleHeroSearch = () => {
+    if (heroSearch.trim()) {
+      navigate(`/directory?search=${encodeURIComponent(heroSearch.trim())}`);
+    }
+  };
 
   const handleTripPlanSubmit = (data: any) => {
     setTripResult(data);
@@ -100,26 +164,43 @@ export default function Home() {
           <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
             Post a project and get competitive quotes from local contractors. Earn loyalty points with every purchase. Join 500+ community members.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
-            <input 
-              type="text" 
-              placeholder="Search for pros or events..." 
-              className="px-6 py-4 rounded-lg w-full border-0 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-sand outline-none transition-all shadow-lg"
-              data-testid="input-hero-search"
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+          <div className="flex flex-col sm:flex-row gap-2 justify-center items-center max-w-2xl mx-auto">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder={`Search for services in ${selectedLocation.city}...`}
+                value={heroSearch}
+                onChange={(e) => setHeroSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleHeroSearch()}
+                className="pl-12 pr-6 py-4 rounded-l-xl sm:rounded-l-xl sm:rounded-r-none rounded-xl w-full border-0 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-sand outline-none transition-all shadow-lg text-gray-800"
+                data-testid="input-hero-search"
+              />
+            </div>
             <Button 
               size="lg" 
-              onClick={() => setShowTripPlanner(true)}
-              className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-              data-testid="button-plan-trip"
+              onClick={handleHeroSearch}
+              className="hidden sm:flex rounded-r-xl rounded-l-none bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold px-8 h-[56px] shadow-lg"
+              data-testid="button-hero-search"
             >
-              <Compass className="mr-2 h-5 w-5" />
-              Plan Your Trip
+              <Search className="h-5 w-5 mr-2" />
+              Search
             </Button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+            <Link to="/events">
+              <Button 
+                size="lg" 
+                className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+                data-testid="button-local-events"
+              >
+                <Calendar className="mr-2 h-5 w-5" />
+                Local Events
+              </Button>
+            </Link>
             <Link to="/directory">
-              <Button size="lg" className="rounded-full bg-white/90 backdrop-blur-sm text-primary hover:bg-white font-semibold px-8 h-12 shadow-lg">
+              <Button size="lg" className="rounded-full bg-white/90 backdrop-blur-sm text-primary hover:bg-white font-semibold px-8 h-12 shadow-lg" data-testid="button-explore-directory">
+                <Compass className="mr-2 h-5 w-5" />
                 Explore Directory
               </Button>
             </Link>
@@ -183,6 +264,99 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Directory Category Icons Grid */}
+      <div className="container pt-12">
+        <div className="text-center mb-8">
+          <h2 className="font-display text-3xl font-bold text-foreground">Browse by Category</h2>
+          <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+          {BUSINESS_CATEGORIES.map((cat) => {
+            const IconComponent = CATEGORY_ICONS[cat.id] || Compass;
+            return (
+              <Link key={cat.id} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
+                <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/80 dark:bg-card/80 border border-border/50 hover:border-[#0a4a82]/30 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group" data-testid={`category-icon-${cat.id}`}>
+                  <div className="w-12 h-12 rounded-full bg-[#0a4a82]/10 flex items-center justify-center group-hover:bg-[#0a4a82]/20 transition-colors">
+                    <IconComponent className="h-6 w-6 text-[#0a4a82]" />
+                  </div>
+                  <span className="text-xs font-medium text-center text-foreground/80 group-hover:text-[#0a4a82] transition-colors leading-tight">{cat.name}</span>
+                </div>
+              </Link>
+            );
+          })}
+          <button
+            onClick={() => setShowCategoryRequest(true)}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/80 dark:bg-card/80 border border-dashed border-[#8a9a5b]/50 hover:border-[#8a9a5b] hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
+            data-testid="button-suggest-category"
+          >
+            <div className="w-12 h-12 rounded-full bg-[#8a9a5b]/10 flex items-center justify-center group-hover:bg-[#8a9a5b]/20 transition-colors">
+              <Plus className="h-6 w-6 text-[#8a9a5b]" />
+            </div>
+            <span className="text-xs font-medium text-center text-[#8a9a5b] leading-tight">Suggest a Category</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Category Suggestion Dialog */}
+      <Dialog open={showCategoryRequest} onOpenChange={setShowCategoryRequest}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-[#8a9a5b]" />
+              Suggest a New Category
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Category Name</label>
+              <Input
+                placeholder="e.g., Pool Service & Maintenance"
+                value={categoryForm.categoryName}
+                onChange={(e) => setCategoryForm(prev => ({ ...prev, categoryName: e.target.value }))}
+                data-testid="input-category-name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Description (optional)</label>
+              <Textarea
+                placeholder="Briefly describe the types of services in this category..."
+                value={categoryForm.description}
+                onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                data-testid="input-category-description"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Your Name (optional)</label>
+              <Input
+                placeholder="Your name"
+                value={categoryForm.submitterName}
+                onChange={(e) => setCategoryForm(prev => ({ ...prev, submitterName: e.target.value }))}
+                data-testid="input-category-submitter-name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Email (optional)</label>
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={categoryForm.submitterEmail}
+                onChange={(e) => setCategoryForm(prev => ({ ...prev, submitterEmail: e.target.value }))}
+                data-testid="input-category-submitter-email"
+              />
+            </div>
+            <Button
+              className="w-full bg-[#0a4a82] hover:bg-[#083d6b]"
+              onClick={() => categoryRequestMutation.mutate(categoryForm)}
+              disabled={!categoryForm.categoryName.trim() || categoryRequestMutation.isPending}
+              data-testid="button-submit-category-request"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {categoryRequestMutation.isPending ? "Submitting..." : "Submit Suggestion"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Sponsored Banner Ad */}
       <div className="container pt-12">

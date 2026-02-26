@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Calendar, LayoutGrid, List } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone } from "lucide-react";
+import { Link } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -99,6 +100,13 @@ export default function Events() {
                   Cards
                 </Button>
               </div>
+
+              <Link href="/advertising">
+                <Button className="rounded-full bg-white/15 backdrop-blur-md text-white border border-white/30 shadow-lg" data-testid="link-advertise-event">
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Advertise Your Event
+                </Button>
+              </Link>
 
               {isAuthenticated && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

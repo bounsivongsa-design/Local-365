@@ -7,6 +7,7 @@ export interface MembershipTier {
   pricingBasis: "per_zip_code";
   color: string;
   badgeGradient: string;
+  adDiscount: number;
   features: string[];
   limits: {
     maxPhotos: number;
@@ -32,6 +33,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     pricingBasis: "per_zip_code",
     color: "#cd7f32",
     badgeGradient: "from-amber-700 via-amber-500 to-amber-700",
+    adDiscount: 0.10,
     features: [
       "Business listing with phone number",
       "Customer reviews and ratings",
@@ -64,6 +66,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     pricingBasis: "per_zip_code",
     color: "#c0c0c0",
     badgeGradient: "from-gray-400 via-gray-200 to-gray-400",
+    adDiscount: 0.25,
     features: [
       "Everything in Bronze",
       "Logo display on listing",
@@ -98,6 +101,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     pricingBasis: "per_zip_code",
     color: "#ffd700",
     badgeGradient: "from-yellow-500 via-amber-300 to-yellow-500",
+    adDiscount: 0.50,
     features: [
       "Everything in Silver",
       "Top of list placement (by reviews)",
@@ -229,8 +233,18 @@ export const SERVICE_AREAS: ServiceArea[] = [
   },
 ];
 
+const TIER_ID_MAP: Record<string, string> = {
+  basic: "bronze",
+  standard: "silver",
+  premium: "gold",
+  bronze: "bronze",
+  silver: "silver",
+  gold: "gold",
+};
+
 export function getMembershipTier(tierId: string): MembershipTier | undefined {
-  return MEMBERSHIP_TIERS.find((tier) => tier.id === tierId);
+  const normalizedId = TIER_ID_MAP[tierId] || tierId;
+  return MEMBERSHIP_TIERS.find((tier) => tier.id === normalizedId);
 }
 
 export function getPaymentFrequency(freqId: string): PaymentFrequency | undefined {
@@ -352,4 +366,21 @@ export function getAdRate(
     ? EVENT_MONTHLY_AD_RATES
     : MEMBER_AD_RATES;
   return isMember ? rates[size].member : rates[size].nonMember;
+}
+
+export function getAdRateByTier(
+  size: AdSize,
+  tierId: string | null,
+  adType: "monthly" | "event2Week" | "eventMonthly" = "monthly"
+): number {
+  const rates = adType === "event2Week"
+    ? EVENT_2WEEK_AD_RATES
+    : adType === "eventMonthly"
+    ? EVENT_MONTHLY_AD_RATES
+    : MEMBER_AD_RATES;
+  const basePrice = rates[size].nonMember;
+  if (!tierId) return basePrice;
+  const tier = getMembershipTier(tierId);
+  if (!tier) return basePrice;
+  return Math.round(basePrice * (1 - tier.adDiscount));
 }

@@ -5,18 +5,46 @@
 Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. The application connects visitors and residents with local businesses, service providers, events, and community features including a customer elite status loyalty program, quote request system, and AI-powered chatbot assistant named "Ziggy."
 
 Key features include:
-- Business directory with 26 categories, ratings, and reviews
-- Local events calendar
+- Business directory with 30+ categories, ratings, and reviews
+- Zillow-style location search with geolocation support
+- Local events calendar with "Advertise Your Event" link
 - Quote/bid system connecting customers with service providers
 - User validation through receipt uploads
 - Elite Status loyalty program for customers (Member → Silver → Gold → Platinum → Ambassador)
 - AI chatbot "Ziggy" for local recommendations
 - Community feed with posts and engagement
 - Account types: Customer and Business with distinct features
+- Tiered advertising discounts by membership level
+- "Suggest a Category" feature for community-driven category additions
+- Business credential display (LLC, Licensed, Insured, Est. Year, Commercial/Residential)
 
 ## Recent Changes
 
-### February 2026
+### February 2026 (Latest)
+- **Enhanced Location Search**: Zillow-style search with geolocation
+  - "Use My Location" button with browser geolocation API + OpenStreetMap reverse geocoding
+  - Added Moyock 27958, Chesapeake 23322/23321/23320 locations
+  - Hero search bar links to directory with search query params
+  - Directory page reads URL search params (?search=, ?category=)
+- **Home Page Redesign**:
+  - Directory category icons grid (all 30+ categories with Lucide icons)
+  - "Local Events" button replaced "Plan Your Trip" in hero section
+  - Functional Zillow-style search bar that redirects to directory
+  - "Suggest a Category" button opens submission dialog
+- **New Categories**: Animal & Pet, Garage Door, Moving & Hauling, Metal Work, Fencing, Woodworking (renamed from "Woodworking & Lazer CNC")
+- **Category Suggestion System**: categoryRequests table + POST /api/category-requests endpoint
+- **Tiered Advertising Discounts**: 4 pricing columns (Non-Member, Bronze 10% off, Silver 25% off, Gold 50% off)
+  - adDiscount field on MembershipTier interface
+  - getAdRateByTier() function for tier-based pricing
+- **Business Listing Enhancements**:
+  - New schema fields: isLicensed, establishedYear, establishedZipCode, servicesCommercial, servicesResidential
+  - BusinessCard shows Licensed badge alongside LLC/Insured
+  - BusinessDetails shows Established Year, Established Zip, Commercial/Residential indicators
+  - MembershipBadge displays Bronze/Silver/Gold labels (maps from basic/standard/premium DB values)
+- **Events Page**: "Advertise Your Event" link in hero section linking to advertising page
+- **Membership Tier ID Mapping**: TIER_ID_MAP normalizes basic→bronze, standard→silver, premium→gold
+
+### February 2026 (Earlier)
 - **Location-Based Search**: Scalable location system for expanding to multiple regions
   - LocationPicker component in navigation header for selecting city/zip/region
   - Location context stores user's selected location in localStorage

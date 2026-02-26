@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, ExternalLink, Building2 } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase } from "lucide-react";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,6 @@ export default function BusinessDetails() {
 
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
-      {/* Header Image */}
       <div className="h-[300px] md:h-[400px] relative w-full bg-slate-900 overflow-hidden">
         {business.imageUrl && (
           <img 
@@ -75,9 +74,8 @@ export default function BusinessDetails() {
       </div>
 
       <div className="container py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Info */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white rounded-2xl p-6 md:p-8 border shadow-sm">
+          <div className="bg-white dark:bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
             <h2 className="font-display text-2xl font-bold mb-4">About</h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
               {business.description}
@@ -135,7 +133,6 @@ export default function BusinessDetails() {
             )}
           </div>
 
-          {/* Business Credentials - LLC & Insurance Status */}
           <div className="bg-white dark:bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <Shield className="h-6 w-6 text-[#0a4a82]" />
@@ -144,11 +141,63 @@ export default function BusinessDetails() {
             <TrustBadges 
               hasLLC={business.hasLLC ?? false} 
               hasInsurance={business.hasInsurance ?? false}
+              isLicensed={business.isLicensed ?? false}
               variant="full"
             />
+
+            {(business.establishedYear || business.establishedZipCode || business.servicesCommercial || business.servicesResidential) && (
+              <div className="mt-6 pt-6 border-t border-[#0a4a82]/10">
+                <h3 className="text-lg font-semibold mb-4 text-foreground">Additional Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {business.establishedYear && (
+                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl" data-testid="detail-established-year">
+                      <Calendar className="h-5 w-5 text-[#0a4a82] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-sm mb-0.5">Established</h4>
+                        <p className="text-muted-foreground text-sm">{business.establishedYear}</p>
+                      </div>
+                    </div>
+                  )}
+                  {business.establishedZipCode && (
+                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl" data-testid="detail-established-zip">
+                      <MapPinned className="h-5 w-5 text-[#0a4a82] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-sm mb-0.5">Established Zip Code</h4>
+                        <p className="text-muted-foreground text-sm">{business.establishedZipCode}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {(business.servicesCommercial || business.servicesResidential) && (
+                  <div className="mt-4">
+                    <h4 className="font-semibold text-sm mb-3">Service Types</h4>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {business.servicesResidential && (
+                        <div 
+                          className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg"
+                          data-testid="badge-residential"
+                        >
+                          <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Residential</span>
+                        </div>
+                      )}
+                      {business.servicesCommercial && (
+                        <div 
+                          className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                          data-testid="badge-commercial"
+                        >
+                          <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Commercial</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Local 365 Partner Perks */}
           {business.isLocal365Partner && (
             <div className="bg-gradient-to-br from-[#8a9a5b]/10 to-[#0a4a82]/5 rounded-2xl p-6 md:p-8 border border-[#8a9a5b]/20">
               <div className="flex items-center gap-3 mb-6">
@@ -163,7 +212,7 @@ export default function BusinessDetails() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {business.silverPerk && (
-                  <div className="flex items-start gap-3 p-4 bg-white/80 rounded-xl border border-gray-200">
+                  <div className="flex items-start gap-3 p-4 bg-white/80 dark:bg-card/80 rounded-xl border border-gray-200 dark:border-gray-700">
                     <Gift className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
                     <div>
                       <Badge className="bg-gray-500 text-white mb-2">Silver Elite</Badge>
@@ -172,7 +221,7 @@ export default function BusinessDetails() {
                   </div>
                 )}
                 {business.goldPerk && (
-                  <div className="flex items-start gap-3 p-4 bg-white/80 rounded-xl border border-[#d4a373]/30">
+                  <div className="flex items-start gap-3 p-4 bg-white/80 dark:bg-card/80 rounded-xl border border-[#d4a373]/30">
                     <Sparkles className="h-5 w-5 text-[#d4a373] mt-0.5 flex-shrink-0" />
                     <div>
                       <Badge className="bg-[#d4a373] text-white mb-2">Gold Elite</Badge>
@@ -181,7 +230,7 @@ export default function BusinessDetails() {
                   </div>
                 )}
                 {business.platinumPerk && (
-                  <div className="flex items-start gap-3 p-4 bg-white/80 rounded-xl border border-[#0a4a82]/30">
+                  <div className="flex items-start gap-3 p-4 bg-white/80 dark:bg-card/80 rounded-xl border border-[#0a4a82]/30">
                     <Crown className="h-5 w-5 text-[#0a4a82] mt-0.5 flex-shrink-0" />
                     <div>
                       <Badge className="bg-[#0a4a82] text-white mb-2">Platinum Elite</Badge>
@@ -212,7 +261,7 @@ export default function BusinessDetails() {
           )}
 
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="font-display text-2xl font-bold">Reviews</h2>
               {isAuthenticated ? (
                 <ReviewDialog businessId={business.id} businessName={business.name} />
@@ -224,15 +273,15 @@ export default function BusinessDetails() {
             </div>
 
             {business.reviews?.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-dashed">
+              <div className="text-center py-12 bg-white dark:bg-card rounded-2xl border border-dashed">
                 <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-muted-foreground">No reviews yet. Be the first to share your experience!</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {business.reviews?.map((review) => (
-                  <div key={review.id} className="bg-white p-6 rounded-2xl border shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
+                  <div key={review.id} className="bg-white dark:bg-card p-6 rounded-2xl border shadow-sm">
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarFallback className="bg-primary/10 text-primary">
@@ -260,11 +309,9 @@ export default function BusinessDetails() {
           </div>
         </div>
 
-        {/* Right Column: Map & Actions */}
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border shadow-sm sticky top-24">
+          <div className="bg-white dark:bg-card p-6 rounded-2xl border shadow-sm sticky top-24">
              <div className="aspect-video w-full bg-muted rounded-xl mb-4 relative overflow-hidden group cursor-pointer">
-               {/* Placeholder Map */}
                <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-122.4194,37.7749,12,0/600x400')] bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity"></div>
                <div className="absolute inset-0 flex items-center justify-center">
                  <Button variant="secondary" size="sm" className="shadow-lg pointer-events-none">

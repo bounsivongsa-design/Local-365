@@ -59,7 +59,8 @@ const CATEGORIES = [
   "Tutor & Mentor Counseling", "Health & Wellness", "Tax CPA", "Legal",
   "Concrete", "Lawn Care", "Dog Sitting", "Real Estate / Realtors",
   "Shopping / Retail", "Food & Drink",
-  "Woodworking & Lazer CNC", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals"
+  "Woodworking", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals",
+  "Animal & Pet", "Garage Door", "Moving & Hauling", "Metal Work", "Fencing"
 ];
 
 const placementIcons: Record<string, any> = {
@@ -69,18 +70,22 @@ const placementIcons: Record<string, any> = {
   directory_boost: TrendingUp,
 };
 
-const AD_PRICING = {
-  nonMember: {
-    monthly: { small: 500, medium: 1000, large: 2000 },
-    event2Week: { small: 150, medium: 300, large: 600 },
-    eventMonthly: { small: 250, medium: 500, large: 900 },
-  },
-  member: {
-    monthly: { small: 250, medium: 500, large: 1000 },
-    event2Week: { small: 75, medium: 150, large: 300 },
-    eventMonthly: { small: 125, medium: 250, large: 450 },
-  }
+const AD_BASE_PRICING = {
+  monthly: { small: 500, medium: 1000, large: 2000 },
+  event2Week: { small: 150, medium: 300, large: 600 },
+  eventMonthly: { small: 250, medium: 500, large: 900 },
 };
+
+const TIER_DISCOUNTS = [
+  { id: null, name: "Non-Member", discount: 0, icon: Users, color: "slate", gradient: "from-slate-600 to-slate-800", badgeText: null },
+  { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, color: "amber", gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
+  { id: "silver", name: "Silver", discount: 0.25, icon: Crown, color: "gray", gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
+  { id: "gold", name: "Gold", discount: 0.50, icon: Crown, color: "yellow", gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
+] as const;
+
+function getTierPrice(basePrice: number, discount: number): number {
+  return Math.round(basePrice * (1 - discount));
+}
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -243,9 +248,9 @@ export default function Advertising() {
                 <Crown className="h-8 w-8 text-white" />
               </div>
               <div className="text-white">
-                <h3 className="text-2xl font-bold">Premier Member Rates — Save 50% on All Advertising</h3>
+                <h3 className="text-2xl font-bold">Members Save Up to 50% on All Advertising</h3>
                 <p className="text-white/80 mt-1">
-                  Plus get 1 month free when you prepay 6 months
+                  Bronze 10% off, Silver 25% off, Gold 50% off — plus 1 month free when you prepay 6 months
                 </p>
               </div>
             </div>
@@ -270,137 +275,94 @@ export default function Advertising() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Non-Member Rates */}
-            <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200/50 dark:border-slate-700/50">
-              <div className="bg-gradient-to-br from-slate-600 to-slate-800 p-6 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Users className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold">Non-Member Rates</h3>
-                    <p className="text-white/70 text-sm">Standard pricing</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Advertising</h4>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.nonMember.monthly).map(([size, price]) => (
-                      <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {TIER_DISCOUNTS.map((tier) => {
+              const TierIcon = tier.icon;
+              const isGold = tier.id === "gold";
+              return (
+                <div
+                  key={tier.name}
+                  className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
+                  data-testid={`card-pricing-${tier.id || "non-member"}`}
+                >
+                  {tier.badgeText && (
+                    <div className="absolute -top-0 right-4 z-10">
+                      <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-1.5 rounded-b-xl text-xs font-bold shadow-lg flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        {tier.badgeText}
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    <h4 className="font-semibold text-slate-900 dark:text-white">2-Week Event Ads</h4>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.nonMember.event2Week).map(([size, price]) => (
-                      <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  )}
 
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Event Ads</h4>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.nonMember.eventMonthly).map(([size, price]) => (
-                      <div key={size} className="bg-slate-100 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${price}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                  <div className={`bg-gradient-to-br ${tier.gradient} p-5 text-white`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <TierIcon className="h-5 w-5" />
                       </div>
-                    ))}
+                      <div>
+                        <h3 className="text-lg font-bold">{tier.name}</h3>
+                        <p className="text-white/70 text-xs">
+                          {tier.discount > 0 ? `${tier.discount * 100}% off all ads` : "Standard pricing"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Member Rates */}
-            <div className="relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl shadow-[#8a9a5b]/20 ring-2 ring-[#8a9a5b]">
-              <div className="absolute -top-0 right-6 z-10">
-                <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-2 rounded-b-xl text-sm font-bold shadow-lg flex items-center gap-1.5">
-                  <Zap className="h-4 w-4" />
-                  50% OFF
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-br from-[#8a9a5b] to-[#6b7a4a] p-6 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Crown className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold">Premier Member Rates</h3>
-                    <p className="text-white/70 text-sm">1 month free with 6 months prepaid</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="h-5 w-5 text-[#8a9a5b]" />
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Advertising</h4>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.member.monthly).map(([size, price]) => (
-                      <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
-                        <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                  <div className="p-5 space-y-5">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Monthly Ads</h4>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="h-5 w-5 text-[#8a9a5b]" />
-                    <h4 className="font-semibold text-slate-900 dark:text-white">2-Week Event Ads</h4>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.member.event2Week).map(([size, price]) => (
-                      <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
-                        <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                      <div className="space-y-2">
+                        {(["small", "medium", "large"] as const).map((size) => (
+                          <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+                            <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
+                              ${getTierPrice(AD_BASE_PRICING.monthly[size], tier.discount)}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="h-5 w-5 text-[#8a9a5b]" />
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Monthly Event Ads</h4>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(AD_PRICING.member.eventMonthly).map(([size, price]) => (
-                      <div key={size} className="bg-[#8a9a5b]/10 rounded-xl p-4 text-center border border-[#8a9a5b]/20">
-                        <p className="text-2xl font-bold text-[#8a9a5b]">${price}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        <h4 className="font-semibold text-sm text-slate-900 dark:text-white">2-Week Event</h4>
                       </div>
-                    ))}
+                      <div className="space-y-2">
+                        {(["small", "medium", "large"] as const).map((size) => (
+                          <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+                            <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
+                              ${getTierPrice(AD_BASE_PRICING.event2Week[size], tier.discount)}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Monthly Event</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {(["small", "medium", "large"] as const).map((size) => (
+                          <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+                            <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
+                              ${getTierPrice(AD_BASE_PRICING.eventMonthly[size], tier.discount)}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 

@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt } from "drizzle-orm";
 
 const openai = new OpenAI({
@@ -513,7 +513,7 @@ export async function registerRoutes(
           { category: 'Health & Wellness', winner: 'Serenity Wellness', runnerUp: 'Ocean Yoga Studio', honorable: 'Coastal Zen Center', rating: '4.9' },
           { category: 'Tax CPA', winner: 'Coastal Tax Services', runnerUp: 'OBX Accounting', honorable: 'Beach Business CPAs', rating: '4.7' },
           { category: 'Legal', winner: 'Beach Law Group', runnerUp: 'OBX Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
-          { category: 'Woodworking & Lazer CNC', winner: 'OBX Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Beach Timber Creations', rating: '4.9' },
+          { category: 'Woodworking', winner: 'OBX Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Beach Timber Creations', rating: '4.9' },
           { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Duck Donuts', honorable: 'OBX Bread Company', rating: '4.9' },
           { category: 'Catering Food Trucks', winner: 'Taco Truck OBX', runnerUp: 'Coastal Catering Co', honorable: 'Beach Bites Mobile', rating: '4.8' },
           { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'OBX Party Pros', honorable: 'Beach Celebration Co', rating: '4.8' },
@@ -1684,6 +1684,17 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     }
   });
 
+  // Category suggestion requests
+  app.post("/api/category-requests", async (req, res) => {
+    try {
+      const parsed = insertCategoryRequestSchema.parse(req.body);
+      const [request] = await pgDb.insert(categoryRequests).values(parsed).returning();
+      res.json(request);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
   // Seed ad pricing if not exists
   await seedAdPricing();
 
@@ -1771,7 +1782,7 @@ async function seedDatabase() {
       { id: 32, name: "Food & Drink", subs: [] },
       { id: 21, name: "Tax CPA", subs: [] },
       { id: 22, name: "Legal", subs: [] },
-      { id: 23, name: "Woodworking & Lazer CNC", subs: [] },
+      { id: 23, name: "Woodworking", subs: [] },
       { id: 24, name: "Baking & Cooking", subs: [] },
       { id: 25, name: "Catering Food Trucks", subs: [] },
       { id: 26, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
@@ -1808,7 +1819,7 @@ async function seedDatabase() {
       { name: "Serenity Wellness", category: "Mind Body Soul", description: "Yoga, meditation, and holistic health.", address: "220 Zen Way, Duck", imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop" },
       { name: "Coastal Tax Services", category: "Tax CPA", description: "Tax preparation and accounting.", address: "321 Finance Dr, Kitty Hawk", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop" },
       { name: "Beach Law Group", category: "Legal", description: "Real estate and business law.", address: "422 Justice Blvd, Manteo", imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop" },
-      { name: "OBX Woodworks", category: "Woodworking & Lazer CNC", description: "Custom furniture and laser engraving.", address: "523 Craft Ln, Wanchese", imageUrl: "https://images.unsplash.com/photo-1611095780322-bbc1f7b9f4ce?w=400&h=300&fit=crop" },
+      { name: "OBX Woodworks", category: "Woodworking", description: "Custom furniture and woodworking.", address: "523 Craft Ln, Wanchese", imageUrl: "https://images.unsplash.com/photo-1611095780322-bbc1f7b9f4ce?w=400&h=300&fit=crop" },
       { name: "Sweet Coastal Bakery", category: "Baking & Cooking", description: "Fresh baked goods and custom cakes.", address: "624 Sugar St, Corolla", imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop" },
       { name: "Taco Truck OBX", category: "Catering Food Trucks", description: "Mobile catering and food truck services.", address: "725 Flavor Ave, Duck", imageUrl: "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=400&h=300&fit=crop" },
       { name: "Coastal Events & Rentals", category: "Event Planning & Rentals", description: "Weddings, parties, and tent rentals.", address: "826 Celebration Way, Kill Devil Hills", imageUrl: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop" },

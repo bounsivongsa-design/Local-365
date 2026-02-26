@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Building2, Star, Crown } from "lucide-react";
+import { Medal, Award, Crown } from "lucide-react";
 
 interface MembershipBadgeProps {
   tier: string | null | undefined;
@@ -8,28 +8,53 @@ interface MembershipBadgeProps {
 
 const TIER_CONFIG: Record<string, { 
   label: string; 
-  icon: typeof Building2; 
+  icon: typeof Medal; 
   color: string; 
   bgColor: string;
+  borderColor: string;
 }> = {
   basic: {
-    label: "Member",
-    icon: Building2,
-    color: "#0a4a82",
-    bgColor: "bg-[#0a4a82]/10"
+    label: "Bronze Member",
+    icon: Medal,
+    color: "#cd7f32",
+    bgColor: "bg-[#cd7f32]/10",
+    borderColor: "border-[#cd7f32]/30",
+  },
+  bronze: {
+    label: "Bronze Member",
+    icon: Medal,
+    color: "#cd7f32",
+    bgColor: "bg-[#cd7f32]/10",
+    borderColor: "border-[#cd7f32]/30",
   },
   standard: {
-    label: "Standard Member",
-    icon: Star,
-    color: "#8a9a5b",
-    bgColor: "bg-[#8a9a5b]/10"
+    label: "Silver Member",
+    icon: Award,
+    color: "#71717a",
+    bgColor: "bg-[#c0c0c0]/15",
+    borderColor: "border-[#c0c0c0]/40",
+  },
+  silver: {
+    label: "Silver Member",
+    icon: Award,
+    color: "#71717a",
+    bgColor: "bg-[#c0c0c0]/15",
+    borderColor: "border-[#c0c0c0]/40",
   },
   premium: {
-    label: "Premium Member",
+    label: "Gold Member",
     icon: Crown,
     color: "#d4a373",
-    bgColor: "bg-[#d4a373]/10"
-  }
+    bgColor: "bg-[#d4a373]/10",
+    borderColor: "border-[#d4a373]/30",
+  },
+  gold: {
+    label: "Gold Member",
+    icon: Crown,
+    color: "#d4a373",
+    bgColor: "bg-[#d4a373]/10",
+    borderColor: "border-[#d4a373]/30",
+  },
 };
 
 export function MembershipBadge({ tier, variant = "compact" }: MembershipBadgeProps) {
@@ -57,7 +82,7 @@ export function MembershipBadge({ tier, variant = "compact" }: MembershipBadgePr
 
   return (
     <div 
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg ${config.bgColor}`}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg ${config.bgColor} border ${config.borderColor}`}
       data-testid={`badge-membership-${tier}-full`}
     >
       <Icon className="h-5 w-5" style={{ color: config.color }} />

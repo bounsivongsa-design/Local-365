@@ -35,7 +35,7 @@ const dummyCategories: Category[] = [
   { id: 32, name: "Food & Drink", subs: [] },
   { id: 21, name: "Tax CPA", subs: [] },
   { id: 22, name: "Legal", subs: [] },
-  { id: 23, name: "Woodworking & Lazer CNC", subs: [] },
+  { id: 23, name: "Woodworking", subs: [] },
   { id: 24, name: "Baking & Cooking", subs: [] },
   { id: 25, name: "Catering Food Trucks", subs: [] },
   { id: 26, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },

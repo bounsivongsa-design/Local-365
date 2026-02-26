@@ -104,7 +104,8 @@ const CATEGORIES = [
   "Tutor & Mentor Counseling", "Health & Wellness", "Tax CPA", "Legal",
   "Concrete", "Lawn Care", "Dog Sitting", "Real Estate / Realtors",
   "Shopping / Retail", "Food & Drink",
-  "Woodworking & Lazer CNC", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals"
+  "Woodworking", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals",
+  "Animal & Pet", "Garage Door", "Moving & Hauling", "Metal Work", "Fencing"
 ];
 
 const TIMELINES = [

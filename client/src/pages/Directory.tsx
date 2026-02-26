@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
 import { AdBanner } from "@/components/AdBanner";
@@ -24,8 +25,16 @@ import {
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 
 export default function Directory() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState("All");
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
+  const urlCategory = searchParams.get("category") || "";
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [category, setCategory] = useState(urlCategory || "All");
+
+  useEffect(() => {
+    if (urlSearch) setSearchTerm(urlSearch);
+    if (urlCategory) setCategory(urlCategory);
+  }, [urlSearch, urlCategory]);
   const { data: businesses, isLoading } = useBusinesses({ 
     search: searchTerm, 
     category: category === "All" ? undefined : category 
@@ -63,7 +72,7 @@ export default function Directory() {
     { name: "Food & Drink", icon: UtensilsCrossed },
     { name: "Tax CPA", icon: Calculator },
     { name: "Legal", icon: Scale },
-    { name: "Woodworking & Lazer CNC", icon: Hammer },
+    { name: "Woodworking", icon: Hammer },
     { name: "Baking & Cooking", icon: ChefHat },
     { name: "Catering Food Trucks", icon: Truck },
     { name: "Event Planning & Rentals", icon: PartyPopper },

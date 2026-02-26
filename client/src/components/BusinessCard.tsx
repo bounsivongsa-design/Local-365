@@ -16,7 +16,6 @@ export function BusinessCard({ business }: BusinessCardProps) {
         className="group relative bg-white dark:bg-card rounded-2xl overflow-hidden border border-[#0a4a82]/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgba(10,74,130,0.15)] transition-all duration-500 hover:-translate-y-1"
         data-testid={`card-business-${business.id}`}
       >
-        {/* Image Section */}
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10">
           {business.imageUrl ? (
             <img 
@@ -30,10 +29,8 @@ export function BusinessCard({ business }: BusinessCardProps) {
             </div>
           )}
           
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
-          {/* Category Badge */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
             {business.category && (
               <Badge className="bg-white/90 dark:bg-card/90 backdrop-blur-sm text-[#0a4a82] border-0 shadow-lg">
@@ -48,19 +45,16 @@ export function BusinessCard({ business }: BusinessCardProps) {
             )}
           </div>
           
-          {/* Rating Badge */}
           <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-lg">
             <Star className="h-3.5 w-3.5 fill-current" />
             {business.averageRating ? Number(business.averageRating).toFixed(1) : "New"}
           </div>
           
-          {/* Hover Arrow */}
           <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-lg">
             <ArrowRight className="h-5 w-5 text-[#0a4a82]" />
           </div>
         </div>
         
-        {/* Content Section */}
         <div className="p-5">
           <h3 className="text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
             {business.name}
@@ -75,13 +69,13 @@ export function BusinessCard({ business }: BusinessCardProps) {
             {business.description}
           </p>
           
-          {/* Trust Badges, Membership & Bottom Accent */}
           <div className="mt-4 pt-4 border-t border-[#0a4a82]/10">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <TrustBadges 
                   hasLLC={business.hasLLC ?? false} 
-                  hasInsurance={business.hasInsurance ?? false} 
+                  hasInsurance={business.hasInsurance ?? false}
+                  isLicensed={business.isLicensed ?? false}
                   variant="compact"
                 />
                 <MembershipBadge tier={business.membershipTier} variant="compact" />

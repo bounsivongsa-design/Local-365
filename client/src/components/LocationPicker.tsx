@@ -3,18 +3,22 @@ import { useLocation } from "@/context/LocationContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MapPin, Search, ChevronDown, Check } from "lucide-react";
+import { MapPin, Search, ChevronDown, Check, Navigation } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Location } from "@shared/schema";
 
 const NC_REGIONS = [
   { name: "Currituck County, NC", city: "Currituck", state: "NC", zipCode: "27929", region: "Outer Banks", tagline: "Wild horses, pristine beaches, and coastal charm" },
+  { name: "Moyock, NC", city: "Moyock", state: "NC", zipCode: "27958", region: "Currituck County", tagline: "Gateway to the Outer Banks" },
   { name: "Duck, NC", city: "Duck", state: "NC", zipCode: "27949", region: "Outer Banks", tagline: "Upscale beach town with boardwalks and boutiques" },
   { name: "Corolla, NC", city: "Corolla", state: "NC", zipCode: "27927", region: "Outer Banks", tagline: "Historic lighthouse and wild horse tours" },
   { name: "Kill Devil Hills, NC", city: "Kill Devil Hills", state: "NC", zipCode: "27948", region: "Outer Banks", tagline: "Birthplace of flight and family beaches" },
   { name: "Nags Head, NC", city: "Nags Head", state: "NC", zipCode: "27959", region: "Outer Banks", tagline: "Jockey's Ridge and legendary surf" },
   { name: "Kitty Hawk, NC", city: "Kitty Hawk", state: "NC", zipCode: "27949", region: "Outer Banks", tagline: "Wright Brothers heritage and maritime forests" },
   { name: "Manteo, NC", city: "Manteo", state: "NC", zipCode: "27954", region: "Outer Banks", tagline: "Historic waterfront and Roanoke Island charm" },
+  { name: "Chesapeake, VA (23322)", city: "Chesapeake", state: "VA", zipCode: "23322", region: "Hampton Roads", tagline: "Great Bridge and southern Chesapeake" },
+  { name: "Chesapeake, VA (23321)", city: "Chesapeake", state: "VA", zipCode: "23321", region: "Hampton Roads", tagline: "Deep Creek and western Chesapeake" },
+  { name: "Chesapeake, VA (23320)", city: "Chesapeake", state: "VA", zipCode: "23320", region: "Hampton Roads", tagline: "Greenbrier and central Chesapeake" },
 ];
 
 export function LocationPicker() {
@@ -55,10 +59,40 @@ export function LocationPicker() {
     }
   }, [open]);
 
+  const [geoLoading, setGeoLoading] = useState(false);
+
   const handleSelect = (loc: typeof NC_REGIONS[0]) => {
     setLocation(loc);
     setOpen(false);
     setSearch("");
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) return;
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`);
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || "Unknown";
+          const state = data.address?.state || "";
+          const zip = data.address?.postcode || "";
+          const stateAbbr = state.length > 2 ? state.substring(0, 2).toUpperCase() : state;
+          const match = allLocations.find(loc => loc.zipCode === zip || loc.city.toLowerCase() === city.toLowerCase());
+          if (match) {
+            handleSelect(match);
+          } else {
+            handleSelect({ name: `${city}, ${stateAbbr}`, city, state: stateAbbr, zipCode: zip, region: "", tagline: "" });
+          }
+        } catch {
+          setGeoLoading(false);
+        }
+        setGeoLoading(false);
+      },
+      () => setGeoLoading(false),
+      { timeout: 10000 }
+    );
   };
 
   return (
@@ -95,6 +129,17 @@ export function LocationPicker() {
               data-testid="input-location-search"
             />
           </div>
+
+          <Button
+            variant="outline"
+            className="w-full gap-2 text-sm"
+            onClick={handleUseMyLocation}
+            disabled={geoLoading}
+            data-testid="button-use-my-location"
+          >
+            <Navigation className="h-4 w-4" />
+            {geoLoading ? "Detecting location..." : "Use My Location"}
+          </Button>
 
           <div className="max-h-[300px] overflow-y-auto space-y-1">
             {filteredLocations.length === 0 ? (

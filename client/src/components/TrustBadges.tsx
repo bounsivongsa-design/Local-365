@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Shield, ShieldCheck, AlertTriangle, FileCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -9,13 +9,14 @@ import {
 interface TrustBadgesProps {
   hasLLC: boolean | null;
   hasInsurance: boolean | null;
+  isLicensed?: boolean | null;
   variant?: "compact" | "full";
   className?: string;
 }
 
-export function TrustBadges({ hasLLC, hasInsurance, variant = "compact", className = "" }: TrustBadgesProps) {
+export function TrustBadges({ hasLLC, hasInsurance, isLicensed, variant = "compact", className = "" }: TrustBadgesProps) {
   const isVerifiedBusiness = hasLLC && hasInsurance;
-  const isPartiallyVerified = hasLLC || hasInsurance;
+  const isPartiallyVerified = hasLLC || hasInsurance || isLicensed;
   
   if (variant === "compact") {
     return (
@@ -90,6 +91,22 @@ export function TrustBadges({ hasLLC, hasInsurance, variant = "compact", classNa
             </TooltipContent>
           </Tooltip>
         )}
+        {isLicensed && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                className="bg-indigo-600 text-white border-0 shadow-sm cursor-help"
+                data-testid="badge-licensed"
+              >
+                <FileCheck className="h-3 w-3 mr-1" />
+                Licensed
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>State Licensed Professional</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }
@@ -146,6 +163,25 @@ export function TrustBadges({ hasLLC, hasInsurance, variant = "compact", classNa
           </div>
           <p className={`text-xs ${hasInsurance ? "text-teal-600 dark:text-teal-400" : "text-gray-400"}`}>
             {hasInsurance ? "Liability coverage" : "No insurance on file"}
+          </p>
+        </div>
+
+        <div 
+          className={`p-3 rounded-lg border ${
+            isLicensed 
+              ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800" 
+              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+          }`}
+          data-testid="credential-licensed"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <FileCheck className={`h-4 w-4 ${isLicensed ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400"}`} />
+            <span className={`text-sm font-medium ${isLicensed ? "text-indigo-700 dark:text-indigo-300" : "text-gray-500"}`}>
+              Licensed
+            </span>
+          </div>
+          <p className={`text-xs ${isLicensed ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400"}`}>
+            {isLicensed ? "State licensed professional" : "No license on file"}
           </p>
         </div>
       </div>

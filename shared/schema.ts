@@ -24,8 +24,13 @@ export const businesses = pgTable("businesses", {
   verified: boolean("verified").default(false),
   
   // Business credentials - helps customers identify legitimate businesses
-  hasLLC: boolean("has_llc").default(false), // Business is registered as LLC/Corp
-  hasInsurance: boolean("has_insurance").default(false), // Business has liability insurance
+  hasLLC: boolean("has_llc").default(false),
+  hasInsurance: boolean("has_insurance").default(false),
+  isLicensed: boolean("is_licensed").default(false),
+  establishedYear: integer("established_year"),
+  establishedZipCode: text("established_zip_code"),
+  servicesCommercial: boolean("services_commercial").default(false),
+  servicesResidential: boolean("services_residential").default(false),
   
   // Local 365 Partner Program - perks businesses offer to elite members
   isLocal365Partner: boolean("is_local365_partner").default(false),
@@ -35,7 +40,7 @@ export const businesses = pgTable("businesses", {
   ambassadorPerk: text("ambassador_perk"), // Exclusive Ambassador perk
   
   // Business Membership Tiers
-  membershipTier: text("membership_tier").default("none"), // 'none', 'basic', 'standard', 'premium'
+  membershipTier: text("membership_tier").default("none"), // 'none', 'basic'(Bronze), 'standard'(Silver), 'premium'(Gold)
   membershipPaymentFrequency: text("membership_payment_frequency"), // 'monthly', 'semi_annual', 'annual'
   membershipStartDate: timestamp("membership_start_date"),
   membershipEndDate: timestamp("membership_end_date"),
@@ -176,6 +181,16 @@ export const adPricing = pgTable("ad_pricing", {
   isActive: boolean("is_active").default(true),
 });
 
+export const categoryRequests = pgTable("category_requests", {
+  id: serial("id").primaryKey(),
+  categoryName: text("category_name").notNull(),
+  description: text("description"),
+  submitterName: text("submitter_name"),
+  submitterEmail: text("submitter_email"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
@@ -196,6 +211,7 @@ export const insertAdPlacementSchema = createInsertSchema(adPlacements).omit({
   totalPaid: true
 });
 export const insertAdPricingSchema = createInsertSchema(adPricing).omit({ id: true });
+export const insertCategoryRequestSchema = createInsertSchema(categoryRequests).omit({ id: true, status: true, createdAt: true });
 
 export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
@@ -209,6 +225,8 @@ export type AdPricing = typeof adPricing.$inferSelect;
 export type InsertLocation = z.infer<typeof insertLocationSchema>;
 export type InsertAdPlacement = z.infer<typeof insertAdPlacementSchema>;
 export type InsertAdPricing = z.infer<typeof insertAdPricingSchema>;
+export type CategoryRequest = typeof categoryRequests.$inferSelect;
+export type InsertCategoryRequest = z.infer<typeof insertCategoryRequestSchema>;
 
 export type CreateBusinessRequest = z.infer<typeof insertBusinessSchema>;
 export type CreateEventRequest = z.infer<typeof insertEventSchema>;
