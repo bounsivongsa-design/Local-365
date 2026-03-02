@@ -17,12 +17,12 @@ interface LocationContextType {
 }
 
 const defaultLocation: SelectedLocation = {
-  name: "Currituck County, NC",
-  city: "Currituck",
+  name: "Moyock, NC",
+  city: "Moyock",
   state: "NC",
-  zipCode: "27929",
-  region: "Outer Banks",
-  tagline: "Your Local Connection to Currituck County"
+  zipCode: "27958",
+  region: "Currituck County",
+  tagline: "Gateway to the Outer Banks"
 };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
