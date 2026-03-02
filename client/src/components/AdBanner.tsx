@@ -114,7 +114,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/70 via-transparent to-[#0a4a82]/50" />
         <div className="relative p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex-1">
-            <Badge className="mb-3 bg-white/15 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20">
+            <Badge className="mb-3 bg-white/20 text-white border border-white/20 hover:bg-white/25">
               <Megaphone className="h-3 w-3 mr-1.5" />
               {isPlaceholder ? "Ad Space Available" : "Sponsored"}
             </Badge>

@@ -152,7 +152,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
           {/* Value Proposition Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full mb-6">
             <MapPin className="h-4 w-4 text-white" />
             <span className="text-white text-sm font-medium">
               {selectedLocation.tagline || `Your Local Connection to ${selectedLocation.city}`}
@@ -178,7 +178,7 @@ export default function Home() {
                 value={heroSearch}
                 onChange={(e) => setHeroSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleHeroSearch()}
-                className="pl-12 pr-6 py-4 rounded-l-xl sm:rounded-l-xl sm:rounded-r-none rounded-xl w-full border-0 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-sand outline-none transition-all shadow-lg text-gray-800"
+                className="pl-12 pr-6 py-4 rounded-l-xl sm:rounded-l-xl sm:rounded-r-none rounded-xl w-full border-0 bg-white focus:ring-2 focus:ring-sand outline-none shadow-lg text-gray-800"
                 data-testid="input-hero-search"
               />
             </div>
@@ -204,7 +204,7 @@ export default function Home() {
               </Button>
             </Link>
             <Link to="/directory">
-              <Button size="lg" className="rounded-full bg-white/90 backdrop-blur-sm text-primary hover:bg-white font-semibold px-8 h-12 shadow-lg" data-testid="button-explore-directory">
+              <Button size="lg" className="rounded-full bg-white text-primary hover:bg-white/90 font-semibold px-8 h-12 shadow-lg" data-testid="button-explore-directory">
                 <Compass className="mr-2 h-5 w-5" />
                 Explore Directory
               </Button>
@@ -402,7 +402,7 @@ export default function Home() {
       <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
         {/* Main Feed */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between mb-4 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between mb-4 bg-white dark:bg-card rounded-xl px-4 py-3 shadow-sm">
             <h2 className="font-display text-2xl font-bold text-foreground">Community Feed</h2>
             <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5">
               Latest Updates
@@ -495,7 +495,7 @@ export default function Home() {
         {/* Sidebar */}
         <div className="space-y-8">
           {/* Featured Businesses */}
-          <div className="bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+          <div className="bg-white/90 dark:bg-card/90 rounded-2xl p-5 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-bold text-foreground">Local Gems</h2>
               <Link to="/directory" className="text-sm font-medium text-primary hover:underline flex items-center">
@@ -540,7 +540,7 @@ export default function Home() {
           </div>
 
           {/* Upcoming Events */}
-          <div className="bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+          <div className="bg-white/90 dark:bg-card/90 rounded-2xl p-5 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-bold text-foreground">Upcoming Events</h2>
               <Link to="/events" className="text-sm font-medium text-primary hover:underline flex items-center">
