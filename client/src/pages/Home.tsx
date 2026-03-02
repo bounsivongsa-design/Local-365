@@ -271,29 +271,34 @@ export default function Home() {
           <h2 className="font-display text-3xl font-bold text-foreground">Browse by Category</h2>
           <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
           {BUSINESS_CATEGORIES.map((cat) => {
             const IconComponent = CATEGORY_ICONS[cat.id] || Compass;
             return (
               <Link key={cat.id} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
-                <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/80 dark:bg-card/80 border border-border/50 hover:border-[#0a4a82]/30 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group" data-testid={`category-icon-${cat.id}`}>
-                  <div className="w-12 h-12 rounded-full bg-[#0a4a82]/10 flex items-center justify-center group-hover:bg-[#0a4a82]/20 transition-colors">
-                    <IconComponent className="h-6 w-6 text-[#0a4a82]" />
+                <div
+                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_12px_40px_rgba(10,74,130,0.15),0_4px_12px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 active:translate-y-0 transition-all duration-300 cursor-pointer group overflow-hidden"
+                  data-testid={`category-icon-${cat.id}`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82]/0 via-transparent to-[#d4a373]/0 group-hover:from-[#0a4a82]/5 group-hover:to-[#d4a373]/5 transition-all duration-300 rounded-2xl" />
+                  <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-[0_4px_12px_rgba(10,74,130,0.3)] group-hover:shadow-[0_6px_20px_rgba(10,74,130,0.4)] group-hover:scale-110 transition-all duration-300">
+                    <IconComponent className="h-7 w-7 text-white drop-shadow-sm" />
                   </div>
-                  <span className="text-xs font-medium text-center text-foreground/80 group-hover:text-[#0a4a82] transition-colors leading-tight">{cat.name}</span>
+                  <span className="relative text-sm font-semibold text-center text-gray-700 dark:text-gray-200 group-hover:text-[#0a4a82] transition-colors duration-300 leading-tight">{cat.name}</span>
                 </div>
               </Link>
             );
           })}
           <button
             onClick={() => setShowCategoryRequest(true)}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/80 dark:bg-card/80 border border-dashed border-[#8a9a5b]/50 hover:border-[#8a9a5b] hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
+            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border-2 border-dashed border-[#8a9a5b]/40 shadow-[0_4px_20px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-[#8a9a5b]/70 hover:shadow-[0_12px_40px_rgba(138,154,91,0.15),0_4px_12px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 active:translate-y-0 transition-all duration-300 cursor-pointer group overflow-hidden"
             data-testid="button-suggest-category"
           >
-            <div className="w-12 h-12 rounded-full bg-[#8a9a5b]/10 flex items-center justify-center group-hover:bg-[#8a9a5b]/20 transition-colors">
-              <Plus className="h-6 w-6 text-[#8a9a5b]" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#8a9a5b]/0 to-[#8a9a5b]/0 group-hover:from-[#8a9a5b]/5 group-hover:to-[#8a9a5b]/10 transition-all duration-300 rounded-2xl" />
+            <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-[#8a9a5b] to-[#6b7a45] flex items-center justify-center shadow-[0_4px_12px_rgba(138,154,91,0.3)] group-hover:shadow-[0_6px_20px_rgba(138,154,91,0.4)] group-hover:scale-110 transition-all duration-300">
+              <Plus className="h-7 w-7 text-white drop-shadow-sm" />
             </div>
-            <span className="text-xs font-medium text-center text-[#8a9a5b] leading-tight">Suggest a Category</span>
+            <span className="relative text-sm font-semibold text-center text-[#8a9a5b] group-hover:text-[#6b7a45] transition-colors duration-300 leading-tight">Suggest a Category</span>
           </button>
         </div>
       </div>
