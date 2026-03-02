@@ -8,8 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 import type { Location } from "@shared/schema";
 
 const NC_REGIONS = [
-  { name: "Currituck County, NC", city: "Currituck", state: "NC", zipCode: "27929", region: "Outer Banks", tagline: "Wild horses, pristine beaches, and coastal charm" },
   { name: "Moyock, NC", city: "Moyock", state: "NC", zipCode: "27958", region: "Currituck County", tagline: "Gateway to the Outer Banks" },
+  { name: "Currituck County, NC", city: "Currituck", state: "NC", zipCode: "27929", region: "Currituck County", tagline: "Wild horses, pristine beaches, and coastal charm" },
   { name: "Duck, NC", city: "Duck", state: "NC", zipCode: "27949", region: "Outer Banks", tagline: "Upscale beach town with boardwalks and boutiques" },
   { name: "Corolla, NC", city: "Corolla", state: "NC", zipCode: "27927", region: "Outer Banks", tagline: "Historic lighthouse and wild horse tours" },
   { name: "Kill Devil Hills, NC", city: "Kill Devil Hills", state: "NC", zipCode: "27948", region: "Outer Banks", tagline: "Birthplace of flight and family beaches" },
