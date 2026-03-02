@@ -282,28 +282,26 @@ export default function Home() {
             return (
               <Link key={idx} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
                 <div
-                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_12px_40px_rgba(10,74,130,0.15),0_4px_12px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 active:translate-y-0 transition-all duration-300 cursor-pointer group overflow-hidden"
+                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-gray-200/60 shadow-sm hover:shadow-md hover:-translate-y-1 active:translate-y-0 transition-transform duration-200 ease-out cursor-pointer group will-change-transform"
                   data-testid={`category-icon-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82]/0 via-transparent to-[#d4a373]/0 group-hover:from-[#0a4a82]/5 group-hover:to-[#d4a373]/5 transition-all duration-300 rounded-2xl" />
-                  <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-[0_4px_12px_rgba(10,74,130,0.3)] group-hover:shadow-[0_6px_20px_rgba(10,74,130,0.4)] group-hover:scale-110 transition-all duration-300">
-                    <IconComponent className="h-7 w-7 text-white drop-shadow-sm" />
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-[0_4px_12px_rgba(10,74,130,0.3)] group-hover:scale-110 transition-transform duration-200 ease-out">
+                    <IconComponent className="h-7 w-7 text-white" />
                   </div>
-                  <span className="relative text-sm font-semibold text-center text-gray-700 dark:text-gray-200 group-hover:text-[#0a4a82] transition-colors duration-300 leading-tight">{cat.name}</span>
+                  <span className="text-sm font-semibold text-center text-gray-700 dark:text-gray-200 group-hover:text-[#0a4a82] transition-colors duration-200 leading-tight">{cat.name}</span>
                 </div>
               </Link>
             );
           })}
           <button
             onClick={() => setShowCategoryRequest(true)}
-            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border-2 border-dashed border-[#8a9a5b]/40 shadow-[0_4px_20px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-[#8a9a5b]/70 hover:shadow-[0_12px_40px_rgba(138,154,91,0.15),0_4px_12px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 active:translate-y-0 transition-all duration-300 cursor-pointer group overflow-hidden"
+            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border-2 border-dashed border-[#8a9a5b]/40 shadow-sm hover:border-[#8a9a5b]/70 hover:shadow-md hover:-translate-y-1 active:translate-y-0 transition-transform duration-200 ease-out cursor-pointer group will-change-transform"
             data-testid="button-suggest-category"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[#8a9a5b]/0 to-[#8a9a5b]/0 group-hover:from-[#8a9a5b]/5 group-hover:to-[#8a9a5b]/10 transition-all duration-300 rounded-2xl" />
-            <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-[#8a9a5b] to-[#6b7a45] flex items-center justify-center shadow-[0_4px_12px_rgba(138,154,91,0.3)] group-hover:shadow-[0_6px_20px_rgba(138,154,91,0.4)] group-hover:scale-110 transition-all duration-300">
-              <Plus className="h-7 w-7 text-white drop-shadow-sm" />
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#8a9a5b] to-[#6b7a45] flex items-center justify-center shadow-[0_4px_12px_rgba(138,154,91,0.3)] group-hover:scale-110 transition-transform duration-200 ease-out">
+              <Plus className="h-7 w-7 text-white" />
             </div>
-            <span className="relative text-sm font-semibold text-center text-[#8a9a5b] group-hover:text-[#6b7a45] transition-colors duration-300 leading-tight">Suggest a Category</span>
+            <span className="text-sm font-semibold text-center text-[#8a9a5b] group-hover:text-[#6b7a45] transition-colors duration-200 leading-tight">Suggest a Category</span>
           </button>
         </div>
       </div>
