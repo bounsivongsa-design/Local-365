@@ -15,33 +15,33 @@ interface AdBannerProps {
 const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imageUrl: string; linkUrl: string }[]> = {
   homepage_banner: [{
     title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More",
-    description: "Find licensed and insured contractors right here in Currituck County. From emergency HVAC repairs to full home renovations — your neighbors trust Local List 365.",
+    description: "Find licensed and insured contractors right here in Moyock and Currituck County. From emergency repairs to full home renovations — your neighbors trust Local List 365.",
     imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&h=400&fit=crop",
     linkUrl: "/advertising",
   }],
   featured_listing: [
     {
       title: "24/7 Emergency HVAC & Plumbing",
-      description: "Licensed technicians serving Moyock, Currituck & the OBX. Same-day service available — call now for a free estimate.",
+      description: "Licensed technicians serving Moyock, Currituck County & surrounding areas. Same-day service available — call now for a free estimate.",
       imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=200&h=200&fit=crop",
       linkUrl: "/advertising",
     },
     {
       title: "Affordable Landscaping & Lawn Care",
-      description: "Weekly mowing, seasonal cleanups, and custom landscape design. Serving residential and commercial properties.",
+      description: "Weekly mowing, seasonal cleanups, and custom landscape design for Moyock homes and businesses.",
       imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=200&h=200&fit=crop",
       linkUrl: "/advertising",
     },
   ],
   category_spotlight: [{
     title: "Mobile Mechanic — We Come to You",
-    description: "On-site auto repair and diagnostics. No tow truck needed — certified mechanics at your door.",
+    description: "On-site auto repair and diagnostics in Moyock. No tow truck needed — certified mechanics at your door.",
     imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=100&h=100&fit=crop",
     linkUrl: "/advertising",
   }],
   directory_boost: [{
     title: "Local Pest Control Experts",
-    description: "Termite inspections, mosquito treatments, and wildlife removal. Family-owned and serving the area for 15+ years.",
+    description: "Termite inspections, mosquito treatments, and wildlife removal. Serving Moyock and Currituck County for 15+ years.",
     imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=200&h=200&fit=crop",
     linkUrl: "/advertising",
   }],
