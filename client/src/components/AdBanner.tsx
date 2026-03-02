@@ -14,35 +14,35 @@ interface AdBannerProps {
 
 const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imageUrl: string; linkUrl: string }[]> = {
   homepage_banner: [{
-    title: "Your Business Could Be Here",
-    description: "Reach thousands of local customers with a premium homepage banner. Get noticed first when visitors land on Local List 365.",
-    imageUrl: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&h=400&fit=crop",
+    title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More",
+    description: "Find licensed and insured contractors right here in Currituck County. From emergency HVAC repairs to full home renovations — your neighbors trust Local List 365.",
+    imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&h=400&fit=crop",
     linkUrl: "/advertising",
   }],
   featured_listing: [
     {
-      title: "Premium Featured Listing",
-      description: "Stand out in the directory with a highlighted business card. Your listing appears above organic results.",
-      imageUrl: "https://images.unsplash.com/photo-1560472355-536de3962603?w=200&h=200&fit=crop",
+      title: "24/7 Emergency HVAC & Plumbing",
+      description: "Licensed technicians serving Moyock, Currituck & the OBX. Same-day service available — call now for a free estimate.",
+      imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=200&h=200&fit=crop",
       linkUrl: "/advertising",
     },
     {
-      title: "Boost Your Visibility",
-      description: "Get 3x more views with a featured placement. Perfect for new businesses looking to grow quickly.",
-      imageUrl: "https://images.unsplash.com/photo-1553729459-uj1ghg6hg7?w=200&h=200&fit=crop",
+      title: "Affordable Landscaping & Lawn Care",
+      description: "Weekly mowing, seasonal cleanups, and custom landscape design. Serving residential and commercial properties.",
+      imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=200&h=200&fit=crop",
       linkUrl: "/advertising",
     },
   ],
   category_spotlight: [{
-    title: "Category Spotlight Available",
-    description: "Be the go-to business in your category. Exclusive placement above search results.",
-    imageUrl: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=100&h=100&fit=crop",
+    title: "Mobile Mechanic — We Come to You",
+    description: "On-site auto repair and diagnostics. No tow truck needed — certified mechanics at your door.",
+    imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=100&h=100&fit=crop",
     linkUrl: "/advertising",
   }],
   directory_boost: [{
-    title: "Directory Boost Ad Space",
-    description: "Increase your ranking in directory results with a boosted listing placement.",
-    imageUrl: "https://images.unsplash.com/photo-1553484771-047a44eee27b?w=200&h=200&fit=crop",
+    title: "Local Pest Control Experts",
+    description: "Termite inspections, mosquito treatments, and wildlife removal. Family-owned and serving the area for 15+ years.",
+    imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=200&h=200&fit=crop",
     linkUrl: "/advertising",
   }],
 };
