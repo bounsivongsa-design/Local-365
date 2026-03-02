@@ -23,41 +23,46 @@ import { useLocation } from "@/context/LocationContext";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import heroImage from "@assets/image_1770062898655.png";
 
-const CATEGORY_ICONS: Record<string, any> = {
-  "restaurants-dining": UtensilsCrossed,
-  "home-services": HomeIcon,
-  "automotive": Car,
-  "health-wellness": HeartPulse,
-  "beauty-personal-care": Scissors,
-  "real-estate": Building2,
-  "legal-services": Scale,
-  "financial-services": Landmark,
-  "education-tutoring": GraduationCap,
-  "fitness-recreation": Dumbbell,
-  "shopping-retail": ShoppingBag,
-  "pet-services": PawPrint,
-  "wedding-events": PartyPopper,
-  "cleaning-services": Sparkle,
-  "landscaping": TreePine,
-  "technology": Monitor,
-  "travel-tourism": Plane,
-  "moving-storage": Truck,
-  "pest-control": Bug,
-  "photography": Camera,
-  "religious-spiritual": Church,
-  "government-nonprofit": Landmark,
-  "child-care": Baby,
-  "security-services": Shield,
-  "animal-pet": PawPrint,
-  "garage-door": DoorOpen,
-  "moving-hauling": Truck,
-  "metal-work": Hammer,
-  "fencing": Fence,
-  "woodworking": Wrench,
-};
+const DIRECTORY_CATEGORIES = [
+  { name: "Home Repair", icon: Wrench },
+  { name: "Plumbing", icon: HomeIcon },
+  { name: "HVAC", icon: HomeIcon },
+  { name: "Electrical", icon: Sparkle },
+  { name: "Roofing", icon: HomeIcon },
+  { name: "Landscaping", icon: TreePine },
+  { name: "Cleaning", icon: Sparkle },
+  { name: "Painting", icon: Hammer },
+  { name: "Tree Care", icon: TreePine },
+  { name: "Remodeling & Addition", icon: Building2 },
+  { name: "New Construction", icon: Building2 },
+  { name: "Baby Sitting & Nanny", icon: Baby },
+  { name: "Printing", icon: Monitor },
+  { name: "Web Design & Logo Design", icon: Monitor },
+  { name: "Photo & Video", icon: Camera },
+  { name: "Auto Repair", icon: Car },
+  { name: "Small Engine Repair", icon: Wrench },
+  { name: "Trash & Junk Removal", icon: Truck },
+  { name: "Tutor & Mentor Counseling", icon: GraduationCap },
+  { name: "Health & Wellness", icon: HeartPulse },
+  { name: "Tax CPA", icon: Landmark },
+  { name: "Legal", icon: Scale },
+  { name: "Woodworking", icon: Hammer },
+  { name: "Baking & Cooking", icon: UtensilsCrossed },
+  { name: "Catering Food Trucks", icon: Truck },
+  { name: "Event Planning & Rentals", icon: PartyPopper },
+  { name: "Animal & Pet", icon: PawPrint },
+  { name: "Garage Door", icon: DoorOpen },
+  { name: "Moving & Hauling", icon: Truck },
+  { name: "Metal Work", icon: Hammer },
+  { name: "Fencing", icon: Fence },
+  { name: "Security Services", icon: Shield },
+  { name: "Pest Control", icon: Bug },
+  { name: "Restaurants & Dining", icon: UtensilsCrossed },
+  { name: "Real Estate / Realtors", icon: HomeIcon },
+  { name: "Shopping / Retail", icon: ShoppingBag },
+];
 
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
@@ -272,13 +277,13 @@ export default function Home() {
           <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-          {BUSINESS_CATEGORIES.map((cat) => {
-            const IconComponent = CATEGORY_ICONS[cat.id] || Compass;
+          {DIRECTORY_CATEGORIES.map((cat, idx) => {
+            const IconComponent = cat.icon;
             return (
-              <Link key={cat.id} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
+              <Link key={idx} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
                 <div
                   className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_12px_40px_rgba(10,74,130,0.15),0_4px_12px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 active:translate-y-0 transition-all duration-300 cursor-pointer group overflow-hidden"
-                  data-testid={`category-icon-${cat.id}`}
+                  data-testid={`category-icon-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82]/0 via-transparent to-[#d4a373]/0 group-hover:from-[#0a4a82]/5 group-hover:to-[#d4a373]/5 transition-all duration-300 rounded-2xl" />
                   <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-[0_4px_12px_rgba(10,74,130,0.3)] group-hover:shadow-[0_6px_20px_rgba(10,74,130,0.4)] group-hover:scale-110 transition-all duration-300">
