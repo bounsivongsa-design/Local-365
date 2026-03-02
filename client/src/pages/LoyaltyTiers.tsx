@@ -212,21 +212,21 @@ const participatingBusinesses = [
   {
     name: "Corolla Beachfront Suites",
     category: "Lodging",
-    location: "Corolla, NC",
+    location: "Moyock, NC",
     rating: "4.9",
     reviews: 128,
     image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop",
-    website: "https://example.com/corolla-suites",
+    website: "https://example.com/moyock-suites",
     referralCode: "LL365-CBS-001"
   },
   {
-    name: "Duck Village Inn",
+    name: "Currituck Comfort Inn",
     category: "Lodging",
-    location: "Duck, NC",
+    location: "Currituck, NC",
     rating: "4.8",
     reviews: 94,
     image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&h=300&fit=crop",
-    website: "https://example.com/duck-village",
+    website: "https://example.com/currituck-comfort",
     referralCode: "LL365-DVI-002"
   },
   {
@@ -236,33 +236,33 @@ const participatingBusinesses = [
     rating: "4.9",
     reviews: 256,
     image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop",
-    website: "https://example.com/obx-adventures",
+    website: "https://example.com/currituck-adventures",
     referralCode: "LL365-OAT-003"
   },
   {
-    name: "Sunset Grill & Oyster Bar",
+    name: "Moyock Grill & Smokehouse",
     category: "Dining",
-    location: "Nags Head, NC",
+    location: "Moyock, NC",
     rating: "4.7",
     reviews: 312,
     image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop",
-    website: "https://example.com/sunset-grill",
+    website: "https://example.com/moyock-grill",
     referralCode: "LL365-SGO-004"
   },
   {
-    name: "Wild Horse Safari",
+    name: "Currituck Heritage Tours",
     category: "Activities",
-    location: "Corolla, NC",
+    location: "Currituck, NC",
     rating: "4.9",
     reviews: 189,
     image: "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=400&h=300&fit=crop",
-    website: "https://example.com/wild-horse-safari",
+    website: "https://example.com/currituck-heritage",
     referralCode: "LL365-WHS-005"
   },
   {
     name: "Coastal Kayak Rentals",
     category: "Activities",
-    location: "Manteo, NC",
+    location: "Moyock, NC",
     rating: "4.8",
     reviews: 76,
     image: "https://images.unsplash.com/photo-1472745942893-4b9f730c7668?w=400&h=300&fit=crop",

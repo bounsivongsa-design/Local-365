@@ -275,7 +275,7 @@ function CommunityFeed() {
   });
 
   const upcomingEvents = [
-    { title: "Community Farmers Market", date: "Feb 7, 2026", location: "Town Square, Manteo", description: "Fresh veggies, local crafts, and live music.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=300&fit=crop" },
+    { title: "Community Farmers Market", date: "Feb 7, 2026", location: "Town Square, Moyock", description: "Fresh veggies, local crafts, and live music.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=300&fit=crop" },
     { title: "Currituck Home & Garden Show", date: "Feb 15, 2026", location: "Currituck Community Center", description: "Meet local contractors and home service providers.", image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop" },
     { title: "Wright Brothers Day", date: "Dec 17, 2026", location: "Wright Brothers Memorial", description: "Celebrate the anniversary of powered flight.", image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop" },
   ];
@@ -440,7 +440,7 @@ function CommunityFeed() {
               <div className="p-4">
                 <h4 className="font-bold">Currituck Pier</h4>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> Nags Head
+                  <MapPin className="h-3 w-3" /> Moyock
                   <Star className="h-3 w-3 ml-2 text-yellow-500" /> 4.8
                 </p>
               </div>

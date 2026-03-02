@@ -7,7 +7,7 @@ function RomanticGetaway() {
     { name: 'Lighthouse Motel', features: 'Cozy Wood-Burning Stove, Sunset Views', rate: '$129/night (50% off)', image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&h=300&fit=crop' },
     { name: 'Beachfront Cottage', features: 'Private Beach Access, Jacuzzi', rate: '$189/night (35% off)', image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&h=300&fit=crop' },
     { name: 'Dune House Retreat', features: 'Panoramic Views, Rooftop Deck', rate: '$169/night (45% off)', image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&h=300&fit=crop' },
-    { name: 'Corolla Wild Horse Inn', features: 'Rustic Charm, Nature Trails', rate: '$119/night (40% off)', image: 'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=400&h=300&fit=crop' },
+    { name: 'Currituck Heritage Inn', features: 'Rustic Charm, Nature Trails', rate: '$119/night (40% off)', image: 'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=400&h=300&fit=crop' },
     { name: 'Soundside Suites', features: 'Kayak Rentals, Sunset Patio', rate: '$139/night (30% off)', image: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=400&h=300&fit=crop' },
   ];
 

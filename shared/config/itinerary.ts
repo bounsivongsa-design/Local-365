@@ -190,14 +190,14 @@ export interface ItineraryTemplate {
 export const ITINERARY_TEMPLATES: ItineraryTemplate[] = [
   { id: "romantic-weekend", name: "Romantic Weekend Escape", description: "A cozy 3-day couples getaway with beach walks, sunset dining, and spa time", duration: 3, tags: ["couples", "romantic", "relaxation"], season: "all" },
   { id: "family-beach-week", name: "Family Beach Week", description: "7-day family vacation with kids activities, water sports, and mini golf", duration: 7, tags: ["family", "kids", "beach", "water-sports"], season: "summer" },
-  { id: "adventure-weekend", name: "OBX Adventure Weekend", description: "Action-packed 3 days of kayaking, fishing, and wild horse tours", duration: 3, tags: ["adventure", "outdoors", "nature"], season: "all" },
+  { id: "adventure-weekend", name: "Currituck Adventure Weekend", description: "Action-packed 3 days of kayaking, fishing, and nature tours", duration: 3, tags: ["adventure", "outdoors", "nature"], season: "all" },
   { id: "winter-getaway", name: "Cozy Winter Getaway", description: "5-day winter escape with fireplaces, hot tubs, and off-season charm", duration: 5, tags: ["winter", "cozy", "relaxation"], season: "winter" },
   { id: "foodie-tour", name: "Currituck Foodie Tour", description: "4-day culinary adventure through local seafood joints and hidden gems", duration: 4, tags: ["food", "dining", "local"], season: "all" },
   { id: "history-culture", name: "History & Culture Trail", description: "3-day exploration of lighthouses, museums, and historic sites", duration: 3, tags: ["history", "culture", "education"], season: "all" },
   { id: "fishing-trip", name: "Ultimate Fishing Trip", description: "5-day fishing excursion with charters, pier fishing, and crabbing", duration: 5, tags: ["fishing", "outdoors", "charter"], season: "summer" },
   { id: "girls-getaway", name: "Girls' Getaway Weekend", description: "3-day retreat with spa, shopping, wine tasting, and beach yoga", duration: 3, tags: ["girls-trip", "spa", "shopping"], season: "all" },
   { id: "golf-weekend", name: "Golf & Leisure Weekend", description: "3-day golf vacation with top Currituck courses and waterfront dining", duration: 3, tags: ["golf", "leisure", "dining"], season: "spring" },
-  { id: "pet-friendly", name: "Pet-Friendly OBX Trip", description: "4-day vacation with your furry friend — dog beaches, pet-friendly dining", duration: 4, tags: ["pets", "dog-friendly", "beach"], season: "all" },
+  { id: "pet-friendly", name: "Pet-Friendly Currituck Trip", description: "4-day vacation with your furry friend — dog parks, pet-friendly dining", duration: 4, tags: ["pets", "dog-friendly", "outdoors"], season: "all" },
 ];
 
 export function getItineraryPlanTier(tierId: string): ItineraryPlanTier | undefined {

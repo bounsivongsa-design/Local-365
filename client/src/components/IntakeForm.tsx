@@ -24,7 +24,7 @@ export function IntakeForm({ onSubmit }: IntakeFormProps) {
     tripLength: '3',
     interests: [],
     budget: 'medium',
-    staying: 'Nags Head',
+    staying: 'Moyock',
     mustHaves: []
   });
 
@@ -139,10 +139,9 @@ export function IntakeForm({ onSubmit }: IntakeFormProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Nags Head">Nags Head</SelectItem>
-                <SelectItem value="Kill Devil Hills">Kill Devil Hills</SelectItem>
-                <SelectItem value="Corolla">Corolla</SelectItem>
-                <SelectItem value="Manteo">Manteo</SelectItem>
+                <SelectItem value="Moyock">Moyock</SelectItem>
+                <SelectItem value="Currituck">Currituck</SelectItem>
+                <SelectItem value="Chesapeake">Chesapeake</SelectItem>
                 <SelectItem value="Not Sure">Not Sure</SelectItem>
               </SelectContent>
             </Select>

@@ -223,7 +223,7 @@ export default function Advertising() {
             
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
               Premium ad placements that put your business in front of customers 
-              actively searching for services in Currituck County and the Outer Banks.
+              actively searching for services in Moyock and Currituck County.
             </p>
           </div>
         </div>

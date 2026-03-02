@@ -160,7 +160,7 @@ export default function BusinessMembership() {
             </h1>
             
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-              Join the premier business directory for Currituck County and the Outer Banks. 
+              Join the premier business directory for Moyock and Currituck County. 
               Connect with local customers and watch your business thrive. 
               Pricing is per zip code — list in as many areas as you want.
             </p>

@@ -136,11 +136,11 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section - OBX Theme with Image Background */}
+      {/* Hero Section with Image Background */}
       <section className="text-center py-20 relative overflow-hidden min-h-[650px] flex items-center">
         <img 
           src={heroImage}
-          alt="Wild horses and lighthouse at sunset on Outer Banks beach"
+          alt="Moyock and Currituck County local business directory"
           className="absolute inset-0 w-full h-full object-cover"
           style={{ objectPosition: 'center 55%' }}
         />

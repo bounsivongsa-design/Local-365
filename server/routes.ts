@@ -454,7 +454,7 @@ export async function registerRoutes(
     }
   });
 
-  // Best of OBX
+  // Best of Moyock & Currituck County
   app.post("/api/bestof", isAuthenticated, async (req, res) => {
     try {
       const { category, winner, runnerUp, honorable, rating } = req.body;
@@ -491,32 +491,32 @@ export async function registerRoutes(
       } else {
         // Return default data if none in DB
         const defaultBestOf = [
-          { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'OBX Handyman Services', honorable: 'Beach House Fixers', rating: '4.9' },
-          { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Currituck Plumbing Pros', honorable: 'Island Pipe Works', rating: '4.8' },
-          { category: 'HVAC', winner: 'OBX HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Beach Breeze HVAC', rating: '4.9' },
-          { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'OBX Power Solutions', rating: '4.7' },
-          { category: 'Roofing', winner: 'Barrier Island Roofing', runnerUp: 'Coastal Storm Roofing', honorable: 'OBX Top Roofers', rating: '4.8' },
-          { category: 'Landscaping', winner: 'Sandy Shores Landscaping', runnerUp: 'Dune Gardens', honorable: 'Coastal Green Thumb', rating: '4.9' },
-          { category: 'Cleaning', winner: 'Crystal Clean OBX', runnerUp: 'Beach Sparkle Cleaning', honorable: 'Tidy Shores Services', rating: '4.8' },
-          { category: 'Painting', winner: 'Outer Banks Painters', runnerUp: 'Coastal Colors Pro', honorable: 'Beach House Painting', rating: '4.7' },
-          { category: 'Tree Care', winner: 'Coastal Tree Care', runnerUp: 'OBX Arborists', honorable: 'Maritime Tree Service', rating: '4.8' },
-          { category: 'Remodeling & Addition', winner: 'Beach House Remodeling', runnerUp: 'OBX Renovations', honorable: 'Coastal Makeover Co', rating: '4.9' },
-          { category: 'New Construction', winner: 'OBX Custom Builders', runnerUp: 'Barrier Island Construction', honorable: 'Soundside Builders', rating: '4.8' },
-          { category: 'Baby Sitting & Nanny', winner: 'Trusted Nannies OBX', runnerUp: 'Beach Kids Care', honorable: 'Coastal Sitters', rating: '4.9' },
-          { category: 'Printing', winner: 'Coastal Print Shop', runnerUp: 'OBX Graphics', honorable: 'Beach Signs & Print', rating: '4.6' },
-          { category: 'Web Design & Logo Design', winner: 'Beach Digital Design', runnerUp: 'OBX Web Studio', honorable: 'Coastal Creative Co', rating: '4.8' },
-          { category: 'Photo & Video', winner: 'OBX Photo & Video', runnerUp: 'Lighthouse Lens', honorable: 'Sunset Shots OBX', rating: '4.9' },
-          { category: 'Auto Repair', winner: 'Reliable Auto Repair', runnerUp: 'Beach Garage', honorable: 'OBX Auto Care', rating: '4.7' },
-          { category: 'Small Engine Repair', winner: 'Small Engine Experts', runnerUp: 'OBX Power Equipment', honorable: 'Coastal Motor Works', rating: '4.6' },
-          { category: 'Trash & Junk Removal', winner: 'Junk Be Gone OBX', runnerUp: 'Coastal Cleanout', honorable: 'Beach Haul Away', rating: '4.8' },
-          { category: 'Tutor & Mentor Counseling', winner: 'OBX Tutoring Center', runnerUp: 'Bright Minds OBX', honorable: 'Coastal Learning', rating: '4.9' },
-          { category: 'Health & Wellness', winner: 'Serenity Wellness', runnerUp: 'Ocean Yoga Studio', honorable: 'Coastal Zen Center', rating: '4.9' },
-          { category: 'Tax CPA', winner: 'Coastal Tax Services', runnerUp: 'OBX Accounting', honorable: 'Beach Business CPAs', rating: '4.7' },
-          { category: 'Legal', winner: 'Beach Law Group', runnerUp: 'OBX Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
-          { category: 'Woodworking', winner: 'OBX Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Beach Timber Creations', rating: '4.9' },
-          { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Duck Donuts', honorable: 'OBX Bread Company', rating: '4.9' },
-          { category: 'Catering Food Trucks', winner: 'Taco Truck OBX', runnerUp: 'Coastal Catering Co', honorable: 'Beach Bites Mobile', rating: '4.8' },
-          { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'OBX Party Pros', honorable: 'Beach Celebration Co', rating: '4.8' },
+          { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'Moyock Handyman Services', honorable: 'Currituck Home Fixers', rating: '4.9' },
+          { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Currituck Plumbing Pros', honorable: 'Moyock Pipe Works', rating: '4.8' },
+          { category: 'HVAC', winner: 'Moyock HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Currituck Climate Control', rating: '4.9' },
+          { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'Currituck Power Solutions', rating: '4.7' },
+          { category: 'Roofing', winner: 'Currituck County Roofing', runnerUp: 'Coastal Storm Roofing', honorable: 'Moyock Top Roofers', rating: '4.8' },
+          { category: 'Landscaping', winner: 'Sandy Shores Landscaping', runnerUp: 'Moyock Gardens', honorable: 'Coastal Green Thumb', rating: '4.9' },
+          { category: 'Cleaning', winner: 'Crystal Clean Moyock', runnerUp: 'Sparkle Cleaning Co', honorable: 'Tidy Currituck Services', rating: '4.8' },
+          { category: 'Painting', winner: 'Currituck County Painters', runnerUp: 'Coastal Colors Pro', honorable: 'Moyock Painting Co', rating: '4.7' },
+          { category: 'Tree Care', winner: 'Coastal Tree Care', runnerUp: 'Currituck Arborists', honorable: 'Moyock Tree Service', rating: '4.8' },
+          { category: 'Remodeling & Addition', winner: 'Moyock Home Remodeling', runnerUp: 'Currituck Renovations', honorable: 'Coastal Makeover Co', rating: '4.9' },
+          { category: 'New Construction', winner: 'Currituck Custom Builders', runnerUp: 'Moyock Construction Co', honorable: 'Soundside Builders', rating: '4.8' },
+          { category: 'Baby Sitting & Nanny', winner: 'Trusted Nannies Moyock', runnerUp: 'Currituck Kids Care', honorable: 'Coastal Sitters', rating: '4.9' },
+          { category: 'Printing', winner: 'Coastal Print Shop', runnerUp: 'Moyock Graphics', honorable: 'Currituck Signs & Print', rating: '4.6' },
+          { category: 'Web Design & Logo Design', winner: 'Moyock Digital Design', runnerUp: 'Currituck Web Studio', honorable: 'Coastal Creative Co', rating: '4.8' },
+          { category: 'Photo & Video', winner: 'Currituck Photo & Video', runnerUp: 'Lighthouse Lens', honorable: 'Moyock Shots', rating: '4.9' },
+          { category: 'Auto Repair', winner: 'Reliable Auto Repair', runnerUp: 'Moyock Garage', honorable: 'Currituck Auto Care', rating: '4.7' },
+          { category: 'Small Engine Repair', winner: 'Small Engine Experts', runnerUp: 'Moyock Power Equipment', honorable: 'Coastal Motor Works', rating: '4.6' },
+          { category: 'Trash & Junk Removal', winner: 'Junk Be Gone Moyock', runnerUp: 'Coastal Cleanout', honorable: 'Currituck Haul Away', rating: '4.8' },
+          { category: 'Tutor & Mentor Counseling', winner: 'Moyock Tutoring Center', runnerUp: 'Bright Minds Currituck', honorable: 'Coastal Learning', rating: '4.9' },
+          { category: 'Health & Wellness', winner: 'Serenity Wellness', runnerUp: 'Moyock Yoga Studio', honorable: 'Coastal Zen Center', rating: '4.9' },
+          { category: 'Tax CPA', winner: 'Coastal Tax Services', runnerUp: 'Currituck Accounting', honorable: 'Moyock Business CPAs', rating: '4.7' },
+          { category: 'Legal', winner: 'Moyock Law Group', runnerUp: 'Currituck Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
+          { category: 'Woodworking', winner: 'Moyock Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Currituck Timber Creations', rating: '4.9' },
+          { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Moyock Bakehouse', honorable: 'Currituck Bread Company', rating: '4.9' },
+          { category: 'Catering Food Trucks', winner: 'Moyock Food Truck Co', runnerUp: 'Coastal Catering Co', honorable: 'Currituck Bites Mobile', rating: '4.8' },
+          { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'Moyock Party Pros', honorable: 'Currituck Celebration Co', rating: '4.8' },
         ];
         res.json(defaultBestOf);
       }
@@ -1797,32 +1797,32 @@ async function seedDatabase() {
     
     // Placeholder businesses for each of the 26 categories with matching images
     const businessData = [
-      { name: "Smith Home Repair", category: "Home Repair", description: "Quality home repair services for the OBX area.", address: "101 Beach Rd, Corolla", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
-      { name: "Coastal Plumbing Co", category: "Plumbing", description: "Licensed plumbers serving Currituck County.", address: "202 Ocean Blvd, Duck", imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop" },
-      { name: "OBX HVAC Pros", category: "HVAC", description: "Heating and cooling experts for beach homes.", address: "303 Dune Dr, Kitty Hawk", imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=400&h=300&fit=crop" },
-      { name: "Shore Electric", category: "Electrical", description: "Certified electricians for residential and commercial.", address: "404 Lighthouse Ln, Nags Head", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
-      { name: "Barrier Island Roofing", category: "Roofing", description: "Storm-resistant roofing for coastal properties.", address: "505 Sunset Ave, Kill Devil Hills", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=400&h=300&fit=crop" },
-      { name: "Sandy Shores Landscaping", category: "Landscaping", description: "Native plant specialists and lawn care.", address: "606 Palmetto Way, Southern Shores", imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=300&fit=crop" },
-      { name: "Crystal Clean OBX", category: "Cleaning", description: "Vacation rental and residential cleaning.", address: "707 Seabreeze Ct, Corolla", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
-      { name: "Outer Banks Painters", category: "Painting", description: "Interior and exterior painting for beach homes.", address: "808 Harbor Rd, Wanchese", imageUrl: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400&h=300&fit=crop" },
-      { name: "Coastal Tree Care", category: "Tree Care", description: "Tree trimming and removal services.", address: "909 Pine Forest Dr, Manteo", imageUrl: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&h=300&fit=crop" },
-      { name: "Beach House Remodeling", category: "Remodeling & Addition", description: "Custom renovations and additions.", address: "110 Pelican Way, Duck", imageUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&h=300&fit=crop" },
-      { name: "OBX Custom Builders", category: "New Construction", description: "New home construction specialists.", address: "211 Sandcastle Ln, Corolla", imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&h=300&fit=crop" },
-      { name: "Trusted Nannies OBX", category: "Baby Sitting & Nanny", description: "Background-checked childcare providers.", address: "312 Family Cir, Kitty Hawk", imageUrl: "https://images.unsplash.com/photo-1587616211892-f743fcca64f9?w=400&h=300&fit=crop" },
-      { name: "Coastal Print Shop", category: "Printing", description: "Business cards, signs, and custom printing.", address: "413 Commerce St, Kill Devil Hills", imageUrl: "https://images.unsplash.com/photo-1562654501-a0ccc0fc3fb1?w=400&h=300&fit=crop" },
-      { name: "Beach Digital Design", category: "Web Design & Logo Design", description: "Websites and branding for local businesses.", address: "514 Tech Park Dr, Nags Head", imageUrl: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=400&h=300&fit=crop" },
-      { name: "OBX Photo & Video", category: "Photo & Video", description: "Wedding and event photography.", address: "615 Shutter Ln, Manteo", imageUrl: "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=400&h=300&fit=crop" },
-      { name: "Reliable Auto Repair", category: "Auto Repair", description: "Trusted mechanics for all makes and models.", address: "716 Motor Way, Kitty Hawk", imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=300&fit=crop" },
-      { name: "Small Engine Experts", category: "Small Engine Repair", description: "Lawn mowers, boats, and power equipment.", address: "817 Workshop Rd, Wanchese", imageUrl: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400&h=300&fit=crop" },
-      { name: "Junk Be Gone OBX", category: "Trash & Junk Removal", description: "Fast and affordable junk removal.", address: "918 Cleanup Ave, Kill Devil Hills", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop" },
-      { name: "OBX Tutoring Center", category: "Tutor & Mentor Counseling", description: "Academic support for all ages.", address: "119 Learning Ln, Nags Head", imageUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400&h=300&fit=crop" },
-      { name: "Serenity Wellness", category: "Mind Body Soul", description: "Yoga, meditation, and holistic health.", address: "220 Zen Way, Duck", imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop" },
-      { name: "Coastal Tax Services", category: "Tax CPA", description: "Tax preparation and accounting.", address: "321 Finance Dr, Kitty Hawk", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop" },
-      { name: "Beach Law Group", category: "Legal", description: "Real estate and business law.", address: "422 Justice Blvd, Manteo", imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop" },
-      { name: "OBX Woodworks", category: "Woodworking", description: "Custom furniture and woodworking.", address: "523 Craft Ln, Wanchese", imageUrl: "https://images.unsplash.com/photo-1611095780322-bbc1f7b9f4ce?w=400&h=300&fit=crop" },
-      { name: "Sweet Coastal Bakery", category: "Baking & Cooking", description: "Fresh baked goods and custom cakes.", address: "624 Sugar St, Corolla", imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop" },
-      { name: "Taco Truck OBX", category: "Catering Food Trucks", description: "Mobile catering and food truck services.", address: "725 Flavor Ave, Duck", imageUrl: "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=400&h=300&fit=crop" },
-      { name: "Coastal Events & Rentals", category: "Event Planning & Rentals", description: "Weddings, parties, and tent rentals.", address: "826 Celebration Way, Kill Devil Hills", imageUrl: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop" },
+      { name: "Smith Home Repair", category: "Home Repair", description: "Quality home repair services for Moyock and Currituck County.", address: "101 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
+      { name: "Coastal Plumbing Co", category: "Plumbing", description: "Licensed plumbers serving Currituck County.", address: "202 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop" },
+      { name: "Moyock HVAC Pros", category: "HVAC", description: "Heating and cooling experts for homes and businesses.", address: "303 Princess Anne Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=400&h=300&fit=crop" },
+      { name: "Shore Electric", category: "Electrical", description: "Certified electricians for residential and commercial.", address: "404 Courthouse Rd, Currituck", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
+      { name: "Currituck County Roofing", category: "Roofing", description: "Storm-resistant roofing for homes and businesses.", address: "505 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=400&h=300&fit=crop" },
+      { name: "Sandy Shores Landscaping", category: "Landscaping", description: "Native plant specialists and lawn care.", address: "606 Puddin Ridge Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=300&fit=crop" },
+      { name: "Crystal Clean Moyock", category: "Cleaning", description: "Residential and commercial cleaning services.", address: "707 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
+      { name: "Currituck County Painters", category: "Painting", description: "Interior and exterior painting for homes and businesses.", address: "808 Old Hwy 168, Moyock", imageUrl: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400&h=300&fit=crop" },
+      { name: "Coastal Tree Care", category: "Tree Care", description: "Tree trimming and removal services.", address: "909 Gibbs Woods Ln, Moyock", imageUrl: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&h=300&fit=crop" },
+      { name: "Moyock Home Remodeling", category: "Remodeling & Addition", description: "Custom renovations and additions.", address: "110 Eagle Creek Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&h=300&fit=crop" },
+      { name: "Currituck Custom Builders", category: "New Construction", description: "New home construction specialists.", address: "211 Wynfield Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&h=300&fit=crop" },
+      { name: "Trusted Nannies Moyock", category: "Baby Sitting & Nanny", description: "Background-checked childcare providers.", address: "312 Laurel Run Ln, Moyock", imageUrl: "https://images.unsplash.com/photo-1587616211892-f743fcca64f9?w=400&h=300&fit=crop" },
+      { name: "Coastal Print Shop", category: "Printing", description: "Business cards, signs, and custom printing.", address: "413 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1562654501-a0ccc0fc3fb1?w=400&h=300&fit=crop" },
+      { name: "Moyock Digital Design", category: "Web Design & Logo Design", description: "Websites and branding for local businesses.", address: "514 Commerce Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=400&h=300&fit=crop" },
+      { name: "Currituck Photo & Video", category: "Photo & Video", description: "Wedding and event photography.", address: "615 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=400&h=300&fit=crop" },
+      { name: "Reliable Auto Repair", category: "Auto Repair", description: "Trusted mechanics for all makes and models.", address: "716 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=300&fit=crop" },
+      { name: "Small Engine Experts", category: "Small Engine Repair", description: "Lawn mowers, boats, and power equipment.", address: "817 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400&h=300&fit=crop" },
+      { name: "Junk Be Gone Moyock", category: "Trash & Junk Removal", description: "Fast and affordable junk removal.", address: "918 Princess Anne Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop" },
+      { name: "Moyock Tutoring Center", category: "Tutor & Mentor Counseling", description: "Academic support for all ages.", address: "119 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400&h=300&fit=crop" },
+      { name: "Serenity Wellness", category: "Mind Body Soul", description: "Yoga, meditation, and holistic health.", address: "220 Wynfield Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop" },
+      { name: "Coastal Tax Services", category: "Tax CPA", description: "Tax preparation and accounting.", address: "321 Courthouse Rd, Currituck", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop" },
+      { name: "Moyock Law Group", category: "Legal", description: "Real estate and business law.", address: "422 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop" },
+      { name: "Moyock Woodworks", category: "Woodworking", description: "Custom furniture and woodworking.", address: "523 Old Hwy 168, Moyock", imageUrl: "https://images.unsplash.com/photo-1611095780322-bbc1f7b9f4ce?w=400&h=300&fit=crop" },
+      { name: "Sweet Coastal Bakery", category: "Baking & Cooking", description: "Fresh baked goods and custom cakes.", address: "624 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop" },
+      { name: "Moyock Food Truck Co", category: "Catering Food Trucks", description: "Mobile catering and food truck services.", address: "725 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=400&h=300&fit=crop" },
+      { name: "Coastal Events & Rentals", category: "Event Planning & Rentals", description: "Weddings, parties, and tent rentals.", address: "826 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop" },
     ];
 
     for (const biz of businessData) {
@@ -1836,7 +1836,7 @@ async function seedDatabase() {
     }
 
     await storage.createEvent({
-      title: "OBX Home Show",
+      title: "Moyock Home Show",
       description: "Meet local contractors and home service providers.",
       date: new Date(Date.now() + 86400000 * 3),
       location: "Currituck Community Center",
