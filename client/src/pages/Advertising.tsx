@@ -53,14 +53,19 @@ import type { AdPricing, AdPlacement } from "@shared/schema";
 
 const CATEGORIES = [
   "Home Repair", "Plumbing", "HVAC", "Electrical", "Roofing",
-  "Landscaping", "Cleaning", "Painting", "Tree Care", "Remodeling & Addition",
-  "New Construction", "Baby Sitting & Nanny", "Printing", "Web Design & Logo Design",
-  "Photo & Video", "Auto Repair", "Small Engine Repair", "Trash & Junk Removal",
-  "Tutor & Mentor Counseling", "Health & Wellness", "Tax CPA", "Legal",
-  "Concrete", "Lawn Care", "Dog Sitting", "Real Estate / Realtors",
-  "Shopping / Retail", "Food & Drink",
-  "Woodworking", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals",
-  "Animal & Pet", "Garage Door", "Moving & Hauling", "Metal Work", "Fencing"
+  "Landscaping", "Lawn Care", "Cleaning", "Painting", "Tree Care",
+  "Concrete", "Flooring", "Remodeling & Addition", "New Construction",
+  "Windows & Doors", "Pressure Washing", "Garage Door", "Fencing",
+  "Pool & Spa", "Septic & Well", "Auto Repair", "Small Engine Repair",
+  "Dock & Marine", "Metal Work", "Woodworking",
+  "Restaurants & Dining", "Baking & Cooking", "Catering Food Trucks",
+  "Beauty & Salon", "Health & Wellness", "Fitness & Gym",
+  "Animal & Pet", "Pest Control", "Baby Sitting & Nanny",
+  "Tutor & Mentor Counseling", "Event Planning & Rentals",
+  "Photo & Video", "Printing", "Web Design & Logo Design",
+  "Real Estate / Realtors", "Insurance", "Tax CPA", "Legal",
+  "Security Services", "Moving & Hauling", "Trash & Junk Removal",
+  "Shopping / Retail"
 ];
 
 const placementIcons: Record<string, any> = {
@@ -264,10 +269,10 @@ export default function Advertising() {
           </div>
         </div>
 
-        {/* Pricing Comparison Section */}
-        <div className="mb-20">
+        {/* Web Advertising Pricing Section */}
+        <div className="mb-20" id="web-advertising">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4" data-testid="heading-web-advertising">
               Compare Advertising Rates
             </h2>
             <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
@@ -283,7 +288,77 @@ export default function Advertising() {
                 <div
                   key={tier.name}
                   className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
-                  data-testid={`card-pricing-${tier.id || "non-member"}`}
+                  data-testid={`card-web-pricing-${tier.id || "non-member"}`}
+                >
+                  {tier.badgeText && (
+                    <div className="absolute -top-0 right-4 z-10">
+                      <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-1.5 rounded-b-xl text-xs font-bold shadow-lg flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        {tier.badgeText}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`bg-gradient-to-br ${tier.gradient} p-5 text-white`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <TierIcon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">{tier.name}</h3>
+                        <p className="text-white/70 text-xs">
+                          {tier.discount > 0 ? `${tier.discount * 100}% off all ads` : "Standard pricing"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                      <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Monthly Ads</h4>
+                    </div>
+                    <div className="space-y-2">
+                      {(["small", "medium", "large"] as const).map((size) => (
+                        <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+                          <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
+                            ${getTierPrice(AD_BASE_PRICING.monthly[size], tier.discount)}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Event Advertising Pricing Section */}
+        <div className="mb-20" id="event-advertising">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 px-4 py-2 rounded-full mb-4">
+              <Calendar className="h-4 w-4 text-[#0a4a82]" />
+              <span className="text-[#0a4a82] text-sm font-semibold">Event Promotions</span>
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4" data-testid="heading-event-advertising">
+              Event Advertising Rates
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Promote your local events with targeted advertising to the community
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {TIER_DISCOUNTS.map((tier) => {
+              const TierIcon = tier.icon;
+              const isGold = tier.id === "gold";
+              return (
+                <div
+                  key={tier.name}
+                  className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
+                  data-testid={`card-event-pricing-${tier.id || "non-member"}`}
                 >
                   {tier.badgeText && (
                     <div className="absolute -top-0 right-4 z-10">
@@ -309,23 +384,6 @@ export default function Advertising() {
                   </div>
 
                   <div className="p-5 space-y-5">
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                        <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Monthly Ads</h4>
-                      </div>
-                      <div className="space-y-2">
-                        {(["small", "medium", "large"] as const).map((size) => (
-                          <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
-                            <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
-                              ${getTierPrice(AD_BASE_PRICING.monthly[size], tier.discount)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />

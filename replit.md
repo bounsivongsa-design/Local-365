@@ -5,7 +5,7 @@
 Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. The application connects visitors and residents with local businesses, service providers, events, and community features including a customer elite status loyalty program, quote request system, and AI-powered chatbot assistant named "Ziggy."
 
 Key features include:
-- Business directory with 30+ categories, ratings, and reviews
+- Business directory with 47 categories, ratings, and reviews
 - Zillow-style location search with geolocation support
 - Local events calendar with "Advertise Your Event" link
 - Quote/bid system connecting customers with service providers
@@ -20,14 +20,30 @@ Key features include:
 
 ## Recent Changes
 
-### February 2026 (Latest)
+### March 2026 (Latest)
+- **Expanded Categories**: 47 categories across Home, Directory, and Advertising pages (all synced)
+  - New: Lawn Care, Concrete, Flooring, Windows & Doors, Pressure Washing, Pool & Spa, Septic & Well, Dock & Marine, Beauty & Salon, Fitness & Gym, Insurance
+  - All three pages (Home, Directory, Advertising) share identical category lists
+- **Advertising Page Restructured**: Separated into Web Advertising and Event Advertising sections
+  - Web Advertising: Monthly Ads (Small/Medium/Large) across 4 tier columns
+  - Event Advertising: 2-Week Event + Monthly Event pricing across 4 tier columns
+  - 4 pricing tiers: Non-Member, Bronze (10% off), Silver (25% off), Gold (50% off)
+- **Events Page Event Advertising**: Full event ad pricing grid added below calendar
+  - Shows 2-Week and Monthly event ad rates across all 4 membership tiers
+  - "View All Advertising Options" CTA links to full advertising page
+- **Patriotic Ad Spots Section**: Replaced video showcase on Home page
+  - Dark navy patriotic-themed background with red/white/blue accent stripes
+  - 5 "Ad Space Available" placeholder slots linking to /advertising
+  - Works consistently across all zip code locations (no location-specific media)
+
+### February 2026
 - **Enhanced Location Search**: Zillow-style search with geolocation
   - "Use My Location" button with browser geolocation API + OpenStreetMap reverse geocoding
   - Added Moyock 27958, Chesapeake 23322/23321/23320 locations
   - Hero search bar links to directory with search query params
   - Directory page reads URL search params (?search=, ?category=)
 - **Home Page Redesign**:
-  - Directory category icons grid (all 30+ categories with Lucide icons)
+  - Directory category icons grid (all 47 categories with Lucide icons)
   - "Local Events" button replaced "Plan Your Trip" in hero section
   - Functional Zillow-style search bar that redirects to directory
   - "Suggest a Category" button opens submission dialog

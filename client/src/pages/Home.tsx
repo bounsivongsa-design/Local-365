@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Plane, Truck, Bug, Camera, Church, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Plane, Truck, Bug, Camera, Church, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -27,40 +27,51 @@ import heroImage from "@assets/image_1770062898655.png";
 
 const DIRECTORY_CATEGORIES = [
   { name: "Home Repair", icon: Wrench },
-  { name: "Plumbing", icon: HomeIcon },
-  { name: "HVAC", icon: HomeIcon },
-  { name: "Electrical", icon: Sparkle },
+  { name: "Plumbing", icon: Droplets },
+  { name: "HVAC", icon: Sparkle },
+  { name: "Electrical", icon: Sparkles },
   { name: "Roofing", icon: HomeIcon },
   { name: "Landscaping", icon: TreePine },
+  { name: "Lawn Care", icon: TreePine },
   { name: "Cleaning", icon: Sparkle },
   { name: "Painting", icon: Hammer },
   { name: "Tree Care", icon: TreePine },
+  { name: "Concrete", icon: Building2 },
+  { name: "Flooring", icon: HomeIcon },
   { name: "Remodeling & Addition", icon: Building2 },
   { name: "New Construction", icon: Building2 },
-  { name: "Baby Sitting & Nanny", icon: Baby },
-  { name: "Printing", icon: Monitor },
-  { name: "Web Design & Logo Design", icon: Monitor },
-  { name: "Photo & Video", icon: Camera },
+  { name: "Windows & Doors", icon: DoorOpen },
+  { name: "Pressure Washing", icon: Waves },
+  { name: "Garage Door", icon: DoorOpen },
+  { name: "Fencing", icon: Fence },
+  { name: "Pool & Spa", icon: Waves },
+  { name: "Septic & Well", icon: Droplets },
   { name: "Auto Repair", icon: Car },
   { name: "Small Engine Repair", icon: Wrench },
-  { name: "Trash & Junk Removal", icon: Truck },
-  { name: "Tutor & Mentor Counseling", icon: GraduationCap },
-  { name: "Health & Wellness", icon: HeartPulse },
-  { name: "Tax CPA", icon: Landmark },
-  { name: "Legal", icon: Scale },
+  { name: "Dock & Marine", icon: Anchor },
+  { name: "Metal Work", icon: Hammer },
   { name: "Woodworking", icon: Hammer },
+  { name: "Restaurants & Dining", icon: UtensilsCrossed },
   { name: "Baking & Cooking", icon: UtensilsCrossed },
   { name: "Catering Food Trucks", icon: Truck },
-  { name: "Event Planning & Rentals", icon: PartyPopper },
+  { name: "Beauty & Salon", icon: Scissors },
+  { name: "Health & Wellness", icon: HeartPulse },
+  { name: "Fitness & Gym", icon: Dumbbell },
   { name: "Animal & Pet", icon: PawPrint },
-  { name: "Garage Door", icon: DoorOpen },
-  { name: "Moving & Hauling", icon: Truck },
-  { name: "Metal Work", icon: Hammer },
-  { name: "Fencing", icon: Fence },
-  { name: "Security Services", icon: Shield },
   { name: "Pest Control", icon: Bug },
-  { name: "Restaurants & Dining", icon: UtensilsCrossed },
+  { name: "Baby Sitting & Nanny", icon: Baby },
+  { name: "Tutor & Mentor Counseling", icon: GraduationCap },
+  { name: "Event Planning & Rentals", icon: PartyPopper },
+  { name: "Photo & Video", icon: Camera },
+  { name: "Printing", icon: Monitor },
+  { name: "Web Design & Logo Design", icon: Monitor },
   { name: "Real Estate / Realtors", icon: HomeIcon },
+  { name: "Insurance", icon: Shield },
+  { name: "Tax CPA", icon: Landmark },
+  { name: "Legal", icon: Scale },
+  { name: "Security Services", icon: Shield },
+  { name: "Moving & Hauling", icon: Truck },
+  { name: "Trash & Junk Removal", icon: Truck },
   { name: "Shopping / Retail", icon: ShoppingBag },
 ];
 
@@ -213,59 +224,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Video Showcase Section */}
-      <div className="container pt-12">
-        <h2 className="font-display text-2xl font-bold mb-6 text-center">Experience {selectedLocation.city}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
-            <video 
-              autoPlay muted loop playsInline
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            >
-              <source src="/videos/coastal-views.mp4" type="video/mp4" />
-            </video>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Coastal Views</span>
+      {/* Featured Ad Spots Section */}
+      <div className="relative overflow-hidden py-12">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#002147] via-[#0a3068] to-[#001a3a]" />
+        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.1) 20px, rgba(255,255,255,0.1) 22px)' }} />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-white to-blue-600" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-white to-red-600" />
+        
+        <div className="container relative z-10">
+          <div className="text-center mb-8">
+            <h2 className="font-display text-2xl font-bold text-white">Featured Local Businesses</h2>
+            <p className="text-white/70 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
           </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
-            <video 
-              autoPlay muted loop playsInline
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            >
-              <source src="/videos/video-2.mp4" type="video/mp4" />
-            </video>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Beach Life</span>
-          </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
-            <video 
-              autoPlay muted loop playsInline
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            >
-              <source src="/videos/video-3.mp4" type="video/mp4" />
-            </video>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Local Adventures</span>
-          </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
-            <video 
-              autoPlay muted loop playsInline
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            >
-              <source src="/videos/video-4.mp4" type="video/mp4" />
-            </video>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Sunset Magic</span>
-          </div>
-          <div className="relative rounded-xl overflow-hidden aspect-video shadow-3d-lg group">
-            <video 
-              autoPlay muted loop playsInline
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            >
-              <source src="/videos/video-5.mp4" type="video/mp4" />
-            </video>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">Wild Horses</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((spot) => (
+              <Link key={spot} to="/advertising" data-testid={`ad-spot-${spot}`}>
+                <div className="relative rounded-xl overflow-hidden aspect-video bg-white/10 border border-white/20 hover:border-[#d4a373]/50 hover:bg-white/15 cursor-pointer group">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 group-hover:text-[#d4a373]">
+                    <Megaphone className="h-8 w-8 mb-2 opacity-60 group-hover:opacity-100" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">Ad Space Available</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </div>
