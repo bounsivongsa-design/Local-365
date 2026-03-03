@@ -263,7 +263,7 @@ export default function Home() {
             return (
               <Link key={idx} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
                 <div
-                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-gray-200/60 shadow-sm hover:shadow-md hover:-translate-y-1 active:translate-y-0 transition-transform duration-200 ease-out cursor-pointer group will-change-transform"
+                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer group"
                   data-testid={`category-icon-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-[0_4px_12px_rgba(10,74,130,0.3)] group-hover:scale-110 transition-transform duration-200 ease-out">
@@ -276,7 +276,7 @@ export default function Home() {
           })}
           <button
             onClick={() => setShowCategoryRequest(true)}
-            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border-2 border-dashed border-[#8a9a5b]/40 shadow-sm hover:border-[#8a9a5b]/70 hover:shadow-md hover:-translate-y-1 active:translate-y-0 transition-transform duration-200 ease-out cursor-pointer group will-change-transform"
+            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border-2 border-dashed border-[#8a9a5b]/40 shadow-sm hover:border-[#8a9a5b]/70 hover:shadow-md transition-shadow duration-200 cursor-pointer group"
             data-testid="button-suggest-category"
           >
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#8a9a5b] to-[#6b7a45] flex items-center justify-center shadow-[0_4px_12px_rgba(138,154,91,0.3)] group-hover:scale-110 transition-transform duration-200 ease-out">

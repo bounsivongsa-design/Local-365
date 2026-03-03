@@ -13,7 +13,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
   return (
     <Link to={`/directory/${business.id}`}>
       <div 
-        className="group relative bg-white dark:bg-card rounded-2xl overflow-hidden border border-[#0a4a82]/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgba(10,74,130,0.15)] hover:-translate-y-1 transition-[shadow,transform] duration-300 will-change-transform"
+        className="group relative bg-white dark:bg-card rounded-2xl overflow-hidden border border-[#0a4a82]/10 hover:border-[#0a4a82]/25 shadow-md hover:shadow-xl transition-shadow duration-300"
         data-testid={`card-business-${business.id}`}
       >
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10">
@@ -21,7 +21,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
             <img 
               src={business.imageUrl} 
               alt={business.name}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+              className="h-full w-full object-cover"
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center">
@@ -29,29 +29,23 @@ export function BusinessCard({ business }: BusinessCardProps) {
             </div>
           )}
           
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
             {business.category && (
-              <Badge className="bg-white/90 dark:bg-card/90 backdrop-blur-sm text-[#0a4a82] border-0 shadow-lg">
+              <Badge className="bg-white/95 text-[#0a4a82] border-0 shadow-sm">
                 {business.category}
               </Badge>
             )}
             {business.isLocal365Partner && (
-              <Badge className="bg-[#8a9a5b] text-white border-0 shadow-lg">
+              <Badge className="bg-[#8a9a5b] text-white border-0 shadow-sm">
                 <Award className="h-3 w-3 mr-1" />
                 Local 365 Partner
               </Badge>
             )}
           </div>
           
-          <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-lg">
+          <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-sm">
             <Star className="h-3.5 w-3.5 fill-current" />
             {business.averageRating ? Number(business.averageRating).toFixed(1) : "New"}
-          </div>
-          
-          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-[opacity,transform] duration-300 shadow-lg">
-            <ArrowRight className="h-5 w-5 text-[#0a4a82]" />
           </div>
         </div>
         
@@ -80,7 +74,10 @@ export function BusinessCard({ business }: BusinessCardProps) {
                 />
                 <MembershipBadge tier={business.membershipTier} variant="compact" />
               </div>
-              <span className="text-xs text-[#0a4a82] font-medium group-hover:underline">View Details</span>
+              <span className="text-xs text-[#0a4a82] font-medium group-hover:underline flex items-center gap-1">
+                View Details
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
             </div>
           </div>
         </div>

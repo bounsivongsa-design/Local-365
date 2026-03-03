@@ -12,13 +12,13 @@ export function EventCard({ event }: EventCardProps) {
   const date = new Date(event.date);
   
   return (
-    <Card className="group overflow-hidden border border-white/50 hover:border-primary/30 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_4px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.18),0_8px_16px_rgba(0,0,0,0.1)] hover:translate-y-[-4px] transition-[shadow,transform,border-color] duration-300 will-change-transform rounded-2xl flex flex-col h-full">
+    <Card className="group overflow-hidden border border-border/50 hover:border-primary/30 shadow-md hover:shadow-xl transition-shadow duration-300 rounded-2xl flex flex-col h-full">
       <div className="relative h-48 overflow-hidden bg-muted">
         {event.imageUrl ? (
           <img 
             src={event.imageUrl} 
             alt={event.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
@@ -26,8 +26,7 @@ export function EventCard({ event }: EventCardProps) {
           </div>
         )}
         
-        {/* Date Badge - 3D effect */}
-        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-xl p-2.5 text-center min-w-[4rem] border border-white/50 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]">
+        <div className="absolute top-3 right-3 bg-white/95 rounded-xl p-2.5 text-center min-w-[4rem] border border-white/50 shadow-sm">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">
             {format(date, "MMM")}
           </div>
@@ -53,10 +52,10 @@ export function EventCard({ event }: EventCardProps) {
 
         <Button 
           variant="outline" 
-          className="w-full mt-auto group-hover:border-primary/50 group-hover:text-primary group-hover:bg-primary/5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+          className="w-full mt-auto group-hover:border-primary/50 group-hover:text-primary group-hover:bg-primary/5 rounded-xl shadow-sm"
         >
           Event Details
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </CardContent>
     </Card>
