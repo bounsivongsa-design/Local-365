@@ -189,13 +189,13 @@ export default function Directory() {
                         key={cat.name}
                         onClick={() => setCategory(cat.name)}
                         data-testid={`button-category-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 group ${
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-[background-color,color,box-shadow] duration-200 group ${
                           isActive 
                             ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6aa8] text-white font-medium shadow-lg shadow-[#0a4a82]/30 scale-[1.02]" 
                             : "text-foreground/80 hover:bg-[#0a4a82]/5 hover:text-[#0a4a82] dark:hover:bg-[#0a4a82]/20 dark:hover:text-white"
                         }`}
                       >
-                        <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                        <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-[background-color] duration-200 ${
                           isActive 
                             ? "bg-white/20 shadow-inner" 
                             : "bg-gradient-to-br from-[#f5f5dc]/50 to-[#d4a373]/20 group-hover:from-[#0a4a82]/10 group-hover:to-[#0a4a82]/20"
@@ -234,7 +234,7 @@ export default function Directory() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-4 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20 transition-all"
+                className="w-full p-4 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20 transition-[border-color,box-shadow] duration-200"
                 data-testid="select-category-mobile"
               >
                 {categories.map((cat) => (

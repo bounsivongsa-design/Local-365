@@ -12,7 +12,7 @@ export function EventCard({ event }: EventCardProps) {
   const date = new Date(event.date);
   
   return (
-    <Card className="group overflow-hidden border border-white/50 hover:border-primary/30 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_4px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.18),0_8px_16px_rgba(0,0,0,0.1)] hover:translate-y-[-4px] rounded-2xl flex flex-col h-full">
+    <Card className="group overflow-hidden border border-white/50 hover:border-primary/30 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_4px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.18),0_8px_16px_rgba(0,0,0,0.1)] hover:translate-y-[-4px] transition-[shadow,transform,border-color] duration-300 will-change-transform rounded-2xl flex flex-col h-full">
       <div className="relative h-48 overflow-hidden bg-muted">
         {event.imageUrl ? (
           <img 

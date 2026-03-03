@@ -13,7 +13,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
   return (
     <Link to={`/directory/${business.id}`}>
       <div 
-        className="group relative bg-white dark:bg-card rounded-2xl overflow-hidden border border-[#0a4a82]/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgba(10,74,130,0.15)] transition-all duration-500 hover:-translate-y-1"
+        className="group relative bg-white dark:bg-card rounded-2xl overflow-hidden border border-[#0a4a82]/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_rgba(10,74,130,0.15)] hover:-translate-y-1 transition-[shadow,transform] duration-300 will-change-transform"
         data-testid={`card-business-${business.id}`}
       >
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10">
@@ -50,7 +50,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
             {business.averageRating ? Number(business.averageRating).toFixed(1) : "New"}
           </div>
           
-          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-lg">
+          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-[opacity,transform] duration-300 shadow-lg">
             <ArrowRight className="h-5 w-5 text-[#0a4a82]" />
           </div>
         </div>

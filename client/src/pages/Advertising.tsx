@@ -624,7 +624,7 @@ export default function Advertising() {
                     return (
                       <div 
                         key={p.id} 
-                        className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all hover:-translate-y-1 border border-slate-100 dark:border-slate-700"
+                        className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl hover:-translate-y-1 transition-[shadow,transform] duration-200 border border-slate-100 dark:border-slate-700"
                         data-testid={`card-pricing-${p.placementType}`}
                       >
                         <div className={`bg-gradient-to-br ${gradients[index % 4]} p-5`}>

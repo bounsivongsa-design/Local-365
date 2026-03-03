@@ -122,7 +122,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
             <p className="text-white/85 max-w-2xl text-sm md:text-base leading-relaxed">{description}</p>
           </div>
           <button
-            className="flex items-center gap-2 bg-[#d4a373] text-white px-7 py-3.5 rounded-xl font-semibold hover:bg-[#c49363] transition-all shadow-[0_4px_15px_rgba(212,163,115,0.4)] hover:shadow-[0_6px_25px_rgba(212,163,115,0.5)] hover:-translate-y-0.5 whitespace-nowrap"
+            className="flex items-center gap-2 bg-[#d4a373] text-white px-7 py-3.5 rounded-xl font-semibold hover:bg-[#c49363] shadow-[0_4px_15px_rgba(212,163,115,0.4)] hover:shadow-[0_6px_25px_rgba(212,163,115,0.5)] hover:-translate-y-0.5 transition-[shadow,transform,background-color] duration-200 whitespace-nowrap"
             data-testid={`ad-cta-${ad?.id || "placeholder"}`}
           >
             {isPlaceholder ? "Advertise Here" : "Learn More"}
@@ -143,7 +143,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
           return (
             <Card 
               key={isPlaceholder ? `ph-${i}` : realAd.id}
-              className="overflow-hidden border-[#d4a373]/30 hover:border-[#d4a373]/60 hover:shadow-[0_8px_30px_rgba(212,163,115,0.15)] transition-all duration-300 cursor-pointer group"
+              className="overflow-hidden border-[#d4a373]/30 hover:border-[#d4a373]/60 hover:shadow-[0_8px_30px_rgba(212,163,115,0.15)] transition-[shadow,border-color] duration-200 cursor-pointer group"
               onClick={() => isPlaceholder ? (window.location.href = "/advertising") : handleClick(realAd)}
               data-testid={`ad-featured-${isPlaceholder ? `placeholder-${i}` : realAd.id}`}
             >
@@ -170,7 +170,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{(ad as any).description}</p>
                   )}
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-[#0a4a82] group-hover:translate-x-1 transition-all flex-shrink-0" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-[#0a4a82] group-hover:translate-x-1 transition-[color,transform] duration-200 flex-shrink-0" />
               </div>
             </Card>
           );
@@ -189,7 +189,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
 
     return (
       <div 
-        className={`relative bg-gradient-to-r from-[#8a9a5b]/10 via-[#8a9a5b]/5 to-transparent border border-[#8a9a5b]/20 rounded-xl p-4 cursor-pointer group hover:border-[#8a9a5b]/40 hover:shadow-[0_4px_20px_rgba(138,154,91,0.1)] transition-all duration-300 ${className}`}
+        className={`relative bg-gradient-to-r from-[#8a9a5b]/10 via-[#8a9a5b]/5 to-transparent border border-[#8a9a5b]/20 rounded-xl p-4 cursor-pointer group hover:border-[#8a9a5b]/40 hover:shadow-[0_4px_20px_rgba(138,154,91,0.1)] transition-[shadow,border-color] duration-200 ${className}`}
         onClick={() => isPlaceholder ? (window.location.href = "/advertising") : handleClick(ad!)}
         data-testid={`ad-spotlight-${(ad as any)?.id || "placeholder"}`}
       >
@@ -213,7 +213,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
               <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
             )}
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-[#8a9a5b] group-hover:translate-x-1 transition-all flex-shrink-0" />
+          <ArrowRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-[#8a9a5b] group-hover:translate-x-1 transition-[color,transform] duration-200 flex-shrink-0" />
         </div>
       </div>
     );

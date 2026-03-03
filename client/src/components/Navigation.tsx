@@ -50,7 +50,7 @@ export function Navigation() {
             {navItems.map((item) => (
               <Link key={item.href} to={item.href}>
                 <span className={`
-                  flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                  flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-[background-color,color] duration-200
                   ${isActive(item.href) 
                     ? "bg-white/20 text-white" 
                     : "text-white/80 hover:text-white hover:bg-white/10"}
@@ -119,7 +119,7 @@ export function Navigation() {
                 {navItems.map((item) => (
                   <Link key={item.href} to={item.href} onClick={() => setIsOpen(false)}>
                     <span className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl text-lg font-medium transition-all
+                      flex items-center gap-3 px-4 py-3 rounded-xl text-lg font-medium transition-[background-color,color] duration-200
                       ${isActive(item.href)
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted"}

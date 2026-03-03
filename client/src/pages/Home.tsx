@@ -207,7 +207,7 @@ export default function Home() {
             <Link to="/events">
               <Button 
                 size="lg" 
-                className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+                className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-[shadow,transform] duration-200"
                 data-testid="button-local-events"
               >
                 <Calendar className="mr-2 h-5 w-5" />
@@ -493,7 +493,7 @@ export default function Home() {
               <div className="space-y-4">
                 {featuredBusinesses.map(biz => (
                   <Link key={biz.id} to={`/directory/${biz.id}`}>
-                    <div className="flex gap-4 p-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-border transition-all cursor-pointer group">
+                    <div className="flex gap-4 p-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-border transition-[shadow,background-color,border-color] duration-200 cursor-pointer group">
                       <div className="h-16 w-16 rounded-lg bg-muted overflow-hidden shrink-0">
                         {biz.imageUrl ? (
                           <img src={biz.imageUrl} alt={biz.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
