@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
@@ -11,10 +11,12 @@ import {
   Printer, Palette, Camera, Car, Settings, Trash2, GraduationCap,
   Heart, Calculator, Scale, Hammer, ChefHat, Truck, PartyPopper, Waves,
   ShoppingBag, UtensilsCrossed, PawPrint, DoorOpen, Fence, Shield, Bug,
-  Scissors, Dumbbell, Anchor, HeartPulse, Landmark, Monitor
+  Scissors, Dumbbell, Anchor, HeartPulse, Landmark, Monitor, MapPin
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "@/context/LocationContext";
+import { getDistanceFromZips, getZipCoords, RADIUS_OPTIONS } from "@/lib/zip-coordinates";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,9 @@ export default function Directory() {
   const urlCategory = searchParams.get("category") || "";
   const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [category, setCategory] = useState(urlCategory || "All");
+  const [radiusMiles, setRadiusMiles] = useState(0);
+  const { location: selectedLocation } = useLocation();
+  const hasCoords = selectedLocation.zipCode ? !!getZipCoords(selectedLocation.zipCode) : false;
 
   useEffect(() => {
     if (urlSearch) setSearchTerm(urlSearch);
@@ -41,6 +46,15 @@ export default function Directory() {
     category: category === "All" ? undefined : category 
   });
   const { isAuthenticated } = useAuth();
+
+  const filteredBusinesses = useMemo(() => {
+    if (!businesses || radiusMiles === 0 || !selectedLocation.zipCode) return businesses;
+    return businesses.filter((biz) => {
+      const dist = getDistanceFromZips(selectedLocation.zipCode!, biz.zipCode || "");
+      if (dist === null) return false;
+      return dist <= radiusMiles;
+    });
+  }, [businesses, radiusMiles, selectedLocation.zipCode]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const categories = [
@@ -126,11 +140,25 @@ export default function Directory() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82]" />
                 <Input
                   placeholder="Search businesses..."
-                  className="pl-12 h-12 rounded-xl bg-white/95 backdrop-blur-sm border-0 shadow-xl text-base placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="pl-12 h-12 rounded-xl bg-white/95 border-0 shadow-xl text-base placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-white/50"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   data-testid="input-search-businesses"
                 />
+              </div>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#0a4a82]" />
+                <select
+                  value={radiusMiles}
+                  onChange={(e) => setRadiusMiles(Number(e.target.value))}
+                  disabled={!hasCoords}
+                  className={`h-12 pl-9 pr-4 rounded-xl bg-white/95 border-0 shadow-xl text-sm font-medium text-[#0a4a82] appearance-none cursor-pointer focus:ring-2 focus:ring-white/50 ${!hasCoords ? "opacity-50 cursor-not-allowed" : ""}`}
+                  data-testid="select-radius"
+                >
+                  {RADIUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
               
               {isAuthenticated && (
@@ -179,8 +207,30 @@ export default function Directory() {
                 </div>
               </div>
               
+              {/* Distance Filter */}
+              <div className="px-4 py-3 border-b border-[#0a4a82]/10">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Distance from {selectedLocation.city}</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#0a4a82]" />
+                  <select
+                    value={radiusMiles}
+                    onChange={(e) => setRadiusMiles(Number(e.target.value))}
+                    disabled={!hasCoords}
+                    className={`w-full py-2.5 pl-9 pr-3 rounded-lg border border-[#0a4a82]/15 bg-[#0a4a82]/5 text-sm font-medium text-[#0a4a82] appearance-none cursor-pointer focus:ring-2 focus:ring-[#0a4a82]/20 focus:border-[#0a4a82]/30 ${!hasCoords ? "opacity-50 cursor-not-allowed" : ""}`}
+                    data-testid="select-radius-sidebar"
+                  >
+                    {RADIUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {!hasCoords && (
+                  <p className="text-xs text-muted-foreground mt-1.5">Distance not available for this location</p>
+                )}
+              </div>
+
               {/* Category List */}
-              <div className="max-h-[calc(100vh-280px)] overflow-y-auto p-3 space-y-1.5">
+              <div className="max-h-[calc(100vh-340px)] overflow-y-auto p-3 space-y-1.5">
                   {categories.map((cat) => {
                     const IconComponent = cat.icon;
                     const isActive = category === cat.name;
@@ -203,13 +253,13 @@ export default function Directory() {
                           <IconComponent className={`h-5 w-5 transition-transform duration-300 ${isActive ? "" : "group-hover:scale-110"}`} />
                         </span>
                         <span className="flex-1 text-left truncate font-medium">{cat.name}</span>
-                        {cat.name === "All" && businesses && (
+                        {cat.name === "All" && filteredBusinesses && (
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
                             isActive 
                               ? "bg-white/25 text-white" 
                               : "bg-[#d4a373]/20 text-[#d4a373] group-hover:bg-[#0a4a82]/20 group-hover:text-[#0a4a82]"
                           }`}>
-                            {businesses.length}
+                            {filteredBusinesses.length}
                           </span>
                         )}
                       </button>
@@ -228,13 +278,13 @@ export default function Directory() {
             />
           )}
 
-          {/* Mobile Category Selector */}
-          <div className="md:hidden mb-6">
+          {/* Mobile Category & Radius Selectors */}
+          <div className="md:hidden mb-6 space-y-3">
             <div className="relative">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-4 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20 transition-[border-color,box-shadow] duration-200"
+                className="w-full p-4 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20"
                 data-testid="select-category-mobile"
               >
                 {categories.map((cat) => (
@@ -242,6 +292,21 @@ export default function Directory() {
                 ))}
               </select>
               <Building2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82] pointer-events-none" />
+            </div>
+            <div className="relative">
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82] pointer-events-none" />
+              <select
+                value={radiusMiles}
+                onChange={(e) => setRadiusMiles(Number(e.target.value))}
+                className="w-full p-4 pl-12 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20"
+                data-testid="select-radius-mobile"
+              >
+                {RADIUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.value === 0 ? "Any Distance" : `Within ${opt.value} miles of ${selectedLocation.city}`}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -260,9 +325,10 @@ export default function Directory() {
                   <h2 className="font-bold text-lg text-foreground">
                     {category === "All" ? "All Categories" : category}
                   </h2>
-                  {businesses && (
+                  {filteredBusinesses && (
                     <p className="text-sm text-muted-foreground">
-                      {businesses.length} {businesses.length === 1 ? "business" : "businesses"} found
+                      {filteredBusinesses.length} {filteredBusinesses.length === 1 ? "business" : "businesses"} found
+                      {radiusMiles > 0 && ` within ${radiusMiles} miles of ${selectedLocation.city}`}
                     </p>
                   )}
                 </div>
@@ -280,19 +346,32 @@ export default function Directory() {
                   </div>
                 ))}
               </div>
-            ) : businesses?.length === 0 ? (
+            ) : filteredBusinesses?.length === 0 ? (
               <div className="text-center py-20 bg-white dark:bg-card rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#0a4a82]/10">
                 <div className="h-24 w-24 bg-gradient-to-br from-[#f5f5dc] to-[#d4a373]/30 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Search className="h-12 w-12 text-[#0a4a82]/40" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3 text-foreground">No businesses found</h3>
                 <p className="text-muted-foreground max-w-sm mx-auto">
-                  Try adjusting your search or browse a different category.
+                  {radiusMiles > 0 
+                    ? `No businesses found within ${radiusMiles} miles of ${selectedLocation.city}. Try increasing the distance.`
+                    : "Try adjusting your search or browse a different category."
+                  }
                 </p>
+                {radiusMiles > 0 && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4 text-[#0a4a82] border-[#0a4a82]/30"
+                    onClick={() => setRadiusMiles(0)}
+                    data-testid="button-clear-radius"
+                  >
+                    Clear Distance Filter
+                  </Button>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-500">
-                {businesses?.map((business) => (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredBusinesses?.map((business) => (
                   <BusinessCard key={business.id} business={business} />
                 ))}
               </div>

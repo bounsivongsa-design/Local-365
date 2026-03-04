@@ -5,7 +5,7 @@ import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, ArrowRight } from "lucide-react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -101,7 +101,7 @@ export default function Events() {
                 </Button>
               </div>
 
-              <Link href="/advertising#event-advertising">
+              <Link to="/advertising#event-advertising">
                 <Button className="rounded-full bg-white/15 text-white border border-white/30 shadow-lg" data-testid="link-advertise-event">
                   <Megaphone className="mr-2 h-4 w-4" />
                   Advertise Your Event
@@ -202,7 +202,7 @@ export default function Events() {
           <EventAdPricingGrid />
 
           <div className="text-center mt-8">
-            <Link href="/advertising">
+            <Link to="/advertising">
               <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold" data-testid="link-full-advertising">
                 View All Advertising Options
                 <ArrowRight className="ml-2 h-5 w-5" />
