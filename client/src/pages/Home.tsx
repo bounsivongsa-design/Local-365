@@ -265,48 +265,42 @@ export default function Home() {
               >
                 {AD_SLIDES.map((slide, idx) => {
                   const sizeStyles = {
-                    large: { height: "h-[280px] md:h-[340px]", titleClass: "text-2xl md:text-4xl", showDesc: true, showImage: true, padding: "p-8 md:p-12", badgeColor: "bg-amber-500", businessSize: "text-base" },
-                    medium: { height: "h-[180px] md:h-[220px]", titleClass: "text-lg md:text-xl", showDesc: true, showImage: true, padding: "p-5 md:p-8", badgeColor: "bg-[#0a4a82]", businessSize: "text-sm" },
-                    small: { height: "h-[90px] md:h-[110px]", titleClass: "text-sm md:text-base", showDesc: false, showImage: true, padding: "p-3 md:p-5", badgeColor: "bg-gray-600", businessSize: "text-xs" },
+                    large: { width: "w-full", titleClass: "text-xl md:text-3xl", showDesc: true, padding: "p-8 md:p-10", badgeColor: "bg-amber-500", businessSize: "text-base" },
+                    medium: { width: "w-[85%] md:w-[75%]", titleClass: "text-lg md:text-xl", showDesc: true, padding: "p-5 md:p-8", badgeColor: "bg-[#0a4a82]", businessSize: "text-sm" },
+                    small: { width: "w-[65%] md:w-[50%]", titleClass: "text-sm md:text-base", showDesc: false, padding: "p-4 md:p-6", badgeColor: "bg-gray-600", businessSize: "text-xs" },
                   };
                   const s = sizeStyles[slide.size];
                   return (
-                    <Link
+                    <div
                       key={idx}
-                      to={slide.link}
-                      className="w-full flex-shrink-0"
+                      className="w-full flex-shrink-0 flex items-center justify-center"
                       data-testid={`ad-slide-${idx}`}
                     >
-                      <div className={`relative ${s.height} overflow-hidden rounded-2xl group cursor-pointer`}>
-                        {s.showImage && (
+                      <Link to={slide.link} className={`${s.width} transition-all duration-500`}>
+                        <div className="relative aspect-[3/1] overflow-hidden rounded-2xl group cursor-pointer">
                           <img
                             src={slide.image}
                             alt={slide.title}
                             className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700"
                           />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-                        <div className={`relative h-full flex flex-col justify-center ${s.padding}`}>
-                          <div className={`flex items-center gap-2 ${slide.size === "small" ? "mb-1" : "mb-3"}`}>
-                            <span className={`inline-flex items-center gap-1 ${s.badgeColor} text-white font-bold rounded-full uppercase tracking-wide ${slide.size === "small" ? "text-[10px] px-2 py-0.5" : "text-xs px-3 py-1"}`}>
-                              {slide.size === "large" && <Sparkles className="h-3 w-3" />}
-                              {slide.size !== "large" && <Megaphone className={slide.size === "small" ? "h-2.5 w-2.5" : "h-3 w-3"} />}
-                              {slide.size} Ad — {slide.price}
-                            </span>
-                            <span className="text-white/50 text-xs hidden sm:inline">Example</span>
-                          </div>
-                          <div className={`flex items-center gap-2 ${slide.size === "small" ? "" : "flex-col items-start"}`}>
-                            <p className={`text-[#d4a373] ${s.businessSize} font-semibold tracking-wide`}>{slide.business}</p>
-                            {slide.size !== "small" && (
-                              <h3 className={`${s.titleClass} font-bold text-white drop-shadow-md max-w-xl leading-tight`}>{slide.title}</h3>
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+                          <div className={`relative h-full flex flex-col justify-center ${s.padding}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`inline-flex items-center gap-1 ${s.badgeColor} text-white font-bold rounded-full uppercase tracking-wide text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1`}>
+                                {slide.size === "large" ? <Sparkles className="h-3 w-3" /> : <Megaphone className="h-2.5 w-2.5 md:h-3 md:w-3" />}
+                                {slide.size} Ad — {slide.price}
+                              </span>
+                              <span className="text-white/50 text-[10px] md:text-xs hidden sm:inline">Example</span>
+                            </div>
+                            <p className={`text-[#d4a373] ${s.businessSize} font-semibold tracking-wide mb-1`}>{slide.business}</p>
+                            <h3 className={`${s.titleClass} font-bold text-white drop-shadow-md leading-tight`}>{slide.title}</h3>
+                            {s.showDesc && (
+                              <p className="text-white/80 text-xs md:text-sm max-w-lg mt-2 hidden sm:block leading-relaxed">{slide.description}</p>
                             )}
                           </div>
-                          {s.showDesc && (
-                            <p className="text-white/80 text-sm max-w-lg mt-2 hidden sm:block leading-relaxed">{slide.description}</p>
-                          )}
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   );
                 })}
               </div>
