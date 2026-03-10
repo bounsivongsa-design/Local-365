@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { registerStripeRoutes } from "./stripe";
 import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
@@ -287,6 +288,9 @@ export async function registerRoutes(
   
   // Object Storage Routes
   registerObjectStorageRoutes(app);
+
+  // Stripe Payment Routes
+  registerStripeRoutes(app);
 
   // ============ LOCATION ROUTES ============
   

@@ -45,6 +45,8 @@ export const businesses = pgTable("businesses", {
   membershipStartDate: timestamp("membership_start_date"),
   membershipEndDate: timestamp("membership_end_date"),
   membershipTrialUsed: boolean("membership_trial_used").default(false), // Track if 1st month free was used
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   phone: text("phone"), // Phone number for business listing
   websiteUrl: text("website_url"), // Hyperlink to business website
   logoUrl: text("logo_url"), // Business logo (standard+ tiers)

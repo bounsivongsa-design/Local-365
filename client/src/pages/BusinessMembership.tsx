@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import {
   Building2,
   Check,
@@ -23,13 +25,17 @@ import {
   Zap,
   Shield,
   Award,
-  ArrowRight
+  ArrowRight,
+  CreditCard,
+  Loader2,
+  Medal
 } from "lucide-react";
 
 type PaymentFrequency = "monthly" | "semi_annual" | "annual";
 
 interface MembershipTier {
   id: string;
+  dbId: string;
   name: string;
   monthlyPrice: number;
   features: string[];
@@ -42,50 +48,61 @@ interface MembershipTier {
 
 const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
-    id: "basic",
-    name: "Basic",
+    id: "bronze",
+    dbId: "basic",
+    name: "Bronze",
     monthlyPrice: 50,
     description: "Perfect for getting started",
     features: [
       "Business listing in directory",
       "Phone number displayed",
       "Customer reviews enabled",
-      "Basic analytics dashboard",
+      "Up to 3 photos",
+      "1 business category",
+      "Basic quote access (3rd round)",
+      "10% off advertising",
       "Email support"
     ],
-    icon: Building2,
-    gradient: "from-slate-600 to-slate-800",
-    iconBg: "bg-slate-100"
+    icon: Medal,
+    gradient: "from-amber-700 to-amber-900",
+    iconBg: "bg-amber-100"
   },
   {
-    id: "standard",
-    name: "Standard",
+    id: "silver",
+    dbId: "standard",
+    name: "Silver",
     monthlyPrice: 100,
     description: "Most popular for growing businesses",
     features: [
-      "Everything in Basic",
+      "Everything in Bronze",
       "Business logo displayed",
       "Website link (hyperlink)",
-      "Enhanced profile layout",
-      "Priority quote access",
+      "Up to 10 photos, 3 categories",
+      "Priority quote access (2nd round)",
+      "Verified business badge",
+      "Social media links",
+      "25% off advertising",
       "Priority support"
     ],
     icon: Star,
-    gradient: "from-[#8a9a5b] to-[#6b7a4a]",
-    iconBg: "bg-[#8a9a5b]/10",
+    gradient: "from-slate-400 to-slate-600",
+    iconBg: "bg-slate-100",
     popular: true
   },
   {
-    id: "premium",
-    name: "Premium",
+    id: "gold",
+    dbId: "premium",
+    name: "Gold",
     monthlyPrice: 200,
     description: "For businesses that want it all",
     features: [
-      "Everything in Standard",
+      "Everything in Silver",
       "Top of search results",
       "Featured badge on listing",
-      "Premium analytics dashboard",
-      "Priority customer matching",
+      "Unlimited photos, 5 categories",
+      "Priority quote access (1st round)",
+      "30-sec promo video upload",
+      "Advanced analytics dashboard",
       "Dedicated account manager",
       "50% off all advertising"
     ],
@@ -120,28 +137,108 @@ function calculatePrice(basePrice: number, frequency: PaymentFrequency, isNewMem
   return { total, perMonth: discountedMonthlyPrice, savings, months, freeMonths };
 }
 
+const DB_TO_DISPLAY: Record<string, string> = {
+  basic: "bronze",
+  standard: "silver",
+  premium: "gold",
+};
+
 export default function BusinessMembership() {
   const { user, isAuthenticated } = useAuth();
   const [selectedFrequency, setSelectedFrequency] = useState<PaymentFrequency>("monthly");
   const [isNewMember] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
 
   const { data: business } = useQuery({
     queryKey: ["/api/my-business"],
     enabled: isAuthenticated && user?.accountType === "business",
   });
 
-  const currentTier = (business as any)?.membershipTier || "none";
+  const { data: subscriptionStatus } = useQuery<{
+    active: boolean;
+    tier: string;
+    tierDisplay: string;
+    frequency: string;
+    hasStripeSubscription: boolean;
+  }>({
+    queryKey: ["/api/stripe/subscription-status"],
+    enabled: isAuthenticated && user?.accountType === "business",
+  });
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+    }
+    if (searchParams.get("canceled") === "true") {
+      toast({ title: "Checkout canceled", description: "No worries — you can subscribe anytime.", variant: "destructive" });
+    }
+  }, []);
+
+  const currentTierDb = (business as any)?.membershipTier || "none";
+  const currentTierDisplay = DB_TO_DISPLAY[currentTierDb] || currentTierDb;
+
+  const handleSelectTier = async (tier: MembershipTier) => {
+    if (!isAuthenticated) {
+      window.location.href = "/auth?mode=register";
+      return;
+    }
+
+    if (user?.accountType !== "business") {
+      toast({ title: "Business account required", description: "Please switch to a business account to subscribe.", variant: "destructive" });
+      return;
+    }
+
+    if (!(business as any)?.id) {
+      toast({ title: "Create your business first", description: "Please create a business listing before subscribing.", variant: "destructive" });
+      return;
+    }
+
+    setCheckoutLoading(tier.id);
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tier: tier.id, frequency: selectedFrequency }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const res = await fetch("/api/stripe/create-portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to open billing portal", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
-      {/* Premium Hero Section */}
       <div className="relative overflow-hidden">
-        {/* Background with ocean gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82] via-[#0a4a82]/95 to-[#0a4a82]/90" />
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&h=600&fit=crop')] bg-cover bg-center opacity-20" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a4a82] via-transparent to-transparent" />
-        
-        {/* Decorative elements */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#d4a373]/10 rounded-full blur-3xl" />
         
@@ -174,17 +271,36 @@ export default function BusinessMembership() {
           </div>
         </div>
         
-        {/* Wave decoration */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
             <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" 
-              className="fill-slate-50 dark:fill-slate-950"/>
+                  className="fill-slate-50 dark:fill-slate-950"/>
           </svg>
         </div>
       </div>
 
       <div className="container py-16 md:py-20">
-        {/* Payment Toggle */}
+        {subscriptionStatus?.active && subscriptionStatus?.hasStripeSubscription && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="bg-gradient-to-r from-[#0a4a82]/5 to-[#d4a373]/5 border border-[#0a4a82]/20 rounded-2xl p-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#0a4a82]/10 flex items-center justify-center">
+                  <CreditCard className="h-6 w-6 text-[#0a4a82]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Active {subscriptionStatus.tierDisplay?.charAt(0).toUpperCase()}{subscriptionStatus.tierDisplay?.slice(1)} Membership
+                  </p>
+                  <p className="text-sm text-slate-500">Manage your billing, update payment methods, or change plans</p>
+                </div>
+              </div>
+              <Button onClick={handleManageSubscription} variant="outline" className="rounded-xl" data-testid="button-manage-billing">
+                Manage Billing
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-md mx-auto mb-16">
           <div className="bg-white dark:bg-slate-800 p-1.5 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200/50 dark:border-slate-700/50">
             <div className="grid grid-cols-3 gap-1">
@@ -215,12 +331,12 @@ export default function BusinessMembership() {
           </div>
         </div>
 
-        {/* Pricing Cards */}
         <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
-          {MEMBERSHIP_TIERS.map((tier, index) => {
+          {MEMBERSHIP_TIERS.map((tier) => {
             const pricing = calculatePrice(tier.monthlyPrice, selectedFrequency, isNewMember);
             const Icon = tier.icon;
-            const isCurrentTier = currentTier === tier.id;
+            const isCurrentTier = currentTierDisplay === tier.id;
+            const isLoading = checkoutLoading === tier.id;
             
             return (
               <div
@@ -228,7 +344,6 @@ export default function BusinessMembership() {
                 className={`relative group ${tier.popular ? 'lg:-mt-4 lg:mb-4' : ''}`}
                 data-testid={`card-tier-${tier.id}`}
               >
-                {/* Popular badge */}
                 {tier.popular && (
                   <div className="absolute -top-5 inset-x-0 flex justify-center z-10">
                     <div className="bg-gradient-to-r from-[#8a9a5b] to-[#6b7a4a] text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg shadow-[#8a9a5b]/30 flex items-center gap-2">
@@ -238,17 +353,15 @@ export default function BusinessMembership() {
                   </div>
                 )}
                 
-                {/* Card */}
                 <div className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden transition-all duration-500 ${
                   tier.popular 
                     ? 'shadow-2xl shadow-[#8a9a5b]/20 ring-2 ring-[#8a9a5b] lg:scale-105' 
                     : 'shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl hover:-translate-y-1'
                 }`}>
-                  {/* Gradient header */}
                   <div className={`bg-gradient-to-br ${tier.gradient} p-8 text-white`}>
                     <div className="flex items-center gap-4 mb-6">
                       <div className={`w-14 h-14 rounded-2xl ${tier.iconBg} flex items-center justify-center shadow-lg`}>
-                        <Icon className={`h-7 w-7 ${tier.id === 'basic' ? 'text-slate-700' : tier.id === 'standard' ? 'text-[#8a9a5b]' : 'text-amber-600'}`} />
+                        <Icon className={`h-7 w-7 ${tier.id === 'bronze' ? 'text-amber-700' : tier.id === 'silver' ? 'text-slate-600' : 'text-amber-600'}`} />
                       </div>
                       <div>
                         <h3 className="text-2xl font-bold">{tier.name}</h3>
@@ -280,23 +393,22 @@ export default function BusinessMembership() {
                     </div>
                   </div>
                   
-                  {/* Features */}
                   <div className="p-8">
                     <ul className="space-y-4 mb-8">
                       {tier.features.map((feature, idx) => (
                         <li key={idx} className="flex items-start gap-3">
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                            tier.id === 'basic' 
-                              ? 'bg-slate-100 dark:bg-slate-700' 
-                              : tier.id === 'standard'
-                              ? 'bg-[#8a9a5b]/10'
+                            tier.id === 'bronze' 
+                              ? 'bg-amber-100 dark:bg-amber-900/30' 
+                              : tier.id === 'silver'
+                              ? 'bg-slate-100 dark:bg-slate-700'
                               : 'bg-amber-100 dark:bg-amber-900/30'
                           }`}>
                             <Check className={`h-3 w-3 ${
-                              tier.id === 'basic' 
-                                ? 'text-slate-600 dark:text-slate-300' 
-                                : tier.id === 'standard'
-                                ? 'text-[#8a9a5b]'
+                              tier.id === 'bronze' 
+                                ? 'text-amber-700' 
+                                : tier.id === 'silver'
+                                ? 'text-slate-600 dark:text-slate-300'
                                 : 'text-amber-600'
                             }`} />
                           </div>
@@ -312,17 +424,25 @@ export default function BusinessMembership() {
                       </Button>
                     ) : (
                       <Button 
+                        onClick={() => handleSelectTier(tier)}
+                        disabled={isLoading}
                         className={`w-full h-12 rounded-xl font-semibold text-base transition-all duration-300 ${
                           tier.popular
                             ? 'bg-[#8a9a5b] hover:bg-[#7a8a4b] shadow-lg shadow-[#8a9a5b]/25 hover:shadow-xl hover:shadow-[#8a9a5b]/30'
-                            : tier.id === 'premium'
+                            : tier.id === 'gold'
                             ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/25'
                             : 'bg-[#0a4a82] hover:bg-[#083a6a]'
                         }`}
                         data-testid={`button-select-${tier.id}`}
                       >
-                        {currentTier === "none" ? "Get Started" : "Upgrade Now"}
-                        <ArrowRight className="ml-2 h-5 w-5" />
+                        {isLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            {currentTierDisplay === "none" ? "Get Started" : "Upgrade Now"}
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
@@ -332,7 +452,6 @@ export default function BusinessMembership() {
           })}
         </div>
 
-        {/* Trust Section */}
         <div className="mt-24">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
@@ -361,7 +480,6 @@ export default function BusinessMembership() {
           </div>
         </div>
 
-        {/* Advertising CTA */}
         <div className="mt-24">
           <div className="relative bg-gradient-to-br from-[#0a4a82] to-[#083a6a] rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920')] bg-cover bg-center opacity-10" />
@@ -370,7 +488,7 @@ export default function BusinessMembership() {
             <div className="relative p-12 md:p-16 text-center">
               <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-white/20">
                 <Megaphone className="h-4 w-4 text-[#d4a373]" />
-                <span className="text-white/90 text-sm font-medium">Members Save 50% on Advertising</span>
+                <span className="text-white/90 text-sm font-medium">Members Save Up to 50% on Advertising</span>
               </div>
               
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -391,7 +509,6 @@ export default function BusinessMembership() {
           </div>
         </div>
 
-        {/* Not authenticated CTA */}
         {!isAuthenticated && (
           <div className="mt-16 text-center">
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-12 max-w-2xl mx-auto border border-slate-200 dark:border-slate-700">
@@ -402,7 +519,7 @@ export default function BusinessMembership() {
               <p className="text-slate-600 dark:text-slate-400 mb-8">
                 Sign in or create a business account to join the Local List 365 community
               </p>
-              <Link to="/auth">
+              <Link to="/auth?mode=register">
                 <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold">
                   Sign In to Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />
