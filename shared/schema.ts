@@ -48,6 +48,7 @@ export const businesses = pgTable("businesses", {
   phone: text("phone"), // Phone number for business listing
   websiteUrl: text("website_url"), // Hyperlink to business website
   logoUrl: text("logo_url"), // Business logo (standard+ tiers)
+  promoVideoUrl: text("promo_video_url"), // 30-sec promo video (Gold/premium tier only)
 });
 
 export const locations = pgTable("locations", {

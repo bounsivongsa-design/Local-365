@@ -624,6 +624,69 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/businesses/:id/promo-video", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const { videoUrl } = req.body;
+
+      if (!videoUrl || typeof videoUrl !== "string") {
+        return res.status(400).json({ message: "Video URL is required" });
+      }
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user[0].linkedBusinessId !== businessId) {
+        return res.status(403).json({ message: "You are not authorized to manage this business" });
+      }
+
+      const [business] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!business) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+
+      if (business.membershipTier !== "premium" && business.membershipTier !== "gold") {
+        return res.status(403).json({ message: "Promo video uploads are exclusive to Gold tier members" });
+      }
+
+      const [updated] = await pgDb
+        .update(businesses)
+        .set({ promoVideoUrl: videoUrl })
+        .where(eq(businesses.id, businessId))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      console.error("Error saving promo video:", err);
+      res.status(500).json({ message: "Failed to save promo video" });
+    }
+  });
+
+  app.delete("/api/businesses/:id/promo-video", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req.user as any).claims.sub;
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || user[0].linkedBusinessId !== businessId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [updated] = await pgDb
+        .update(businesses)
+        .set({ promoVideoUrl: null })
+        .where(eq(businesses.id, businessId))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to remove promo video" });
+    }
+  });
+
   // Events
   app.get(api.events.list.path, async (req, res) => {
     const events = await storage.getEvents();

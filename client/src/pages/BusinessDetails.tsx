@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play } from "lucide-react";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,12 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 
 export default function BusinessDetails() {
   const { id: paramId } = useParams<{ id: string }>();
@@ -132,6 +136,12 @@ export default function BusinessDetails() {
               </div>
             )}
           </div>
+
+          {business.promoVideoUrl && (
+            <PromoVideoPlayer videoUrl={business.promoVideoUrl} businessName={business.name} />
+          )}
+
+          <PromoVideoUploader business={business} />
 
           <div className="bg-white dark:bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
             <div className="flex items-center gap-3 mb-4">
@@ -326,6 +336,189 @@ export default function BusinessDetails() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PromoVideoPlayer({ videoUrl, businessName }: { videoUrl: string; businessName: string }) {
+  return (
+    <div className="bg-gradient-to-br from-[#0a4a82]/5 to-[#d4a373]/5 rounded-2xl p-6 md:p-8 border border-[#d4a373]/20 shadow-sm" data-testid="section-promo-video">
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-500 flex items-center justify-center shadow-md">
+            <Play className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground">Promo Video</h2>
+            <p className="text-sm text-muted-foreground">30-second spotlight from {businessName}</p>
+          </div>
+        </div>
+        <Badge className="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 text-white border-0 shadow-sm">
+          <Crown className="h-3 w-3 mr-1" />
+          Gold Exclusive
+        </Badge>
+      </div>
+      <div className="rounded-xl overflow-hidden shadow-lg bg-black">
+        <video
+          controls
+          className="w-full aspect-video"
+          preload="metadata"
+          data-testid="video-promo"
+        >
+          <source src={videoUrl.startsWith("/objects/") ? videoUrl : `/objects/${videoUrl}`} />
+          Your browser does not support the video element.
+        </video>
+      </div>
+    </div>
+  );
+}
+
+function PromoVideoUploader({ business }: { business: any }) {
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading, progress } = useUpload();
+
+  const isOwner = isAuthenticated && user && (user as any).linkedBusinessId === business.id;
+  const isGoldTier = business.membershipTier === "premium" || business.membershipTier === "gold";
+
+  const saveMutation = useMutation({
+    mutationFn: async (videoUrl: string) => {
+      const res = await apiRequest("POST", `/api/businesses/${business.id}/promo-video`, { videoUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.businesses.get.path, business.id] });
+      toast({ title: "Video uploaded", description: "Your promo video is now live on your listing!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to save video", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/businesses/${business.id}/promo-video`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.businesses.get.path, business.id] });
+      toast({ title: "Video removed", description: "Your promo video has been removed." });
+    },
+  });
+
+  if (!isOwner || !isGoldTier) return null;
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["video/mp4", "video/webm", "video/quicktime"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please upload an MP4, WebM, or MOV video.", variant: "destructive" });
+      return;
+    }
+
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({ title: "File too large", description: "Video must be under 50MB.", variant: "destructive" });
+      return;
+    }
+
+    const result = await uploadFile(file);
+    if (result) {
+      saveMutation.mutate(result.objectPath);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 rounded-2xl p-6 border border-[#d4a373]/20 shadow-sm" data-testid="section-video-upload">
+      <div className="flex items-center gap-3 mb-4">
+        <Video className="h-6 w-6 text-[#d4a373]" />
+        <div>
+          <h3 className="font-display text-lg font-bold">Promo Video</h3>
+          <p className="text-sm text-muted-foreground">Upload a 30-second clip to showcase your business</p>
+        </div>
+      </div>
+
+      {business.promoVideoUrl ? (
+        <div className="flex items-center justify-between gap-3 p-4 bg-white dark:bg-card rounded-xl border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Play className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Video uploaded</p>
+              <p className="text-xs text-muted-foreground">Your promo video is live on your listing</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || saveMutation.isPending}
+              data-testid="button-replace-video"
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Replace
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              data-testid="button-remove-video"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-[#d4a373]/30 bg-white/50 dark:bg-card/50 cursor-pointer hover:border-[#d4a373]/50 transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+          data-testid="dropzone-video-upload"
+        >
+          <div className="w-14 h-14 rounded-full bg-[#d4a373]/10 flex items-center justify-center">
+            <Upload className="h-7 w-7 text-[#d4a373]" />
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-foreground">Upload your promo video</p>
+            <p className="text-sm text-muted-foreground mt-1">MP4, WebM, or MOV · Max 50MB · Up to 30 seconds</p>
+          </div>
+        </div>
+      )}
+
+      {isUploading && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="text-muted-foreground">Uploading video...</span>
+            <span className="font-medium text-[#0a4a82]">{progress}%</span>
+          </div>
+          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#0a4a82] to-[#d4a373] rounded-full transition-[width] duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        className="hidden"
+        onChange={handleFileSelect}
+        data-testid="input-video-file"
+      />
     </div>
   );
 }

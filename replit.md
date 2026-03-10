@@ -49,7 +49,7 @@ The effective tier is the higher of the annual or lifetime status, with progress
 ### Business Membership Tiers
 - **Bronze** ($50/mo): Basic listing, 3 photos, 1 category, 10% ad discount
 - **Silver** ($100/mo): Logo, website link, 10 photos, 3 categories, 25% ad discount, verified badge
-- **Gold** ($200/mo): Featured placement, unlimited photos, 5 categories, 50% ad discount, priority support
+- **Gold** ($200/mo): Featured placement, unlimited photos, 5 categories, 50% ad discount, priority support, 30-sec promo video upload
 - DB stores as `basic`/`standard`/`premium`; displayed as Bronze/Silver/Gold
 
 ### UI/UX Decisions
@@ -76,6 +76,8 @@ The effective tier is the higher of the annual or lifetime status, with progress
 - `BusinessCard`: Card with image, category, rating, trust badges, membership badge
 - `LocationPicker`: Zillow-style location search dialog with geolocation support
 - `EventCard`: Event display with date, location, and details
+- `PromoVideoPlayer`: Displays uploaded promo video with Gold Exclusive badge (BusinessDetails.tsx)
+- `PromoVideoUploader`: Upload/replace/delete promo video, Gold tier owners only (BusinessDetails.tsx)
 
 ## External Dependencies
 
