@@ -192,7 +192,8 @@ export default function AuthPage() {
                       placeholder="you@example.com"
                       value={loginData.email}
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      className="pl-10 h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                      className="pl-10 h-12 rounded-xl bg-white dark:bg-gray-900"
+                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                       required
                       data-testid="input-login-email"
                     />
@@ -208,7 +209,8 @@ export default function AuthPage() {
                       placeholder="Enter your password"
                       value={loginData.password}
                       onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      className="pl-10 pr-10 h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                      className="pl-10 pr-10 h-12 rounded-xl bg-white dark:bg-gray-900"
+                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                       required
                       data-testid="input-login-password"
                     />
@@ -250,7 +252,8 @@ export default function AuthPage() {
                         placeholder="First"
                         value={registerData.firstName}
                         onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                        className="pl-10 h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                        className="pl-10 h-12 rounded-xl bg-white dark:bg-gray-900"
+                        style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                         data-testid="input-register-firstname"
                       />
                     </div>
@@ -262,7 +265,8 @@ export default function AuthPage() {
                       placeholder="Last"
                       value={registerData.lastName}
                       onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
-                      className="h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                      className="h-12 rounded-xl bg-white dark:bg-gray-900"
+                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                       data-testid="input-register-lastname"
                     />
                   </div>
@@ -277,7 +281,8 @@ export default function AuthPage() {
                       placeholder="you@example.com"
                       value={registerData.email}
                       onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                      className="pl-10 h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                      className="pl-10 h-12 rounded-xl bg-white dark:bg-gray-900"
+                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                       required
                       data-testid="input-register-email"
                     />
@@ -293,7 +298,8 @@ export default function AuthPage() {
                       placeholder="At least 6 characters"
                       value={registerData.password}
                       onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      className="pl-10 pr-10 h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                      className="pl-10 pr-10 h-12 rounded-xl bg-white dark:bg-gray-900"
+                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                       required
                       data-testid="input-register-password"
                     />
@@ -316,7 +322,8 @@ export default function AuthPage() {
                       placeholder="Confirm your password"
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                      className="pl-10 pr-10 h-12 rounded-xl text-foreground bg-white dark:bg-gray-900"
+                      className="pl-10 pr-10 h-12 rounded-xl bg-white dark:bg-gray-900"
+                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
                       required
                       data-testid="input-register-confirm"
                     />
