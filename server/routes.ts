@@ -606,7 +606,7 @@ export async function registerRoutes(
   app.post("/api/businesses/:id/promo-video", isAuthenticated, async (req, res) => {
     try {
       const businessId = parseInt(req.params.id);
-      const userId = (req.user as any).claims.sub;
+      const userId = (req as any).user?.id;
       const { videoUrl } = req.body;
 
       if (!videoUrl || typeof videoUrl !== "string") {
@@ -647,7 +647,7 @@ export async function registerRoutes(
   app.delete("/api/businesses/:id/promo-video", isAuthenticated, async (req, res) => {
     try {
       const businessId = parseInt(req.params.id);
-      const userId = (req.user as any).claims.sub;
+      const userId = (req as any).user?.id;
 
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
       if (user.length === 0 || user[0].linkedBusinessId !== businessId) {
@@ -696,7 +696,7 @@ export async function registerRoutes(
 
   app.post(api.posts.create.path, isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any).claims.sub;
+      const userId = (req as any).user?.id;
       
       // Check if user is validated before allowing post
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -739,7 +739,7 @@ export async function registerRoutes(
 
   app.post("/api/posts/:id/comments", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any).claims.sub;
+      const userId = (req as any).user?.id;
       const postId = Number(req.params.id);
       
       // Check if user is validated before allowing comment
@@ -816,7 +816,7 @@ export async function registerRoutes(
       const input = api.reviews.create.input.parse(req.body);
       const review = await storage.createReview({
         ...input,
-        userId: (req.user as any).claims.sub,
+        userId: (req as any).user?.id,
         businessId: businessId,
       });
       res.status(201).json(review);

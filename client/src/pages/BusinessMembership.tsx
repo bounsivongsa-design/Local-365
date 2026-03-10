@@ -402,7 +402,7 @@ export default function BusinessMembership() {
               <p className="text-slate-600 dark:text-slate-400 mb-8">
                 Sign in or create a business account to join the Local List 365 community
               </p>
-              <Link to="/api/login">
+              <Link to="/auth">
                 <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold">
                   Sign In to Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />

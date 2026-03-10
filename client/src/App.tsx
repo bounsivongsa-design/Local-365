@@ -18,6 +18,7 @@ import QuoteRequests from "@/pages/QuoteRequests";
 import Advertising from "@/pages/Advertising";
 import AdminAds from "@/pages/AdminAds";
 import BusinessMembership from "@/pages/BusinessMembership";
+import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
@@ -46,6 +47,7 @@ function AppRouter() {
           <Route path="/advertising" element={<Advertising />} />
           <Route path="/admin/ads" element={<AdminAds />} />
           <Route path="/membership" element={<BusinessMembership />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -69,7 +71,7 @@ function AppRouter() {
             <h4 className="font-bold text-white mb-4">Community</h4>
             <ul className="space-y-2">
               <li><Link to="/dashboard" className="hover:text-[#d4a373]">My Dashboard</Link></li>
-              <li><a href="/api/login" className="hover:text-[#d4a373]">Sign In</a></li>
+              <li><Link to="/auth" className="hover:text-[#d4a373]">Sign In</Link></li>
               <li><a href="#" className="hover:text-[#d4a373]">Help Center</a></li>
               <li><a href="#" className="hover:text-[#d4a373]">Guidelines</a></li>
             </ul>

@@ -154,9 +154,9 @@ export default function AdminAds() {
               : "You don't have permission to access this page."}
           </p>
           {!isAuthenticated && (
-            <a href="/api/login">
+            <Link to="/auth">
               <Button size="lg" className="bg-[#0a4a82]">Sign In</Button>
-            </a>
+            </Link>
           )}
         </Card>
       </div>

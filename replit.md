@@ -21,7 +21,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ESM modules
 - **API Pattern**: RESTful JSON APIs (`/api` prefix)
-- **Authentication**: Replit Auth with session management
+- **Authentication**: Custom email/password + Google OAuth (passport-local, passport-google-oauth20, bcrypt, connect-pg-simple sessions)
 - **File Uploads**: Uppy with AWS S3-compatible presigned URLs
 
 ### Data Storage
@@ -38,7 +38,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - `categoryRequests`: Stores community-submitted category suggestions (name, description, submitterEmail, status).
 
 ### Authentication System
-Replit Auth manages user identity. Session data is stored in PostgreSQL. The system supports "customer" and "business" account types, with server-side validation and receipt upload requirements for user verification.
+Custom email/password authentication with optional Google OAuth. Passwords are hashed with bcrypt (12 rounds). Sessions stored in PostgreSQL via connect-pg-simple. Google OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars; gracefully disabled when not configured. Auth page at `/auth` with Login/Register tabs. The system supports "customer" and "business" account types, with server-side validation and receipt upload requirements for user verification.
 
 ### Business Membership Tiers
 - **Bronze** ($50/mo): Basic listing, 3 photos, 1 category, 10% ad discount

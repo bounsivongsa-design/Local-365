@@ -6,6 +6,8 @@ const DEV_MOCK_USERS: Record<string, User> = {
   customer: {
     id: "dev-customer-1",
     email: "customer@test.com",
+    passwordHash: null,
+    googleId: null,
     firstName: "Test",
     lastName: "Customer",
     profileImageUrl: null,
@@ -30,12 +32,19 @@ const DEV_MOCK_USERS: Record<string, User> = {
     projectsCompleted: 5,
     totalSpent: "8500.00",
     isAdmin: false,
+    engagementBadge: null,
+    postCount: 0,
+    commentCount: 0,
+    likesReceived: 0,
+    memberSince: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
   },
   business: {
     id: "dev-business-1",
     email: "business@test.com",
+    passwordHash: null,
+    googleId: null,
     firstName: "Local",
     lastName: "Business",
     profileImageUrl: null,
@@ -57,6 +66,11 @@ const DEV_MOCK_USERS: Record<string, User> = {
     projectsCompleted: 0,
     totalSpent: "0",
     isAdmin: false,
+    engagementBadge: null,
+    postCount: 0,
+    commentCount: 0,
+    likesReceived: 0,
+    memberSince: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -96,11 +110,11 @@ async function fetchUser(): Promise<User | null> {
 }
 
 async function logout(): Promise<void> {
-  // Clear dev mode user if set
   if (import.meta.env.DEV) {
     localStorage.removeItem("dev_mode_user");
   }
-  window.location.href = "/api/logout";
+  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  window.location.href = "/auth";
 }
 
 // Dev mode login helpers (only work in development)

@@ -93,16 +93,16 @@ export function Navigation() {
             </DropdownMenu>
           ) : (
             <div className="hidden md:flex gap-3">
-              <a href="/api/login">
+              <Link to="/auth">
                 <Button variant="outline" className="rounded-full border-white/30 text-white hover:bg-white/10 hover:border-white/50">
                   Sign In
                 </Button>
-              </a>
-              <a href="/api/login">
+              </Link>
+              <Link to="/auth">
                 <Button className="rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] shadow-lg shadow-black/20">
                   Join Community
                 </Button>
-              </a>
+              </Link>
             </div>
           )}
 
@@ -130,9 +130,9 @@ export function Navigation() {
                 ))}
                 {!isAuthenticated && (
                   <div className="flex flex-col gap-3 mt-4 pt-4 border-t">
-                    <a href="/api/login" className="w-full">
+                    <Link to="/auth" onClick={() => setIsOpen(false)} className="w-full">
                       <Button className="w-full rounded-full" size="lg">Sign In</Button>
-                    </a>
+                    </Link>
                   </div>
                 )}
               </nav>

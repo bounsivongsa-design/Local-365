@@ -268,7 +268,7 @@ export default function BusinessDetails() {
               {isAuthenticated ? (
                 <ReviewDialog businessId={business.id} businessName={business.name} />
               ) : (
-                <Link to="/api/login">
+                <Link to="/auth">
                    <Button variant="outline">Sign in to Review</Button>
                 </Link>
               )}
