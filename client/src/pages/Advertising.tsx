@@ -45,7 +45,8 @@ import {
   Zap,
   ArrowRight,
   Gift,
-  Check
+  Check,
+  Video
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
@@ -328,6 +329,16 @@ export default function Advertising() {
                         </div>
                       ))}
                     </div>
+
+                    {isGold && (
+                      <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-700/30" data-testid="gold-promo-video-perk-web">
+                        <div className="flex items-center gap-2">
+                          <Video className="h-4 w-4 text-amber-600" />
+                          <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">30-Sec Promo Video</span>
+                        </div>
+                        <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Upload a video spotlight to your business listing</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -417,6 +428,16 @@ export default function Advertising() {
                         ))}
                       </div>
                     </div>
+
+                    {isGold && (
+                      <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-700/30" data-testid="gold-promo-video-perk-event">
+                        <div className="flex items-center gap-2">
+                          <Video className="h-4 w-4 text-amber-600" />
+                          <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">30-Sec Promo Video</span>
+                        </div>
+                        <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Upload a video spotlight to your business listing</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
