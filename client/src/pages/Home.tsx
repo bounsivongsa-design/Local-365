@@ -251,39 +251,51 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Directory Category Icons Grid */}
+      {/* Directory Category Dropdown */}
       <div className="container pt-12">
         <div className="text-center mb-8">
           <h2 className="font-display text-3xl font-bold text-foreground">Browse by Category</h2>
           <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-          {DIRECTORY_CATEGORIES.map((cat, idx) => {
-            const IconComponent = cat.icon;
-            return (
-              <Link key={idx} to={`/directory?category=${encodeURIComponent(cat.name)}`}>
-                <div
-                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border border-gray-200/60 shadow-sm hover:shadow-md hover:border-[#0a4a82]/20 cursor-pointer group"
-                  data-testid={`category-icon-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-[0_4px_12px_rgba(10,74,130,0.3)]">
-                    <IconComponent className="h-7 w-7 text-white" />
-                  </div>
-                  <span className="text-sm font-semibold text-center text-gray-700 dark:text-gray-200 group-hover:text-[#0a4a82] leading-tight">{cat.name}</span>
-                </div>
-              </Link>
-            );
-          })}
-          <button
-            onClick={() => setShowCategoryRequest(true)}
-            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-b from-white to-gray-50/80 dark:from-card dark:to-card/60 border-2 border-dashed border-[#8a9a5b]/40 shadow-sm hover:border-[#8a9a5b]/70 hover:shadow-md cursor-pointer group"
-            data-testid="button-suggest-category"
-          >
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#8a9a5b] to-[#6b7a45] flex items-center justify-center shadow-[0_4px_12px_rgba(138,154,91,0.3)]">
-              <Plus className="h-7 w-7 text-white" />
-            </div>
-            <span className="text-sm font-semibold text-center text-[#8a9a5b] group-hover:text-[#6b7a45] leading-tight">Suggest a Category</span>
-          </button>
+        <div className="max-w-lg mx-auto space-y-4">
+          <div className="relative">
+            <Compass className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82]" />
+            <select
+              className="w-full h-14 pl-12 pr-4 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 font-medium text-base shadow-sm hover:shadow-md hover:border-[#0a4a82]/30 focus:outline-none focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] appearance-none cursor-pointer transition-all"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  navigate(`/directory?category=${encodeURIComponent(e.target.value)}`);
+                }
+              }}
+              data-testid="select-category-dropdown"
+            >
+              <option value="" disabled>Select a category...</option>
+              {[...DIRECTORY_CATEGORIES]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((cat, idx) => (
+                  <option key={idx} value={cat.name}>{cat.name}</option>
+                ))}
+            </select>
+            <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+          </div>
+          <div className="flex justify-center gap-3">
+            <Link to="/directory">
+              <Button variant="outline" className="rounded-xl border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid="button-view-all-categories">
+                <Compass className="mr-2 h-4 w-4" />
+                View All Categories
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              onClick={() => setShowCategoryRequest(true)}
+              className="rounded-xl border-[#8a9a5b]/30 text-[#8a9a5b] hover:bg-[#8a9a5b]/5"
+              data-testid="button-suggest-category"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Suggest a Category
+            </Button>
+          </div>
         </div>
       </div>
 
