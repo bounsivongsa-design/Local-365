@@ -259,14 +259,6 @@ export default function BusinessDetails() {
                 )}
               </div>
               
-              <div className="mt-6 pt-4 border-t border-[#8a9a5b]/20">
-                <Link to="/elite-status">
-                  <Button variant="outline" className="border-[#8a9a5b] text-[#8a9a5b] hover:bg-[#8a9a5b] hover:text-white">
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Learn About Local 365 Elite Status
-                  </Button>
-                </Link>
-              </div>
             </div>
           )}
 

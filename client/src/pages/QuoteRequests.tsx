@@ -39,7 +39,6 @@ import {
   Trophy,
   Users,
   TrendingDown,
-  Award,
   ChevronDown,
   ChevronUp,
   Zap,
@@ -58,7 +57,6 @@ interface CustomerInfo {
   profileImageUrl: string | null;
   customerRating: string | null;
   projectsCompleted: number | null;
-  loyaltyTier: string | null;
   totalSpent: string | null;
 }
 
@@ -173,16 +171,6 @@ export default function QuoteRequests() {
     if (numRating >= 3.5) return { label: "Good", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20", stars: 3 };
     if (numRating >= 3.0) return { label: "Average", color: "bg-orange-500/10 text-orange-600 border-orange-500/20", stars: 3 };
     return { label: "New", color: "bg-gray-500/10 text-gray-600 border-gray-500/20", stars: 0 };
-  };
-
-  const getLoyaltyBadge = (tier: string | null) => {
-    switch (tier) {
-      case "ambassador": return { label: "Ambassador", color: "bg-purple-500/10 text-purple-600 border-purple-500/20", icon: Trophy };
-      case "platinum": return { label: "Platinum Elite", color: "bg-slate-500/10 text-slate-600 border-slate-500/20", icon: Award };
-      case "gold": return { label: "Gold Elite", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20", icon: Award };
-      case "silver": return { label: "Silver Elite", color: "bg-gray-400/10 text-gray-500 border-gray-400/20", icon: Award };
-      default: return { label: "Member", color: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: Users };
-    }
   };
 
   const { data: myRequests, isLoading: myLoading } = useQuery({
@@ -504,7 +492,6 @@ export default function QuoteRequests() {
               <div className="grid gap-4">
                 {allRequests?.map((req) => {
                   const ratingBadge = getCustomerRatingBadge(req.customer?.customerRating || null);
-                  const loyaltyBadge = getLoyaltyBadge(req.customer?.loyaltyTier || null);
                   const isExpanded = expandedProject === req.id;
                   const isOwner = user?.id === req.userId;
                   

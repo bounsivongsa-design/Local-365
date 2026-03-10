@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Sparkles, Megaphone, Building2 } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { LocationPicker } from "./LocationPicker";
@@ -25,7 +25,6 @@ export function Navigation() {
     { href: "/quotes", label: "Get Quotes", icon: Gavel },
     { href: "/events", label: "Local Events", icon: Calendar },
     { href: "/membership", label: "For Business", icon: Building2 },
-    { href: "/loyalty", label: "Elite Status", icon: Sparkles },
   ];
 
   const isActive = (path: string) => routerLocation.pathname === path;

@@ -117,13 +117,13 @@ export default function AccountSetup() {
               
               <h2 className="text-2xl font-bold text-[#0a4a82] mb-2">Customer Account</h2>
               <p className="text-muted-foreground mb-6">
-                Explore local businesses, join the community, and earn loyalty rewards.
+                Explore local businesses, join the community, and discover local services.
               </p>
               
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Star className="h-5 w-5 text-[#d4a373]" />
-                  <span>Earn loyalty badges & rewards</span>
+                  <span>Rate & review local businesses</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <MessageSquare className="h-5 w-5 text-[#d4a373]" />

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp, MessageCircle, CheckCircle2, Award, Crown, Gem, Users, Send, Sparkles, Flame, MessageSquare, HelpingHand, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, MapPin, Calendar, Trophy, Heart, TrendingUp, MessageCircle, CheckCircle2, Send, Sparkles, Flame, MessageSquare, HelpingHand, ChevronDown, ChevronUp } from "lucide-react";
 import BestOfGrid from "./BestOfGrid";
 import BestOfEditor from "./BestOfEditor";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,7 +24,6 @@ interface CommentWithAuthor {
     firstName: string | null;
     lastName: string | null;
     profileImageUrl: string | null;
-    loyaltyTier: string | null;
     isValidated: boolean | null;
     engagementBadge: string | null;
   } | null;
@@ -42,19 +41,10 @@ interface PostWithAuthor {
     firstName: string | null;
     lastName: string | null;
     profileImageUrl: string | null;
-    loyaltyTier: string | null;
     isValidated: boolean | null;
     engagementBadge: string | null;
   } | null;
 }
-
-const tierConfig: Record<string, { label: string; color: string; icon: typeof Users; gradient: string }> = {
-  member: { label: 'Member', color: 'bg-slate-500', icon: Users, gradient: 'from-slate-500 to-slate-600' },
-  silver: { label: 'Silver', color: 'bg-gray-400', icon: Award, gradient: 'from-gray-300 to-gray-500' },
-  gold: { label: 'Gold', color: 'bg-amber-500', icon: Star, gradient: 'from-amber-400 to-amber-600' },
-  platinum: { label: 'Platinum', color: 'bg-cyan-500', icon: Crown, gradient: 'from-cyan-400 to-cyan-600' },
-  ambassador: { label: 'Ambassador', color: 'bg-purple-500', icon: Gem, gradient: 'from-purple-400 to-purple-600' },
-};
 
 const engagementBadgeConfig: Record<string, { label: string; icon: typeof Sparkles; gradient: string; description: string }> = {
   top_contributor: { 
@@ -280,18 +270,6 @@ function CommunityFeed() {
     { title: "Wright Brothers Day", date: "Dec 17, 2026", location: "Wright Brothers Memorial", description: "Celebrate the anniversary of powered flight.", image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop" },
   ];
 
-  const getTierBadge = (tier: string | null) => {
-    if (!tier || tier === 'member') return null;
-    const config = tierConfig[tier] || tierConfig.member;
-    const IconComponent = config.icon;
-    return (
-      <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0 text-xs font-semibold shadow-sm`}>
-        <IconComponent className="h-3 w-3 mr-1" />
-        {config.label}
-      </Badge>
-    );
-  };
-
   const getEngagementBadge = (badge: string | null | undefined) => {
     if (!badge) return null;
     const config = engagementBadgeConfig[badge];
@@ -387,7 +365,6 @@ function CommunityFeed() {
                             {post.author?.isValidated && (
                               <span className="text-[#0a4a82] text-xs font-medium">Verified</span>
                             )}
-                            {getTierBadge(post.author?.loyaltyTier || null)}
                             {getEngagementBadge(post.author?.engagementBadge)}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">

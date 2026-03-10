@@ -12,7 +12,6 @@ import BusinessDetails from "@/pages/BusinessDetails";
 import Events from "@/pages/Events";
 import LocationPage from "@/pages/LocationPage";
 import RomanticGetaway from "@/pages/RomanticGetaway";
-import LoyaltyTiers from "@/pages/LoyaltyTiers";
 import Dashboard from "@/pages/Dashboard";
 import AccountSetup from "@/pages/AccountSetup";
 import QuoteRequests from "@/pages/QuoteRequests";
@@ -41,7 +40,6 @@ function AppRouter() {
           <Route path="/events" element={<Events />} />
           <Route path="/location/:area" element={<LocationPage />} />
           <Route path="/romantic-getaway" element={<RomanticGetaway />} />
-          <Route path="/loyalty" element={<LoyaltyTiers />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/account-setup" element={<AccountSetup />} />
           <Route path="/quotes" element={<QuoteRequests />} />

@@ -1,7 +1,7 @@
 # Local List 365 - Currituck County Directory
 
 ## Overview
-Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. It connects visitors and residents with local businesses, service providers, events, and community features including a customer elite status loyalty program, a quote request system, and an AI-powered chatbot assistant named "Ziggy." The platform aims to be a comprehensive local resource, facilitating community engagement and supporting local commerce through features like tiered advertising and business credentialing.
+Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. It connects visitors and residents with local businesses, service providers, events, and community features including a quote request system, and an AI-powered chatbot assistant named "Ziggy." The platform aims to be a comprehensive local resource, facilitating community engagement and supporting local commerce through features like tiered advertising and business credentialing.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -29,7 +29,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Key-Value Store**: Replit Database for simple key-value needs
 
 ### Key Database Tables
-- `users`: Stores user accounts with `accountType`, `loyaltyPoints`, `loyaltyTier`.
+- `users`: Stores user accounts with `accountType` (loyalty columns still in DB but feature is deferred).
 - `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), membership tiers, and ratings.
 - `quoteRequests`: Handles customer project requests.
 - `quotes`: Stores business bids on customer projects.
@@ -39,12 +39,6 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Authentication System
 Replit Auth manages user identity. Session data is stored in PostgreSQL. The system supports "customer" and "business" account types, with server-side validation and receipt upload requirements for user verification.
-
-### Loyalty Program Structure (Dual Status - Local 365)
-The loyalty program features a dual status system:
-- **Annual Status**: Resets yearly, based on annual visits or points.
-- **Lifetime Status**: Accumulates indefinitely, based on total visits or points.
-The effective tier is the higher of the annual or lifetime status, with progressive benefits like point bonuses and discounts at higher tiers.
 
 ### Business Membership Tiers
 - **Bronze** ($50/mo): Basic listing, 3 photos, 1 category, 10% ad discount
@@ -63,7 +57,7 @@ The effective tier is the higher of the annual or lifetime status, with progress
 ### Technical Implementations
 - **Distance Filtering**: Utilizes Haversine formula with zip code coordinate lookup (`client/src/lib/zip-coordinates.ts`). Businesses with unknown zip codes are excluded when radius filter is active.
 - **Category Management**: 47+ categories with community-driven category suggestions via `POST /api/category-requests`.
-- **Tiered Systems**: Implemented for advertising, business memberships, and loyalty programs.
+- **Tiered Systems**: Implemented for advertising and business memberships.
 - **Quote System**: Priority queue for businesses based on membership tier and ratings.
 
 ### Key Configuration Files
@@ -99,3 +93,34 @@ The effective tier is the higher of the annual or lifetime status, with progress
 - `AI_INTEGRATIONS_OPENAI_BASE_URL`
 - `SESSION_SECRET`
 - `DEFAULT_OBJECT_STORAGE_BUCKET_ID`
+
+## Deferred Features (For Future Implementation)
+
+### Customer Loyalty / Elite Status Program
+**Status**: Removed from active UI and backend routes. DB columns preserved. Code files preserved but disconnected.
+
+**Dual Status System**:
+- **Annual Status**: Resets yearly, based on annual visits, points, or spend
+- **Lifetime Status**: Accumulates indefinitely, based on total visits, points, or spend
+- The effective tier is the higher of annual or lifetime status
+
+**Customer Tiers**: Member → Silver Elite → Gold Elite → Platinum Elite → Ambassador
+- **Member**: 1x points, basic access
+- **Silver**: 1.1x points, priority scheduling, birthday deals (10 visits OR 25K pts annual)
+- **Gold**: 1.25x points, first dibs on services, featured reviewer badge (25 visits OR 50K pts annual)
+- **Platinum**: 1.5x points, 5% off at partners, free upgrades (50 visits OR 100K pts annual)
+- **Ambassador**: 1.75x points, 10% off at partners, invite-only events (100 visits AND $20K spend annual)
+
+**DB Columns Still Present** (users table):
+- Annual: `annual_points`, `annual_visits`, `annual_spent`, `annual_tier`, `status_year`
+- Lifetime: `lifetime_points`, `lifetime_visits`, `lifetime_spent`, `lifetime_tier`
+- Legacy: `loyalty_points`, `loyalty_tier`
+- Badges: `engagement_badge`
+- Business partner perks: `is_local365_partner`, `silver_perk`, `gold_perk`, `platinum_perk`, `ambassador_perk`
+
+**Preserved Code Files** (not imported/routed, but available):
+- `shared/loyalty.ts`: Core tier logic, calculations, formatting
+- `client/src/pages/LoyaltyTiers.tsx`: Marketing/info page for the program
+- `client/src/components/LoyaltyBadges.tsx`: Dashboard component for viewing progress
+
+**To Re-enable**: Re-add `/loyalty` route in App.tsx, re-add nav item in Navigation.tsx, re-add loyalty badge in CommunityFeed.tsx, re-add backend routes in server/routes.ts (`/api/loyalty-badges`, `/api/user/profile`, `/api/user/loyalty/add-points`), re-add point awarding in quote request creation.

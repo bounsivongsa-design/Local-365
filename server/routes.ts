@@ -525,27 +525,6 @@ export async function registerRoutes(
     }
   });
 
-  // Loyalty Badges
-  app.get("/api/loyalty-badges", async (req, res) => {
-    try {
-      const result = await db.get("loyalty_badges");
-      if (result.ok && result.value) {
-        res.json(result.value);
-      } else {
-        // Return default badges if none in DB
-        const defaultBadges = [
-          { level: 'Silver Visitor', stays: 1, perk: '5% off next booking' },
-          { level: 'Gold Visitor', stays: 3, perk: '10% off next booking' },
-          { level: 'Platinum Visitor', stays: 5, perk: '15% off next booking' },
-          { level: 'Titanium Visitor', stays: 8, perk: '20% off next booking' }
-        ];
-        res.json(defaultBadges);
-      }
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch loyalty badges" });
-    }
-  });
-
   // Affiliate Click Tracking
   app.post("/api/affiliate-clicks", async (req, res) => {
     try {
@@ -954,7 +933,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     }
   });
 
-  // ============ ACCOUNT TYPE & LOYALTY ============
+  // ============ ACCOUNT TYPE & VALIDATION ============
   
   // Update account type
   app.post("/api/user/account-type", isAuthenticated, async (req, res) => {
@@ -977,82 +956,6 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     } catch (err) {
       console.error("Error updating account type:", err);
       res.status(500).json({ message: "Failed to update account type" });
-    }
-  });
-
-  // Get user profile with loyalty info
-  app.get("/api/user/profile", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (user.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Calculate tier based on points
-      const points = user[0].loyaltyPoints || 0;
-      let tier = "explorer";
-      if (points >= 5000) tier = "ambassador";
-      else if (points >= 2500) tier = "local";
-      else if (points >= 1000) tier = "insider";
-      else if (points >= 250) tier = "resident";
-      
-      res.json({
-        ...user[0],
-        loyaltyTier: tier,
-        nextTierPoints: tier === "ambassador" ? null : 
-          tier === "local" ? 5000 :
-          tier === "insider" ? 2500 :
-          tier === "resident" ? 1000 : 250
-      });
-    } catch (err) {
-      console.error("Error fetching user profile:", err);
-      res.status(500).json({ message: "Failed to fetch profile" });
-    }
-  });
-
-  // Helper function to calculate tier from points
-  function calculateTier(points: number): string {
-    if (points >= 5000) return "ambassador";
-    if (points >= 2500) return "local";
-    if (points >= 1000) return "insider";
-    if (points >= 250) return "resident";
-    return "explorer";
-  }
-
-  // Add loyalty points
-  app.post("/api/user/loyalty/add-points", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const { points, reason } = req.body;
-      if (!points || points < 0) {
-        return res.status(400).json({ message: "Invalid points value" });
-      }
-      
-      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (user.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const newPoints = (user[0].loyaltyPoints || 0) + points;
-      const newTier = calculateTier(newPoints);
-      
-      await pgDb.update(users)
-        .set({ loyaltyPoints: newPoints, loyaltyTier: newTier, updatedAt: new Date() })
-        .where(eq(users.id, userId));
-      
-      res.json({ points: newPoints, tier: newTier, added: points, reason });
-    } catch (err) {
-      console.error("Error adding points:", err);
-      res.status(500).json({ message: "Failed to add points" });
     }
   });
 
@@ -1118,7 +1021,6 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
             profileImageUrl: users.profileImageUrl,
             customerRating: users.customerRating,
             projectsCompleted: users.projectsCompleted,
-            loyaltyTier: users.loyaltyTier,
             totalSpent: users.totalSpent
           }).from(users).where(eq(users.id, request.userId)).limit(1);
           customerInfo = customerResult[0] || null;
@@ -1229,15 +1131,8 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         priorityExpiresAt
       }).returning();
       
-      // Award points for posting a quote request (user already fetched above)
+      // Assign priority to top premium businesses
       if (user.length > 0) {
-        const newPoints = (user[0].loyaltyPoints || 0) + 10;
-        const newTier = calculateTier(newPoints);
-        await pgDb.update(users)
-          .set({ loyaltyPoints: newPoints, loyaltyTier: newTier })
-          .where(eq(users.id, userId));
-        
-        // Assign priority to top premium businesses
         const customerRating = Number(user[0].customerRating) || 5.0;
         await assignPriorityToPremiumBusinesses(newRequest.id, category, customerRating, 1);
       }

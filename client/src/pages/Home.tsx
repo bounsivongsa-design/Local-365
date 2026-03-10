@@ -178,7 +178,7 @@ export default function Home() {
             Connect with verified local businesses, discover events, and earn rewards for shopping local in {selectedLocation.city}.
           </p>
           <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
-            Post a project and get competitive quotes from local contractors. Earn loyalty points with every purchase. Join 500+ community members.
+            Post a project and get competitive quotes from local contractors. Join 500+ community members.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center items-center max-w-2xl mx-auto">
             <div className="relative flex-1 w-full">
@@ -358,24 +358,6 @@ export default function Home() {
             <Button className="bg-sand text-primary-dark hover:bg-sand/80 font-semibold">
               Learn More
             </Button>
-          </div>
-        </Link>
-      </div>
-
-      {/* Loyalty Program Promo */}
-      <div className="container pt-6">
-        <Link to="/loyalty">
-          <div className="bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white p-6 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.15)] hover:shadow-xl transition-shadow cursor-pointer" data-testid="promo-loyalty">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="h-7 w-7 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-1">Currituck Insider Loyalty Program</h3>
-                <p className="text-white/90">Earn up to 20% off your bookings! Unlock exclusive rewards with every stay.</p>
-              </div>
-              <ArrowRight className="h-6 w-6 text-white/80" />
-            </div>
           </div>
         </Link>
       </div>
