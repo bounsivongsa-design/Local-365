@@ -175,7 +175,7 @@ export default function Home() {
             <span className="text-[#d4a373]">{selectedLocation.name}</span>
           </h1>
           <p className="text-xl md:text-2xl mb-4 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
-            Connect with verified local businesses, discover events, and earn rewards for shopping local in {selectedLocation.city}.
+            Connect with verified local businesses and discover events in {selectedLocation.city}.
           </p>
           <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
             Post a project and get competitive quotes from local contractors. Join 500+ community members.
