@@ -98,7 +98,7 @@ export function Navigation() {
                   Sign In
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/auth?mode=register">
                 <Button className="rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] shadow-lg shadow-black/20">
                   Join Community
                 </Button>

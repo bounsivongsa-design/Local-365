@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -11,7 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get("mode") === "register" ? "register" : "login";
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
