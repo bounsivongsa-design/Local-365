@@ -178,7 +178,7 @@ export default function Home() {
             Connect with verified local businesses and discover events in {selectedLocation.city}.
           </p>
           <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
-            Post a project and get competitive quotes from local contractors. Join 500+ community members.
+            Post a project and get competitive quotes from local contractors. Join the community.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center items-center max-w-2xl mx-auto">
             <div className="relative flex-1 w-full">
