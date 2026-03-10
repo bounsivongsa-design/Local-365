@@ -6,6 +6,7 @@ import { useCreateBusiness } from "@/hooks/use-businesses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -20,8 +21,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { Shield, FileCheck, Scale } from "lucide-react";
 
 interface Props {
   onSuccess: () => void;
@@ -40,8 +43,11 @@ export function CreateBusinessForm({ onSuccess }: Props) {
       name: "",
       description: "",
       address: "",
-      category: "Retail", // Default
+      category: "Retail",
       imageUrl: "",
+      hasInsurance: false,
+      hasLLC: false,
+      isLicensed: false,
     },
   });
 
@@ -152,6 +158,67 @@ export function CreateBusinessForm({ onSuccess }: Props) {
             </FormItem>
           )}
         />
+
+        <div className="space-y-3 rounded-xl border border-border p-4 bg-white/50 dark:bg-gray-900/50">
+          <p className="text-sm font-semibold text-foreground">Business Credentials</p>
+          <FormField
+            control={form.control}
+            name="hasInsurance"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-has-insurance"
+                  />
+                </FormControl>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-green-600" />
+                  <FormLabel className="text-sm font-normal cursor-pointer">Insured</FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="hasLLC"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-has-llc"
+                  />
+                </FormControl>
+                <div className="flex items-center gap-2">
+                  <FileCheck className="h-4 w-4 text-blue-600" />
+                  <FormLabel className="text-sm font-normal cursor-pointer">LLC Registered</FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="isLicensed"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-is-licensed"
+                  />
+                </FormControl>
+                <div className="flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-purple-600" />
+                  <FormLabel className="text-sm font-normal cursor-pointer">Licensed</FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="pt-4 flex justify-end">
           <Button type="submit" disabled={createBusiness.isPending} className="w-full sm:w-auto">
