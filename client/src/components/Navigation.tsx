@@ -13,6 +13,7 @@ import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2 } from
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { LocationPicker } from "./LocationPicker";
+import logoImage from "@assets/image_1773172786986.png";
 
 export function Navigation() {
   const routerLocation = useRouterLocation();
@@ -34,12 +35,9 @@ export function Navigation() {
       <div className="flex h-36 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-            <video 
-              src="/assets/logo-video.mp4" 
-              autoPlay
-              loop
-              muted
-              playsInline
+            <img 
+              src={logoImage}
+              alt="Local List 365"
               className="h-24 w-auto"
               data-testid="img-logo"
             />
