@@ -356,8 +356,18 @@ export async function registerRoutes(
         return res.json(allBusinesses);
       }
       
-      // Use AND to narrow results when multiple filters are provided
-      const locationBusinesses = await pgDb.select().from(businesses).where(and(...conditions));
+      const locationBusinesses = await pgDb.select().from(businesses)
+        .where(and(...conditions))
+        .orderBy(
+          sql`CASE 
+            WHEN ${businesses.membershipTier} = 'premium' THEN 1 
+            WHEN ${businesses.membershipTier} = 'standard' THEN 2 
+            WHEN ${businesses.membershipTier} = 'basic' THEN 3 
+            ELSE 4 
+          END`,
+          desc(businesses.averageRating),
+          desc(businesses.reviewCount)
+        );
       res.json(locationBusinesses);
     } catch (err) {
       console.error("Error fetching businesses by location:", err);

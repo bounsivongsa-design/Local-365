@@ -84,6 +84,17 @@ export class DatabaseStorage implements IStorage {
        // query.where(ilike(businesses.name, `%${search}%`));
     }
 
+    query.orderBy(
+      sql`CASE 
+        WHEN ${businesses.membershipTier} = 'premium' THEN 1 
+        WHEN ${businesses.membershipTier} = 'standard' THEN 2 
+        WHEN ${businesses.membershipTier} = 'basic' THEN 3 
+        ELSE 4 
+      END`,
+      sql`COALESCE(AVG(${reviews.rating}), 0) DESC`,
+      sql`COUNT(${reviews.id}) DESC`
+    );
+
     const results = await query;
     return results.map(row => ({
       ...row,
