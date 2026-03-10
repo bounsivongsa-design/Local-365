@@ -113,12 +113,13 @@ export default function Home() {
   const adCarouselRef = useRef<HTMLDivElement>(null);
   const [adScrollPos, setAdScrollPos] = useState(0);
 
-  const AD_SLIDES = [
-    { title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More", description: "Find licensed and insured contractors right here in Moyock and Currituck County.", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&h=300&fit=crop", link: "/advertising" },
-    { title: "24/7 Emergency HVAC & Plumbing", description: "Licensed technicians serving Moyock, Currituck County & surrounding areas. Same-day service available.", image: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", link: "/advertising" },
-    { title: "Affordable Landscaping & Lawn Care", description: "Weekly mowing, seasonal cleanups, and custom landscape design for Moyock homes and businesses.", image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=600&h=300&fit=crop", link: "/advertising" },
-    { title: "Mobile Mechanic — We Come to You", description: "On-site auto repair and diagnostics in Moyock. Certified mechanics at your door.", image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=300&fit=crop", link: "/advertising" },
-    { title: "Local Pest Control Experts", description: "Termite inspections, mosquito treatments, and wildlife removal. Serving the area for 15+ years.", image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=300&fit=crop", link: "/advertising" },
+  const AD_SLIDES: { size: "small" | "medium" | "large"; price: string; title: string; business: string; description: string; image: string; link: string }[] = [
+    { size: "large", price: "$2,000/mo", title: "Full-Service Home Repairs, Renovations & Emergency Calls", business: "Currituck Home Services", description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all. Call today for a free estimate.", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop", link: "/advertising" },
+    { size: "medium", price: "$1,000/mo", title: "24/7 Emergency HVAC & Plumbing", business: "OBX Climate Control", description: "Same-day service from licensed technicians. Serving Moyock & surrounding areas.", image: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", link: "/advertising" },
+    { size: "small", price: "$500/mo", title: "Lawn Care & Landscaping", business: "Green Thumb Lawn Care", description: "Weekly mowing and seasonal cleanups.", image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=200&fit=crop", link: "/advertising" },
+    { size: "large", price: "$2,000/mo", title: "Custom Homes, Additions & Luxury Renovations", business: "Coastal Builders Inc.", description: "Award-winning construction company building dream homes across the OBX region. From blueprints to move-in day — your vision, our craftsmanship. Free consultations available.", image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&h=400&fit=crop", link: "/advertising" },
+    { size: "medium", price: "$1,000/mo", title: "Mobile Mechanic — We Come to You", business: "Moyock Auto Pros", description: "On-site auto repair and diagnostics. Certified mechanics at your door.", image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=300&fit=crop", link: "/advertising" },
+    { size: "small", price: "$500/mo", title: "Pest Control", business: "Shield Pest Solutions", description: "Termite inspections & mosquito treatments.", image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=200&fit=crop", link: "/advertising" },
   ];
 
   useEffect(() => {
@@ -262,31 +263,49 @@ export default function Home() {
                 className="flex transition-transform duration-700 ease-in-out"
                 style={{ transform: `translateX(-${adScrollPos * 100}%)` }}
               >
-                {AD_SLIDES.map((slide, idx) => (
-                  <Link
-                    key={idx}
-                    to={slide.link}
-                    className="w-full flex-shrink-0"
-                    data-testid={`ad-slide-${idx}`}
-                  >
-                    <div className="relative aspect-[3/1] md:aspect-[4/1] overflow-hidden rounded-2xl group cursor-pointer">
-                      <img
-                        src={slide.image}
-                        alt={slide.title}
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
-                      <div className="relative h-full flex flex-col justify-center p-6 md:p-10">
-                        <span className="inline-flex items-center gap-1.5 bg-[#d4a373]/90 text-white text-xs font-semibold px-3 py-1 rounded-full w-fit mb-3">
-                          <Megaphone className="h-3 w-3" />
-                          Ad Space Available
-                        </span>
-                        <h3 className="text-lg md:text-2xl font-bold text-white mb-1 drop-shadow-md max-w-xl">{slide.title}</h3>
-                        <p className="text-white/80 text-sm md:text-base max-w-lg hidden sm:block">{slide.description}</p>
+                {AD_SLIDES.map((slide, idx) => {
+                  const sizeStyles = {
+                    large: { aspect: "aspect-[2.5/1] md:aspect-[3/1]", titleClass: "text-xl md:text-3xl", showDesc: true, showImage: true, padding: "p-8 md:p-12", badgeColor: "bg-amber-500" },
+                    medium: { aspect: "aspect-[3/1] md:aspect-[4/1]", titleClass: "text-lg md:text-2xl", showDesc: true, showImage: true, padding: "p-6 md:p-10", badgeColor: "bg-[#0a4a82]" },
+                    small: { aspect: "aspect-[4/1] md:aspect-[5/1]", titleClass: "text-base md:text-lg", showDesc: false, showImage: true, padding: "p-5 md:p-8", badgeColor: "bg-gray-600" },
+                  };
+                  const s = sizeStyles[slide.size];
+                  return (
+                    <Link
+                      key={idx}
+                      to={slide.link}
+                      className="w-full flex-shrink-0"
+                      data-testid={`ad-slide-${idx}`}
+                    >
+                      <div className={`relative ${s.aspect} overflow-hidden rounded-2xl group cursor-pointer`}>
+                        {s.showImage && (
+                          <img
+                            src={slide.image}
+                            alt={slide.title}
+                            className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+                        <div className={`relative h-full flex flex-col justify-center ${s.padding}`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className={`inline-flex items-center gap-1.5 ${s.badgeColor} text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide`}>
+                              {slide.size === "large" && <Sparkles className="h-3 w-3" />}
+                              {slide.size === "medium" && <Megaphone className="h-3 w-3" />}
+                              {slide.size === "small" && <Megaphone className="h-3 w-3" />}
+                              {slide.size} Ad — {slide.price}
+                            </span>
+                            <span className="text-white/50 text-xs hidden sm:inline">Example</span>
+                          </div>
+                          <p className="text-[#d4a373] text-sm font-semibold mb-1 tracking-wide">{slide.business}</p>
+                          <h3 className={`${s.titleClass} font-bold text-white mb-1 drop-shadow-md max-w-xl leading-tight`}>{slide.title}</h3>
+                          {s.showDesc && (
+                            <p className="text-white/80 text-sm md:text-base max-w-lg mt-1 hidden sm:block leading-relaxed">{slide.description}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
             <button
