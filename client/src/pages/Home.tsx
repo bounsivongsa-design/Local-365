@@ -23,7 +23,7 @@ import { useLocation } from "@/context/LocationContext";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import heroImage from "@assets/image_1770062898655.png";
+import heroImage from "@assets/image_1773172681995.png";
 
 const DIRECTORY_CATEGORIES = [
   { name: "Home Repair", icon: Wrench },
