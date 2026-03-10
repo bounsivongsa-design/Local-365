@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { usePosts, useLikePost } from "@/hooks/use-posts";
 import { useEvents } from "@/hooks/use-events";
 import { useBusinesses } from "@/hooks/use-businesses";
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Plane, Truck, Bug, Camera, Church, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronDown } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Plane, Truck, Bug, Camera, Church, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -109,6 +109,24 @@ export default function Home() {
 
   const featuredBusinesses = businesses?.slice(0, 3) || [];
   const upcomingEvents = events?.slice(0, 3) || [];
+
+  const adCarouselRef = useRef<HTMLDivElement>(null);
+  const [adScrollPos, setAdScrollPos] = useState(0);
+
+  const AD_SLIDES = [
+    { title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More", description: "Find licensed and insured contractors right here in Moyock and Currituck County.", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&h=300&fit=crop", link: "/advertising" },
+    { title: "24/7 Emergency HVAC & Plumbing", description: "Licensed technicians serving Moyock, Currituck County & surrounding areas. Same-day service available.", image: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", link: "/advertising" },
+    { title: "Affordable Landscaping & Lawn Care", description: "Weekly mowing, seasonal cleanups, and custom landscape design for Moyock homes and businesses.", image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=600&h=300&fit=crop", link: "/advertising" },
+    { title: "Mobile Mechanic — We Come to You", description: "On-site auto repair and diagnostics in Moyock. Certified mechanics at your door.", image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=300&fit=crop", link: "/advertising" },
+    { title: "Local Pest Control Experts", description: "Termite inspections, mosquito treatments, and wildlife removal. Serving the area for 15+ years.", image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=300&fit=crop", link: "/advertising" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAdScrollPos(prev => (prev + 1) % AD_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [AD_SLIDES.length]);
 
   const handleHeroSearch = () => {
     if (heroSearch.trim()) {
@@ -226,29 +244,75 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Ad Spots Section */}
+      {/* Featured Businesses Ad Carousel */}
       <div className="relative overflow-hidden py-12">
         <div className="absolute inset-0 bg-gradient-to-br from-[#002147] via-[#0a3068] to-[#001a3a]" />
         <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.1) 20px, rgba(255,255,255,0.1) 22px)' }} />
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-white to-blue-600" />
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-white to-red-600" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#d4a373] via-white to-[#0a4a82]" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0a4a82] via-white to-[#d4a373]" />
         
         <div className="container relative z-10">
           <div className="text-center mb-8">
             <h2 className="font-display text-2xl font-bold text-white">Featured Local Businesses</h2>
             <p className="text-white/70 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[1, 2, 3, 4, 5].map((spot) => (
-              <Link key={spot} to="/advertising" data-testid={`ad-spot-${spot}`}>
-                <div className="relative rounded-xl overflow-hidden aspect-video bg-white/10 border border-white/20 hover:border-[#d4a373]/50 hover:bg-white/15 cursor-pointer group">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 group-hover:text-[#d4a373]">
-                    <Megaphone className="h-8 w-8 mb-2 opacity-60 group-hover:opacity-100" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Ad Space Available</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+          <div className="relative max-w-4xl mx-auto">
+            <div ref={adCarouselRef} className="overflow-hidden rounded-2xl">
+              <div
+                className="flex transition-transform duration-700 ease-in-out"
+                style={{ transform: `translateX(-${adScrollPos * 100}%)` }}
+              >
+                {AD_SLIDES.map((slide, idx) => (
+                  <Link
+                    key={idx}
+                    to={slide.link}
+                    className="w-full flex-shrink-0"
+                    data-testid={`ad-slide-${idx}`}
+                  >
+                    <div className="relative aspect-[3/1] md:aspect-[4/1] overflow-hidden rounded-2xl group cursor-pointer">
+                      <img
+                        src={slide.image}
+                        alt={slide.title}
+                        className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+                      <div className="relative h-full flex flex-col justify-center p-6 md:p-10">
+                        <span className="inline-flex items-center gap-1.5 bg-[#d4a373]/90 text-white text-xs font-semibold px-3 py-1 rounded-full w-fit mb-3">
+                          <Megaphone className="h-3 w-3" />
+                          Ad Space Available
+                        </span>
+                        <h3 className="text-lg md:text-2xl font-bold text-white mb-1 drop-shadow-md max-w-xl">{slide.title}</h3>
+                        <p className="text-white/80 text-sm md:text-base max-w-lg hidden sm:block">{slide.description}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => setAdScrollPos(prev => (prev - 1 + AD_SLIDES.length) % AD_SLIDES.length)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+              data-testid="ad-carousel-prev"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setAdScrollPos(prev => (prev + 1) % AD_SLIDES.length)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+              data-testid="ad-carousel-next"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+            <div className="flex justify-center gap-2 mt-4">
+              {AD_SLIDES.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setAdScrollPos(idx)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${idx === adScrollPos ? 'bg-[#d4a373] w-6' : 'bg-white/40 hover:bg-white/60'}`}
+                  data-testid={`ad-dot-${idx}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -396,10 +460,8 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      {/* Sponsored Banner Ad */}
+      {/* Promo Banner */}
       <div className="container pt-12">
-        <AdBanner placementType="homepage_banner" className="mb-6" />
-        
         <Link to="/romantic-getaway">
           <div className="bg-primary text-white p-6 rounded-lg shadow-3d-lg hover:shadow-xl transition-shadow cursor-pointer" data-testid="promo-banner">
             <h3 className="text-2xl font-bold mb-2">Romantic Winter Getaway</h3>
