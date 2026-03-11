@@ -385,7 +385,7 @@ export default function QuoteRequests() {
                     <Label htmlFor="location">Location (optional)</Label>
                     <Input
                       id="location"
-                      placeholder="e.g., Corolla, NC"
+                      placeholder="e.g., Moyock, NC"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       data-testid="input-project-location"

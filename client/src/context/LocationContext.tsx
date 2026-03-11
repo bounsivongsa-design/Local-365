@@ -22,7 +22,7 @@ const defaultLocation: SelectedLocation = {
   state: "NC",
   zipCode: "27958",
   region: "Currituck County",
-  tagline: "Gateway to the Outer Banks"
+  tagline: "Heart of Currituck County"
 };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);

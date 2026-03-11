@@ -1,7 +1,7 @@
 # Local List 365 - Currituck County Directory
 
 ## Overview
-Local List 365 is a community-focused local business directory and events platform for Currituck County and the Outer Banks (OBX) region of North Carolina. It connects visitors and residents with local businesses, service providers, events, and community features including a quote request system, and an AI-powered chatbot assistant named "Ziggy." The platform aims to be a comprehensive local resource, facilitating community engagement and supporting local commerce through features like tiered advertising and business credentialing.
+Local List 365 is a community-focused local business directory and events platform exclusively for Currituck County, North Carolina. It connects visitors and residents with local businesses, service providers, events, and community features including a quote request system, and an AI-powered chatbot assistant named "Ziggy." The platform covers Currituck County communities including Moyock, Currituck, Barco, Maple, Shawboro, Grandy, Jarvisburg, Point Harbor, Coinjock, Aydlett, Poplar Branch, Corolla, Carova Beach, and Knotts Island. It aims to be a comprehensive local resource, facilitating community engagement and supporting local commerce through features like tiered advertising and business credentialing.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

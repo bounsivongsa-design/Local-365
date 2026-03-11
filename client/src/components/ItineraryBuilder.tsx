@@ -20,11 +20,11 @@ export function ItineraryBuilder({ formData }: ItineraryBuilderProps) {
     const days = parseInt(formData.tripLength) || 3;
     const itinerary = [];
 
-    const beachActivities = ['Beach Relax at Nags Head', 'Sunrise Beach Walk', 'Sandcastle Building', 'Beach Volleyball'];
-    const foodActivities = ['Dinner at Coastal Provisions', 'Lunch at Kill Devil Grill', 'Seafood at Sam & Omie\'s', 'Breakfast at Stack\'em High'];
-    const adventureActivities = ['Wild Horse Tour in Corolla', 'Kayaking in Roanoke Sound', 'Hang Gliding at Jockey\'s Ridge', 'Kiteboarding Lesson'];
-    const golfActivities = ['Golf at Nags Head Golf Links', 'Mini Golf at Paradise', 'Golf at The Currituck Club'];
-    const familyActivities = ['NC Aquarium on Roanoke Island', 'Wright Brothers Memorial', 'Jockey\'s Ridge State Park', 'Jennette\'s Pier'];
+    const beachActivities = ['Beach Day at Corolla', 'Sunrise Walk at Carova Beach', 'Sandcastle Building', 'Beach Fishing'];
+    const foodActivities = ['Dinner at Coinjock Marina', 'Lunch in Moyock', 'Seafood at a Local Spot', 'Breakfast at a County Cafe'];
+    const adventureActivities = ['Wild Horse Tour in Corolla', 'Kayaking on Currituck Sound', 'Visit Currituck Beach Lighthouse', 'Birding at Mackay Island'];
+    const golfActivities = ['Golf at The Currituck Club', 'Golf at Kilmarlic', 'Mini Golf in Grandy'];
+    const familyActivities = ['Whalehead Club Tour', 'Currituck Beach Lighthouse', 'Knotts Island Nature Trail', 'Historic Jarvisburg'];
 
     for (let day = 1; day <= days; day++) {
       const activities: string[] = [];
