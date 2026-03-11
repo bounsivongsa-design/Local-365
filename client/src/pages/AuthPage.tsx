@@ -6,14 +6,18 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Building2 } from "lucide-react";
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get("mode") === "register" ? "register" : "login";
+  const accountTypeParam = searchParams.get("type");
   const [mode, setMode] = useState<"login" | "register">(initialMode);
+  const [accountType, setAccountType] = useState<"customer" | "business">(
+    accountTypeParam === "business" ? "business" : "customer"
+  );
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -23,13 +27,17 @@ export default function AuthPage() {
   });
 
   useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated && !authLoading) {
       navigate("/");
     }
   }, [isAuthenticated, authLoading, navigate]);
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "", firstName: "", lastName: "" });
+  const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "", firstName: "", lastName: "", businessName: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -80,6 +88,8 @@ export default function AuthPage() {
           password: registerData.password,
           firstName: registerData.firstName,
           lastName: registerData.lastName,
+          accountType: accountType,
+          businessName: accountType === "business" ? registerData.businessName : undefined,
         }),
         credentials: "include",
       });
@@ -89,8 +99,12 @@ export default function AuthPage() {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({ title: "Welcome!", description: "Your account has been created." });
-      navigate("/");
+      toast({ title: "Welcome!", description: accountType === "business" ? "Your business account has been created. Set up your membership to get listed!" : "Your account has been created." });
+      if (accountType === "business") {
+        navigate("/membership");
+      } else {
+        navigate("/");
+      }
     } catch {
       toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
     } finally {
@@ -101,6 +115,9 @@ export default function AuthPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const googleError = urlParams.get("error") === "google_failed";
 
+  const inputStyle = { color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' };
+  const inputClass = "h-12 rounded-xl bg-white dark:bg-gray-900";
+
   return (
     <div className="min-h-[calc(100vh-144px)] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md">
@@ -109,16 +126,16 @@ export default function AuthPage() {
             <span className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">Local List <span className="text-[#d4a373]">365</span></span>
           </div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg" data-testid="heading-auth">
-            {mode === "login" ? "Welcome Back" : "Join the Community"}
+            {mode === "login" ? "Welcome Back" : accountType === "business" ? "Register Your Business" : "Join the Community"}
           </h1>
           <p className="text-white/80 mt-2 drop-shadow">
-            {mode === "login" ? "Sign in to your Local List 365 account" : "Create your free account to get started"}
+            {mode === "login" ? "Sign in to your Local List 365 account" : accountType === "business" ? "Create a business account — first month FREE" : "Create your free account to get started"}
           </p>
         </div>
 
         {googleError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
-            Google sign-in failed. Please try again or use email.
+            Social sign-in failed. Please try again or use email.
           </div>
         )}
 
@@ -137,22 +154,34 @@ export default function AuthPage() {
                 Sign In
               </button>
               <button
-                onClick={() => setMode("register")}
+                onClick={() => { setMode("register"); setAccountType("customer"); }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  mode === "register"
+                  mode === "register" && accountType === "customer"
                     ? "bg-white text-[#0a4a82] shadow-sm"
                     : "text-white/80 hover:text-white"
                 }`}
                 data-testid="tab-register"
               >
-                Create Account
+                Customer
+              </button>
+              <button
+                onClick={() => { setMode("register"); setAccountType("business"); }}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  mode === "register" && accountType === "business"
+                    ? "bg-white text-[#0a4a82] shadow-sm"
+                    : "text-white/80 hover:text-white"
+                }`}
+                data-testid="tab-register-business"
+              >
+                Business
               </button>
             </div>
           </CardHeader>
 
           <CardContent className="p-6 space-y-5">
-            {providers?.google && (
-              <>
+            {/* Social Login Buttons */}
+            <div className="space-y-3">
+              {providers?.google && (
                 <a href="/api/auth/google" className="block">
                   <Button
                     variant="outline"
@@ -169,16 +198,30 @@ export default function AuthPage() {
                     Continue with Google
                   </Button>
                 </a>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-3 text-muted-foreground">or</span>
-                  </div>
-                </div>
-              </>
-            )}
+              )}
+              <a href="/api/auth/facebook" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full h-12 rounded-xl text-sm font-medium border-gray-200 hover:bg-gray-50"
+                  type="button"
+                  data-testid="button-facebook-signin"
+                >
+                  <svg className="h-5 w-5 mr-3" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+                  </svg>
+                  Continue with Facebook
+                </Button>
+              </a>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-muted-foreground">or continue with email</span>
+              </div>
+            </div>
 
             {mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4">
@@ -192,8 +235,8 @@ export default function AuthPage() {
                       placeholder="you@example.com"
                       value={loginData.email}
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      className="pl-10 h-12 rounded-xl bg-white dark:bg-gray-900"
-                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                      className={`pl-10 ${inputClass}`}
+                      style={inputStyle}
                       required
                       data-testid="input-login-email"
                     />
@@ -209,8 +252,8 @@ export default function AuthPage() {
                       placeholder="Enter your password"
                       value={loginData.password}
                       onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      className="pl-10 pr-10 h-12 rounded-xl bg-white dark:bg-gray-900"
-                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                      className={`pl-10 pr-10 ${inputClass}`}
+                      style={inputStyle}
                       required
                       data-testid="input-login-password"
                     />
@@ -242,6 +285,24 @@ export default function AuthPage() {
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">
+                {accountType === "business" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="register-business">Business Name</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-business"
+                        placeholder="Your Business Name"
+                        value={registerData.businessName}
+                        onChange={(e) => setRegisterData({ ...registerData, businessName: e.target.value })}
+                        className={`pl-10 ${inputClass}`}
+                        style={inputStyle}
+                        required
+                        data-testid="input-register-business"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="register-first">First Name</Label>
@@ -252,8 +313,8 @@ export default function AuthPage() {
                         placeholder="First"
                         value={registerData.firstName}
                         onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                        className="pl-10 h-12 rounded-xl bg-white dark:bg-gray-900"
-                        style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                        className={`pl-10 ${inputClass}`}
+                        style={inputStyle}
                         data-testid="input-register-firstname"
                       />
                     </div>
@@ -265,8 +326,8 @@ export default function AuthPage() {
                       placeholder="Last"
                       value={registerData.lastName}
                       onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
-                      className="h-12 rounded-xl bg-white dark:bg-gray-900"
-                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                      className={inputClass}
+                      style={inputStyle}
                       data-testid="input-register-lastname"
                     />
                   </div>
@@ -281,8 +342,8 @@ export default function AuthPage() {
                       placeholder="you@example.com"
                       value={registerData.email}
                       onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                      className="pl-10 h-12 rounded-xl bg-white dark:bg-gray-900"
-                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                      className={`pl-10 ${inputClass}`}
+                      style={inputStyle}
                       required
                       data-testid="input-register-email"
                     />
@@ -298,8 +359,8 @@ export default function AuthPage() {
                       placeholder="At least 6 characters"
                       value={registerData.password}
                       onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      className="pl-10 pr-10 h-12 rounded-xl bg-white dark:bg-gray-900"
-                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                      className={`pl-10 pr-10 ${inputClass}`}
+                      style={inputStyle}
                       required
                       data-testid="input-register-password"
                     />
@@ -322,13 +383,20 @@ export default function AuthPage() {
                       placeholder="Confirm your password"
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                      className="pl-10 pr-10 h-12 rounded-xl bg-white dark:bg-gray-900"
-                      style={{ color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' }}
+                      className={`pl-10 pr-10 ${inputClass}`}
+                      style={inputStyle}
                       required
                       data-testid="input-register-confirm"
                     />
                   </div>
                 </div>
+
+                {accountType === "business" && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm text-center">
+                    <span className="font-semibold">First month FREE!</span> No charges until your second month. Cancel anytime.
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   disabled={isSubmitting}
@@ -339,7 +407,7 @@ export default function AuthPage() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      Create Account
+                      {accountType === "business" ? "Create Business Account" : "Create Account"}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </>
                   )}
@@ -353,8 +421,12 @@ export default function AuthPage() {
           {mode === "login" ? (
             <>
               Don't have an account?{" "}
-              <button onClick={() => setMode("register")} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-register">
+              <button onClick={() => { setMode("register"); setAccountType("customer"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-register">
                 Create one
+              </button>
+              {" | "}
+              <button onClick={() => { setMode("register"); setAccountType("business"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-business">
+                Register a business
               </button>
             </>
           ) : (

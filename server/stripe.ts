@@ -95,7 +95,7 @@ export function registerStripeRoutes(app: Express) {
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
-      const isNewMember = !biz.membershipTrialUsed && frequency === "monthly";
+      const isNewMember = !biz.membershipTrialUsed;
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,

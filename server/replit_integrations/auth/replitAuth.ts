@@ -122,7 +122,7 @@ export async function setupAuth(app: Express) {
 
   app.post("/api/auth/register", async (req, res, next) => {
     try {
-      const { email, password, firstName, lastName } = req.body;
+      const { email, password, firstName, lastName, accountType, businessName } = req.body;
 
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
@@ -130,6 +130,10 @@ export async function setupAuth(app: Express) {
 
       if (password.length < 6) {
         return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      if (accountType === "business" && !businessName?.trim()) {
+        return res.status(400).json({ message: "Business name is required for business accounts" });
       }
 
       const normalizedEmail = email.toLowerCase().trim();
@@ -144,6 +148,7 @@ export async function setupAuth(app: Express) {
         passwordHash,
         firstName: firstName || null,
         lastName: lastName || null,
+        accountType: accountType === "business" ? "business" : "customer",
       });
 
       req.login(user, (err) => {
@@ -206,9 +211,71 @@ export async function setupAuth(app: Express) {
     });
   }
 
+  if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
+    const { Strategy: FacebookStrategy } = await import("passport-facebook");
+
+    const fbCallbackURL = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/facebook/callback`
+      : process.env.REPL_SLUG
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/facebook/callback`
+        : "/api/auth/facebook/callback";
+
+    passport.use(
+      new FacebookStrategy(
+        {
+          clientID: process.env.FACEBOOK_APP_ID,
+          clientSecret: process.env.FACEBOOK_APP_SECRET,
+          callbackURL: fbCallbackURL,
+          profileFields: ["id", "emails", "name", "picture.type(large)"],
+        },
+        async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+          try {
+            const facebookId = profile.id;
+            const email = profile.emails?.[0]?.value;
+
+            if (email) {
+              let user = await authStorage.getUserByEmail(email);
+              if (user) {
+                return done(null, user);
+              }
+            }
+
+            const newUser = await authStorage.createUser({
+              email: email || null,
+              firstName: profile.name?.givenName || null,
+              lastName: profile.name?.familyName || null,
+              profileImageUrl: profile.photos?.[0]?.value || null,
+            });
+            return done(null, newUser);
+          } catch (err) {
+            return done(err);
+          }
+        }
+      )
+    );
+
+    app.get("/api/auth/facebook", (req, res, next) => {
+      passport.authenticate("facebook", {
+        scope: ["email"],
+      })(req, res, next);
+    });
+
+    app.get("/api/auth/facebook/callback", (req, res, next) => {
+      passport.authenticate("facebook", {
+        successRedirect: "/",
+        failureRedirect: "/auth?error=google_failed",
+      })(req, res, next);
+    });
+  } else {
+    app.get("/api/auth/facebook", (req, res) => {
+      res.status(503).json({ message: "Facebook sign-in is not configured" });
+    });
+  }
+
   app.get("/api/auth/providers", (req, res) => {
     res.json({
       google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      facebook: !!(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET),
     });
   });
 }
