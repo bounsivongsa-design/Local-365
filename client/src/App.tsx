@@ -19,6 +19,7 @@ import Advertising from "@/pages/Advertising";
 import AdminAds from "@/pages/AdminAds";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
+import Legal from "@/pages/Legal";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
@@ -48,37 +49,47 @@ function AppRouter() {
           <Route path="/admin/ads" element={<AdminAds />} />
           <Route path="/membership" element={<BusinessMembership />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/legal" element={<Legal />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       
-      {/* Footer */}
-      <footer className="border-t border-white/20 bg-black/60 backdrop-blur-sm py-12 text-white/80">
+      <footer className="border-t border-white/20 bg-black/70 backdrop-blur-md py-12 text-white/80">
         <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <h3 className="font-display text-xl font-bold text-white mb-4">Local 365</h3>
-            <p className="max-w-xs">Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
+            <h3 className="font-display text-xl font-bold text-white mb-4" data-testid="text-footer-brand">Local List 365</h3>
+            <p className="max-w-xs text-sm leading-relaxed">Your trusted community directory for Currituck County and the Outer Banks. Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
           </div>
           <div>
-            <h4 className="font-bold text-white mb-4">Discover</h4>
-            <ul className="space-y-2">
-              <li><Link to="/directory" className="hover:text-[#d4a373]">Local Businesses</Link></li>
-              <li><Link to="/events" className="hover:text-[#d4a373]">Events Calendar</Link></li>
-              <li><Link to="/" className="hover:text-[#d4a373]">Community Feed</Link></li>
+            <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Discover</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/directory" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-directory">Local Businesses</Link></li>
+              <li><Link to="/events" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-events">Events Calendar</Link></li>
+              <li><Link to="/" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-community">Community Feed</Link></li>
+              <li><Link to="/membership" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-membership">Business Membership</Link></li>
+              <li><Link to="/advertising" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-advertising">Advertising</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="font-bold text-white mb-4">Community</h4>
-            <ul className="space-y-2">
-              <li><Link to="/dashboard" className="hover:text-[#d4a373]">My Dashboard</Link></li>
-              <li><Link to="/auth" className="hover:text-[#d4a373]">Sign In</Link></li>
-              <li><a href="#" className="hover:text-[#d4a373]">Help Center</a></li>
-              <li><a href="#" className="hover:text-[#d4a373]">Guidelines</a></li>
+            <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Company</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/dashboard" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-dashboard">My Dashboard</Link></li>
+              <li><Link to="/auth" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-signin">Sign In</Link></li>
+              <li><Link to="/legal?section=terms" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-terms">Terms of Service</Link></li>
+              <li><Link to="/legal?section=privacy" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
+              <li><Link to="/legal?section=disclaimers" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-disclaimers">Disclaimers</Link></li>
             </ul>
           </div>
         </div>
-        <div className="container mt-12 pt-8 border-t border-white/20 text-sm text-center">
-          &copy; {new Date().getFullYear()} Local 365. Built for the community.
+        <div className="container mt-10 pt-6 border-t border-white/15 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
+          <p>&copy; {new Date().getFullYear()} Local List 365. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <Link to="/legal?section=terms" className="hover:text-white/80 transition-colors" data-testid="link-footer-terms-bottom">Terms</Link>
+            <span className="text-white/20">|</span>
+            <Link to="/legal?section=privacy" className="hover:text-white/80 transition-colors" data-testid="link-footer-privacy-bottom">Privacy</Link>
+            <span className="text-white/20">|</span>
+            <Link to="/legal?section=disclaimers" className="hover:text-white/80 transition-colors" data-testid="link-footer-disclaimers-bottom">Disclaimers</Link>
+          </div>
         </div>
       </footer>
     </div>
