@@ -1,0 +1,26 @@
+1. General Disclaimer on Endorsements and Business Information
+This addresses non-bias, no endorsement, and that information comes from businesses themselves.
+"Local List 365 does not represent, endorse, or guarantee the accuracy, completeness, or reliability of any business, service provider, or information listed on the website. All business profiles, descriptions, and related information are provided directly by the business owners or authorized representatives. Local List 365 acts solely as a platform for user-generated content and does not verify, screen, or approve such information. Users are encouraged to conduct their own due diligence before engaging with any listed business."
+2. Review and Ratings Disclaimer
+This covers review authenticity, non-bias, and that reviews are site-generated.
+"Local List 365 does not pull reviews or ratings from any external websites or sources. All reviews and ratings displayed on Local List 365 are submitted and verified directly through our platform by verified users. These reviews reflect the personal opinions and experiences of individual users and do not represent the views, opinions, or endorsements of Local List 365, its affiliates, employees, or partners. Local List 365 disclaims any and all representations or warranties regarding the accuracy or fairness of reviews and assumes no responsibility or liability for any claims, damages, or losses arising from the use of or reliance on any reviews or ratings."
+3. "As Is" and No Warranty Disclaimer
+This emphasizes that the site is provided without guarantees, similar to Angi's "as is" clauses.
+"The Local List 365 website and services are provided on an 'as is' and 'as available' basis without any warranties of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement. Local List 365 makes no representations or warranties about the suitability, reliability, availability, timeliness, or accuracy of the information, services, or related graphics contained on the site for any purpose. You acknowledge that Local List 365 has no control over, and no duty to take action regarding, the content submitted by users or businesses, or the actions users may take based on such content."
+4. Limitation of Liability
+This limits your accountability for damages, inspired by Angi's liability sections.
+"To the fullest extent permitted by law, Local List 365, its affiliates, officers, directors, employees, and agents shall not be liable for any direct, indirect, incidental, special, punitive, compensatory, consequential, or exemplary damages (even if advised of the possibility of such damages) arising from or related to your use of the website, including but not limited to: (a) any interactions with service providers; (b) reliance on business information or reviews; (c) errors, omissions, or inaccuracies in content; or (d) any viruses, interruptions, or other technical issues. This limitation applies whether the alleged liability is based on contract, tort, negligence, strict liability, or any other basis."
+5. User-Generated Content and Release of Claims
+This protects against claims related to content from users or businesses.
+"You agree that all content on Local List 365, including business profiles and reviews, is user-generated or provided by third parties. By using the site, you waive any right to bring or assert claims against Local List 365 relating to such content and release Local List 365 from any and all liability for or relating to any content, including service provider content. Local List 365 reserves the right, but has no obligation, to monitor, edit, or remove content that violates our terms."
+6. Additional Website/Business Disclaimers
+For broader coverage, include these in your terms of use:
+
+Non-Discrimination and Code of Conduct: "Local List 365 adheres to a zero-tolerance policy against discrimination. We reserve the right to remove users or businesses that violate this policy or our code of conduct, which requires honesty, respect, and compliance with all applicable laws."
+Third-Party Links: "Local List 365 may contain links to third-party websites. We are not responsible for the content, privacy practices, or availability of these external sites."
+Changes to Terms: "Local List 365 reserves the right to modify these disclaimers and terms at any time. Continued use of the site constitutes acceptance of any changes."
+
+Placement and Best Practices
+
+Visibility: Place these in a dedicated "Terms of Use" or "Legal" page, with links in the footer. Use pop-ups or checkboxes for user agreement during sign-up or review submission.
+Inspiration from Angi: Their disclaimers (e.g., from legal.angi.com and their FAQ) stress user responsibility, no guarantees on vetting, and that reviews are not their opinions. Avoid making claims like "verified pros" unless you have robust processes, as that's what led to their lawsuit.
