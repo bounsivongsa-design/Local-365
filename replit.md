@@ -30,7 +30,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Key Database Tables
 - `users`: Stores user accounts with `accountType` (loyalty columns still in DB but feature is deferred).
-- `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), membership tiers, and ratings.
+- `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `isVeteran`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), owner info (`ownerName`), `businessHours` (JSON), `socialMediaUrls` (JSON), `searchKeywords` (250 char max), `additionalCategories` (text array), membership tiers, and ratings.
 - `quoteRequests`: Handles customer project requests.
 - `quotes`: Stores business bids on customer projects.
 - `events`: Contains local events calendar data.
@@ -57,7 +57,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 
 ### Technical Implementations
 - **Distance Filtering**: Utilizes Haversine formula with zip code coordinate lookup (`client/src/lib/zip-coordinates.ts`). Businesses with unknown zip codes are excluded when radius filter is active.
-- **Category Management**: 47+ categories with community-driven category suggestions via `POST /api/category-requests`.
+- **Category Management**: 35+ top-level categories (alphabetically sorted) with subcategories, including Entertainment Services, Entertainment Locations, Catering / Food Trucks. Community-driven category suggestions via `POST /api/category-requests`.
 - **Tiered Systems**: Implemented for advertising and business memberships.
 - **Quote System**: Priority queue for businesses based on membership tier and ratings.
 
@@ -68,6 +68,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 ### Key Components
 - `TrustBadges`: Displays LLC, Insurance, Licensed badges (compact and full variants)
 - `MembershipBadge`: Shows Bronze/Silver/Gold membership badge
+- `CreateBusinessForm`: 5-step wizard form (Business Info, Owner & Contact, Hours & Location, Categories & Tags, Credentials) with per-step validation, veteran badge, social media URLs, business hours, search keywords (250 char), and tier-based category limits
 - `BusinessCard`: Card with image, category, rating, trust badges, membership badge
 - `LocationPicker`: Zillow-style location search dialog with geolocation support
 - `EventCard`: Event display with date, location, and details

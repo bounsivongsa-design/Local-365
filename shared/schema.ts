@@ -32,25 +32,32 @@ export const businesses = pgTable("businesses", {
   servicesCommercial: boolean("services_commercial").default(false),
   servicesResidential: boolean("services_residential").default(false),
   
+  isVeteran: boolean("is_veteran").default(false),
+  ownerName: text("owner_name"),
+  businessHours: text("business_hours"), // JSON string of hours per day
+  socialMediaUrls: text("social_media_urls"), // JSON string of social media links
+  searchKeywords: text("search_keywords"), // Comma-separated keywords for search, max 250 chars
+  additionalCategories: text("additional_categories").array().default([]),
+  
   // Local 365 Partner Program - perks businesses offer to elite members
   isLocal365Partner: boolean("is_local365_partner").default(false),
-  silverPerk: text("silver_perk"), // Perk offered to Silver+ members
-  goldPerk: text("gold_perk"), // Perk offered to Gold+ members  
-  platinumPerk: text("platinum_perk"), // Perk offered to Platinum+ (e.g., "Local rates", "Free upgrade")
-  ambassadorPerk: text("ambassador_perk"), // Exclusive Ambassador perk
+  silverPerk: text("silver_perk"),
+  goldPerk: text("gold_perk"),
+  platinumPerk: text("platinum_perk"),
+  ambassadorPerk: text("ambassador_perk"),
   
   // Business Membership Tiers
   membershipTier: text("membership_tier").default("none"), // 'none', 'basic'(Bronze), 'standard'(Silver), 'premium'(Gold)
-  membershipPaymentFrequency: text("membership_payment_frequency"), // 'monthly', 'semi_annual', 'annual'
+  membershipPaymentFrequency: text("membership_payment_frequency"),
   membershipStartDate: timestamp("membership_start_date"),
   membershipEndDate: timestamp("membership_end_date"),
-  membershipTrialUsed: boolean("membership_trial_used").default(false), // Track if 1st month free was used
+  membershipTrialUsed: boolean("membership_trial_used").default(false),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
-  phone: text("phone"), // Phone number for business listing
-  websiteUrl: text("website_url"), // Hyperlink to business website
-  logoUrl: text("logo_url"), // Business logo (standard+ tiers)
-  promoVideoUrl: text("promo_video_url"), // 30-sec promo video (Gold/premium tier only)
+  phone: text("phone"),
+  websiteUrl: text("website_url"),
+  logoUrl: text("logo_url"),
+  promoVideoUrl: text("promo_video_url"),
 });
 
 export const locations = pgTable("locations", {

@@ -1,0 +1,62 @@
+Set up the pages by Town/Zip Code. This website has a search bar, similar to Zillow's, where people can search by service and location.  It would be nice if the person could enable their location. https://citylocalpro.com/
+Moyock 27958
+Chesapeake 23322
+Chesapeake 23321
+Chesapeake 23320. Etc…
+
+Member Packages:
+Basic - Bronze
+Standard - Silver
+Premier - Gold
+
+Advertising Packages:
+Non-members Full Price
+Basic 10% off
+Standard 25% off
+Premier 50% off
+
+The Events page needs an "Advertise Your Event" link directing to advertising pricing/packages.
+
+The home page needs directory icons for the different services. https://localpages.com/ is a good example.  Where the "Plan Your Trip" tab currently is possibly it cound be a "Local Events" Tab instead next to the "Explore Directory" tab.
+
+I would like to see what the different member package listings will look like.  At a minimum I would like the listing to include the following on the business listing:
+LLC Yes/No
+Licensed/Insured Yes/No
+Established Year
+Established Zip Code
+Basic / Standard / Premier Badge
+Commerical / Residential One or both checked!
+
+More categories that came to mind:
+Animal / Pet
+Garage Door
+Moving / Hauling
+Metal Work
+Remove Lazer & CNC from Woodworking
+Fencing
+
+***Probably need a "Submit Category Addition" tab on the home page as well.
+
+On Sun, Feb 22, 2026 at 1:16 PM Nick <goatlockerprinting@gmail.com> wrote:
+Also, I think the price for 2-week "EVENT ADS" needs to drop by 50% for non-member and premier members.   These are events that will be listed under "Local Events" on the Calander correct? Might also add a monthly event ads option ie
+2 Week Non Member
+Small $150
+Medium $300
+Large $600
+
+Month Non Member
+Small $250
+Medium $500
+Large $900
+
+2 Week Premier Member
+Small $75
+Medium $150
+Large $300
+
+Month Premier Member
+Small $125
+Medium $250
+Large $450
+
+If someone wants to add an event across multiple zip codes the advertising fee is 50% off for the 2nd zip code and 75% off the 3rd zip code+.

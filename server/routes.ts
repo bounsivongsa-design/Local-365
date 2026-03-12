@@ -529,7 +529,7 @@ export async function registerRoutes(
           { category: 'Legal', winner: 'Moyock Law Group', runnerUp: 'Currituck Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
           { category: 'Woodworking', winner: 'Moyock Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Currituck Timber Creations', rating: '4.9' },
           { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Moyock Bakehouse', honorable: 'Currituck Bread Company', rating: '4.9' },
-          { category: 'Catering Food Trucks', winner: 'Moyock Food Truck Co', runnerUp: 'Coastal Catering Co', honorable: 'Currituck Bites Mobile', rating: '4.8' },
+          { category: 'Catering / Food Trucks', winner: 'Moyock Food Truck Co', runnerUp: 'Coastal Catering Co', honorable: 'Currituck Bites Mobile', rating: '4.8' },
           { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'Moyock Party Pros', honorable: 'Currituck Celebration Co', rating: '4.8' },
         ];
         res.json(defaultBestOf);
@@ -1758,8 +1758,10 @@ async function seedDatabase() {
       { id: 22, name: "Legal", subs: [] },
       { id: 23, name: "Woodworking", subs: [] },
       { id: 24, name: "Baking & Cooking", subs: [] },
-      { id: 25, name: "Catering Food Trucks", subs: [] },
-      { id: 26, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
+      { id: 25, name: "Catering / Food Trucks", subs: [] },
+      { id: 26, name: "Entertainment Services", subs: [] },
+      { id: 27, name: "Entertainment Locations", subs: [] },
+      { id: 28, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
     ];
     await db.set('categories', categories);
     console.log("Categories seeded!");
@@ -1795,7 +1797,7 @@ async function seedDatabase() {
       { name: "Moyock Law Group", category: "Legal", description: "Real estate and business law.", address: "422 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop" },
       { name: "Moyock Woodworks", category: "Woodworking", description: "Custom furniture and woodworking.", address: "523 Old Hwy 168, Moyock", imageUrl: "https://images.unsplash.com/photo-1611095780322-bbc1f7b9f4ce?w=400&h=300&fit=crop" },
       { name: "Sweet Coastal Bakery", category: "Baking & Cooking", description: "Fresh baked goods and custom cakes.", address: "624 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop" },
-      { name: "Moyock Food Truck Co", category: "Catering Food Trucks", description: "Mobile catering and food truck services.", address: "725 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=400&h=300&fit=crop" },
+      { name: "Moyock Food Truck Co", category: "Catering / Food Trucks", description: "Mobile catering and food truck services.", address: "725 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=400&h=300&fit=crop" },
       { name: "Coastal Events & Rentals", category: "Event Planning & Rentals", description: "Weddings, parties, and tent rentals.", address: "826 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop" },
     ];
 

@@ -1,0 +1,37 @@
+Here is some minimum info I think should be on the Business Sign-up Form; feel free to add anything I may have missed. Obviously only items matching the business subscription will be visible on the site.
+Business Name - Required
+Business Description -  Required
+Business Logo - Optional
+Business Hours - Optional
+Residential / Commercial Select one or both -  Required
+Website URL - Optional
+Social Media URL's - Optional
+Business Owners Name -  Required
+Email Address -  Required
+Business Address - Optional
+Phone Number -  Required
+Business/Physical Address -  Required  "Zip Code is Required to be displayed on profile, Actual full address visible on profile is optional"
+LLC Yes/No - Optional
+Insured Yes/No - Optional
+Veteran Yes/No - Optional - Veterans will receive a Veteran Badge on profile listings.
+Established Year -  Required
+Categories Wanted to be listed in: - Required  Check up to however many categories allowed per subscription plan (Bronze, Silver, Gold).
+Business Service Keywords/Tags for search engine upto 250 characters option ie.. Electric, Electrical, Electrician, Local, Veteran, Hometown
+Here is a link to a membership signup page that I just added too: https://teddslist.com/memberships/
+
+As the site grows we will need to add an option for users to specify which Zip Codes to list in. They should be able to copy their profile information into a 2nd, 3rd, 4th zip code and be charged accordingly.
+
+
+Couple of Categories to add:
+Window Tinting
+Auto Detailing
+Entertainment Service (ie Music groups, Clowns, DJ's)
+Entertainment Locations
+Catering Food Trucks (already listed) should be Catering / Food Trucks
+
+Lastly for categories, maybe we can list them alphabetically since they are just random currently.
+
+Below is some links to Terms of service from other sites that we could merge for this site:
+https://localpages.com/terms
+https://obx.live/user-terms
+https://legal.angi.com/?entry_point_id=32984969&iv_=__iv_p_1_a_928634121_g_45147435286_w_kwd-299789229793_h_9009866_ii__d_c_v__n_g_c_507038973058_k_angilist_m_e_l__t__e__r__vi__&m=cammgsemalb&disablegtm=true&sem=true&gad_source=1&gad_campaignid=928634121&gclid=CjwKCAjwpcTNBhA5EiwAdO1S9rY-R1miKa4_SnDoP992_Ep1CyBtOFIOlO_3OpFtsW3FhCpYCx3z9hoCQu0QAvD_BwE#contract-skmav5s0l

@@ -95,6 +95,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       { id: "exhaust-muffler", name: "Exhaust & Muffler", description: "Exhaust system services" },
       { id: "ac-repair-auto", name: "Auto AC Repair", description: "Vehicle AC service" },
       { id: "diesel-services", name: "Diesel Services", description: "Diesel engine specialists" },
+      { id: "window-tinting", name: "Window Tinting", description: "Auto and residential window tinting" },
     ],
   },
   {
@@ -651,7 +652,63 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       { id: "wood-shelving", name: "Shelving & Built-Ins", description: "Custom shelves and built-in units" },
     ],
   },
+  {
+    id: "entertainment-services",
+    name: "Entertainment Services",
+    icon: "Music",
+    description: "Live music, DJs, performers, and event entertainment",
+    subcategories: [
+      { id: "live-bands", name: "Live Bands & Musicians", description: "Local bands and solo artists" },
+      { id: "djs", name: "DJs", description: "Event and party DJs" },
+      { id: "clowns-magicians", name: "Clowns & Magicians", description: "Children's and party entertainers" },
+      { id: "comedians", name: "Comedians & MCs", description: "Stand-up comics and event hosts" },
+      { id: "karaoke", name: "Karaoke Services", description: "Karaoke equipment and hosting" },
+      { id: "face-painting", name: "Face Painting & Balloon Art", description: "Party artists and balloon twisters" },
+      { id: "photo-booth", name: "Photo Booth Rentals", description: "Event photo booth services" },
+      { id: "sound-lighting", name: "Sound & Lighting", description: "AV equipment rental and setup" },
+      { id: "event-performers", name: "Event Performers", description: "Dancers, acrobats, and specialty acts" },
+      { id: "party-characters", name: "Party Characters", description: "Costumed character appearances" },
+    ],
+  },
+  {
+    id: "entertainment-locations",
+    name: "Entertainment Locations",
+    icon: "MapPin",
+    description: "Venues, attractions, and entertainment destinations",
+    subcategories: [
+      { id: "bowling-alleys", name: "Bowling Alleys", description: "Bowling lanes and arcades" },
+      { id: "movie-theaters", name: "Movie Theaters", description: "Cinema and film screenings" },
+      { id: "arcades-gaming", name: "Arcades & Gaming", description: "Video games and amusement centers" },
+      { id: "mini-golf", name: "Mini Golf", description: "Miniature golf courses" },
+      { id: "go-karts", name: "Go-Karts & Racing", description: "Go-kart tracks and racing" },
+      { id: "escape-rooms", name: "Escape Rooms", description: "Puzzle and escape room experiences" },
+      { id: "amusement-parks", name: "Amusement Parks", description: "Theme parks and rides" },
+      { id: "live-music-venues", name: "Live Music Venues", description: "Concert halls and music bars" },
+      { id: "sports-complexes", name: "Sports Complexes", description: "Indoor sports and recreation" },
+      { id: "trampoline-parks", name: "Trampoline Parks", description: "Jump parks and indoor fun" },
+      { id: "museums-galleries", name: "Museums & Galleries", description: "Art, history, and science museums" },
+      { id: "water-parks", name: "Water Parks", description: "Water slides and splash parks" },
+    ],
+  },
+  {
+    id: "catering-food-trucks",
+    name: "Catering / Food Trucks",
+    icon: "Truck",
+    description: "Catering services and mobile food vendors",
+    subcategories: [
+      { id: "wedding-catering", name: "Wedding Catering", description: "Full-service wedding catering" },
+      { id: "corporate-catering", name: "Corporate Catering", description: "Office and corporate event catering" },
+      { id: "bbq-catering", name: "BBQ Catering", description: "Barbecue and smoker catering" },
+      { id: "food-trucks-mobile", name: "Food Trucks", description: "Mobile food vendors and trucks" },
+      { id: "dessert-catering", name: "Dessert Catering", description: "Cakes, cookies, and dessert bars" },
+      { id: "taco-trucks", name: "Taco Trucks", description: "Mexican and taco food trucks" },
+      { id: "seafood-catering", name: "Seafood Catering", description: "Fresh seafood catering and boils" },
+      { id: "party-platters", name: "Party Platters & Trays", description: "Prepared platters for events" },
+    ],
+  },
 ];
+
+BUSINESS_CATEGORIES.sort((a, b) => a.name.localeCompare(b.name));
 
 export function getCategoryById(id: string): BusinessCategory | undefined {
   return BUSINESS_CATEGORIES.find((cat) => cat.id === id);
