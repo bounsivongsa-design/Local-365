@@ -699,9 +699,20 @@ export async function registerRoutes(
 
   app.post(api.events.create.path, isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).user?.id;
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      
+      let serverBusinessId: number | null = null;
+      if (user.length > 0 && user[0].linkedBusinessId) {
+        serverBusinessId = user[0].linkedBusinessId;
+      }
+
+      const { businessId: _clientBusinessId, ...bodyWithoutBusinessId } = req.body;
+
       const input = api.events.create.input.parse({
-          ...req.body,
-          date: new Date(req.body.date) // Ensure date parsing
+          ...bodyWithoutBusinessId,
+          businessId: serverBusinessId,
+          date: new Date(req.body.date),
       });
       const event = await storage.createEvent(input);
       res.status(201).json(event);
