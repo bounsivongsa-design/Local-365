@@ -18,17 +18,56 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
-// Priority Queue Constants
-const PRIORITY_BATCH_SIZE = 5; // Top 5 premium businesses per round
-const STANDARD_RESPONSE_HOURS = 24; // 24 hours for standard requests
-const EMERGENCY_RESPONSE_HOURS = 2; // 2 hours for emergency categories
+// Tier-Based Quote Access Timing (hours after request creation)
+const GOLD_ACCESS_WINDOW_HOURS = 48;    // Gold: 1st round, 0-48 hours exclusive
+const SILVER_ACCESS_START_HOURS = 48;   // Silver: 2nd round, starts at 48 hours
+const SILVER_ACCESS_END_HOURS = 72;     // Silver: 2nd round, ends at 72 hours
+const BRONZE_ACCESS_START_HOURS = 72;   // Bronze: 3rd round, starts at 72 hours
 
-// Helper: Get response window in hours based on category
+// Emergency categories have compressed windows
+const EMERGENCY_RESPONSE_HOURS = 2;
+const STANDARD_RESPONSE_HOURS = 24;
+const PRIORITY_BATCH_SIZE = 5;
+
+// Helper: Get response window for metrics/ranking (separate from marketplace access)
 function getResponseWindowHours(category: string): number {
   const isEmergency = EMERGENCY_CATEGORIES.some(cat => 
     category.toLowerCase().includes(cat.toLowerCase())
   );
   return isEmergency ? EMERGENCY_RESPONSE_HOURS : STANDARD_RESPONSE_HOURS;
+}
+
+// Helper: Determine which tier has access to a request based on creation time and category
+function getTierAccessForRequest(createdAt: Date, category?: string): { gold: boolean; silver: boolean; bronze: boolean } {
+  const hoursElapsed = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+  const isEmergency = category ? EMERGENCY_CATEGORIES.some(cat =>
+    category.toLowerCase().includes(cat.toLowerCase())
+  ) : false;
+
+  if (isEmergency) {
+    return {
+      gold: true,
+      silver: hoursElapsed >= EMERGENCY_RESPONSE_HOURS,
+      bronze: hoursElapsed >= EMERGENCY_RESPONSE_HOURS,
+    };
+  }
+
+  return {
+    gold: true,
+    silver: hoursElapsed >= SILVER_ACCESS_START_HOURS,
+    bronze: hoursElapsed >= BRONZE_ACCESS_START_HOURS,
+  };
+}
+
+// Helper: Check if a specific tier level has access to a request
+function doesTierHaveAccess(tier: string, createdAt: Date, category?: string): boolean {
+  const access = getTierAccessForRequest(createdAt, category);
+  switch (tier) {
+    case "premium": return access.gold;
+    case "standard": return access.silver;
+    case "basic": return access.bronze;
+    default: return access.bronze;
+  }
 }
 
 // Helper: Calculate priority expiry timestamp
@@ -1038,28 +1077,30 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         .where(eq(quoteRequests.status, "open"))
         .orderBy(desc(quoteRequests.createdAt));
       
-      // Enrich with customer info, quote counts, and priority status
+      // Enrich with customer info, quote counts, and priority/tier-based access
       const enrichedRequests = await Promise.all(requests.map(async (request) => {
-        // Check if this business has active priority access
         let hasPriorityAccess = false;
         let priorityExpiresAt: Date | null = null;
+        let accessRound: string | null = null;
         
         if (isBusinessUser && linkedBusinessId) {
-          const priorityAssignment = await pgDb.select()
-            .from(quotePriorityAssignments)
-            .where(
-              and(
-                eq(quotePriorityAssignments.requestId, request.id),
-                eq(quotePriorityAssignments.businessId, linkedBusinessId),
-                eq(quotePriorityAssignments.expired, false),
-                isNull(quotePriorityAssignments.respondedAt)
-              )
-            )
-            .limit(1);
+          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier })
+            .from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
           
-          if (priorityAssignment.length > 0 && priorityAssignment[0].expiresAt > new Date()) {
+          const bizTier = linkedBusiness?.membershipTier || "none";
+          const tierAccess = getTierAccessForRequest(request.createdAt || new Date(), request.category);
+          
+          if (bizTier === "premium" && tierAccess.gold) {
             hasPriorityAccess = true;
-            priorityExpiresAt = priorityAssignment[0].expiresAt;
+            accessRound = "1st Round (Gold)";
+            priorityExpiresAt = new Date((request.createdAt || new Date()).getTime() + GOLD_ACCESS_WINDOW_HOURS * 60 * 60 * 1000);
+          } else if (bizTier === "standard" && tierAccess.silver) {
+            hasPriorityAccess = true;
+            accessRound = "2nd Round (Silver)";
+            priorityExpiresAt = new Date((request.createdAt || new Date()).getTime() + SILVER_ACCESS_END_HOURS * 60 * 60 * 1000);
+          } else if (bizTier === "basic" && tierAccess.bronze) {
+            hasPriorityAccess = true;
+            accessRound = "3rd Round (Bronze)";
           }
         }
         
@@ -1100,7 +1141,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         
         // Calculate response window info
         const isEmergency = request.isEmergency || false;
-        const responseWindowHours = isEmergency ? EMERGENCY_RESPONSE_HOURS : STANDARD_RESPONSE_HOURS;
+        const responseWindowHours = getResponseWindowHours(request.category);
         
         return {
           ...request,
@@ -1110,6 +1151,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
           lowestQuote,
           hasPriorityAccess,
           priorityExpiresAt,
+          accessRound,
           isEmergency,
           responseWindowHours
         };
@@ -1269,6 +1311,25 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       
       if (request[0].status !== "open") {
         return res.status(400).json({ message: "This quote request is no longer accepting bids" });
+      }
+      
+      // Enforce tier-based access window
+      const business = await pgDb.select({ membershipTier: businesses.membershipTier })
+        .from(businesses)
+        .where(eq(businesses.id, effectiveBusinessId))
+        .limit(1);
+      
+      if (business.length === 0) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+      
+      const businessTier = business[0].membershipTier || "basic";
+      const requestCreatedAt = request[0].createdAt ? new Date(request[0].createdAt) : new Date();
+      
+      if (!doesTierHaveAccess(businessTier, requestCreatedAt, request[0].category)) {
+        return res.status(403).json({ 
+          message: "This project is not yet available for your membership tier. Upgrade for earlier access to quote requests." 
+        });
       }
       
       // Check if this business has a priority assignment for this request
