@@ -156,7 +156,7 @@ export default function BusinessMembership() {
   const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number } | null>(null);
   const [validatingPromo, setValidatingPromo] = useState(false);
 
-  const { data: business } = useQuery({
+  const { data: business } = useQuery<{ id: number; membershipTier: string; membershipTrialUsed: boolean }>({
     queryKey: ["/api/my-business"],
     enabled: isAuthenticated && user?.accountType === "business",
   });
@@ -191,9 +191,9 @@ export default function BusinessMembership() {
     }
   }, []);
 
-  const currentTierDb = (business as any)?.membershipTier || "none";
+  const currentTierDb = business?.membershipTier || "none";
   const currentTierDisplay = DB_TO_DISPLAY[currentTierDb] || currentTierDb;
-  const isNewMember = !(business as any)?.membershipTrialUsed;
+  const isNewMember = !business?.membershipTrialUsed;
 
   const validatePromoCode = async (tier?: string) => {
     if (!promoCode.trim()) return;
@@ -228,7 +228,7 @@ export default function BusinessMembership() {
       return;
     }
 
-    if (!(business as any)?.id) {
+    if (!business?.id) {
       toast({ title: "Create your business first", description: "Please create a business listing before subscribing.", variant: "destructive" });
       return;
     }

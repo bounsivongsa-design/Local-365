@@ -238,8 +238,7 @@ export default function QuoteRequests() {
       return;
     }
     const title = `${formData.category} Request`;
-    const { customerName, ...submitData } = formData;
-    createRequest.mutate({ ...submitData, title });
+    createRequest.mutate({ ...formData, title });
   };
 
   const handleQuoteSubmit = (e: React.FormEvent) => {

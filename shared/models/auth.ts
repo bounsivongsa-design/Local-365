@@ -96,6 +96,7 @@ export const quoteRequests = pgTable("quote_requests", {
   location: text("location"),
   status: varchar("status").default("open"), // open, in_progress, completed, cancelled
   isEmergency: boolean("is_emergency").default(false), // True for HVAC, electrical, plumbing emergencies
+  customerName: text("customer_name"), // Name of the person requesting the quote
   customerPhone: text("customer_phone"), // Contact info for premium vendors
   customerEmail: text("customer_email"), // Contact info for premium vendors
   priorityRound: integer("priority_round").default(1), // Current priority round (1 = first 5 premium, 2 = next 5, etc.)

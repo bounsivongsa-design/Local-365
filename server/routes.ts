@@ -37,21 +37,11 @@ function getResponseWindowHours(category: string): number {
   return isEmergency ? EMERGENCY_RESPONSE_HOURS : STANDARD_RESPONSE_HOURS;
 }
 
-// Helper: Determine which tier has access to a request based on creation time and category
-function getTierAccessForRequest(createdAt: Date, category?: string): { gold: boolean; silver: boolean; bronze: boolean } {
+// Helper: Determine which tier has marketplace access to a request based on creation time
+// Access windows are the same for all categories (Gold 0-48h, Silver 48-72h, Bronze 72+h)
+// Emergency response metrics use shorter windows (2h) but marketplace access is unchanged
+function getTierAccessForRequest(createdAt: Date): { gold: boolean; silver: boolean; bronze: boolean } {
   const hoursElapsed = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
-  const isEmergency = category ? EMERGENCY_CATEGORIES.some(cat =>
-    category.toLowerCase().includes(cat.toLowerCase())
-  ) : false;
-
-  if (isEmergency) {
-    return {
-      gold: true,
-      silver: hoursElapsed >= EMERGENCY_RESPONSE_HOURS,
-      bronze: hoursElapsed >= EMERGENCY_RESPONSE_HOURS,
-    };
-  }
-
   return {
     gold: true,
     silver: hoursElapsed >= SILVER_ACCESS_START_HOURS,
@@ -60,8 +50,8 @@ function getTierAccessForRequest(createdAt: Date, category?: string): { gold: bo
 }
 
 // Helper: Check if a specific tier level has access to a request
-function doesTierHaveAccess(tier: string, createdAt: Date, category?: string): boolean {
-  const access = getTierAccessForRequest(createdAt, category);
+function doesTierHaveAccess(tier: string, createdAt: Date): boolean {
+  const access = getTierAccessForRequest(createdAt);
   switch (tier) {
     case "premium": return access.gold;
     case "standard": return access.silver;
@@ -1088,7 +1078,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
             .from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
           
           const bizTier = linkedBusiness?.membershipTier || "none";
-          const tierAccess = getTierAccessForRequest(request.createdAt || new Date(), request.category);
+          const tierAccess = getTierAccessForRequest(request.createdAt || new Date());
           
           if (bizTier === "premium" && tierAccess.gold) {
             hasPriorityAccess = true;
@@ -1197,7 +1187,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(403).json({ message: "Business accounts cannot create quote requests" });
       }
       
-      const { title, description, category, budget, timeline, location, phone, email } = req.body;
+      const { title, description, category, budget, timeline, location, phone, email, customerName } = req.body;
       if (!title || !description || !category) {
         return res.status(400).json({ message: "Title, description, and category are required" });
       }
@@ -1220,6 +1210,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         location,
         status: "open",
         isEmergency,
+        customerName: customerName || null,
         customerPhone: phone || null,
         customerEmail: email || user[0]?.email || null,
         priorityRound: 1,
@@ -1326,7 +1317,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       const businessTier = business[0].membershipTier || "basic";
       const requestCreatedAt = request[0].createdAt ? new Date(request[0].createdAt) : new Date();
       
-      if (!doesTierHaveAccess(businessTier, requestCreatedAt, request[0].category)) {
+      if (!doesTierHaveAccess(businessTier, requestCreatedAt)) {
         return res.status(403).json({ 
           message: "This project is not yet available for your membership tier. Upgrade for earlier access to quote requests." 
         });
