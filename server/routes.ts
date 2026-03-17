@@ -10,7 +10,7 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt } from "drizzle-orm";
 
 const openai = new OpenAI({
@@ -607,6 +607,21 @@ export async function registerRoutes(
   app.post(api.businesses.create.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.businesses.create.input.parse(req.body);
+
+      const existingBiz = await pgDb.select({ id: businesses.id })
+        .from(businesses)
+        .where(
+          and(
+            ilike(businesses.name, input.name),
+            eq(businesses.zipCode, input.zipCode || "27929")
+          )
+        )
+        .limit(1);
+
+      if (existingBiz.length > 0) {
+        return res.status(409).json({ message: "A business with this name already exists in this zip code" });
+      }
+
       const business = await storage.createBusiness(input);
       res.status(201).json(business);
     } catch (err) {
@@ -1684,6 +1699,146 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       res.json(request);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
+    }
+  });
+
+  // ============ PROMO CODE ROUTES ============
+
+  app.get("/api/promo-codes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
+      if (!user[0]?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const codes = await pgDb.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+      res.json(codes);
+    } catch (err) {
+      console.error("Error fetching promo codes:", err);
+      res.status(500).json({ message: "Failed to fetch promo codes" });
+    }
+  });
+
+  app.post("/api/promo-codes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
+      if (!user[0]?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { code, description, discountType, discountValue, applicableTiers, maxUses, startsAt, expiresAt } = req.body;
+      if (!code || !discountValue) {
+        return res.status(400).json({ message: "Code and discount value are required" });
+      }
+      if (discountType === "percentage" && (discountValue < 1 || discountValue > 100)) {
+        return res.status(400).json({ message: "Percentage discount must be between 1 and 100" });
+      }
+      const existing = await pgDb.select({ id: promoCodes.id }).from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
+      if (existing.length > 0) {
+        return res.status(409).json({ message: "A promo code with this code already exists" });
+      }
+      const [newCode] = await pgDb.insert(promoCodes).values({
+        code: code.toUpperCase(),
+        description,
+        discountType: discountType || "percentage",
+        discountValue,
+        applicableTiers: applicableTiers || [],
+        maxUses: maxUses || null,
+        startsAt: startsAt ? new Date(startsAt) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      }).returning();
+      res.status(201).json(newCode);
+    } catch (err) {
+      console.error("Error creating promo code:", err);
+      res.status(500).json({ message: "Failed to create promo code" });
+    }
+  });
+
+  app.patch("/api/promo-codes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
+      if (!user[0]?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const id = parseInt(req.params.id);
+      const { isActive, description, maxUses, expiresAt } = req.body;
+      const updateData: any = {};
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (description !== undefined) updateData.description = description;
+      if (maxUses !== undefined) updateData.maxUses = maxUses;
+      if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      const [updated] = await pgDb.update(promoCodes).set(updateData).where(eq(promoCodes.id, id)).returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating promo code:", err);
+      res.status(500).json({ message: "Failed to update promo code" });
+    }
+  });
+
+  app.delete("/api/promo-codes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
+      if (!user[0]?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const id = parseInt(req.params.id);
+      await pgDb.delete(promoCodeUsages).where(eq(promoCodeUsages.promoCodeId, id));
+      await pgDb.delete(promoCodes).where(eq(promoCodes.id, id));
+      res.json({ message: "Promo code deleted" });
+    } catch (err) {
+      console.error("Error deleting promo code:", err);
+      res.status(500).json({ message: "Failed to delete promo code" });
+    }
+  });
+
+  app.post("/api/promo-codes/validate", async (req, res) => {
+    try {
+      const { code, tier } = req.body;
+      if (!code) {
+        return res.status(400).json({ valid: false, message: "Promo code is required" });
+      }
+      const [promo] = await pgDb.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
+      if (!promo) {
+        return res.status(404).json({ valid: false, message: "Invalid promo code" });
+      }
+      if (!promo.isActive) {
+        return res.status(400).json({ valid: false, message: "This promo code is no longer active" });
+      }
+      if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+        return res.status(400).json({ valid: false, message: "This promo code has expired" });
+      }
+      if (promo.startsAt && new Date(promo.startsAt) > new Date()) {
+        return res.status(400).json({ valid: false, message: "This promo code is not yet active" });
+      }
+      if (promo.maxUses && (promo.currentUses || 0) >= promo.maxUses) {
+        return res.status(400).json({ valid: false, message: "This promo code has reached its usage limit" });
+      }
+      if (tier && promo.applicableTiers && promo.applicableTiers.length > 0) {
+        if (!promo.applicableTiers.includes(tier)) {
+          return res.status(400).json({ valid: false, message: `This promo code is not applicable to the ${tier} tier` });
+        }
+      }
+      res.json({
+        valid: true,
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+        description: promo.description,
+      });
+    } catch (err) {
+      console.error("Error validating promo code:", err);
+      res.status(500).json({ valid: false, message: "Failed to validate promo code" });
+    }
+  });
+
+  app.get("/api/membership-downgrades", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
+      if (!user[0]?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const downgrades = await pgDb.select().from(membershipDowngrades).orderBy(desc(membershipDowngrades.downgradedAt));
+      res.json(downgrades);
+    } catch (err) {
+      console.error("Error fetching downgrades:", err);
+      res.status(500).json({ message: "Failed to fetch downgrades" });
     }
   });
 

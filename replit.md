@@ -36,6 +36,9 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - `events`: Contains local events calendar data.
 - `posts`: Stores community feed posts.
 - `categoryRequests`: Stores community-submitted category suggestions (name, description, submitterEmail, status).
+- `promoCodes`: Promotional discount codes with type (percentage/fixed), value, tier restrictions, usage limits, and date ranges.
+- `promoCodeUsages`: Tracks which businesses used which promo codes and the associated Stripe session.
+- `membershipDowngrades`: Records tier downgrades/cancellations with win-back eligibility dates (2 months post-downgrade).
 
 ### Authentication System
 Custom email/password authentication with optional Google OAuth. Passwords are hashed with bcrypt (12 rounds). Sessions stored in PostgreSQL via connect-pg-simple. Google OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars; gracefully disabled when not configured. Auth page at `/auth` with Login/Register tabs. The system supports "customer" and "business" account types, with server-side validation and receipt upload requirements for user verification.
@@ -62,6 +65,10 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - **Ad Pricing** (50% cut applied): Website ads — Large $1,000/mo, Medium $500/mo, Small $250/mo (non-member base). Event ads — 2-week: $50-$100, Monthly: $100-$200. Member discounts (Bronze 10%, Silver 25%, Gold 50%) apply on top.
 - **Event Display Tiers**: Bronze = name/location/date only; Silver = +cover image; Gold = +image+flyer/event link. `flyerUrl` field on events table.
 - **Quote System**: Priority queue for businesses based on membership tier and ratings.
+- **Promo Codes**: Admin-managed promotional discount codes (`promoCodes` table). Supports percentage and fixed-dollar discounts, tier restrictions, max uses, date ranges. Validated at checkout and applied to Stripe session pricing. Admin CRUD at `/admin/promo-codes`. Validation endpoint: `POST /api/promo-codes/validate`.
+- **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive Gold-tier features for their first 30 days (trial period). After trial, tier reverts to what was purchased. Managed via Stripe subscription metadata (`isAutoUpgrade`, `originalTier`).
+- **Business Name+Zip Uniqueness**: Prevents duplicate business registrations with the same name in the same zip code (case-insensitive check on business creation).
+- **Membership Downgrade Tracking**: `membershipDowngrades` table records when businesses downgrade or cancel, with a `winBackEligibleAt` timestamp set to 2 months post-downgrade for win-back campaigns.
 
 ### Key Configuration Files
 - `shared/config/categories.ts`: Full category hierarchy with subcategories (30+ top-level categories)

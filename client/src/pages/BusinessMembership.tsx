@@ -28,8 +28,12 @@ import {
   ArrowRight,
   CreditCard,
   Loader2,
-  Medal
+  Medal,
+  Tag,
+  CheckCircle2,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type PaymentFrequency = "monthly" | "semi_annual" | "annual";
 
@@ -145,10 +149,12 @@ const DB_TO_DISPLAY: Record<string, string> = {
 export default function BusinessMembership() {
   const { user, isAuthenticated } = useAuth();
   const [selectedFrequency, setSelectedFrequency] = useState<PaymentFrequency>("monthly");
-  const [isNewMember] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const [promoCode, setPromoCode] = useState("");
+  const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number } | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
 
   const { data: business } = useQuery({
     queryKey: ["/api/my-business"],
@@ -177,6 +183,29 @@ export default function BusinessMembership() {
 
   const currentTierDb = (business as any)?.membershipTier || "none";
   const currentTierDisplay = DB_TO_DISPLAY[currentTierDb] || currentTierDb;
+  const isNewMember = !(business as any)?.membershipTrialUsed;
+
+  const validatePromoCode = async (tier?: string) => {
+    if (!promoCode.trim()) return;
+    setValidatingPromo(true);
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode, tier }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setPromoStatus({ valid: true, message: data.description || "Promo code applied!", discountType: data.discountType, discountValue: data.discountValue });
+      } else {
+        setPromoStatus({ valid: false, message: data.message || "Invalid promo code" });
+      }
+    } catch {
+      setPromoStatus({ valid: false, message: "Failed to validate promo code" });
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
 
   const handleSelectTier = async (tier: MembershipTier) => {
     if (!isAuthenticated) {
@@ -200,12 +229,19 @@ export default function BusinessMembership() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ tier: tier.id, frequency: selectedFrequency }),
+        body: JSON.stringify({
+          tier: tier.id,
+          frequency: selectedFrequency,
+          promoCode: promoStatus?.valid ? promoCode : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
         return;
+      }
+      if (data.autoUpgrade) {
+        toast({ title: "Gold Trial Activated!", description: "You'll enjoy Gold features for the first 30 days." });
       }
       if (data.url) {
         window.location.href = data.url;
@@ -327,6 +363,67 @@ export default function BusinessMembership() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {isNewMember && currentTierDisplay === "none" && (
+          <div className="max-w-3xl mx-auto mb-12">
+            <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0">
+                  <Crown className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-lg" data-testid="text-gold-trial-banner">
+                    New Member Bonus: Gold Experience for 30 Days!
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
+                    Sign up for any Bronze or Silver plan and automatically get upgraded to Gold tier features for your first 30 days — 
+                    including featured placement, unlimited photos, priority quote access, and more. After the trial, your plan reverts to the tier you selected.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-md mx-auto mb-12">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-200/50 dark:border-slate-700/50">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              <Tag className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+              Have a promo code?
+            </label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChange={(e) => {
+                  setPromoCode(e.target.value.toUpperCase());
+                  if (promoStatus) setPromoStatus(null);
+                }}
+                className="font-mono"
+                data-testid="input-promo-code"
+              />
+              <Button
+                onClick={validatePromoCode}
+                disabled={!promoCode.trim() || validatingPromo}
+                variant="outline"
+                className="shrink-0"
+                data-testid="button-apply-promo"
+              >
+                {validatingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+              </Button>
+            </div>
+            {promoStatus && (
+              <div className={`mt-2 flex items-center gap-2 text-sm ${promoStatus.valid ? "text-green-600" : "text-red-500"}`}>
+                {promoStatus.valid ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                <span data-testid="text-promo-status">
+                  {promoStatus.valid
+                    ? `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — ${promoStatus.message}`
+                    : promoStatus.message}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

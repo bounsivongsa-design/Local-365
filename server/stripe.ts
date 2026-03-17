@@ -1,8 +1,8 @@
 import Stripe from "stripe";
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import { businesses } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { businesses, promoCodes, promoCodeUsages, membershipDowngrades } from "@shared/schema";
+import { eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
 if (!process.env.Stripeintegration) {
@@ -70,7 +70,7 @@ export function registerStripeRoutes(app: Express) {
   app.post("/api/stripe/create-checkout", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user?.id;
-      const { tier, frequency } = req.body;
+      const { tier, frequency, promoCode } = req.body;
 
       if (!tier || !frequency) {
         return res.status(400).json({ message: "Tier and frequency are required" });
@@ -85,17 +85,60 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "No business found for your account. Please create a business listing first." });
       }
 
+      let promoDiscount = 0;
+      let promoId: number | null = null;
+      if (promoCode) {
+        const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase())).limit(1);
+        if (!promo) {
+          return res.status(400).json({ message: "Invalid promo code" });
+        }
+        if (!promo.isActive) {
+          return res.status(400).json({ message: "This promo code is no longer active" });
+        }
+        const now = new Date();
+        if (promo.expiresAt && new Date(promo.expiresAt) < now) {
+          return res.status(400).json({ message: "This promo code has expired" });
+        }
+        if (promo.startsAt && new Date(promo.startsAt) > now) {
+          return res.status(400).json({ message: "This promo code is not yet active" });
+        }
+        if (promo.maxUses && (promo.currentUses || 0) >= promo.maxUses) {
+          return res.status(400).json({ message: "This promo code has reached its usage limit" });
+        }
+        if (promo.applicableTiers?.length && !promo.applicableTiers.includes(tier)) {
+          return res.status(400).json({ message: `This promo code is not applicable to the ${tier} tier` });
+        }
+        promoId = promo.id;
+        if (promo.discountType === "percentage") {
+          promoDiscount = promo.discountValue / 100;
+        } else {
+          promoDiscount = promo.discountValue;
+        }
+      }
+
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email, biz.name);
-      const priceAmount = TIER_PRICES[tier][frequency];
+      let priceAmount = TIER_PRICES[tier][frequency];
+
+      if (promoDiscount > 0 && promoId) {
+        if (promoDiscount <= 1) {
+          priceAmount = Math.round(priceAmount * (1 - promoDiscount));
+        } else {
+          priceAmount = Math.max(0, priceAmount - promoDiscount * 100);
+        }
+      }
+
+      const isNewMember = !biz.membershipTrialUsed;
+      const effectiveTier = (tier === "bronze" || tier === "silver") && isNewMember ? "gold" : tier;
+      const effectiveDbTier = TIER_TO_DB[effectiveTier];
+      const isAutoUpgrade = effectiveTier !== tier;
+
       const intervalConfig = FREQUENCY_INTERVAL[frequency];
-      const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
+      const tierName = effectiveTier.charAt(0).toUpperCase() + effectiveTier.slice(1);
       const freqLabel = frequency === "monthly" ? "Monthly" : frequency === "semi_annual" ? "Semi-Annual" : "Annual";
 
       const baseUrl = process.env.REPLIT_DEV_DOMAIN
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-
-      const isNewMember = !biz.membershipTrialUsed;
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,
@@ -105,8 +148,10 @@ export function registerStripeRoutes(app: Express) {
             price_data: {
               currency: "usd",
               product_data: {
-                name: `Local List 365 — ${tierName} Membership (${freqLabel})`,
-                description: `${tierName} tier membership for ${biz.name}`,
+                name: `Local List 365 — ${tierName} Membership (${freqLabel})${isAutoUpgrade ? ' — Gold Trial' : ''}`,
+                description: isAutoUpgrade
+                  ? `Gold tier trial for first 30 days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
+                  : `${tierName} tier membership for ${biz.name}`,
               },
               unit_amount: priceAmount,
               recurring: intervalConfig,
@@ -118,16 +163,21 @@ export function registerStripeRoutes(app: Express) {
         cancel_url: `${baseUrl}/membership?canceled=true`,
         metadata: {
           businessId: String(biz.id),
-          tier: TIER_TO_DB[tier],
+          tier: effectiveDbTier,
+          originalTier: TIER_TO_DB[tier],
+          isAutoUpgrade: isAutoUpgrade ? "true" : "false",
           frequency,
           userId,
+          promoCodeId: promoId ? String(promoId) : "",
         },
       };
 
       sessionParams.subscription_data = {
         metadata: {
           businessId: String(biz.id),
-          tier: TIER_TO_DB[tier],
+          tier: effectiveDbTier,
+          originalTier: TIER_TO_DB[tier],
+          isAutoUpgrade: isAutoUpgrade ? "true" : "false",
           frequency,
         },
       };
@@ -137,7 +187,8 @@ export function registerStripeRoutes(app: Express) {
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);
-      res.json({ url: session.url });
+
+      res.json({ url: session.url, autoUpgrade: isAutoUpgrade });
     } catch (err: any) {
       console.error("Stripe checkout error:", err);
       res.status(500).json({ message: err.message || "Failed to create checkout session" });
@@ -234,6 +285,22 @@ export function registerStripeRoutes(app: Express) {
 
             await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
             console.log(`Membership activated: business ${businessId} → ${tier}`);
+
+            const promoCodeIdStr = session.metadata?.promoCodeId;
+            if (promoCodeIdStr) {
+              const promoCodeId = parseInt(promoCodeIdStr);
+              const existingUsage = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+                .where(eq(promoCodeUsages.stripeSessionId, session.id)).limit(1);
+              if (existingUsage.length === 0) {
+                await db.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promoCodeId));
+                await db.insert(promoCodeUsages).values({
+                  promoCodeId,
+                  businessId,
+                  stripeSessionId: session.id,
+                });
+                console.log(`Promo code ${promoCodeId} usage recorded for business ${businessId}`);
+              }
+            }
           }
           break;
         }
@@ -254,10 +321,37 @@ export function registerStripeRoutes(app: Express) {
           if (businessId) {
             const status = subscription.status;
             if (status === "active" || status === "trialing") {
-              const tier = subscription.metadata?.tier;
-              if (tier) {
+              let newTier = subscription.metadata?.tier;
+              const isAutoUpgrade = subscription.metadata?.isAutoUpgrade === "true";
+              const originalTier = subscription.metadata?.originalTier;
+
+              const isTrialReversion = isAutoUpgrade && status === "active" && originalTier;
+              if (isTrialReversion) {
+                newTier = originalTier;
+                console.log(`Auto-upgrade trial ended: business ${businessId} reverting from Gold to ${DB_TO_TIER[originalTier] || originalTier}`);
+              }
+
+              if (newTier) {
+                const [currentBiz] = await db.select({ membershipTier: businesses.membershipTier }).from(businesses).where(eq(businesses.id, businessId));
+                const oldTier = currentBiz?.membershipTier;
+
+                if (!isTrialReversion && oldTier && oldTier !== newTier && oldTier !== "none") {
+                  const tierRank: Record<string, number> = { premium: 3, standard: 2, basic: 1, none: 0 };
+                  if ((tierRank[oldTier] || 0) > (tierRank[newTier] || 0)) {
+                    const winBackDate = new Date();
+                    winBackDate.setMonth(winBackDate.getMonth() + 2);
+                    await db.insert(membershipDowngrades).values({
+                      businessId,
+                      previousTier: oldTier,
+                      newTier,
+                      winBackEligibleAt: winBackDate,
+                    });
+                    console.log(`Downgrade recorded: business ${businessId} from ${oldTier} to ${newTier}, win-back eligible at ${winBackDate.toISOString()}`);
+                  }
+                }
+
                 await db.update(businesses).set({
-                  membershipTier: tier,
+                  membershipTier: newTier,
                   stripeSubscriptionId: subscription.id,
                 }).where(eq(businesses.id, businessId));
               }
@@ -282,6 +376,20 @@ export function registerStripeRoutes(app: Express) {
           }
 
           if (businessId) {
+            const [currentBiz] = await db.select({ membershipTier: businesses.membershipTier }).from(businesses).where(eq(businesses.id, businessId));
+            const oldTier = currentBiz?.membershipTier;
+
+            if (oldTier && oldTier !== "none") {
+              const winBackDate = new Date();
+              winBackDate.setMonth(winBackDate.getMonth() + 2);
+              await db.insert(membershipDowngrades).values({
+                businessId,
+                previousTier: oldTier,
+                newTier: "none",
+                winBackEligibleAt: winBackDate,
+              });
+            }
+
             await db.update(businesses).set({
               membershipTier: "none",
               membershipPaymentFrequency: null,

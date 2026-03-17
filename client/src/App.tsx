@@ -17,6 +17,7 @@ import AccountSetup from "@/pages/AccountSetup";
 import QuoteRequests from "@/pages/QuoteRequests";
 import Advertising from "@/pages/Advertising";
 import AdminAds from "@/pages/AdminAds";
+import AdminPromoCodes from "@/pages/AdminPromoCodes";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
 import Legal from "@/pages/Legal";
@@ -47,6 +48,7 @@ function AppRouter() {
           <Route path="/quotes" element={<QuoteRequests />} />
           <Route path="/advertising" element={<Advertising />} />
           <Route path="/admin/ads" element={<AdminAds />} />
+          <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
           <Route path="/membership" element={<BusinessMembership />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/legal" element={<Legal />} />

@@ -202,6 +202,40 @@ export const categoryRequests = pgTable("category_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const promoCodes = pgTable("promo_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  discountType: text("discount_type").notNull().default("percentage"),
+  discountValue: integer("discount_value").notNull(),
+  applicableTiers: text("applicable_tiers").array().default([]),
+  maxUses: integer("max_uses"),
+  currentUses: integer("current_uses").default(0),
+  startsAt: timestamp("starts_at"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const promoCodeUsages = pgTable("promo_code_usages", {
+  id: serial("id").primaryKey(),
+  promoCodeId: integer("promo_code_id").notNull().references(() => promoCodes.id),
+  businessId: integer("business_id").notNull().references(() => businesses.id),
+  appliedAt: timestamp("applied_at").defaultNow(),
+  stripeSessionId: text("stripe_session_id"),
+});
+
+export const membershipDowngrades = pgTable("membership_downgrades", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id),
+  previousTier: text("previous_tier").notNull(),
+  newTier: text("new_tier").notNull(),
+  downgradedAt: timestamp("downgraded_at").defaultNow(),
+  winBackEligibleAt: timestamp("win_back_eligible_at"),
+  winBackSent: boolean("win_back_sent").default(false),
+  winBackConvertedAt: timestamp("win_back_converted_at"),
+});
+
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
@@ -231,6 +265,8 @@ export const insertAdPlacementSchema = createInsertSchema(adPlacements).omit({
 });
 export const insertAdPricingSchema = createInsertSchema(adPricing).omit({ id: true });
 export const insertCategoryRequestSchema = createInsertSchema(categoryRequests).omit({ id: true, status: true, createdAt: true });
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, currentUses: true, createdAt: true });
+export const insertMembershipDowngradeSchema = createInsertSchema(membershipDowngrades).omit({ id: true, downgradedAt: true, winBackSent: true, winBackConvertedAt: true });
 
 export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
@@ -246,6 +282,11 @@ export type InsertAdPlacement = z.infer<typeof insertAdPlacementSchema>;
 export type InsertAdPricing = z.infer<typeof insertAdPricingSchema>;
 export type CategoryRequest = typeof categoryRequests.$inferSelect;
 export type InsertCategoryRequest = z.infer<typeof insertCategoryRequestSchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type PromoCodeUsage = typeof promoCodeUsages.$inferSelect;
+export type MembershipDowngrade = typeof membershipDowngrades.$inferSelect;
+export type InsertMembershipDowngrade = z.infer<typeof insertMembershipDowngradeSchema>;
 
 export type CreateBusinessRequest = z.infer<typeof insertBusinessSchema>;
 export type CreateEventRequest = z.infer<typeof insertEventSchema>;
