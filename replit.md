@@ -55,9 +55,9 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 8. Email normalization (lowercase + trim) ensures deterministic account linking between local and Google accounts
 
 ### Business Membership Tiers
-- **Bronze** ($50/mo): Basic listing, 3 photos, 1 category, 10% ad discount
-- **Silver** ($100/mo): Logo, website link, 10 photos, 3 categories, 25% ad discount, verified badge
-- **Gold** ($200/mo): Featured placement, unlimited photos, 5 categories, 50% ad discount, priority support, 30-sec promo video upload
+- **Bronze** ($50/mo): Basic listing, 4 photos, 4 categories, 10% ad discount
+- **Silver** ($100/mo): Logo, website link, 6 photos, 6 categories, 25% ad discount, verified badge
+- **Gold** ($200/mo): Featured placement, 10 photos, 8 categories, 50% ad discount, priority support, 30-sec promo video upload
 - DB stores as `basic`/`standard`/`premium`; displayed as Bronze/Silver/Gold
 - **Stripe Integration**: Subscription checkout via Stripe (env vars: `Stripeintegration` for secret key, `Stripepublishable` for publishable key). Server creates Checkout Sessions and redirects. Webhook at `/api/stripe/webhook` handles subscription lifecycle. Billing portal for self-service management. `stripeCustomerId` and `stripeSubscriptionId` stored on businesses table.
 

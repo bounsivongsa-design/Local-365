@@ -61,7 +61,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Business listing in directory",
       "Phone number displayed",
       "Customer reviews enabled",
-      "4 business categories",
+      "Up to 4 photos, 4 categories",
       "Quote access: 3rd round (72+ hrs)",
       "10% off advertising",
       "Email support"
@@ -80,7 +80,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Everything in Bronze",
       "Business logo displayed",
       "Website link (hyperlink)",
-      "Up to 10 photos, 6 categories",
+      "Up to 6 photos, 6 categories",
       "Quote access: 2nd round (48-72 hrs)",
       "Verified business badge",
       "Social media links",
@@ -102,7 +102,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Everything in Silver",
       "Top of search results",
       "Featured badge on listing",
-      "Unlimited photos, 8 categories",
+      "Up to 10 photos, 8 categories",
       "Quote access: 1st round (0-48 hrs exclusive)",
       "30-sec promo video upload",
       "Advanced analytics dashboard",
@@ -397,7 +397,7 @@ export default function BusinessMembership() {
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
                     Sign up for any Bronze or Silver plan and automatically get upgraded to Gold tier features for your first 30 days — 
-                    including featured placement, unlimited photos, priority quote access, and more. After the trial, your plan reverts to the tier you selected.
+                    including featured placement, up to 10 photos, priority quote access, and more. After the trial, your plan reverts to the tier you selected.
                   </p>
                 </div>
               </div>
