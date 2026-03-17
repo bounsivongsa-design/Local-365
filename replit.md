@@ -39,6 +39,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - `promoCodes`: Promotional discount codes with type (percentage/fixed), value, tier restrictions, usage limits, and date ranges.
 - `promoCodeUsages`: Tracks which businesses used which promo codes and the associated Stripe session.
 - `membershipDowngrades`: Records tier downgrades/cancellations with win-back eligibility dates (2 months post-downgrade).
+- `jobListings`: Help wanted / now hiring posts by businesses. $7/week a la carte, sorted by membership tier (Gold first, then Silver, Bronze, then non-members). Fields: title, description, imageUrl, contactPhone, contactEmail, isActive, paidThroughDate, stripeSubscriptionId.
 
 ### Authentication System
 Custom email/password authentication with optional Google OAuth. Passwords are hashed with bcrypt (12 rounds). Sessions stored in PostgreSQL via connect-pg-simple. Google OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars; gracefully disabled when not configured. Auth page at `/auth` with Login/Register tabs. The system supports "customer" and "business" account types, with server-side validation and receipt upload requirements for user verification.
@@ -93,6 +94,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - `EventCard`: Tier-based event display — shows/hides image and flyer link based on business membership tier (Bronze=basic info, Silver=+image, Gold=+image+flyer link)
 - `PromoVideoPlayer`: Displays uploaded promo video with Gold Exclusive badge (BusinessDetails.tsx)
 - `PromoVideoUploader`: Upload/replace/delete promo video, Gold tier owners only (BusinessDetails.tsx)
+- `HelpWanted`: Job board page at `/jobs` — businesses post help wanted ads ($7/week), sorted by membership tier. Business owners can create/delete listings.
 
 ## External Dependencies
 

@@ -116,10 +116,25 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const jobListings = pgTable("job_listings", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").references(() => businesses.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  paidThroughDate: timestamp("paid_through_date"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+});
+
 // Relations
 export const businessesRelations = relations(businesses, ({ many }) => ({
   events: many(events),
   reviews: many(reviews),
+  jobListings: many(jobListings),
 }));
 
 export const eventsRelations = relations(events, ({ one }) => ({
@@ -155,6 +170,13 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
   business: one(businesses, {
     fields: [reviews.businessId],
+    references: [businesses.id],
+  }),
+}));
+
+export const jobListingsRelations = relations(jobListings, ({ one }) => ({
+  business: one(businesses, {
+    fields: [jobListings.businessId],
     references: [businesses.id],
   }),
 }));
@@ -268,6 +290,7 @@ export const insertAdPricingSchema = createInsertSchema(adPricing).omit({ id: tr
 export const insertCategoryRequestSchema = createInsertSchema(categoryRequests).omit({ id: true, status: true, createdAt: true });
 export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, currentUses: true, createdAt: true });
 export const insertMembershipDowngradeSchema = createInsertSchema(membershipDowngrades).omit({ id: true, downgradedAt: true, winBackSent: true, winBackConvertedAt: true });
+export const insertJobListingSchema = createInsertSchema(jobListings).omit({ id: true, createdAt: true, isActive: true, paidThroughDate: true, stripeSubscriptionId: true });
 
 export type Category = typeof categories.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
@@ -288,6 +311,9 @@ export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 export type PromoCodeUsage = typeof promoCodeUsages.$inferSelect;
 export type MembershipDowngrade = typeof membershipDowngrades.$inferSelect;
 export type InsertMembershipDowngrade = z.infer<typeof insertMembershipDowngradeSchema>;
+export type JobListing = typeof jobListings.$inferSelect;
+export type InsertJobListing = z.infer<typeof insertJobListingSchema>;
+export type JobListingWithBusiness = JobListing & { business: Business | null };
 
 export type CreateBusinessRequest = z.infer<typeof insertBusinessSchema>;
 export type CreateEventRequest = z.infer<typeof insertEventSchema>;

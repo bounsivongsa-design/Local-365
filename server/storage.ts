@@ -5,6 +5,7 @@ import {
   posts,
   reviews,
   users,
+  jobListings,
   type Business,
   type CreateBusinessRequest,
   type Event,
@@ -15,8 +16,11 @@ import {
   type CreateReviewRequest,
   type BusinessWithRating,
   type PostWithAuthor,
+  type JobListing,
+  type InsertJobListing,
+  type JobListingWithBusiness,
 } from "@shared/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { authStorage } from "./replit_integrations/auth/storage";
 
 export interface IStorage {
@@ -37,6 +41,14 @@ export interface IStorage {
   // Reviews
   getReviewsForBusiness(businessId: number): Promise<(Review & { user: typeof users.$inferSelect })[]>;
   createReview(review: CreateReviewRequest & { userId: string, businessId: number }): Promise<Review>;
+
+  // Job Listings
+  getActiveJobListings(): Promise<JobListingWithBusiness[]>;
+  getJobListingsByBusiness(businessId: number): Promise<JobListing[]>;
+  getJobListing(id: number): Promise<JobListing | undefined>;
+  createJobListing(listing: InsertJobListing): Promise<JobListing>;
+  updateJobListing(id: number, updates: Partial<JobListing>): Promise<JobListing | undefined>;
+  deleteJobListing(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -161,6 +173,52 @@ export class DatabaseStorage implements IStorage {
   async createReview(review: CreateReviewRequest & { userId: string, businessId: number }): Promise<Review> {
     const [newReview] = await db.insert(reviews).values(review).returning();
     return newReview;
+  }
+
+  async getActiveJobListings(): Promise<JobListingWithBusiness[]> {
+    const listings = await db.query.jobListings.findMany({
+      where: eq(jobListings.isActive, true),
+      with: {
+        business: true,
+      },
+      orderBy: desc(jobListings.createdAt),
+    });
+
+    const tierOrder: Record<string, number> = { premium: 1, standard: 2, basic: 3 };
+    return listings.sort((a, b) => {
+      const aTier = tierOrder[a.business?.membershipTier || ""] || 4;
+      const bTier = tierOrder[b.business?.membershipTier || ""] || 4;
+      if (aTier !== bTier) return aTier - bTier;
+      return 0;
+    });
+  }
+
+  async getJobListingsByBusiness(businessId: number): Promise<JobListing[]> {
+    return await db.select().from(jobListings)
+      .where(eq(jobListings.businessId, businessId))
+      .orderBy(desc(jobListings.createdAt));
+  }
+
+  async getJobListing(id: number): Promise<JobListing | undefined> {
+    const [listing] = await db.select().from(jobListings).where(eq(jobListings.id, id));
+    return listing;
+  }
+
+  async createJobListing(listing: InsertJobListing): Promise<JobListing> {
+    const [newListing] = await db.insert(jobListings).values(listing).returning();
+    return newListing;
+  }
+
+  async updateJobListing(id: number, updates: Partial<JobListing>): Promise<JobListing | undefined> {
+    const [updated] = await db.update(jobListings)
+      .set(updates)
+      .where(eq(jobListings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteJobListing(id: number): Promise<void> {
+    await db.delete(jobListings).where(eq(jobListings.id, id));
   }
 }
 

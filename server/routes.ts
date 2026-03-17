@@ -10,7 +10,7 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
 const openai = new OpenAI({
@@ -1925,6 +1925,104 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     } catch (err) {
       console.error("Error checking win-back eligibility:", err);
       res.status(500).json({ message: "Failed to check eligibility" });
+    }
+  });
+
+  // ============ JOB LISTING ROUTES ============
+
+  app.get("/api/jobs", async (_req, res) => {
+    try {
+      const listings = await storage.getActiveJobListings();
+      res.json(listings);
+    } catch (err) {
+      console.error("Error fetching job listings:", err);
+      res.status(500).json({ message: "Failed to fetch job listings" });
+    }
+  });
+
+  app.get("/api/jobs/my-listings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId) {
+        return res.json([]);
+      }
+      const listings = await storage.getJobListingsByBusiness(user.linkedBusinessId);
+      res.json(listings);
+    } catch (err) {
+      console.error("Error fetching user job listings:", err);
+      res.status(500).json({ message: "Failed to fetch your listings" });
+    }
+  });
+
+  app.post("/api/jobs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId) {
+        return res.status(403).json({ message: "Only business accounts can post job listings" });
+      }
+
+      const parsed = insertJobListingSchema.parse({
+        ...req.body,
+        businessId: user.linkedBusinessId,
+      });
+      const listing = await storage.createJobListing(parsed);
+      res.status(201).json(listing);
+    } catch (err: any) {
+      console.error("Error creating job listing:", err);
+      res.status(400).json({ message: err.message || "Failed to create job listing" });
+    }
+  });
+
+  app.patch("/api/jobs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const listingId = parseInt(req.params.id);
+      const listing = await storage.getJobListing(listingId);
+      if (!listing) {
+        return res.status(404).json({ message: "Job listing not found" });
+      }
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId || user.linkedBusinessId !== listing.businessId) {
+        return res.status(403).json({ message: "You can only edit your own listings" });
+      }
+
+      const allowedFields = ["title", "description", "imageUrl", "contactPhone", "contactEmail"];
+      const sanitized: Record<string, any> = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          sanitized[key] = req.body[key];
+        }
+      }
+      const updated = await storage.updateJobListing(listingId, sanitized);
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating job listing:", err);
+      res.status(500).json({ message: "Failed to update job listing" });
+    }
+  });
+
+  app.delete("/api/jobs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const listingId = parseInt(req.params.id);
+      const listing = await storage.getJobListing(listingId);
+      if (!listing) {
+        return res.status(404).json({ message: "Job listing not found" });
+      }
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId || user.linkedBusinessId !== listing.businessId) {
+        return res.status(403).json({ message: "You can only delete your own listings" });
+      }
+
+      await storage.deleteJobListing(listingId);
+      res.status(204).send();
+    } catch (err) {
+      console.error("Error deleting job listing:", err);
+      res.status(500).json({ message: "Failed to delete job listing" });
     }
   });
 

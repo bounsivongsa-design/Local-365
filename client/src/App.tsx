@@ -21,6 +21,7 @@ import AdminPromoCodes from "@/pages/AdminPromoCodes";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
 import Legal from "@/pages/Legal";
+import HelpWanted from "@/pages/HelpWanted";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
@@ -50,6 +51,7 @@ function AppRouter() {
           <Route path="/admin/ads" element={<AdminAds />} />
           <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
           <Route path="/membership" element={<BusinessMembership />} />
+          <Route path="/jobs" element={<HelpWanted />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="*" element={<NotFound />} />
@@ -67,6 +69,7 @@ function AppRouter() {
             <ul className="space-y-2 text-sm">
               <li><Link to="/directory" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-directory">Local Businesses</Link></li>
               <li><Link to="/events" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-events">Events Calendar</Link></li>
+              <li><Link to="/jobs" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-jobs">Help Wanted</Link></li>
               <li><Link to="/" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-community">Community Feed</Link></li>
               <li><Link to="/membership" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-membership">Business Membership</Link></li>
               <li><Link to="/advertising" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-advertising">Advertising</Link></li>
