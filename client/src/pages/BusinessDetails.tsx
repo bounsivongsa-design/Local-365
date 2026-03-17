@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle } from "lucide-react";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { Button } from "@/components/ui/button";
@@ -530,17 +530,64 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
   const [isOpen, setIsOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptUploaded, setReceiptUploaded] = useState(false);
+  const [receiptPath, setReceiptPath] = useState("");
   const createReview = useCreateReview();
   const { toast } = useToast();
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: async (response) => {
+      setReceiptPath(response.objectPath);
+      setReceiptUploaded(true);
+      try {
+        const res = await fetch("/api/user/receipts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            fileName: receiptFile?.name || "receipt",
+            fileUrl: response.objectPath,
+          }),
+        });
+        if (!res.ok) {
+          toast({ title: "Warning", description: "Receipt saved locally but could not be recorded on your account.", variant: "destructive" });
+        }
+      } catch {
+        toast({ title: "Warning", description: "Receipt saved locally but could not be recorded on your account.", variant: "destructive" });
+      }
+    },
+    onError: (error) => {
+      setReceiptFile(null);
+      toast({ title: "Upload failed", description: error.message || "Could not upload receipt. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const handleReceiptChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReceiptFile(file);
+      await uploadFile(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createReview.mutate({ businessId, rating, comment }, {
+    if (!receiptUploaded) {
+      toast({ title: "Receipt required", description: "Please upload a receipt or proof of purchase from this business.", variant: "destructive" });
+      return;
+    }
+    createReview.mutate({ businessId, rating, comment, receiptUrl: receiptPath }, {
       onSuccess: () => {
         setIsOpen(false);
         setComment("");
         setRating(5);
+        setReceiptFile(null);
+        setReceiptUploaded(false);
+        setReceiptPath("");
         toast({ title: "Review submitted", description: "Thanks for sharing your feedback!" });
+      },
+      onError: (error) => {
+        toast({ title: "Review failed", description: error.message || "Could not submit your review. Please try again.", variant: "destructive" });
       }
     });
   };
@@ -548,7 +595,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>Write a Review</Button>
+        <Button data-testid="button-write-review">Write a Review</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -564,6 +611,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
                   type="button"
                   onClick={() => setRating(star)}
                   className="focus:outline-none transition-transform hover:scale-110"
+                  data-testid={`button-star-${star}`}
                 >
                   <Star className={`h-8 w-8 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
                 </button>
@@ -578,9 +626,45 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
               onChange={(e) => setComment(e.target.value)}
               required
               className="min-h-[100px]"
+              data-testid="input-review-comment"
             />
           </div>
-          <Button type="submit" disabled={createReview.isPending} className="w-full">
+          <div className="space-y-2">
+            <Label className="font-semibold">
+              Upload Receipt / Proof of Purchase <span className="text-red-500">*</span>
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              To maintain trust and integrity, a receipt or proof of purchase from this business is required to post a review.
+            </p>
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
+              {receiptUploaded ? (
+                <div className="flex items-center justify-center gap-2 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">{receiptFile?.name || "Receipt uploaded"}</span>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleReceiptChange}
+                    className="hidden"
+                    id="review-receipt-upload"
+                    data-testid="input-review-receipt"
+                  />
+                  <label htmlFor="review-receipt-upload" className="cursor-pointer">
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {isUploading ? "Uploading..." : "Click to upload receipt"}
+                      </span>
+                    </div>
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+          <Button type="submit" disabled={createReview.isPending || isUploading} className="w-full" data-testid="button-submit-review">
             {createReview.isPending ? "Submitting..." : "Post Review"}
           </Button>
         </form>

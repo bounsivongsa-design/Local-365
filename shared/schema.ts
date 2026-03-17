@@ -112,7 +112,8 @@ export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   rating: integer("rating").notNull(),
   comment: text("comment").notNull(),
-  userId: varchar("user_id").notNull().references(() => users.id), // Changed to varchar to match users.id
+  receiptUrl: text("receipt_url"),
+  userId: varchar("user_id").notNull().references(() => users.id),
   businessId: integer("business_id").notNull().references(() => businesses.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

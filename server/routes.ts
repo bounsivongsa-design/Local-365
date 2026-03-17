@@ -894,6 +894,9 @@ export async function registerRoutes(
     try {
       const businessId = Number(req.params.id);
       const input = api.reviews.create.input.parse(req.body);
+      if (!input.receiptUrl) {
+        return res.status(400).json({ message: "A receipt or proof of purchase is required to submit a review." });
+      }
       const review = await storage.createReview({
         ...input,
         userId: (req as any).user?.id,
