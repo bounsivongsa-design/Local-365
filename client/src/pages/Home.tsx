@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Truck, Bug, Camera, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Truck, Bug, Camera, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -81,18 +81,6 @@ const DIRECTORY_CATEGORIES = [
   { name: "Shopping / Retail", icon: ShoppingBag },
 ];
 
-const QUICK_CATEGORY_ICONS = [
-  { name: "Home Repair", icon: Wrench },
-  { name: "Plumbing", icon: Droplets },
-  { name: "HVAC", icon: Sparkle },
-  { name: "Electrical", icon: Sparkles },
-  { name: "Roofing", icon: HomeIcon },
-  { name: "Landscaping", icon: TreePine },
-  { name: "Auto Repair", icon: Car },
-  { name: "Restaurants & Dining", icon: UtensilsCrossed },
-  { name: "Beauty & Salon", icon: Scissors },
-  { name: "Cleaning", icon: Sparkle },
-];
 
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
@@ -107,8 +95,6 @@ export default function Home() {
   const [tripResult, setTripResult] = useState<any>(null);
   const [heroSearch, setHeroSearch] = useState("");
   const [showCategoryRequest, setShowCategoryRequest] = useState(false);
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState("");
   const [categoryForm, setCategoryForm] = useState({ categoryName: "", description: "", submitterName: "", submitterEmail: "" });
 
   const categoryRequestMutation = useMutation({
@@ -484,110 +470,48 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Quick Category Icons Row */}
-      <div className="container py-8">
-        <div className="flex items-center justify-center gap-4 md:gap-6 lg:gap-8 flex-wrap">
-          {QUICK_CATEGORY_ICONS.map((cat) => {
+      {/* Browse by Category - Full Icon Grid */}
+      <div className="container py-12">
+        <div className="text-center mb-8">
+          <h2 className="font-display text-3xl font-bold text-foreground">Browse by Category</h2>
+          <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
+        </div>
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4">
+          {[...DIRECTORY_CATEGORIES].sort((a, b) => a.name.localeCompare(b.name)).map((cat) => {
             const IconComponent = cat.icon;
             return (
               <Link
                 key={cat.name}
                 to={`/directory?category=${encodeURIComponent(cat.name)}`}
-                className="flex flex-col items-center gap-1.5 group"
-                data-testid={`quick-category-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
+                className="flex flex-col items-center gap-2 group"
+                data-testid={`category-icon-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
-                  <IconComponent className="h-5 w-5 text-white" />
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:-translate-y-1 group-hover:from-[#d4a373] group-hover:to-[#c4936d] transition-all duration-200">
+                  <IconComponent className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-[10px] md:text-xs font-medium text-muted-foreground group-hover:text-[#0a4a82] transition-colors text-center leading-tight max-w-[72px]">
+                <span className="text-[11px] md:text-xs font-semibold text-foreground/80 group-hover:text-[#0a4a82] transition-colors text-center leading-tight max-w-[80px]">
                   {cat.name}
                 </span>
               </Link>
             );
           })}
         </div>
-      </div>
-
-      {/* Directory Category Dropdown */}
-      <div className="container pt-12">
-        <div className="text-center mb-8">
-          <h2 className="font-display text-3xl font-bold text-foreground">Browse by Category</h2>
-          <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
-        </div>
-        <div className="max-w-lg mx-auto space-y-4">
-          <div className="relative">
-            <button
-              onClick={() => { setCategoryDropdownOpen(!categoryDropdownOpen); setCategorySearch(""); }}
-              className="w-full h-14 pl-12 pr-12 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 font-medium text-base shadow-sm hover:shadow-md hover:border-[#0a4a82]/30 focus:outline-none focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] cursor-pointer transition-all text-left"
-              data-testid="select-category-dropdown"
-            >
-              <Compass className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82]" />
-              <span className="text-gray-400">Select a category...</span>
-              <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {categoryDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setCategoryDropdownOpen(false)} />
-                <div className="absolute z-50 mt-2 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden">
-                  <div className="p-3 border-b border-gray-100 dark:border-slate-700">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search categories..."
-                        value={categorySearch}
-                        onChange={(e) => setCategorySearch(e.target.value)}
-                        className="w-full h-10 pl-9 pr-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#0a4a82]/30"
-                        autoFocus
-                        data-testid="input-category-search"
-                      />
-                    </div>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto">
-                    {[...DIRECTORY_CATEGORIES]
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .filter(cat => cat.name.toLowerCase().includes(categorySearch.toLowerCase()))
-                      .map((cat, idx) => {
-                        const IconComponent = cat.icon;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              setCategoryDropdownOpen(false);
-                              navigate(`/directory?category=${encodeURIComponent(cat.name)}`);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#0a4a82]/5 dark:hover:bg-slate-700 transition-colors text-left"
-                            data-testid={`category-option-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center flex-shrink-0">
-                              <IconComponent className="h-4 w-4 text-white" />
-                            </div>
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{cat.name}</span>
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex justify-center gap-3">
-            <Link to="/directory">
-              <Button variant="outline" className="rounded-xl border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid="button-view-all-categories">
-                <Compass className="mr-2 h-4 w-4" />
-                View All Categories
-              </Button>
-            </Link>
-            <Button
-              variant="outline"
-              onClick={() => setShowCategoryRequest(true)}
-              className="rounded-xl border-[#8a9a5b]/30 text-[#8a9a5b] hover:bg-[#8a9a5b]/5"
-              data-testid="button-suggest-category"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Suggest a Category
+        <div className="flex justify-center gap-3 mt-8">
+          <Link to="/directory">
+            <Button variant="outline" className="rounded-xl border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid="button-view-all-categories">
+              <Compass className="mr-2 h-4 w-4" />
+              View Full Directory
             </Button>
-          </div>
+          </Link>
+          <Button
+            variant="outline"
+            onClick={() => setShowCategoryRequest(true)}
+            className="rounded-xl border-[#8a9a5b]/30 text-[#8a9a5b] hover:bg-[#8a9a5b]/5"
+            data-testid="button-suggest-category"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Suggest a Category
+          </Button>
         </div>
       </div>
 

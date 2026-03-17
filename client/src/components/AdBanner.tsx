@@ -131,15 +131,15 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
         {imageUrl && (
           <img src={imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-25 transition-opacity duration-500" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/70 via-transparent to-[#0a4a82]/50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/80 via-[#0a4a82]/50 to-[#0a4a82]/60" />
         <div className={`relative ${sizeConfig.padding}`}>
           <Badge className={`mb-2 ${sizeConfig.badge} text-white border-none text-xs`}>
             <Megaphone className="h-3 w-3 mr-1.5" />
             {isPlaceholder ? "Ad Space Available" : sizeConfig.label}
           </Badge>
-          <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-md`}>{title}</h3>
+          <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-lg`}>{title}</h3>
           {sizeConfig.showDesc && description && (
-            <p className="text-white/85 max-w-2xl text-sm leading-relaxed">{description}</p>
+            <p className="text-white/95 max-w-2xl text-sm leading-relaxed drop-shadow-sm">{description}</p>
           )}
         </div>
       </div>
@@ -168,15 +168,15 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
             className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-25 transition-opacity duration-500 group-hover:scale-105"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/70 via-transparent to-[#0a4a82]/50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/80 via-[#0a4a82]/50 to-[#0a4a82]/60" />
         <div className="relative p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex-1">
             <Badge className="mb-3 bg-white/20 text-white border border-white/20 hover:bg-white/25">
               <Megaphone className="h-3 w-3 mr-1.5" />
               {isPlaceholder ? "Ad Space Available" : "Sponsored"}
             </Badge>
-            <h3 className="text-2xl md:text-3xl font-bold mb-2 drop-shadow-md">{title}</h3>
-            <p className="text-white/85 max-w-2xl text-sm md:text-base leading-relaxed">{description}</p>
+            <h3 className="text-2xl md:text-3xl font-bold mb-2 drop-shadow-lg">{title}</h3>
+            <p className="text-white/95 max-w-2xl text-sm md:text-base leading-relaxed drop-shadow-sm">{description}</p>
           </div>
           <button
             className="flex items-center gap-2 bg-[#d4a373] text-white px-7 py-3.5 rounded-xl font-semibold hover:bg-[#c49363] shadow-[0_4px_15px_rgba(212,163,115,0.4)] hover:shadow-[0_6px_25px_rgba(212,163,115,0.5)] hover:-translate-y-0.5 transition-[shadow,transform,background-color] duration-200 whitespace-nowrap"

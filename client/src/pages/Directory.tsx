@@ -202,7 +202,7 @@ export default function Directory() {
                   </div>
                   <div>
                     <h2 className="font-bold text-white text-lg">Categories</h2>
-                    <p className="text-white/70 text-xs">Browse by service type</p>
+                    <p className="text-white/90 text-xs">Browse by service type</p>
                   </div>
                 </div>
               </div>
