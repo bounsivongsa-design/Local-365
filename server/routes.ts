@@ -2151,6 +2151,8 @@ async function seedDatabase() {
       { id: 26, name: "Entertainment Services", subs: [] },
       { id: 27, name: "Entertainment Locations", subs: [] },
       { id: 28, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
+      { id: 33, name: "Auto Detailing", subs: [] },
+      { id: 34, name: "Window Tinting", subs: [] },
     ];
     await db.set('categories', categories);
     console.log("Categories seeded!");
