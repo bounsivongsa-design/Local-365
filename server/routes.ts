@@ -1848,7 +1848,9 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
 
   app.get("/api/my-business/win-back", isAuthenticated, async (req: any, res) => {
     try {
-      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.userId, req.user?.id)).limit(1);
+      const linkedBusinessId = req.user?.linkedBusinessId;
+      if (!linkedBusinessId) return res.json({ eligible: false });
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
       if (!biz) return res.json({ eligible: false });
       const now = new Date();
       const [downgrade] = await pgDb.select().from(membershipDowngrades)
