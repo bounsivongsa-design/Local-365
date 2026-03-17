@@ -43,6 +43,16 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 ### Authentication System
 Custom email/password authentication with optional Google OAuth. Passwords are hashed with bcrypt (12 rounds). Sessions stored in PostgreSQL via connect-pg-simple. Google OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars; gracefully disabled when not configured. Auth page at `/auth` with Login/Register tabs. The system supports "customer" and "business" account types, with server-side validation and receipt upload requirements for user verification.
 
+#### Google OAuth Setup
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → Create or select a project
+2. Navigate to APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
+3. Set Application type to "Web application"
+4. Add Authorized redirect URI: `https://<REPLIT_DEV_DOMAIN>/api/auth/google/callback`
+5. Copy Client ID → set as `GOOGLE_CLIENT_ID` env var
+6. Copy Client Secret → set as `GOOGLE_CLIENT_SECRET` env var
+7. The Google login button on `/auth` appears automatically when both env vars are configured
+8. Email normalization (lowercase + trim) ensures deterministic account linking between local and Google accounts
+
 ### Business Membership Tiers
 - **Bronze** ($50/mo): Basic listing, 3 photos, 1 category, 10% ad discount
 - **Silver** ($100/mo): Logo, website link, 10 photos, 3 categories, 25% ad discount, verified badge

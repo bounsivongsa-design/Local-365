@@ -96,7 +96,7 @@ export async function setupAuth(app: Express) {
             }
 
             if (email) {
-              user = await authStorage.getUserByEmail(email);
+              user = await authStorage.getUserByEmail(email.toLowerCase().trim());
               if (user) {
                 await authStorage.linkGoogleId(user.id, googleId, profile.photos?.[0]?.value);
                 const updated = await authStorage.getUser(user.id);
@@ -105,7 +105,7 @@ export async function setupAuth(app: Express) {
             }
 
             const newUser = await authStorage.createUser({
-              email: email || null,
+              email: email ? email.toLowerCase().trim() : null,
               googleId,
               firstName: profile.name?.givenName || null,
               lastName: profile.name?.familyName || null,
@@ -234,7 +234,7 @@ export async function setupAuth(app: Express) {
             const email = profile.emails?.[0]?.value;
 
             if (email) {
-              let user = await authStorage.getUserByEmail(email);
+              let user = await authStorage.getUserByEmail(email.toLowerCase().trim());
               if (user) {
                 return done(null, user);
               }
