@@ -217,6 +217,7 @@ export default function Events() {
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Description</li>
                   <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Cover image</li>
                   <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
                 </ul>
@@ -232,6 +233,7 @@ export default function Events() {
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Description</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
                   <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
                 </ul>
@@ -248,6 +250,7 @@ export default function Events() {
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Description</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Flyer / event link</li>
                 </ul>
@@ -270,8 +273,8 @@ export default function Events() {
 }
 
 const EVENT_BASE_PRICING = {
-  event2Week: { small: 50, medium: 100, large: 100 },
-  eventMonthly: { small: 100, medium: 150, large: 200 },
+  event2Week: { small: 25, medium: 35, large: 50 },
+  eventMonthly: { small: 50, medium: 75, large: 100 },
 };
 
 const EVENT_TIER_DISCOUNTS = [

@@ -30,9 +30,9 @@ export const EVENT_CATEGORIES: EventCategory[] = [
 export interface EventPricingTier {
   id: string;
   name: string;
-  weeklyPrice: number;
+  twoWeekPrice: number;
   monthlyPrice: number;
-  memberWeeklyPrice: number;
+  memberTwoWeekPrice: number;
   memberMonthlyPrice: number;
   features: string[];
   recommended?: boolean;
@@ -40,53 +40,48 @@ export interface EventPricingTier {
 
 export const EVENT_PRICING_TIERS: EventPricingTier[] = [
   {
-    id: "basic",
-    name: "Basic",
-    weeklyPrice: 10,
-    monthlyPrice: 35,
-    memberWeeklyPrice: 5,
-    memberMonthlyPrice: 18,
+    id: "small",
+    name: "Small",
+    twoWeekPrice: 25,
+    monthlyPrice: 50,
+    memberTwoWeekPrice: 13,
+    memberMonthlyPrice: 25,
     features: [
       "Text-only event listing",
       "Listed in event calendar",
       "Category placement",
       "Basic event details (date, time, location)",
-      "Event link to your website",
     ],
   },
   {
-    id: "pro",
-    name: "Pro",
-    weeklyPrice: 25,
-    monthlyPrice: 88,
-    memberWeeklyPrice: 13,
-    memberMonthlyPrice: 44,
+    id: "medium",
+    name: "Medium",
+    twoWeekPrice: 35,
+    monthlyPrice: 75,
+    memberTwoWeekPrice: 18,
+    memberMonthlyPrice: 38,
     recommended: true,
     features: [
-      "Everything in Basic",
-      "Cover image / event flyer upload",
-      "Integrated booking / RSVP form",
-      "Social sharing buttons",
+      "Everything in Small",
+      "Cover image upload",
+      "Event description displayed",
       "Highlighted listing in category",
-      "Event reminder notifications to subscribers",
-      "Attendee analytics dashboard",
+      "Social sharing buttons",
     ],
   },
   {
-    id: "featured",
-    name: "Featured",
-    weeklyPrice: 50,
-    monthlyPrice: 175,
-    memberWeeklyPrice: 25,
-    memberMonthlyPrice: 88,
+    id: "large",
+    name: "Large",
+    twoWeekPrice: 50,
+    monthlyPrice: 100,
+    memberTwoWeekPrice: 25,
+    memberMonthlyPrice: 50,
     features: [
-      "Everything in Pro",
+      "Everything in Medium",
       "Top placement in calendar and listings",
       "Homepage event spotlight banner",
-      "Push notifications to all nearby users",
-      "Custom branding on event page",
+      "Event link to flyer / website",
       "Priority support for event setup",
-      "Post-event analytics report",
       "Featured in weekly email newsletter",
     ],
   },
@@ -111,22 +106,21 @@ export function getEventPricingTier(tierId: string): EventPricingTier | undefine
 
 export function calculateEventCost(
   tierId: string,
-  durationWeeks: number,
+  durationWeeks: 2 | 4,
   isMember: boolean
-): { total: number; savings: number; weeklyRate: number } {
+): { total: number; savings: number } {
   const tier = getEventPricingTier(tierId);
   if (!tier) throw new Error(`Invalid tier: ${tierId}`);
 
-  const weeklyRate = isMember ? tier.memberWeeklyPrice : tier.weeklyPrice;
-  const fullMonths = Math.floor(durationWeeks / 4);
-  const remainingWeeks = durationWeeks % 4;
+  if (durationWeeks === 4) {
+    const total = isMember ? tier.memberMonthlyPrice : tier.monthlyPrice;
+    const fullPrice = tier.monthlyPrice;
+    return { total, savings: fullPrice - total };
+  }
 
-  const monthlyRate = isMember ? tier.memberMonthlyPrice : tier.monthlyPrice;
-  const total = fullMonths * monthlyRate + remainingWeeks * weeklyRate;
-  const fullPrice = durationWeeks * tier.weeklyPrice;
-  const savings = fullPrice - total;
-
-  return { total, savings, weeklyRate };
+  const total = isMember ? tier.memberTwoWeekPrice : tier.twoWeekPrice;
+  const fullPrice = tier.twoWeekPrice;
+  return { total, savings: fullPrice - total };
 }
 
 export function getEventCategoryCount(): number {

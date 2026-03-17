@@ -20,6 +20,7 @@ export function EventCard({ event }: EventCardProps) {
   const date = new Date(event.date);
   const tierLevel = getTierDisplayLevel(event.businessMembershipTier);
   const showImage = tierLevel === "silver" || tierLevel === "gold";
+  const showDescription = tierLevel === "silver" || tierLevel === "gold";
   const showFlyerLink = tierLevel === "gold";
   
   return (
@@ -61,9 +62,12 @@ export function EventCard({ event }: EventCardProps) {
           <span className="truncate">{event.location}</span>
         </div>
         
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
-          {event.description}
-        </p>
+        {showDescription && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
+            {event.description}
+          </p>
+        )}
+        {!showDescription && <div className="flex-1" />}
 
         <div className="flex flex-col gap-2 mt-auto">
           {showFlyerLink && event.flyerUrl && (

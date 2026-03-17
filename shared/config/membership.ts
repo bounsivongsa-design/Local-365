@@ -325,15 +325,15 @@ export const MEMBER_AD_RATES = {
 } as const;
 
 export const EVENT_2WEEK_AD_RATES = {
-  small: { member: 25, nonMember: 50 },
-  medium: { member: 50, nonMember: 100 },
-  large: { member: 50, nonMember: 100 },
+  small: { member: 13, nonMember: 25 },
+  medium: { member: 18, nonMember: 35 },
+  large: { member: 25, nonMember: 50 },
 } as const;
 
 export const EVENT_MONTHLY_AD_RATES = {
-  small: { member: 50, nonMember: 100 },
-  medium: { member: 75, nonMember: 150 },
-  large: { member: 100, nonMember: 200 },
+  small: { member: 25, nonMember: 50 },
+  medium: { member: 38, nonMember: 75 },
+  large: { member: 50, nonMember: 100 },
 } as const;
 
 export type AdSize = keyof typeof MEMBER_AD_RATES;
