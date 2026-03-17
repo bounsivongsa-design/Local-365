@@ -31,6 +31,7 @@ import {
   Ticket,
   Loader2,
   ArrowLeft,
+  Pencil,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -53,6 +54,16 @@ export default function AdminPromoCodes() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
+  const [editForm, setEditForm] = useState({
+    description: "",
+    discountType: "percentage",
+    discountValue: "",
+    applicableTiers: [] as string[],
+    maxUses: "",
+    expiresAt: "",
+  });
   const [newCode, setNewCode] = useState({
     code: "",
     description: "",
@@ -93,6 +104,22 @@ export default function AdminPromoCodes() {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/promo-codes/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+      setEditDialogOpen(false);
+      setEditingPromo(null);
+      toast({ title: "Promo code updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("DELETE", `/api/promo-codes/${id}`);
@@ -103,6 +130,46 @@ export default function AdminPromoCodes() {
       toast({ title: "Promo code deleted" });
     },
   });
+
+  const openEditDialog = (promo: PromoCode) => {
+    setEditingPromo(promo);
+    setEditForm({
+      description: promo.description || "",
+      discountType: promo.discountType,
+      discountValue: String(promo.discountValue),
+      applicableTiers: promo.applicableTiers || [],
+      maxUses: promo.maxUses ? String(promo.maxUses) : "",
+      expiresAt: promo.expiresAt ? new Date(promo.expiresAt).toISOString().slice(0, 16) : "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEdit = () => {
+    if (!editingPromo || !editForm.discountValue) {
+      toast({ title: "Error", description: "Discount value is required", variant: "destructive" });
+      return;
+    }
+    editMutation.mutate({
+      id: editingPromo.id,
+      data: {
+        description: editForm.description || null,
+        discountType: editForm.discountType,
+        discountValue: parseInt(editForm.discountValue),
+        applicableTiers: editForm.applicableTiers.length > 0 ? editForm.applicableTiers : [],
+        maxUses: editForm.maxUses ? parseInt(editForm.maxUses) : null,
+        expiresAt: editForm.expiresAt || null,
+      },
+    });
+  };
+
+  const handleEditTierToggle = (tier: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      applicableTiers: prev.applicableTiers.includes(tier)
+        ? prev.applicableTiers.filter((t) => t !== tier)
+        : [...prev.applicableTiers, tier],
+    }));
+  };
 
   const handleCreate = () => {
     if (!newCode.code || !newCode.discountValue) {
@@ -338,6 +405,14 @@ export default function AdminPromoCodes() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => openEditDialog(promo)}
+                          data-testid={`button-edit-${promo.id}`}
+                        >
+                          <Pencil className="h-4 w-4 text-[#0a4a82]" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => toggleMutation.mutate({ id: promo.id, isActive: !promo.isActive })}
                           data-testid={`button-toggle-${promo.id}`}
                         >
@@ -368,6 +443,98 @@ export default function AdminPromoCodes() {
           </div>
         )}
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Promo Code: {editingPromo?.code}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+              <Input
+                placeholder="e.g. 25% off first month"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                data-testid="input-edit-description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Discount Type</label>
+                <Select value={editForm.discountType} onValueChange={(v) => setEditForm({ ...editForm, discountType: v })}>
+                  <SelectTrigger data-testid="select-edit-discount-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Discount Value {editForm.discountType === "percentage" ? "(%)" : "($)"}
+                </label>
+                <Input
+                  type="number"
+                  value={editForm.discountValue}
+                  onChange={(e) => setEditForm({ ...editForm, discountValue: e.target.value })}
+                  data-testid="input-edit-discount-value"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Applicable Tiers (leave empty for all)</label>
+              <div className="flex gap-2">
+                {["bronze", "silver", "gold"].map((tier) => (
+                  <Button
+                    key={tier}
+                    type="button"
+                    size="sm"
+                    variant={editForm.applicableTiers.includes(tier) ? "default" : "outline"}
+                    onClick={() => handleEditTierToggle(tier)}
+                    className={editForm.applicableTiers.includes(tier) ? "bg-[#0a4a82]" : ""}
+                    data-testid={`button-edit-tier-${tier}`}
+                  >
+                    {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Max Uses (optional)</label>
+                <Input
+                  type="number"
+                  placeholder="Unlimited"
+                  value={editForm.maxUses}
+                  onChange={(e) => setEditForm({ ...editForm, maxUses: e.target.value })}
+                  data-testid="input-edit-max-uses"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires At (optional)</label>
+                <Input
+                  type="datetime-local"
+                  value={editForm.expiresAt}
+                  onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
+                  data-testid="input-edit-expires-at"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleEdit}
+              disabled={editMutation.isPending}
+              className="w-full bg-[#0a4a82] hover:bg-[#083a6a]"
+              data-testid="button-submit-edit"
+            >
+              {editMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

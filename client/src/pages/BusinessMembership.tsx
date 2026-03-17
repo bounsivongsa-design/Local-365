@@ -172,6 +172,16 @@ export default function BusinessMembership() {
     enabled: isAuthenticated && user?.accountType === "business",
   });
 
+  const { data: winBackData } = useQuery<{
+    eligible: boolean;
+    previousTier?: string;
+    downgradedAt?: string;
+    winBackEligibleAt?: string;
+  }>({
+    queryKey: ["/api/my-business/win-back"],
+    enabled: isAuthenticated && user?.accountType === "business",
+  });
+
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
@@ -301,6 +311,14 @@ export default function BusinessMembership() {
               <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#d4a373] to-amber-500 text-white px-6 py-3 rounded-full shadow-lg shadow-amber-500/25">
                 <Gift className="h-5 w-5" />
                 <span className="font-semibold">New Members: First Month FREE!</span>
+              </div>
+            )}
+            {winBackData?.eligible && winBackData.previousTier && (
+              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-6 py-3 rounded-full shadow-lg shadow-emerald-500/25 mt-3" data-testid="banner-win-back">
+                <Gift className="h-5 w-5" />
+                <span className="font-semibold">
+                  Welcome back! Rejoin at your previous {DB_TO_DISPLAY[winBackData.previousTier] || winBackData.previousTier} tier
+                </span>
               </div>
             )}
           </div>

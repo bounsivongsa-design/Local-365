@@ -11,7 +11,7 @@ import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
 import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades } from "@shared/schema";
-import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt } from "drizzle-orm";
+import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -1759,12 +1759,16 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(403).json({ message: "Admin access required" });
       }
       const id = parseInt(req.params.id);
-      const { isActive, description, maxUses, expiresAt } = req.body;
+      const { isActive, description, maxUses, expiresAt, discountType, discountValue, applicableTiers, startsAt } = req.body;
       const updateData: any = {};
       if (isActive !== undefined) updateData.isActive = isActive;
       if (description !== undefined) updateData.description = description;
       if (maxUses !== undefined) updateData.maxUses = maxUses;
       if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      if (startsAt !== undefined) updateData.startsAt = startsAt ? new Date(startsAt) : null;
+      if (discountType !== undefined) updateData.discountType = discountType;
+      if (discountValue !== undefined) updateData.discountValue = discountValue;
+      if (applicableTiers !== undefined) updateData.applicableTiers = applicableTiers;
       const [updated] = await pgDb.update(promoCodes).set(updateData).where(eq(promoCodes.id, id)).returning();
       res.json(updated);
     } catch (err) {
@@ -1839,6 +1843,34 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     } catch (err) {
       console.error("Error fetching downgrades:", err);
       res.status(500).json({ message: "Failed to fetch downgrades" });
+    }
+  });
+
+  app.get("/api/my-business/win-back", isAuthenticated, async (req: any, res) => {
+    try {
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.userId, req.user?.id)).limit(1);
+      if (!biz) return res.json({ eligible: false });
+      const now = new Date();
+      const [downgrade] = await pgDb.select().from(membershipDowngrades)
+        .where(and(
+          eq(membershipDowngrades.businessId, biz.id),
+          lte(membershipDowngrades.winBackEligibleAt, now)
+        ))
+        .orderBy(desc(membershipDowngrades.downgradedAt))
+        .limit(1);
+      if (downgrade) {
+        res.json({
+          eligible: true,
+          previousTier: downgrade.previousTier,
+          downgradedAt: downgrade.downgradedAt,
+          winBackEligibleAt: downgrade.winBackEligibleAt,
+        });
+      } else {
+        res.json({ eligible: false });
+      }
+    } catch (err) {
+      console.error("Error checking win-back eligibility:", err);
+      res.status(500).json({ message: "Failed to check eligibility" });
     }
   });
 
