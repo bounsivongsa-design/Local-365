@@ -359,8 +359,8 @@ export default function Home() {
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-large-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                         <div className="relative aspect-[3/1] overflow-hidden rounded-2xl group">
-                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700" />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
                           <div className="relative h-full flex flex-col justify-center p-8 md:p-10">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] md:text-xs px-3 py-1">
@@ -400,8 +400,8 @@ export default function Home() {
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-medium-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                         <div className="relative aspect-[3.5/1] overflow-hidden rounded-xl group">
-                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-35 group-hover:opacity-45 group-hover:scale-105 transition-all duration-700" />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
+                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent" />
                           <div className="relative h-full flex flex-col justify-center p-5 md:p-8">
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[10px] md:text-xs px-2.5 py-0.5">
@@ -441,8 +441,8 @@ export default function Home() {
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-small-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                         <div className="relative aspect-[3/1] overflow-hidden rounded-lg group">
-                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 group-hover:scale-105 transition-all duration-700" />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent" />
                           <div className="relative h-full flex flex-col justify-center p-4 md:p-6">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[9px] md:text-[10px] px-2 py-0.5">
