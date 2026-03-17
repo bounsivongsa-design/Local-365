@@ -204,6 +204,21 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const currentLarge = largeAds.slides[largeAdPos];
+    if (currentLarge) trackImpression(currentLarge.id);
+  }, [largeAdPos, largeAds.slides]);
+
+  useEffect(() => {
+    const currentMedium = mediumAds.slides[mediumAdPos];
+    if (currentMedium) trackImpression(currentMedium.id);
+  }, [mediumAdPos, mediumAds.slides]);
+
+  useEffect(() => {
+    const currentSmall = smallAds.slides[smallAdPos];
+    if (currentSmall) trackImpression(currentSmall.id);
+  }, [smallAdPos, smallAds.slides]);
+
   const handleAdClick = (slide: AdSlide) => {
     if (slide.id > 0) {
       fetch(`/api/ads/${slide.id}/click`, { method: "POST" }).catch(() => {});
@@ -350,9 +365,7 @@ export default function Home() {
           <div className="relative max-w-5xl mx-auto mb-8">
             <div className="overflow-hidden rounded-2xl">
               <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${largeAdPos * 100}%)` }}>
-                {largeAds.slides.map((slide, idx) => {
-                  if (idx === largeAdPos) trackImpression(slide.id);
-                  return (
+                {largeAds.slides.map((slide, idx) => (
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-large-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                         <div className="relative aspect-[3/1] overflow-hidden rounded-2xl group">
@@ -373,8 +386,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             </div>
             <button onClick={() => setLargeAdPos(prev => (prev - 1 + largeAds.slides.length) % largeAds.slides.length)} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-large-prev">
@@ -394,9 +406,7 @@ export default function Home() {
           <div className="relative w-full sm:max-w-[85%] md:max-w-[75%] mx-auto mb-8">
             <div className="overflow-hidden rounded-xl">
               <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${mediumAdPos * 100}%)` }}>
-                {mediumAds.slides.map((slide, idx) => {
-                  if (idx === mediumAdPos) trackImpression(slide.id);
-                  return (
+                {mediumAds.slides.map((slide, idx) => (
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-medium-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                         <div className="relative aspect-[3.5/1] overflow-hidden rounded-xl group">
@@ -417,8 +427,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             </div>
             <button onClick={() => setMediumAdPos(prev => (prev - 1 + mediumAds.slides.length) % mediumAds.slides.length)} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-medium-prev">
@@ -438,9 +447,7 @@ export default function Home() {
           <div className="relative w-full sm:max-w-[70%] md:max-w-[50%] mx-auto">
             <div className="overflow-hidden rounded-lg">
               <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${smallAdPos * 100}%)` }}>
-                {smallAds.slides.map((slide, idx) => {
-                  if (idx === smallAdPos) trackImpression(slide.id);
-                  return (
+                {smallAds.slides.map((slide, idx) => (
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-small-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                         <div className="relative aspect-[3/1] overflow-hidden rounded-lg group">
@@ -459,8 +466,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             </div>
             <button onClick={() => setSmallAdPos(prev => (prev - 1 + smallAds.slides.length) % smallAds.slides.length)} className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-small-prev">
