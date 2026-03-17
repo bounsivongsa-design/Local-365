@@ -205,7 +205,15 @@ export const categoryRequests = pgTable("category_requests", {
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
-export const insertEventSchema = createInsertSchema(events).omit({ id: true });
+export const insertEventSchema = createInsertSchema(events).omit({ id: true }).refine(
+  (data) => {
+    if (data.flyerUrl && !/^https?:\/\//i.test(data.flyerUrl)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Flyer URL must start with http:// or https://", path: ["flyerUrl"] }
+);
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true, commentCount: true }); 
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, authorId: true, likes: true });
