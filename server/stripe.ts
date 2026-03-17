@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import { businesses, promoCodes, promoCodeUsages, membershipDowngrades } from "@shared/schema";
+import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
@@ -62,6 +62,9 @@ export function registerStripeRoutes(app: Express) {
       res.status(503).json({ message: "Payment system not configured" });
     });
     app.get("/api/stripe/subscription-status", (req, res) => {
+      res.status(503).json({ message: "Payment system not configured" });
+    });
+    app.post("/api/stripe/job-checkout", (req, res) => {
       res.status(503).json({ message: "Payment system not configured" });
     });
     return;
@@ -240,6 +243,80 @@ export function registerStripeRoutes(app: Express) {
     }
   });
 
+  app.post("/api/stripe/job-checkout", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { jobListingId } = req.body;
+
+      if (!jobListingId) {
+        return res.status(400).json({ message: "Job listing ID is required" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId) {
+        return res.status(403).json({ message: "Only business accounts can purchase job listings" });
+      }
+
+      const [listing] = await db.select().from(jobListings).where(eq(jobListings.id, jobListingId));
+      if (!listing) {
+        return res.status(404).json({ message: "Job listing not found" });
+      }
+      if (listing.businessId !== user.linkedBusinessId) {
+        return res.status(403).json({ message: "You can only pay for your own listings" });
+      }
+
+      const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
+      if (!biz) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+
+      const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+
+      const session = await stripe!.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Help Wanted Post — ${listing.title}`,
+                description: `Weekly job listing for ${biz.name} on Local List 365`,
+              },
+              unit_amount: 700,
+              recurring: { interval: "week", interval_count: 1 },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/jobs?session_id={CHECKOUT_SESSION_ID}&success=true`,
+        cancel_url: `${baseUrl}/jobs?canceled=true`,
+        metadata: {
+          type: "job_listing",
+          jobListingId: String(listing.id),
+          businessId: String(biz.id),
+          userId,
+        },
+        subscription_data: {
+          metadata: {
+            type: "job_listing",
+            jobListingId: String(listing.id),
+            businessId: String(biz.id),
+          },
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (err: any) {
+      console.error("Job listing checkout error:", err);
+      res.status(500).json({ message: err.message || "Failed to create checkout session" });
+    }
+  });
+
   app.post("/api/stripe/webhook", async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -264,6 +341,22 @@ export function registerStripeRoutes(app: Express) {
       switch (event.type) {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
+
+          if (session.metadata?.type === "job_listing") {
+            const jobId = parseInt(session.metadata?.jobListingId || "0");
+            if (jobId) {
+              const paidThrough = new Date();
+              paidThrough.setDate(paidThrough.getDate() + 7);
+              await db.update(jobListings).set({
+                isActive: true,
+                paidThroughDate: paidThrough,
+                stripeSubscriptionId: session.subscription as string,
+              }).where(eq(jobListings.id, jobId));
+              console.log(`Job listing ${jobId} activated via Stripe payment`);
+            }
+            break;
+          }
+
           const businessId = parseInt(session.metadata?.businessId || "0");
           const tier = session.metadata?.tier;
           const frequency = session.metadata?.frequency;
@@ -364,6 +457,22 @@ export function registerStripeRoutes(app: Express) {
 
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
+
+          if (subscription.metadata?.type === "job_listing") {
+            const jobId = parseInt(subscription.metadata?.jobListingId || "0");
+            if (jobId) {
+              const [existingListing] = await db.select().from(jobListings).where(eq(jobListings.id, jobId));
+              if (existingListing && existingListing.stripeSubscriptionId === subscription.id) {
+                await db.update(jobListings).set({
+                  isActive: false,
+                  stripeSubscriptionId: null,
+                }).where(eq(jobListings.id, jobId));
+                console.log(`Job listing ${jobId} deactivated — subscription canceled`);
+              }
+            }
+            break;
+          }
+
           let businessId = parseInt(subscription.metadata?.businessId || "0");
 
           if (!businessId) {
@@ -401,10 +510,39 @@ export function registerStripeRoutes(app: Express) {
           break;
         }
 
+        case "invoice.paid": {
+          const invoice = event.data.object as Stripe.Invoice;
+          const subId = invoice.subscription as string;
+          if (subId) {
+            const sub = await stripe!.subscriptions.retrieve(subId);
+            if (sub.metadata?.type === "job_listing") {
+              const jobId = parseInt(sub.metadata?.jobListingId || "0");
+              if (jobId) {
+                const paidThrough = new Date();
+                paidThrough.setDate(paidThrough.getDate() + 7);
+                await db.update(jobListings).set({
+                  isActive: true,
+                  paidThroughDate: paidThrough,
+                }).where(eq(jobListings.id, jobId));
+                console.log(`Job listing ${jobId} renewed — paid through ${paidThrough.toISOString()}`);
+              }
+            }
+          }
+          break;
+        }
+
         case "invoice.payment_failed": {
           const invoice = event.data.object as Stripe.Invoice;
           const subId = invoice.subscription as string;
           if (subId) {
+            const sub = await stripe!.subscriptions.retrieve(subId);
+            if (sub.metadata?.type === "job_listing") {
+              const jobId = parseInt(sub.metadata?.jobListingId || "0");
+              if (jobId) {
+                console.warn(`Payment failed for job listing ${jobId}, subscription ${subId}`);
+              }
+              break;
+            }
             const [biz] = await db.select().from(businesses).where(eq(businesses.stripeSubscriptionId, subId));
             if (biz) {
               console.warn(`Payment failed for business ${biz.id}, subscription ${subId}`);

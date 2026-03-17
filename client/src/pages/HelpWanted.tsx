@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useJobListings, useMyJobListings, useCreateJobListing, useDeleteJobListing } from "@/hooks/use-jobs";
+import { useState, useEffect } from "react";
+import { useJobListings, useMyJobListings, useCreateJobListing, useJobCheckout, useDeleteJobListing } from "@/hooks/use-jobs";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,6 +133,7 @@ function JobCard({ listing }: { listing: JobListingWithBusiness }) {
 function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
   const { toast } = useToast();
   const createMutation = useCreateJobListing();
+  const checkoutMutation = useJobCheckout();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -155,8 +157,18 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         contactEmail: formData.contactEmail || undefined,
       },
       {
-        onSuccess: () => {
-          toast({ title: "Job Posted!", description: "Your help wanted listing is now live." });
+        onSuccess: (listing) => {
+          toast({ title: "Redirecting to payment...", description: "Complete payment to activate your listing." });
+          checkoutMutation.mutate(listing.id, {
+            onSuccess: (data) => {
+              if (data.url) {
+                window.location.href = data.url;
+              }
+            },
+            onError: (err: Error) => {
+              toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+            },
+          });
           setFormData({ title: "", description: "", imageUrl: "", contactPhone: "", contactEmail: "" });
           onSuccess();
         },
@@ -241,9 +253,81 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         className="w-full h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold"
         data-testid="button-post-job"
       >
-        {createMutation.isPending ? "Posting..." : "Post Help Wanted Ad — $7/week"}
+        {createMutation.isPending || checkoutMutation.isPending ? "Processing..." : "Post Help Wanted Ad — $7/week"}
       </Button>
     </form>
+  );
+}
+
+function MyListingsSection({ listings, onDelete, isDeleting }: { listings: import("@shared/schema").JobListing[]; onDelete: (id: number) => void; isDeleting: boolean }) {
+  const checkoutMutation = useJobCheckout();
+  const { toast } = useToast();
+
+  const handlePayNow = (listingId: number) => {
+    checkoutMutation.mutate(listingId, {
+      onSuccess: (data) => {
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      },
+      onError: (err: Error) => {
+        toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+      },
+    });
+  };
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-xl font-bold text-white drop-shadow mb-4 flex items-center gap-2" data-testid="heading-my-listings">
+        <Building2 className="h-5 w-5" />
+        Your Listings
+      </h2>
+      <div className="space-y-3">
+        {listings.map((listing) => (
+          <div key={listing.id} className="flex items-center gap-3">
+            <Card className="flex-1 bg-white/95 backdrop-blur-sm p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-[#1a1a2e]" data-testid={`text-my-job-${listing.id}`}>{listing.title}</h3>
+                    {listing.isActive ? (
+                      <Badge className="bg-green-100 text-green-800 text-xs" data-testid={`badge-active-${listing.id}`}>Active</Badge>
+                    ) : (
+                      <Badge className="bg-amber-100 text-amber-800 text-xs" data-testid={`badge-pending-${listing.id}`}>Pending Payment</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 line-clamp-1">{listing.description}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-3">
+                  {!listing.isActive && (
+                    <Button
+                      size="sm"
+                      className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg text-xs"
+                      onClick={() => handlePayNow(listing.id)}
+                      disabled={checkoutMutation.isPending}
+                      data-testid={`button-pay-job-${listing.id}`}
+                    >
+                      <DollarSign className="h-3 w-3 mr-1" />
+                      Pay $7/wk
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => onDelete(listing.id)}
+                    disabled={isDeleting}
+                    data-testid={`button-delete-job-${listing.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -255,6 +339,20 @@ export default function HelpWanted() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const deleteMutation = useDeleteJobListing();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      toast({ title: "Payment Successful!", description: "Your help wanted listing is now live." });
+      searchParams.delete("success");
+      searchParams.delete("session_id");
+      setSearchParams(searchParams, { replace: true });
+    } else if (searchParams.get("canceled") === "true") {
+      toast({ title: "Payment Canceled", description: "Your listing was saved but is not active yet. You can pay later from your listings.", variant: "destructive" });
+      searchParams.delete("canceled");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id, {
@@ -334,36 +432,7 @@ export default function HelpWanted() {
 
       <div className="container -mt-4 relative z-10">
         {isAuthenticated && isBusinessAccount && myListings && myListings.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-white drop-shadow mb-4 flex items-center gap-2" data-testid="heading-my-listings">
-              <Building2 className="h-5 w-5" />
-              Your Active Listings
-            </h2>
-            <div className="space-y-3">
-              {myListings.map((listing) => (
-                <div key={listing.id} className="flex items-center gap-3">
-                  <Card className="flex-1 bg-white/95 backdrop-blur-sm p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-[#1a1a2e]" data-testid={`text-my-job-${listing.id}`}>{listing.title}</h3>
-                        <p className="text-sm text-gray-500 line-clamp-1">{listing.description}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDelete(listing.id)}
-                        disabled={deleteMutation.isPending}
-                        data-testid={`button-delete-job-${listing.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </Card>
-                </div>
-              ))}
-            </div>
-          </div>
+          <MyListingsSection listings={myListings} onDelete={handleDelete} isDeleting={deleteMutation.isPending} />
         )}
 
         <div className="flex items-center gap-2 mb-6">

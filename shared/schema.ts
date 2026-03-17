@@ -124,7 +124,7 @@ export const jobListings = pgTable("job_listings", {
   imageUrl: text("image_url"),
   contactPhone: text("contact_phone"),
   contactEmail: text("contact_email"),
-  isActive: boolean("is_active").default(true),
+  isActive: boolean("is_active").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   paidThroughDate: timestamp("paid_through_date"),
   stripeSubscriptionId: text("stripe_subscription_id"),

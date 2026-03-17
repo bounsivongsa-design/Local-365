@@ -38,11 +38,29 @@ export function useCreateJobListing() {
         const err = await res.json();
         throw new Error(err.message || "Failed to create listing");
       }
-      return res.json();
+      return res.json() as Promise<JobListing>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/my-listings"] });
+    },
+  });
+}
+
+export function useJobCheckout() {
+  return useMutation({
+    mutationFn: async (jobListingId: number) => {
+      const res = await fetch("/api/stripe/job-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobListingId }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to start checkout");
+      }
+      return res.json() as Promise<{ url: string }>;
     },
   });
 }

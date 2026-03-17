@@ -94,7 +94,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - `EventCard`: Tier-based event display — shows/hides image and flyer link based on business membership tier (Bronze=basic info, Silver=+image, Gold=+image+flyer link)
 - `PromoVideoPlayer`: Displays uploaded promo video with Gold Exclusive badge (BusinessDetails.tsx)
 - `PromoVideoUploader`: Upload/replace/delete promo video, Gold tier owners only (BusinessDetails.tsx)
-- `HelpWanted`: Job board page at `/jobs` — businesses post help wanted ads ($7/week), sorted by membership tier. Business owners can create/delete listings.
+- `HelpWanted`: Job board page at `/jobs` — businesses post help wanted ads ($7/week via Stripe subscription), sorted by membership tier. Listings start inactive until payment completes. Stripe webhook activates listing on `checkout.session.completed`, renews on `invoice.paid`, deactivates on `customer.subscription.deleted`. "My Listings" section shows Active/Pending Payment badges with Pay Now button for unpaid listings.
 
 ## External Dependencies
 
