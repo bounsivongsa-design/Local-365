@@ -137,6 +137,7 @@ export default function QuoteRequests() {
     estimatedDuration: ""
   });
   const [formData, setFormData] = useState({
+    customerName: "",
     title: "",
     description: "",
     category: "",
@@ -236,8 +237,9 @@ export default function QuoteRequests() {
       });
       return;
     }
-    const title = formData.title || `${formData.category} Request`;
-    createRequest.mutate({ ...formData, title });
+    const title = `${formData.category} Request`;
+    const { customerName, ...submitData } = formData;
+    createRequest.mutate({ ...submitData, title });
   };
 
   const handleQuoteSubmit = (e: React.FormEvent) => {
@@ -333,7 +335,7 @@ export default function QuoteRequests() {
                     </div>
                     <Button onClick={() => {
                       setFormSubmitted(false);
-                      setFormData({ title: "", description: "", category: "", budget: "", timeline: "", location: "", phone: "", email: "" });
+                      setFormData({ customerName: "", title: "", description: "", category: "", budget: "", timeline: "", location: "", phone: "", email: "" });
                     }} variant="outline" data-testid="button-submit-another">
                       Submit Another Request
                     </Button>
@@ -356,8 +358,8 @@ export default function QuoteRequests() {
                           <Input
                             id="customer-name"
                             placeholder="Full name"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            value={formData.customerName}
+                            onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                             data-testid="input-customer-name"
                           />
                         </div>
