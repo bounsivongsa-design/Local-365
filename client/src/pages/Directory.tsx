@@ -184,6 +184,7 @@ export default function Directory() {
         </div>
       </div>
 
+      <div className="bg-[#f5f0eb] min-h-screen">
       <div className="container py-8">
         <div className="flex gap-8">
           <aside className="hidden md:block w-72 flex-shrink-0">
@@ -362,6 +363,7 @@ export default function Directory() {
             )}
           </main>
         </div>
+      </div>
       </div>
     </div>
   );
