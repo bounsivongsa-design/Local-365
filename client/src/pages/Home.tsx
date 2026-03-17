@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { usePosts, useLikePost } from "@/hooks/use-posts";
 import { useEvents } from "@/hooks/use-events";
 import { useBusinesses } from "@/hooks/use-businesses";
@@ -7,7 +7,6 @@ import { BusinessCard } from "@/components/BusinessCard";
 import { EventCard } from "@/components/EventCard";
 import { IntakeForm } from "@/components/IntakeForm";
 import { ItineraryBuilder } from "@/components/ItineraryBuilder";
-import { AdBanner } from "@/components/AdBanner";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Plane, Truck, Bug, Camera, Church, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Truck, Bug, Camera, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -75,6 +74,19 @@ const DIRECTORY_CATEGORIES = [
   { name: "Shopping / Retail", icon: ShoppingBag },
 ];
 
+const QUICK_CATEGORY_ICONS = [
+  { name: "Home Repair", icon: Wrench },
+  { name: "Plumbing", icon: Droplets },
+  { name: "HVAC", icon: Sparkle },
+  { name: "Electrical", icon: Sparkles },
+  { name: "Roofing", icon: HomeIcon },
+  { name: "Landscaping", icon: TreePine },
+  { name: "Auto Repair", icon: Car },
+  { name: "Restaurants & Dining", icon: UtensilsCrossed },
+  { name: "Beauty & Salon", icon: Scissors },
+  { name: "Cleaning", icon: Sparkle },
+];
+
 export default function Home() {
   const { data: posts, isLoading: postsLoading } = usePosts();
   const { data: businesses, isLoading: businessesLoading } = useBusinesses();
@@ -110,24 +122,34 @@ export default function Home() {
   const featuredBusinesses = businesses?.slice(0, 3) || [];
   const upcomingEvents = events?.slice(0, 3) || [];
 
-  const adCarouselRef = useRef<HTMLDivElement>(null);
-  const [adScrollPos, setAdScrollPos] = useState(0);
+  const [largeAdPos, setLargeAdPos] = useState(0);
+  const [mediumAdPos, setMediumAdPos] = useState(0);
+  const [smallAdPos, setSmallAdPos] = useState(0);
 
-  const AD_SLIDES: { size: "small" | "medium" | "large"; price: string; title: string; business: string; description: string; image: string; link: string }[] = [
-    { size: "large", price: "$1,000/mo", title: "Full-Service Home Repairs, Renovations & Emergency Calls", business: "Currituck Home Services", description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all. Call today for a free estimate.", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop", link: "/advertising" },
-    { size: "medium", price: "$500/mo", title: "24/7 Emergency HVAC & Plumbing", business: "Currituck Climate Control", description: "Same-day service from licensed technicians. Serving Moyock & surrounding areas.", image: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", link: "/advertising" },
-    { size: "small", price: "$250/mo", title: "Lawn Care & Landscaping", business: "Green Thumb Lawn Care", description: "Weekly mowing and seasonal cleanups.", image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=200&fit=crop", link: "/advertising" },
-    { size: "large", price: "$1,000/mo", title: "Custom Homes, Additions & Luxury Renovations", business: "Coastal Builders Inc.", description: "Award-winning construction company building dream homes across Currituck County. From blueprints to move-in day — your vision, our craftsmanship. Free consultations available.", image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&h=400&fit=crop", link: "/advertising" },
-    { size: "medium", price: "$500/mo", title: "Mobile Mechanic — We Come to You", business: "Moyock Auto Pros", description: "On-site auto repair and diagnostics. Certified mechanics at your door.", image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=300&fit=crop", link: "/advertising" },
-    { size: "small", price: "$250/mo", title: "Pest Control", business: "Shield Pest Solutions", description: "Termite inspections & mosquito treatments.", image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=200&fit=crop", link: "/advertising" },
+  const LARGE_ADS = [
+    { title: "Full-Service Home Repairs, Renovations & Emergency Calls", business: "Currituck Home Services", description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all.", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop", link: "/advertising" },
+    { title: "Custom Homes, Additions & Luxury Renovations", business: "Coastal Builders Inc.", description: "Award-winning construction company building dream homes across Currituck County. From blueprints to move-in day — your vision, our craftsmanship.", image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&h=400&fit=crop", link: "/advertising" },
+    { title: "Coastal Roofing — Storm-Ready Solutions", business: "Currituck County Roofing", description: "GAF-certified roofing pros. Free storm damage inspections, insurance claim assistance, and 25-year warranties on every job.", image: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=800&h=400&fit=crop", link: "/advertising" },
+  ];
+
+  const MEDIUM_ADS = [
+    { title: "24/7 Emergency HVAC & Plumbing", business: "Currituck Climate Control", description: "Same-day service from licensed technicians. Serving Moyock & surrounding areas.", image: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", link: "/advertising" },
+    { title: "Mobile Mechanic — We Come to You", business: "Moyock Auto Pros", description: "On-site auto repair and diagnostics. Certified mechanics at your door.", image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=300&fit=crop", link: "/advertising" },
+    { title: "Professional Tree Care & Removal", business: "Coastal Tree Care", description: "Licensed arborists for trimming, removal, and storm cleanup across Currituck County.", image: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&h=300&fit=crop", link: "/advertising" },
+  ];
+
+  const SMALL_ADS = [
+    { title: "Lawn Care & Landscaping", business: "Green Thumb Lawn Care", image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=200&fit=crop", link: "/advertising" },
+    { title: "Pest Control Experts", business: "Shield Pest Solutions", image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=200&fit=crop", link: "/advertising" },
+    { title: "House Cleaning Services", business: "Crystal Clean Moyock", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=200&fit=crop", link: "/advertising" },
   ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAdScrollPos(prev => (prev + 1) % AD_SLIDES.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [AD_SLIDES.length]);
+    const largeInterval = setInterval(() => setLargeAdPos(prev => (prev + 1) % LARGE_ADS.length), 6000);
+    const mediumInterval = setInterval(() => setMediumAdPos(prev => (prev + 1) % MEDIUM_ADS.length), 5000);
+    const smallInterval = setInterval(() => setSmallAdPos(prev => (prev + 1) % SMALL_ADS.length), 4000);
+    return () => { clearInterval(largeInterval); clearInterval(mediumInterval); clearInterval(smallInterval); };
+  }, []);
 
   const handleHeroSearch = () => {
     if (heroSearch.trim()) {
@@ -245,7 +267,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Businesses Ad Carousel */}
+      {/* 3-Tier Ad Carousels */}
       <div className="relative overflow-hidden py-12">
         <div className="absolute inset-0 bg-gradient-to-br from-[#002147] via-[#0a3068] to-[#001a3a]" />
         <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.1) 20px, rgba(255,255,255,0.1) 22px)' }} />
@@ -257,79 +279,151 @@ export default function Home() {
             <h2 className="font-display text-2xl font-bold text-white">Featured Local Businesses</h2>
             <p className="text-white/70 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
           </div>
-          <div className="relative max-w-4xl mx-auto">
-            <div ref={adCarouselRef} className="overflow-hidden rounded-2xl">
-              <div
-                className="flex transition-transform duration-700 ease-in-out"
-                style={{ transform: `translateX(-${adScrollPos * 100}%)` }}
-              >
-                {AD_SLIDES.map((slide, idx) => {
-                  const sizeStyles = {
-                    large: { width: "w-full", titleClass: "text-xl md:text-3xl", showDesc: true, padding: "p-8 md:p-10", badgeColor: "bg-amber-500", businessSize: "text-base" },
-                    medium: { width: "w-[85%] md:w-[75%]", titleClass: "text-lg md:text-xl", showDesc: true, padding: "p-5 md:p-8", badgeColor: "bg-[#0a4a82]", businessSize: "text-sm" },
-                    small: { width: "w-[65%] md:w-[50%]", titleClass: "text-sm md:text-base", showDesc: false, padding: "p-4 md:p-6", badgeColor: "bg-gray-600", businessSize: "text-xs" },
-                  };
-                  const s = sizeStyles[slide.size];
-                  return (
-                    <div
-                      key={idx}
-                      className="w-full flex-shrink-0 flex items-center justify-center"
-                      data-testid={`ad-slide-${idx}`}
-                    >
-                      <Link to={slide.link} className={`${s.width} transition-all duration-500`}>
-                        <div className="relative aspect-[3/1] overflow-hidden rounded-2xl group cursor-pointer">
-                          <img
-                            src={slide.image}
-                            alt={slide.title}
-                            className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-                          <div className={`relative h-full flex flex-col justify-center ${s.padding}`}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`inline-flex items-center gap-1 ${s.badgeColor} text-white font-bold rounded-full uppercase tracking-wide text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1`}>
-                                {slide.size === "large" ? <Sparkles className="h-3 w-3" /> : <Megaphone className="h-2.5 w-2.5 md:h-3 md:w-3" />}
-                                {slide.size} Ad — {slide.price}
-                              </span>
-                              <span className="text-white/50 text-[10px] md:text-xs hidden sm:inline">Example</span>
-                            </div>
-                            <p className={`text-[#d4a373] ${s.businessSize} font-semibold tracking-wide mb-1`}>{slide.business}</p>
-                            <h3 className={`${s.titleClass} font-bold text-white drop-shadow-md leading-tight`}>{slide.title}</h3>
-                            {s.showDesc && (
-                              <p className="text-white/80 text-xs md:text-sm max-w-lg mt-2 hidden sm:block leading-relaxed">{slide.description}</p>
-                            )}
+
+          {/* Large Ad Carousel — Full Width */}
+          <div className="relative max-w-5xl mx-auto mb-8">
+            <div className="overflow-hidden rounded-2xl">
+              <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${largeAdPos * 100}%)` }}>
+                {LARGE_ADS.map((slide, idx) => (
+                  <div key={idx} className="w-full flex-shrink-0" data-testid={`ad-large-${idx}`}>
+                    <Link to={slide.link} className="block w-full">
+                      <div className="relative aspect-[3/1] overflow-hidden rounded-2xl group cursor-pointer">
+                        <img src={slide.image} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+                        <div className="relative h-full flex flex-col justify-center p-8 md:p-10">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] md:text-xs px-3 py-1">
+                              <Sparkles className="h-3 w-3" />
+                              Large Ad — $1,000/mo
+                            </span>
+                            <span className="text-white/50 text-[10px] md:text-xs hidden sm:inline">Example</span>
                           </div>
+                          <p className="text-[#d4a373] text-base font-semibold tracking-wide mb-1">{slide.business}</p>
+                          <h3 className="text-xl md:text-3xl font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
+                          <p className="text-white/80 text-xs md:text-sm max-w-lg mt-2 hidden sm:block leading-relaxed">{slide.description}</p>
                         </div>
-                      </Link>
-                    </div>
-                  );
-                })}
+                      </div>
+                    </Link>
+                  </div>
+                ))}
               </div>
             </div>
-            <button
-              onClick={() => setAdScrollPos(prev => (prev - 1 + AD_SLIDES.length) % AD_SLIDES.length)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-              data-testid="ad-carousel-prev"
-            >
+            <button onClick={() => setLargeAdPos(prev => (prev - 1 + LARGE_ADS.length) % LARGE_ADS.length)} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-large-prev">
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <button
-              onClick={() => setAdScrollPos(prev => (prev + 1) % AD_SLIDES.length)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-              data-testid="ad-carousel-next"
-            >
+            <button onClick={() => setLargeAdPos(prev => (prev + 1) % LARGE_ADS.length)} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-large-next">
               <ChevronRight className="h-5 w-5" />
             </button>
-            <div className="flex justify-center gap-2 mt-4">
-              {AD_SLIDES.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setAdScrollPos(idx)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${idx === adScrollPos ? 'bg-[#d4a373] w-6' : 'bg-white/40 hover:bg-white/60'}`}
-                  data-testid={`ad-dot-${idx}`}
-                />
+            <div className="flex justify-center gap-2 mt-3">
+              {LARGE_ADS.map((_, idx) => (
+                <button key={idx} onClick={() => setLargeAdPos(idx)} className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${idx === largeAdPos ? 'bg-[#d4a373] w-6' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-large-dot-${idx}`} />
               ))}
             </div>
           </div>
+
+          {/* Medium Ad Carousel — 75% Width */}
+          <div className="relative w-full sm:max-w-[85%] md:max-w-[75%] mx-auto mb-8">
+            <div className="overflow-hidden rounded-xl">
+              <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${mediumAdPos * 100}%)` }}>
+                {MEDIUM_ADS.map((slide, idx) => (
+                  <div key={idx} className="w-full flex-shrink-0" data-testid={`ad-medium-${idx}`}>
+                    <Link to={slide.link} className="block w-full">
+                      <div className="relative aspect-[3.5/1] overflow-hidden rounded-xl group cursor-pointer">
+                        <img src={slide.image} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-35 group-hover:opacity-45 group-hover:scale-105 transition-all duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
+                        <div className="relative h-full flex flex-col justify-center p-5 md:p-8">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[10px] md:text-xs px-2.5 py-0.5">
+                              <Megaphone className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                              Medium Ad — $500/mo
+                            </span>
+                            <span className="text-white/50 text-[10px] md:text-xs hidden sm:inline">Example</span>
+                          </div>
+                          <p className="text-[#d4a373] text-sm font-semibold tracking-wide mb-1">{slide.business}</p>
+                          <h3 className="text-lg md:text-xl font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
+                          <p className="text-white/80 text-xs md:text-sm max-w-md mt-1.5 hidden sm:block leading-relaxed">{slide.description}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => setMediumAdPos(prev => (prev - 1 + MEDIUM_ADS.length) % MEDIUM_ADS.length)} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-medium-prev">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button onClick={() => setMediumAdPos(prev => (prev + 1) % MEDIUM_ADS.length)} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-medium-next">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <div className="flex justify-center gap-2 mt-3">
+              {MEDIUM_ADS.map((_, idx) => (
+                <button key={idx} onClick={() => setMediumAdPos(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === mediumAdPos ? 'bg-[#d4a373] w-5' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-medium-dot-${idx}`} />
+              ))}
+            </div>
+          </div>
+
+          {/* Small Ad Carousel — 50% Width */}
+          <div className="relative w-full sm:max-w-[70%] md:max-w-[50%] mx-auto">
+            <div className="overflow-hidden rounded-lg">
+              <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${smallAdPos * 100}%)` }}>
+                {SMALL_ADS.map((slide, idx) => (
+                  <div key={idx} className="w-full flex-shrink-0" data-testid={`ad-small-${idx}`}>
+                    <Link to={slide.link} className="block w-full">
+                      <div className="relative aspect-[3/1] overflow-hidden rounded-lg group cursor-pointer">
+                        <img src={slide.image} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 group-hover:scale-105 transition-all duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+                        <div className="relative h-full flex flex-col justify-center p-4 md:p-6">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[9px] md:text-[10px] px-2 py-0.5">
+                              <Megaphone className="h-2.5 w-2.5" />
+                              Small Ad — $250/mo
+                            </span>
+                          </div>
+                          <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.business}</p>
+                          <h3 className="text-sm md:text-base font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => setSmallAdPos(prev => (prev - 1 + SMALL_ADS.length) % SMALL_ADS.length)} className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-small-prev">
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setSmallAdPos(prev => (prev + 1) % SMALL_ADS.length)} className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors" data-testid="ad-small-next">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+            <div className="flex justify-center gap-1.5 mt-3">
+              {SMALL_ADS.map((_, idx) => (
+                <button key={idx} onClick={() => setSmallAdPos(idx)} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === smallAdPos ? 'bg-[#d4a373] w-4' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-small-dot-${idx}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Category Icons Row */}
+      <div className="container py-8">
+        <div className="flex items-center justify-center gap-4 md:gap-6 lg:gap-8 flex-wrap">
+          {QUICK_CATEGORY_ICONS.map((cat) => {
+            const IconComponent = cat.icon;
+            return (
+              <Link
+                key={cat.name}
+                to={`/directory?category=${encodeURIComponent(cat.name)}`}
+                className="flex flex-col items-center gap-1.5 group"
+                data-testid={`quick-category-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
+                  <IconComponent className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-[10px] md:text-xs font-medium text-muted-foreground group-hover:text-[#0a4a82] transition-colors text-center leading-tight max-w-[72px]">
+                  {cat.name}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

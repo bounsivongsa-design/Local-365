@@ -6,7 +6,7 @@ import { Megaphone, ArrowRight, Star, Sparkles } from "lucide-react";
 import type { AdPlacement } from "@shared/schema";
 
 interface AdBannerProps {
-  placementType: "homepage_banner" | "featured_listing" | "category_spotlight" | "directory_boost";
+  placementType: "homepage_banner" | "large_banner" | "medium_banner" | "small_banner" | "featured_listing" | "category_spotlight" | "directory_boost";
   category?: string;
   className?: string;
   limit?: number;
@@ -17,6 +17,24 @@ const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imag
     title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More",
     description: "Find licensed and insured contractors right here in Moyock and Currituck County. From emergency repairs to full home renovations — your neighbors trust Local List 365.",
     imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&h=400&fit=crop",
+    linkUrl: "/advertising",
+  }],
+  large_banner: [{
+    title: "Full-Service Home Repairs, Renovations & Emergency Calls",
+    description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all.",
+    imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop",
+    linkUrl: "/advertising",
+  }],
+  medium_banner: [{
+    title: "24/7 Emergency HVAC & Plumbing",
+    description: "Same-day service from licensed technicians. Serving Moyock & surrounding areas.",
+    imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop",
+    linkUrl: "/advertising",
+  }],
+  small_banner: [{
+    title: "Lawn Care & Landscaping",
+    description: "Weekly mowing and seasonal cleanups for Moyock homes and businesses.",
+    imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=200&fit=crop",
     linkUrl: "/advertising",
   }],
   featured_listing: [
@@ -88,6 +106,45 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
 
   const hasRealAds = ads && ads.length > 0;
   const placeholders = PLACEHOLDER_ADS[placementType] || [];
+
+  if (placementType === "large_banner" || placementType === "medium_banner" || placementType === "small_banner") {
+    const ad = hasRealAds ? ads[0] : null;
+    const placeholder = placeholders[0];
+    const title = (ad as any)?.title || placeholder?.title || "";
+    const description = (ad as any)?.description || placeholder?.description || "";
+    const imageUrl = (ad as any)?.imageUrl || placeholder?.imageUrl || "";
+    const isPlaceholder = !ad;
+
+    const sizeConfig = {
+      large_banner: { rounded: "rounded-2xl", padding: "p-8 md:p-10", titleSize: "text-2xl md:text-3xl", showDesc: true, badge: "bg-amber-500", label: "Large Ad — $1,000/mo" },
+      medium_banner: { rounded: "rounded-xl", padding: "p-5 md:p-8", titleSize: "text-lg md:text-xl", showDesc: true, badge: "bg-[#0a4a82]", label: "Medium Ad — $500/mo" },
+      small_banner: { rounded: "rounded-lg", padding: "p-4 md:p-6", titleSize: "text-sm md:text-base", showDesc: false, badge: "bg-gray-600", label: "Small Ad — $250/mo" },
+    }[placementType];
+
+    return (
+      <div
+        className={`relative overflow-hidden ${sizeConfig.rounded} text-white cursor-pointer group ${className}`}
+        onClick={() => isPlaceholder ? (window.location.href = "/advertising") : ad && handleClick(ad)}
+        data-testid={`ad-${placementType}-${(ad as any)?.id || "placeholder"}`}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82] via-[#0d5a9e] to-[#0a4a82]/90" />
+        {imageUrl && (
+          <img src={imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-25 transition-opacity duration-500" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/70 via-transparent to-[#0a4a82]/50" />
+        <div className={`relative ${sizeConfig.padding}`}>
+          <Badge className={`mb-2 ${sizeConfig.badge} text-white border-none text-xs`}>
+            <Megaphone className="h-3 w-3 mr-1.5" />
+            {isPlaceholder ? "Ad Space Available" : sizeConfig.label}
+          </Badge>
+          <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-md`}>{title}</h3>
+          {sizeConfig.showDesc && description && (
+            <p className="text-white/85 max-w-2xl text-sm leading-relaxed">{description}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (placementType === "homepage_banner") {
     const ad = hasRealAds ? ads[0] : null;
