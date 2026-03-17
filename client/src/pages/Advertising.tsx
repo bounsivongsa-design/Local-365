@@ -77,9 +77,9 @@ const placementIcons: Record<string, any> = {
 };
 
 const AD_BASE_PRICING = {
-  monthly: { small: 500, medium: 1000, large: 2000 },
-  event2Week: { small: 150, medium: 300, large: 600 },
-  eventMonthly: { small: 250, medium: 500, large: 900 },
+  monthly: { small: 250, medium: 500, large: 1000 },
+  event2Week: { small: 50, medium: 100, large: 100 },
+  eventMonthly: { small: 100, medium: 150, large: 200 },
 };
 
 const TIER_DISCOUNTS = [

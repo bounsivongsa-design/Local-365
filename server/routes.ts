@@ -682,8 +682,19 @@ export async function registerRoutes(
 
   // Events
   app.get(api.events.list.path, async (req, res) => {
-    const events = await storage.getEvents();
-    res.json(events);
+    const allEvents = await storage.getEvents();
+    const eventsWithTier = await Promise.all(
+      allEvents.map(async (event) => {
+        let businessMembershipTier: string | null = null;
+        if (event.businessId) {
+          const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier })
+            .from(businesses).where(eq(businesses.id, event.businessId)).limit(1);
+          if (biz) businessMembershipTier = biz.membershipTier;
+        }
+        return { ...event, businessMembershipTier };
+      })
+    );
+    res.json(eventsWithTier);
   });
 
   app.post(api.events.create.path, isAuthenticated, async (req, res) => {

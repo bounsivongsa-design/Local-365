@@ -319,21 +319,21 @@ export function getMembershipBadge(tierId: string): BadgeInfo | undefined {
 }
 
 export const MEMBER_AD_RATES = {
-  small: { member: 250, nonMember: 500 },
-  medium: { member: 500, nonMember: 1000 },
-  large: { member: 1000, nonMember: 2000 },
+  small: { member: 125, nonMember: 250 },
+  medium: { member: 250, nonMember: 500 },
+  large: { member: 500, nonMember: 1000 },
 } as const;
 
 export const EVENT_2WEEK_AD_RATES = {
-  small: { member: 75, nonMember: 150 },
-  medium: { member: 150, nonMember: 300 },
-  large: { member: 300, nonMember: 600 },
+  small: { member: 25, nonMember: 50 },
+  medium: { member: 50, nonMember: 100 },
+  large: { member: 50, nonMember: 100 },
 } as const;
 
 export const EVENT_MONTHLY_AD_RATES = {
-  small: { member: 125, nonMember: 250 },
-  medium: { member: 250, nonMember: 500 },
-  large: { member: 450, nonMember: 900 },
+  small: { member: 50, nonMember: 100 },
+  medium: { member: 75, nonMember: 150 },
+  large: { member: 100, nonMember: 200 },
 } as const;
 
 export type AdSize = keyof typeof MEMBER_AD_RATES;

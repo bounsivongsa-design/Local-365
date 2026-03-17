@@ -201,6 +201,60 @@ export default function Events() {
 
           <EventAdPricingGrid />
 
+          <div className="mt-12 max-w-4xl mx-auto">
+            <h3 className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-6" data-testid="heading-event-display-tiers">
+              Event Display by Membership Tier
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm" data-testid="card-event-tier-bronze">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-700 to-amber-600 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Bronze</h4>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Cover image</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
+                </ul>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-300 dark:border-gray-600 shadow-sm" data-testid="card-event-tier-silver">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-500 to-gray-400 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Silver</h4>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
+                </ul>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 border-yellow-400 dark:border-yellow-600 shadow-lg ring-1 ring-yellow-400/20" data-testid="card-event-tier-gold">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-600 to-amber-500 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Gold</h4>
+                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold">Best Value</span>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Flyer / event link</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div className="text-center mt-8">
             <Link to="/advertising">
               <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold" data-testid="link-full-advertising">
@@ -216,8 +270,8 @@ export default function Events() {
 }
 
 const EVENT_BASE_PRICING = {
-  event2Week: { small: 150, medium: 300, large: 600 },
-  eventMonthly: { small: 250, medium: 500, large: 900 },
+  event2Week: { small: 50, medium: 100, large: 100 },
+  eventMonthly: { small: 100, medium: 150, large: 200 },
 };
 
 const EVENT_TIER_DISCOUNTS = [
@@ -402,6 +456,17 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
             <FormItem>
               <FormLabel>Cover Image URL (Optional)</FormLabel>
               <FormControl><Input placeholder="https://..." {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="flyerUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Flyer / Event Link URL (Optional)</FormLabel>
+              <FormControl><Input placeholder="https://..." {...field} value={field.value || ""} data-testid="input-event-flyer" /></FormControl>
               <FormMessage />
             </FormItem>
           )}

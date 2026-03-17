@@ -42,10 +42,10 @@ export const EVENT_PRICING_TIERS: EventPricingTier[] = [
   {
     id: "basic",
     name: "Basic",
-    weeklyPrice: 15,
-    monthlyPrice: 50,
-    memberWeeklyPrice: 8,
-    memberMonthlyPrice: 25,
+    weeklyPrice: 10,
+    monthlyPrice: 35,
+    memberWeeklyPrice: 5,
+    memberMonthlyPrice: 18,
     features: [
       "Text-only event listing",
       "Listed in event calendar",
@@ -57,10 +57,10 @@ export const EVENT_PRICING_TIERS: EventPricingTier[] = [
   {
     id: "pro",
     name: "Pro",
-    weeklyPrice: 50,
-    monthlyPrice: 175,
-    memberWeeklyPrice: 25,
-    memberMonthlyPrice: 88,
+    weeklyPrice: 25,
+    monthlyPrice: 88,
+    memberWeeklyPrice: 13,
+    memberMonthlyPrice: 44,
     recommended: true,
     features: [
       "Everything in Basic",
@@ -75,10 +75,10 @@ export const EVENT_PRICING_TIERS: EventPricingTier[] = [
   {
     id: "featured",
     name: "Featured",
-    weeklyPrice: 100,
-    monthlyPrice: 350,
-    memberWeeklyPrice: 50,
-    memberMonthlyPrice: 175,
+    weeklyPrice: 50,
+    monthlyPrice: 175,
+    memberWeeklyPrice: 25,
+    memberMonthlyPrice: 88,
     features: [
       "Everything in Pro",
       "Top placement in calendar and listings",

@@ -7,7 +7,8 @@ import {
   businesses,
   events,
   posts,
-  reviews
+  reviews,
+  type EventWithTier
 } from './schema';
 
 export const errorSchemas = {
@@ -63,7 +64,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/events',
       responses: {
-        200: z.array(z.custom<typeof events.$inferSelect>()),
+        200: z.array(z.custom<EventWithTier>()),
       },
     },
     create: {

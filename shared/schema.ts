@@ -82,6 +82,7 @@ export const events = pgTable("events", {
   state: text("state").default("NC"),
   zipCode: text("zip_code").default("27929"),
   imageUrl: text("image_url"),
+  flyerUrl: text("flyer_url"),
   businessId: integer("business_id").references(() => businesses.id),
 });
 
@@ -244,6 +245,7 @@ export type CreatePostRequest = z.infer<typeof insertPostSchema>;
 export type CreateReviewRequest = z.infer<typeof insertReviewSchema>;
 
 // Complex response types
+export type EventWithTier = Event & { businessMembershipTier?: string | null };
 export type BusinessWithRating = Business & { averageRating: number; reviewCount: number };
 export type PostWithAuthor = Post & { author: typeof users.$inferSelect | null; comments?: CommentWithAuthor[] };
 export type CommentWithAuthor = Comment & { author: typeof users.$inferSelect | null };
