@@ -30,7 +30,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Key Database Tables
 - `users`: Stores user accounts with `accountType` (loyalty columns still in DB but feature is deferred).
-- `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `isVeteran`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), owner info (`ownerName`), `businessHours` (JSON), `socialMediaUrls` (JSON), `searchKeywords` (250 char max), `additionalCategories` (text array), membership tiers, and ratings.
+- `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `isVeteran`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), owner info (`ownerName`), `email` (required), `businessHours` (JSON), `socialMediaUrls` (JSON), `searchKeywords` (250 char max), `additionalCategories` (text array), membership tiers, and ratings.
 - `quoteRequests`: Handles customer project requests.
 - `quotes`: Stores business bids on customer projects.
 - `events`: Contains local events calendar data.

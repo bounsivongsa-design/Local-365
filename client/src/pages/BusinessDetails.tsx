@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play } from "lucide-react";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,17 @@ export default function BusinessDetails() {
                      <h4 className="font-semibold mb-1">Phone</h4>
                      <a href={`tel:${business.phone}`} className="text-[#0a4a82] hover:underline" data-testid="link-phone">
                        {business.phone}
+                     </a>
+                   </div>
+                 </div>
+               )}
+               {business.email && (
+                 <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
+                   <Mail className="h-5 w-5 text-primary mt-0.5" />
+                   <div>
+                     <h4 className="font-semibold mb-1">Email</h4>
+                     <a href={`mailto:${business.email}`} className="text-[#0a4a82] hover:underline" data-testid="link-email">
+                       {business.email}
                      </a>
                    </div>
                  </div>

@@ -101,6 +101,7 @@ const formSchema = insertBusinessSchema.extend({
   name: z.string().min(2, "Business name must be at least 2 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   ownerName: z.string().min(2, "Owner name is required"),
+  email: z.string().email("Valid email address is required"),
   phone: z.string().min(7, "Valid phone number is required"),
   category: z.string().min(1, "Please select a primary category"),
   establishedYear: z.coerce
@@ -161,6 +162,7 @@ export function CreateBusinessForm({
       isLicensed: false,
       isVeteran: false,
       ownerName: "",
+      email: "",
       phone: "",
       websiteUrl: "",
       establishedYear: "",
@@ -225,7 +227,7 @@ export function CreateBusinessForm({
       (errors) => {
         const errorFields = Object.keys(errors);
         const step0Fields = ["name", "description", "servicesResidential", "servicesCommercial"];
-        const step1Fields = ["ownerName", "phone"];
+        const step1Fields = ["ownerName", "email", "phone"];
         const step2Fields = ["establishedYear", "establishedZipCode"];
         const step3Fields = ["category"];
 
@@ -260,7 +262,7 @@ export function CreateBusinessForm({
         setServiceTypeError("");
         break;
       case 1:
-        fieldsToValidate = ["ownerName", "phone"];
+        fieldsToValidate = ["ownerName", "email", "phone"];
         break;
       case 2:
         fieldsToValidate = ["establishedYear", "establishedZipCode"];
@@ -536,6 +538,28 @@ export function CreateBusinessForm({
                 {...field}
                 value={field.value || ""}
                 data-testid="input-owner-name"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              Email Address <span className="text-red-500">*</span>
+            </FormLabel>
+            <FormControl>
+              <Input
+                placeholder="info@yourbusiness.com"
+                type="email"
+                {...field}
+                value={field.value || ""}
+                data-testid="input-business-email"
               />
             </FormControl>
             <FormMessage />

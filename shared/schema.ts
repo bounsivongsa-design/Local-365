@@ -55,6 +55,7 @@ export const businesses = pgTable("businesses", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   phone: text("phone"),
+  email: text("email"),
   websiteUrl: text("website_url"),
   logoUrl: text("logo_url"),
   promoVideoUrl: text("promo_video_url"),
