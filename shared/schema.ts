@@ -37,6 +37,7 @@ export const businesses = pgTable("businesses", {
   businessHours: text("business_hours"), // JSON string of hours per day
   socialMediaUrls: text("social_media_urls"), // JSON string of social media links
   searchKeywords: text("search_keywords"), // Comma-separated keywords for search, max 250 chars
+  localOperationDescription: text("local_operation_description"),
   additionalCategories: text("additional_categories").array().default([]),
   
   // Local 365 Partner Program - perks businesses offer to elite members

@@ -68,6 +68,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - **Content Organization**: Dynamic content updates based on selected location; categorized listings and event displays.
 - **Advertising**: Tiered advertising models with 4-column pricing grids (Non-Member, Bronze, Silver, Gold).
 - **Business Credentials**: Visual badges for LLC, Licensed, Insured, membership tier, and service types (Commercial/Residential).
+- **Local Vendor Eligibility Policy**: Dedicated legal page section (`/legal?section=vendor-eligibility`) enforcing local-only business listings. Referenced in Terms of Service. Business signup form requires local operation description field and policy acknowledgment checkbox on Step 1 — businesses cannot proceed without accepting. Policy allows independent consultants (e.g., Mary Kay) if locally operated, while blocking franchises/chains/corporate ops. DB column: `localOperationDescription` on `businesses` table.
 
 ### Technical Implementations
 - **Distance Filtering**: Utilizes Haversine formula with zip code coordinate lookup (`client/src/lib/zip-coordinates.ts`). Businesses with unknown zip codes are excluded when radius filter is active.

@@ -26,6 +26,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 import {
   Shield,
   FileCheck,
@@ -39,6 +40,8 @@ import {
   Tags,
   Award,
   CheckCircle2,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 
 interface Props {
@@ -115,6 +118,8 @@ const formSchema = insertBusinessSchema.extend({
     .string()
     .max(250, "Keywords must be 250 characters or less")
     .optional(),
+  localOperationDescription: z.string().min(20, "Please describe how your business is independently owned and locally operated (at least 20 characters)"),
+  policyAcknowledged: z.literal(true, { errorMap: () => ({ message: "You must acknowledge the Local Vendor Eligibility Policy to proceed" }) }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -171,6 +176,8 @@ export function CreateBusinessForm({
       servicesCommercial: false,
       searchKeywords: "",
       logoUrl: "",
+      localOperationDescription: "",
+      policyAcknowledged: false as any,
     },
   });
 
@@ -192,12 +199,13 @@ export function CreateBusinessForm({
           Object.entries(socialMedia).filter(([, v]) => v.trim() !== "")
         );
 
+        const { policyAcknowledged, ...restData } = data;
         const submitData = {
-          ...data,
+          ...restData,
           imageUrl:
-            data.imageUrl ||
+            restData.imageUrl ||
             "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop",
-          address: data.address || `${data.establishedZipCode}`,
+          address: restData.address || `${restData.establishedZipCode}`,
           businessHours: JSON.stringify(businessHours),
           socialMediaUrls:
             Object.keys(socialMediaUrls).length > 0
@@ -226,7 +234,7 @@ export function CreateBusinessForm({
       },
       (errors) => {
         const errorFields = Object.keys(errors);
-        const step0Fields = ["name", "description", "servicesResidential", "servicesCommercial"];
+        const step0Fields = ["name", "description", "servicesResidential", "servicesCommercial", "localOperationDescription", "policyAcknowledged"];
         const step1Fields = ["ownerName", "email", "phone"];
         const step2Fields = ["establishedYear", "establishedZipCode"];
         const step3Fields = ["category"];
@@ -254,7 +262,7 @@ export function CreateBusinessForm({
     let fieldsToValidate: (keyof FormValues)[] = [];
     switch (step) {
       case 0:
-        fieldsToValidate = ["name", "description"];
+        fieldsToValidate = ["name", "description", "localOperationDescription", "policyAcknowledged"];
         if (!form.getValues("servicesResidential") && !form.getValues("servicesCommercial")) {
           setServiceTypeError("Please select at least one service type");
           return false;
@@ -473,6 +481,76 @@ export function CreateBusinessForm({
         {serviceTypeError && (
           <p className="text-sm text-red-500">{serviceTypeError}</p>
         )}
+      </div>
+
+      <div className="rounded-xl border-2 border-[#0a4a82] bg-[#0a4a82]/5 p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-6 w-6 text-[#0a4a82] shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-base font-bold text-[#0a4a82]">Local Vendor Eligibility Policy</h4>
+            <p className="text-sm text-gray-700 mt-1 leading-relaxed">
+              Local List 365 is exclusively for <strong>independently owned and locally operated businesses</strong> serving Currituck County. National chains, franchises, and corporate-controlled operations are <strong>not eligible</strong>.
+            </p>
+            <Link
+              to="/legal?section=vendor-eligibility"
+              target="_blank"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#0a4a82] hover:underline mt-2"
+              data-testid="link-vendor-eligibility-policy"
+            >
+              Read Full Eligibility Policy <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="localOperationDescription"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-semibold text-[#1a1a2e]">
+                How is your business independently owned and locally operated? <span className="text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe how your business is independently owned and locally operated (e.g., home-based sales, personal customer relationships, locally operated without franchise agreements)."
+                  rows={3}
+                  {...field}
+                  value={field.value || ""}
+                  data-testid="input-local-operation-description"
+                />
+              </FormControl>
+              <FormDescription className="text-xs">
+                Independent consultants: describe how your business is personally run and community-focused.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="policyAcknowledged"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-[#0a4a82]/20 bg-white p-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value ?? false}
+                  onCheckedChange={field.onChange}
+                  data-testid="checkbox-policy-acknowledged"
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="text-sm font-semibold cursor-pointer text-[#1a1a2e]">
+                  I acknowledge and agree to the Local Vendor Eligibility Policy <span className="text-red-500">*</span>
+                </FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  I confirm my business is independently owned, locally operated, and is not a franchise, chain, or corporate-controlled operation.
+                </p>
+                <FormMessage />
+              </div>
+            </FormItem>
+          )}
+        />
       </div>
 
       <FormField
