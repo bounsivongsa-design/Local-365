@@ -475,10 +475,11 @@ export default function Home() {
       </div>
 
       {/* Browse by Category - Full Icon Grid */}
-      <div className="container py-12">
+      <div className="bg-[#f5f0eb] py-12">
+      <div className="container">
         <div className="text-center mb-8">
-          <h2 className="font-display text-3xl font-bold text-foreground">Browse by Category</h2>
-          <p className="text-muted-foreground mt-2">Find trusted local professionals in {selectedLocation.city}</p>
+          <h2 className="font-display text-3xl font-bold text-[#1a1a2e]">Browse by Category</h2>
+          <p className="text-[#555] mt-2">Find trusted local professionals in {selectedLocation.city}</p>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4">
           {[...DIRECTORY_CATEGORIES].sort((a, b) => a.name.localeCompare(b.name)).map((cat) => {
@@ -493,7 +494,7 @@ export default function Home() {
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:-translate-y-1 group-hover:from-[#d4a373] group-hover:to-[#c4936d] transition-all duration-200">
                   <IconComponent className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-[11px] md:text-xs font-semibold text-foreground/80 group-hover:text-[#0a4a82] transition-colors text-center leading-tight max-w-[80px]">
+                <span className="text-[11px] md:text-xs font-semibold text-[#1a1a2e] group-hover:text-[#0a4a82] transition-colors text-center leading-tight max-w-[80px]">
                   {cat.name}
                 </span>
               </Link>
@@ -517,6 +518,7 @@ export default function Home() {
             Suggest a Category
           </Button>
         </div>
+      </div>
       </div>
 
       {/* Category Suggestion Dialog */}
