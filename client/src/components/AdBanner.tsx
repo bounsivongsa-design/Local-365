@@ -110,9 +110,9 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
   if (placementType === "large_banner" || placementType === "medium_banner" || placementType === "small_banner") {
     const ad = hasRealAds ? ads[0] : null;
     const placeholder = placeholders[0];
-    const title = (ad as any)?.title || placeholder?.title || "";
-    const description = (ad as any)?.description || placeholder?.description || "";
-    const imageUrl = (ad as any)?.imageUrl || placeholder?.imageUrl || "";
+    const title = ad?.title || placeholder?.title || "";
+    const description = ad?.description || placeholder?.description || "";
+    const imageUrl = ad?.imageUrl || placeholder?.imageUrl || "";
     const isPlaceholder = !ad;
 
     const sizeConfig = {
@@ -125,7 +125,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
       <div
         className={`relative overflow-hidden ${sizeConfig.rounded} text-white cursor-pointer group ${className}`}
         onClick={() => isPlaceholder ? (window.location.href = "/advertising") : ad && handleClick(ad)}
-        data-testid={`ad-${placementType}-${(ad as any)?.id || "placeholder"}`}
+        data-testid={`ad-${placementType}-${ad?.id || "placeholder"}`}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82] via-[#0d5a9e] to-[#0a4a82]/90" />
         {imageUrl && (

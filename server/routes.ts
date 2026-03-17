@@ -1503,11 +1503,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
   app.post("/api/ads/:id/impression", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await pgDb.update(adPlacements)
-        .set({ impressions: adPlacements.impressions })
-        .where(eq(adPlacements.id, id));
-      
-      // Increment impressions using raw SQL for atomic update
+      if (isNaN(id)) { res.status(400).json({ message: "Invalid ad ID" }); return; }
       await pgDb.execute(`UPDATE ad_placements SET impressions = impressions + 1 WHERE id = ${id}`);
       res.json({ success: true });
     } catch (err) {
@@ -1734,8 +1730,40 @@ async function seedAdPricing() {
           pricePerWeek: 1900, // $19/week
           maxActive: 20,
         },
+        {
+          placementType: "large_banner",
+          displayName: "Large Homepage Banner",
+          description: "Full-width premium banner at the top of the homepage carousel. Maximum visibility and impact.",
+          pricePerWeek: 25000, // $250/week ($1,000/mo)
+          maxActive: 5,
+        },
+        {
+          placementType: "medium_banner",
+          displayName: "Medium Homepage Banner",
+          description: "75%-width banner in the homepage carousel. Great visibility at a mid-range price.",
+          pricePerWeek: 12500, // $125/week ($500/mo)
+          maxActive: 5,
+        },
+        {
+          placementType: "small_banner",
+          displayName: "Small Homepage Banner",
+          description: "Compact banner in the homepage carousel. Affordable visibility for your business.",
+          pricePerWeek: 6250, // $62.50/week ($250/mo)
+          maxActive: 5,
+        },
       ]);
       console.log("Ad pricing seeded!");
+    } else {
+      const existingTypes = existingPricing.map(p => p.placementType);
+      const newTypes = [
+        { placementType: "large_banner", displayName: "Large Homepage Banner", description: "Full-width premium banner at the top of the homepage carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
+        { placementType: "medium_banner", displayName: "Medium Homepage Banner", description: "75%-width banner in the homepage carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
+        { placementType: "small_banner", displayName: "Small Homepage Banner", description: "Compact banner in the homepage carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
+      ].filter(t => !existingTypes.includes(t.placementType));
+      if (newTypes.length > 0) {
+        await pgDb.insert(adPricing).values(newTypes);
+        console.log(`Added ${newTypes.length} new ad pricing tiers`);
+      }
     }
   } catch (err) {
     console.error("Error seeding ad pricing:", err);
