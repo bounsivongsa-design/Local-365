@@ -14,7 +14,9 @@ export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get("mode") === "register" ? "register" : "login";
   const accountTypeParam = searchParams.get("type");
+  const initialLoginType = searchParams.get("loginType") === "business" ? "business" : "customer";
   const [mode, setMode] = useState<"login" | "register">(initialMode);
+  const [loginType, setLoginType] = useState<"customer" | "business">(initialLoginType);
   const [accountType, setAccountType] = useState<"customer" | "business">(
     accountTypeParam === "business" ? "business" : "customer"
   );
@@ -126,10 +128,14 @@ export default function AuthPage() {
             <span className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">Local List <span className="text-[#d4a373]">365</span></span>
           </div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg" data-testid="heading-auth">
-            {mode === "login" ? "Welcome Back" : accountType === "business" ? "Register Your Business" : "Join the Community"}
+            {mode === "login"
+              ? loginType === "business" ? "Business Sign In" : "Welcome Back"
+              : accountType === "business" ? "Register Your Business" : "Join the Community"}
           </h1>
           <p className="text-white/80 mt-2 drop-shadow">
-            {mode === "login" ? "Sign in to your Local List 365 account" : accountType === "business" ? "Create a business account — first month FREE" : "Create your free account to get started"}
+            {mode === "login"
+              ? loginType === "business" ? "Access your business dashboard & manage your listing" : "Sign in to your Local List 365 account"
+              : accountType === "business" ? "Create a business account — first month FREE" : "Create your free account to get started"}
           </p>
         </div>
 
@@ -140,10 +146,10 @@ export default function AuthPage() {
         )}
 
         <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90 text-white pb-6">
-            <div className="flex bg-white/10 rounded-xl p-1">
+          <CardHeader className={`pb-6 ${mode === "login" && loginType === "business" ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2]" : "bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90"} text-white`}>
+            <div className="flex bg-white/10 rounded-xl p-1 mb-3">
               <button
-                onClick={() => setMode("login")}
+                onClick={() => { setMode("login"); setLoginType("customer"); }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   mode === "login"
                     ? "bg-white text-[#0a4a82] shadow-sm"
@@ -162,7 +168,7 @@ export default function AuthPage() {
                 }`}
                 data-testid="tab-register"
               >
-                Customer
+                Join Free
               </button>
               <button
                 onClick={() => { setMode("register"); setAccountType("business"); }}
@@ -173,9 +179,38 @@ export default function AuthPage() {
                 }`}
                 data-testid="tab-register-business"
               >
-                Business
+                List Business
               </button>
             </div>
+
+            {mode === "login" && (
+              <div className="flex bg-white/10 rounded-lg p-1">
+                <button
+                  onClick={() => setLoginType("customer")}
+                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    loginType === "customer"
+                      ? "bg-white/20 text-white shadow-sm"
+                      : "text-white/60 hover:text-white/80"
+                  }`}
+                  data-testid="tab-login-customer"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Customer
+                </button>
+                <button
+                  onClick={() => setLoginType("business")}
+                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    loginType === "business"
+                      ? "bg-white/20 text-white shadow-sm"
+                      : "text-white/60 hover:text-white/80"
+                  }`}
+                  data-testid="tab-login-business"
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  Business Owner
+                </button>
+              </div>
+            )}
           </CardHeader>
 
           <CardContent className="p-6 space-y-5">
@@ -225,14 +260,26 @@ export default function AuthPage() {
 
             {mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4">
+                {loginType === "business" && (
+                  <div className="flex items-center gap-3 p-3 bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-xl">
+                    <Building2 className="h-5 w-5 text-[#0a4a82] flex-shrink-0" />
+                    <p className="text-sm text-[#0a4a82]">
+                      Sign in with the email used to register your business account
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email">{loginType === "business" ? "Business Email" : "Email"}</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    {loginType === "business" ? (
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    )}
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder={loginType === "business" ? "owner@yourbusiness.com" : "you@example.com"}
                       value={loginData.email}
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                       className={`pl-10 ${inputClass}`}
@@ -270,14 +317,18 @@ export default function AuthPage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full h-12 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold text-base"
+                  className={`w-full h-12 rounded-xl font-semibold text-base ${
+                    loginType === "business"
+                      ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2] hover:from-[#083a6a] hover:to-[#155a9a] text-white"
+                      : "bg-[#0a4a82] hover:bg-[#083a6a] text-white"
+                  }`}
                   data-testid="button-login-submit"
                 >
                   {isSubmitting ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      Sign In
+                      {loginType === "business" ? "Sign In to Dashboard" : "Sign In"}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </>
                   )}
@@ -422,17 +473,17 @@ export default function AuthPage() {
             <>
               Don't have an account?{" "}
               <button onClick={() => { setMode("register"); setAccountType("customer"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-register">
-                Create one
+                Join free
               </button>
               {" | "}
               <button onClick={() => { setMode("register"); setAccountType("business"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-business">
-                Register a business
+                List your business
               </button>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <button onClick={() => setMode("login")} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-login">
+              <button onClick={() => { setMode("login"); setLoginType(accountType); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-login">
                 Sign in
               </button>
             </>
