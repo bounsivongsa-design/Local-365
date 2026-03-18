@@ -18,51 +18,51 @@ const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imag
     title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More",
     description: "Find licensed and insured contractors right here in Moyock and Currituck County. From emergency repairs to full home renovations — your neighbors trust Local List 365.",
     imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&h=400&fit=crop",
-    linkUrl: "/advertising",
+    linkUrl: "/directory",
   }],
   large_banner: [{
     title: "Full-Service Home Repairs, Renovations & Emergency Calls",
     description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all.",
     imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop",
-    linkUrl: "/advertising",
+    linkUrl: "/directory",
   }],
   medium_banner: [{
     title: "24/7 Emergency HVAC & Plumbing",
     description: "Same-day service from licensed technicians. Serving Moyock & surrounding areas.",
     imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop",
-    linkUrl: "/advertising",
+    linkUrl: "/directory",
   }],
   small_banner: [{
     title: "Lawn Care & Landscaping",
     description: "Weekly mowing and seasonal cleanups for Moyock homes and businesses.",
     imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=200&fit=crop",
-    linkUrl: "/advertising",
+    linkUrl: "/directory",
   }],
   featured_listing: [
     {
       title: "24/7 Emergency HVAC & Plumbing",
       description: "Licensed technicians serving Moyock, Currituck County & surrounding areas. Same-day service available — call now for a free estimate.",
       imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=200&h=200&fit=crop",
-      linkUrl: "/advertising",
+      linkUrl: "/directory",
     },
     {
       title: "Affordable Landscaping & Lawn Care",
       description: "Weekly mowing, seasonal cleanups, and custom landscape design for Moyock homes and businesses.",
       imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=200&h=200&fit=crop",
-      linkUrl: "/advertising",
+      linkUrl: "/directory",
     },
   ],
   category_spotlight: [{
     title: "Mobile Mechanic — We Come to You",
     description: "On-site auto repair and diagnostics in Moyock. No tow truck needed — certified mechanics at your door.",
     imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=100&h=100&fit=crop",
-    linkUrl: "/advertising",
+    linkUrl: "/directory",
   }],
   directory_boost: [{
     title: "Local Pest Control Experts",
     description: "Termite inspections, mosquito treatments, and wildlife removal. Serving Moyock and Currituck County for 15+ years.",
     imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=200&h=200&fit=crop",
-    linkUrl: "/advertising",
+    linkUrl: "/directory",
   }],
 };
 
@@ -162,7 +162,13 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
     return (
       <div
         className={`relative overflow-hidden ${sizeConfig.rounded} ${sizeConfig.height} text-white cursor-pointer group flex flex-col justify-center ${className}`}
-        onClick={() => isPlaceholder ? (window.location.href = "/advertising") : ad && handleClick(ad)}
+        onClick={() => {
+          if (isPlaceholder) {
+            window.location.href = placeholder?.linkUrl || "/directory";
+          } else if (ad) {
+            handleClick(ad);
+          }
+        }}
         data-testid={`ad-${placementType}-${ad?.id || "placeholder"}`}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82] via-[#0d5a9e] to-[#0a4a82]/90" />
@@ -173,7 +179,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
         <div className={`relative ${sizeConfig.padding}`}>
           <Badge className={`mb-2 ${sizeConfig.badge} ${sizeConfig.badgeSize} text-white border-none`}>
             <Megaphone className={`${sizeConfig.iconSize} mr-1.5`} />
-            {isPlaceholder ? "Ad Space Available" : sizeConfig.label}
+            {sizeConfig.label}
           </Badge>
           <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-lg text-white`}>{title}</h3>
           {sizeConfig.showDesc && description && (
@@ -195,7 +201,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
     return (
       <div 
         className={`relative overflow-hidden rounded-2xl text-white cursor-pointer group ${className}`}
-        onClick={() => isPlaceholder ? (window.location.href = "/advertising") : ad && handleClick(ad)}
+        onClick={() => isPlaceholder ? (window.location.href = "/directory") : ad && handleClick(ad)}
         data-testid={`ad-banner-${ad?.id || "placeholder"}`}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82] via-[#0d5a9e] to-[#0a4a82]/90" />
@@ -239,7 +245,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
             <Card 
               key={isPlaceholder ? `ph-${i}` : realAd.id}
               className="overflow-hidden border-[#d4a373]/30 hover:border-[#d4a373]/60 hover:shadow-[0_8px_30px_rgba(212,163,115,0.15)] transition-[shadow,border-color] duration-200 cursor-pointer group"
-              onClick={() => isPlaceholder ? (window.location.href = "/advertising") : handleClick(realAd)}
+              onClick={() => isPlaceholder ? (window.location.href = "/directory") : handleClick(realAd)}
               data-testid={`ad-featured-${isPlaceholder ? `placeholder-${i}` : realAd.id}`}
             >
               <div className="flex items-center gap-4 p-4">
@@ -285,7 +291,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
     return (
       <div 
         className={`relative bg-gradient-to-r from-[#8a9a5b]/10 via-[#8a9a5b]/5 to-transparent border border-[#8a9a5b]/20 rounded-xl p-4 cursor-pointer group hover:border-[#8a9a5b]/40 hover:shadow-[0_4px_20px_rgba(138,154,91,0.1)] transition-[shadow,border-color] duration-200 ${className}`}
-        onClick={() => isPlaceholder ? (window.location.href = "/advertising") : handleClick(ad!)}
+        onClick={() => isPlaceholder ? (window.location.href = "/directory") : handleClick(ad!)}
         data-testid={`ad-spotlight-${(ad as any)?.id || "placeholder"}`}
       >
         <Badge className="text-xs bg-[#8a9a5b]/10 text-[#8a9a5b] border border-[#8a9a5b]/30 mb-2 hover:bg-[#8a9a5b]/15">
