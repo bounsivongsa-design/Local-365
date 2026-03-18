@@ -28,6 +28,7 @@ import {
   Trash2,
   Mail,
   Clock,
+  MapPin,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -80,15 +81,23 @@ function JobCard({ listing }: { listing: JobListingWithBusiness }) {
             </div>
 
             {listing.business && (
-              <Link
-                to={`/directory/${listing.business.id}`}
-                className="inline-flex items-center gap-1.5 text-sm text-[#0a4a82] hover:underline font-medium mb-2"
-                data-testid={`link-job-business-${listing.id}`}
-              >
-                <Building2 className="h-3.5 w-3.5" />
-                {listing.business.name}
-                <ExternalLink className="h-3 w-3" />
-              </Link>
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <Link
+                  to={`/directory/${listing.business.id}`}
+                  className="inline-flex items-center gap-1.5 text-sm text-[#0a4a82] hover:underline font-medium"
+                  data-testid={`link-job-business-${listing.id}`}
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  {listing.business.name}
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+                {(listing.business.city || listing.business.zipCode) && (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-500" data-testid={`text-job-location-${listing.id}`}>
+                    <MapPin className="h-3 w-3" />
+                    {listing.business.city || listing.business.zipCode}
+                  </span>
+                )}
+              </div>
             )}
 
             <p className="text-sm text-gray-600 mb-3 line-clamp-3" data-testid={`text-job-desc-${listing.id}`}>
@@ -389,7 +398,7 @@ export default function HelpWanted() {
             Help Wanted / Now Hiring
           </h1>
           <p className="text-lg text-white/80 max-w-2xl mx-auto mb-8 drop-shadow">
-            Local businesses in Currituck County are hiring! Browse open positions or post your own for just $7/week.
+            Local businesses are hiring! Browse open positions or post your own for just $7/week.
           </p>
 
           <div className="flex items-center justify-center gap-3">

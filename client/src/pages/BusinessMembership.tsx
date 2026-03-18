@@ -220,17 +220,17 @@ export default function BusinessMembership() {
 
   const handleSelectTier = async (tier: MembershipTier) => {
     if (!isAuthenticated) {
-      window.location.href = "/auth?mode=register";
+      window.location.href = "/auth?mode=register&type=business";
       return;
     }
 
     if (user?.accountType !== "business") {
-      toast({ title: "Business account required", description: "Please switch to a business account to subscribe.", variant: "destructive" });
+      window.location.href = "/create-business";
       return;
     }
 
     if (!business?.id) {
-      toast({ title: "Create your business first", description: "Please create a business listing before subscribing.", variant: "destructive" });
+      window.location.href = "/create-business";
       return;
     }
 
@@ -385,26 +385,6 @@ export default function BusinessMembership() {
           </div>
         </div>
 
-        {isNewMember && currentTierDisplay === "none" && (
-          <div className="max-w-3xl mx-auto mb-12">
-            <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0">
-                  <Crown className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white text-lg" data-testid="text-gold-trial-banner">
-                    New Member Bonus: Gold Experience for 30 Days!
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
-                    Sign up for any Bronze or Silver plan and automatically get upgraded to Gold tier features for your first 30 days — 
-                    including featured placement, up to 10 photos, priority quote access, and more. After the trial, your plan reverts to the tier you selected.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="max-w-md mx-auto mb-12">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-200/50 dark:border-slate-700/50">
@@ -634,9 +614,9 @@ export default function BusinessMembership() {
               <p className="text-slate-600 dark:text-slate-400 mb-8">
                 Sign in or create a business account to join the Local List 365 community
               </p>
-              <Link to="/auth?mode=register">
-                <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold">
-                  Sign In to Get Started
+              <Link to="/create-business">
+                <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold" data-testid="button-get-started-bottom">
+                  Create Your Business Listing
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>

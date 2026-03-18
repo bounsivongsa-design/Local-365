@@ -22,6 +22,7 @@ import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
 import Legal from "@/pages/Legal";
 import HelpWanted from "@/pages/HelpWanted";
+import CreateBusiness from "@/pages/CreateBusiness";
 import NotFound from "@/pages/not-found";
 import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
@@ -52,6 +53,7 @@ function AppRouter() {
           <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
           <Route path="/membership" element={<BusinessMembership />} />
           <Route path="/jobs" element={<HelpWanted />} />
+          <Route path="/create-business" element={<CreateBusiness />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="*" element={<NotFound />} />
