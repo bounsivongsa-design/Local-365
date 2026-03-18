@@ -263,6 +263,13 @@ export const membershipDowngrades = pgTable("membership_downgrades", {
   winBackConvertedAt: timestamp("win_back_converted_at"),
 });
 
+export const businessAnalytics = pgTable("business_analytics", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id),
+  eventType: text("event_type").notNull(),
+  eventDate: timestamp("event_date").defaultNow(),
+});
+
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
@@ -318,6 +325,7 @@ export type InsertMembershipDowngrade = z.infer<typeof insertMembershipDowngrade
 export type JobListing = typeof jobListings.$inferSelect;
 export type InsertJobListing = z.infer<typeof insertJobListingSchema>;
 export type JobListingWithBusiness = JobListing & { business: Business | null };
+export type BusinessAnalytic = typeof businessAnalytics.$inferSelect;
 
 export type CreateBusinessRequest = z.infer<typeof insertBusinessSchema>;
 export type CreateEventRequest = z.infer<typeof insertEventSchema>;

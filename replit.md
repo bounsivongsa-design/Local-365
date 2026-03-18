@@ -37,7 +37,8 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - `posts`: Stores community feed posts.
 - `categoryRequests`: Stores community-submitted category suggestions (name, description, submitterEmail, status).
 - `promoCodes`: Promotional discount codes with type (percentage/fixed), value, tier restrictions, usage limits, and date ranges.
-- `promoCodeUsages`: Tracks which businesses used which promo codes and the associated Stripe session.
+- `promoCodeUsages`: Tracks which businesses used which promo codes and the associated Stripe session. Enforces one-time-per-business promo code usage.
+- `businessAnalytics`: Tracks listing engagement events (page_view, phone_click, email_click, website_click, directions_click) with timestamps per business.
 - `membershipDowngrades`: Records tier downgrades/cancellations with win-back eligibility dates (2 months post-downgrade).
 - `jobListings`: Help wanted / now hiring posts by businesses. $7/week a la carte, sorted by membership tier (Gold first, then Silver, Bronze, then non-members). Fields: title, description, imageUrl, contactPhone, contactEmail, isActive, paidThroughDate, stripeSubscriptionId.
 
@@ -81,6 +82,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive Gold-tier features for their first 30 days (trial period). After trial, tier reverts to what was purchased. Managed via Stripe subscription metadata (`isAutoUpgrade`, `originalTier`).
 - **Business Name+Zip Uniqueness**: Prevents duplicate business registrations with the same name in the same zip code (case-insensitive check on business creation).
 - **Membership Downgrade Tracking**: `membershipDowngrades` table records when businesses downgrade or cancel, with a `winBackEligibleAt` timestamp set to 2 months post-downgrade for win-back campaigns.
+- **Business Analytics**: Tracks page views, phone clicks, email clicks, website clicks, and direction clicks on business listing pages. Public tracking endpoint `POST /api/analytics/track`; authenticated retrieval endpoint `GET /api/analytics/:businessId` (owner or admin only). Dashboard at `/dashboard` shows 30-day metrics with stat cards and 14-day bar chart.
 
 ### Key Configuration Files
 - `shared/config/categories.ts`: Full category hierarchy with subcategories (30+ top-level categories)

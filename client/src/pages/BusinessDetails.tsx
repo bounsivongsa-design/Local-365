@@ -19,18 +19,32 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 
+function trackEvent(businessId: number, eventType: string) {
+  fetch("/api/analytics/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ businessId, eventType }),
+  }).catch(() => {});
+}
+
 export default function BusinessDetails() {
   const { id: paramId } = useParams<{ id: string }>();
   const id = paramId ? parseInt(paramId) : 0;
   const { data: business, isLoading } = useBusiness(id);
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (id > 0) {
+      trackEvent(id, "page_view");
+    }
+  }, [id]);
   
   if (isLoading) {
     return <BusinessDetailsSkeleton />;
@@ -123,7 +137,7 @@ export default function BusinessDetails() {
                    </div>
                    <div>
                      <h4 className="font-semibold mb-1 text-[#1a1a2e]">Phone</h4>
-                     <a href={`tel:${business.phone}`} className="text-[#0a4a82] hover:underline font-medium" data-testid="link-phone">
+                     <a href={`tel:${business.phone}`} className="text-[#0a4a82] hover:underline font-medium" data-testid="link-phone" onClick={() => trackEvent(business.id, "phone_click")}>
                        {business.phone}
                      </a>
                    </div>
@@ -136,7 +150,7 @@ export default function BusinessDetails() {
                    </div>
                    <div>
                      <h4 className="font-semibold mb-1 text-[#1a1a2e]">Email</h4>
-                     <a href={`mailto:${business.email}`} className="text-[#0a4a82] hover:underline font-medium text-sm" data-testid="link-email">
+                     <a href={`mailto:${business.email}`} className="text-[#0a4a82] hover:underline font-medium text-sm" data-testid="link-email" onClick={() => trackEvent(business.id, "email_click")}>
                        {business.email}
                      </a>
                    </div>
@@ -155,6 +169,7 @@ export default function BusinessDetails() {
                        rel="noopener noreferrer"
                        className="text-[#0a4a82] hover:underline flex items-center gap-1 font-medium text-sm"
                        data-testid="link-website"
+                       onClick={() => trackEvent(business.id, "website_click")}
                      >
                        Visit Website <ExternalLink className="h-3 w-3" />
                      </a>
@@ -369,17 +384,19 @@ export default function BusinessDetails() {
                  </Button>
                </div>
              </div>
-             <Button className="w-full mb-3 bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90 hover:from-[#0a4a82]/90 hover:to-[#0a4a82] text-white shadow-lg" size="lg">
+             <Button className="w-full mb-3 bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90 hover:from-[#0a4a82]/90 hover:to-[#0a4a82] text-white shadow-lg" size="lg" onClick={() => { trackEvent(business.id, "directions_click"); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address + ', ' + (business.city || '') + ', ' + (business.state || ''))}`, '_blank'); }} data-testid="button-directions">
                <MapPin className="h-4 w-4 mr-2" /> Get Directions
              </Button>
-             <Button variant="outline" className="w-full border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5">
+             {business.websiteUrl && (
+             <Button variant="outline" className="w-full border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" onClick={() => { trackEvent(business.id, "website_click"); window.open(business.websiteUrl!, '_blank'); }} data-testid="button-visit-website">
                <Globe className="h-4 w-4 mr-2" /> Visit Website
              </Button>
+             )}
 
              {(business.phone || business.email) && (
                <div className="mt-5 pt-5 border-t border-[#0a4a82]/10 space-y-3">
                  {business.phone && (
-                   <a href={`tel:${business.phone}`} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#8a9a5b]/5 to-[#8a9a5b]/10 hover:from-[#8a9a5b]/10 hover:to-[#8a9a5b]/15 transition-colors group" data-testid="sidebar-phone">
+                   <a href={`tel:${business.phone}`} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#8a9a5b]/5 to-[#8a9a5b]/10 hover:from-[#8a9a5b]/10 hover:to-[#8a9a5b]/15 transition-colors group" data-testid="sidebar-phone" onClick={() => trackEvent(business.id, "phone_click")}>
                      <div className="w-9 h-9 rounded-lg bg-[#8a9a5b] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                        <Phone className="h-4 w-4 text-white" />
                      </div>
@@ -390,7 +407,7 @@ export default function BusinessDetails() {
                    </a>
                  )}
                  {business.email && (
-                   <a href={`mailto:${business.email}`} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#d4a373]/5 to-[#d4a373]/10 hover:from-[#d4a373]/10 hover:to-[#d4a373]/15 transition-colors group" data-testid="sidebar-email">
+                   <a href={`mailto:${business.email}`} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#d4a373]/5 to-[#d4a373]/10 hover:from-[#d4a373]/10 hover:to-[#d4a373]/15 transition-colors group" data-testid="sidebar-email" onClick={() => trackEvent(business.id, "email_click")}>
                      <div className="w-9 h-9 rounded-lg bg-[#d4a373] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                        <Mail className="h-4 w-4 text-white" />
                      </div>

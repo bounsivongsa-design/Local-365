@@ -10,7 +10,7 @@ import OpenAI from "openai";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
 const openai = new OpenAI({
@@ -2154,6 +2154,83 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
     } catch (err) {
       console.error("Error deleting job listing:", err);
       res.status(500).json({ message: "Failed to delete job listing" });
+    }
+  });
+
+  app.post("/api/analytics/track", async (req, res) => {
+    try {
+      const { businessId, eventType } = req.body;
+      if (!businessId || !eventType) {
+        return res.status(400).json({ message: "businessId and eventType are required" });
+      }
+      const validTypes = ["page_view", "phone_click", "email_click", "website_click", "directions_click"];
+      if (!validTypes.includes(eventType)) {
+        return res.status(400).json({ message: "Invalid event type" });
+      }
+      await pgDb.insert(businessAnalytics).values({
+        businessId: parseInt(businessId),
+        eventType,
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error tracking analytics:", err);
+      res.status(500).json({ message: "Failed to track event" });
+    }
+  });
+
+  app.get("/api/analytics/:businessId", isAuthenticated, async (req: any, res) => {
+    try {
+      const businessId = parseInt(req.params.businessId);
+      if (!businessId) {
+        return res.status(400).json({ message: "Invalid business ID" });
+      }
+
+      const [biz] = await pgDb.select({ userId: businesses.userId }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      const isAdmin = req.user?.isAdmin;
+      const isOwner = biz && biz.userId === req.user?.id;
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ message: "You can only view analytics for your own business" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const results = await pgDb.select({
+        eventType: businessAnalytics.eventType,
+        eventDate: businessAnalytics.eventDate,
+      }).from(businessAnalytics).where(
+        and(
+          eq(businessAnalytics.businessId, businessId),
+          gt(businessAnalytics.eventDate, thirtyDaysAgo)
+        )
+      ).orderBy(asc(businessAnalytics.eventDate));
+
+      const totals: Record<string, number> = {};
+      const daily: Record<string, Record<string, number>> = {};
+
+      for (const row of results) {
+        const type = row.eventType;
+        totals[type] = (totals[type] || 0) + 1;
+
+        const dateKey = row.eventDate ? new Date(row.eventDate).toISOString().split("T")[0] : "unknown";
+        if (!daily[dateKey]) daily[dateKey] = {};
+        daily[dateKey][type] = (daily[dateKey][type] || 0) + 1;
+      }
+
+      const allTimeTotals = await pgDb.select({
+        eventType: businessAnalytics.eventType,
+        count: sql<number>`count(*)::int`,
+      }).from(businessAnalytics).where(eq(businessAnalytics.businessId, businessId)).groupBy(businessAnalytics.eventType);
+
+      const allTime: Record<string, number> = {};
+      for (const row of allTimeTotals) {
+        allTime[row.eventType] = row.count;
+      }
+
+      res.json({ totals, daily, allTime });
+    } catch (err) {
+      console.error("Error fetching analytics:", err);
+      res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
 
