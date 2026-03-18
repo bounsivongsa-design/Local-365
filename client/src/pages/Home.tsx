@@ -87,12 +87,12 @@ const DIRECTORY_CATEGORIES = [
 
 
 export default function Home() {
+  const { location: selectedLocation } = useLocation();
   const { data: posts, isLoading: postsLoading } = usePosts();
   const { data: businesses, isLoading: businessesLoading } = useBusinesses();
-  const { data: events, isLoading: eventsLoading } = useEvents();
+  const { data: events, isLoading: eventsLoading } = useEvents(selectedLocation?.zipCode);
   const likePost = useLikePost();
   const { isAuthenticated } = useAuth();
-  const { location: selectedLocation } = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showTripPlanner, setShowTripPlanner] = useState(false);
@@ -144,17 +144,19 @@ export default function Home() {
 
   type AdSlide = { id: number; title: string; businessName: string; description: string; imageUrl: string; businessId: number | null; linkUrl: string | null };
 
+  const locationZip = selectedLocation?.zipCode || "27958";
+
   const { data: realLargeAds } = useQuery<AdWithBusiness[]>({
-    queryKey: ["/api/ads/active", "large_banner"],
-    queryFn: async () => { const res = await fetch("/api/ads/active?type=large_banner"); return res.ok ? res.json() : []; },
+    queryKey: ["/api/ads/active", "large_banner", locationZip],
+    queryFn: async () => { const res = await fetch(`/api/ads/active?type=large_banner&zipCode=${locationZip}`); return res.ok ? res.json() : []; },
   });
   const { data: realMediumAds } = useQuery<AdWithBusiness[]>({
-    queryKey: ["/api/ads/active", "medium_banner"],
-    queryFn: async () => { const res = await fetch("/api/ads/active?type=medium_banner"); return res.ok ? res.json() : []; },
+    queryKey: ["/api/ads/active", "medium_banner", locationZip],
+    queryFn: async () => { const res = await fetch(`/api/ads/active?type=medium_banner&zipCode=${locationZip}`); return res.ok ? res.json() : []; },
   });
   const { data: realSmallAds } = useQuery<AdWithBusiness[]>({
-    queryKey: ["/api/ads/active", "small_banner"],
-    queryFn: async () => { const res = await fetch("/api/ads/active?type=small_banner"); return res.ok ? res.json() : []; },
+    queryKey: ["/api/ads/active", "small_banner", locationZip],
+    queryFn: async () => { const res = await fetch(`/api/ads/active?type=small_banner&zipCode=${locationZip}`); return res.ok ? res.json() : []; },
   });
 
   const mapAdsToSlides = (realAds: AdWithBusiness[] | undefined, placeholders: AdSlide[]): { slides: AdSlide[]; isPlaceholder: boolean } => {

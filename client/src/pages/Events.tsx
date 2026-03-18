@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useEvents, useCreateEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "@/context/LocationContext";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 
 export default function Events() {
-  const { data: events, isLoading } = useEvents();
+  const { location: selectedLocation } = useLocation();
+  const { data: events, isLoading } = useEvents(selectedLocation?.zipCode);
   const { isAuthenticated } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');

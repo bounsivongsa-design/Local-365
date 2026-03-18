@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Megaphone, ArrowRight, Star, Sparkles } from "lucide-react";
+import { useLocation } from "@/context/LocationContext";
 import type { AdPlacement } from "@shared/schema";
 
 interface AdBannerProps {
@@ -67,16 +68,17 @@ const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imag
 
 export function AdBanner({ placementType, category, className = "", limit = 1 }: AdBannerProps) {
   const impressionsSent = useRef<Set<number>>(new Set());
+  const { location: selectedLocation } = useLocation();
+  const zipCode = selectedLocation?.zipCode || "27958";
   
-  const queryKey = category 
-    ? ["/api/ads/active", placementType, category]
-    : ["/api/ads/active", placementType];
+  const queryKey = ["/api/ads/active", placementType, category, zipCode].filter(Boolean);
 
   const { data: ads } = useQuery<AdPlacement[]>({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({ 
         type: placementType,
+        zipCode,
         ...(category && { category }),
       });
       const res = await fetch(`/api/ads/active?${params}`);

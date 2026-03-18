@@ -2,11 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type CreateEventRequest } from "@shared/routes";
 import { type Event } from "@shared/schema";
 
-export function useEvents() {
+export function useEvents(zipCode?: string) {
+  const zip = zipCode || "";
+  const url = zip ? `${api.events.list.path}?zipCode=${zip}` : api.events.list.path;
   return useQuery({
-    queryKey: [api.events.list.path],
+    queryKey: [api.events.list.path, zip],
     queryFn: async () => {
-      const res = await fetch(api.events.list.path, { credentials: "include" });
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch events");
       return api.events.list.responses[200].parse(await res.json());
     },

@@ -726,6 +726,7 @@ export async function registerRoutes(
 
   // Events
   app.get(api.events.list.path, async (req, res) => {
+    const { zipCode } = req.query;
     const allEvents = await storage.getEvents();
     const eventsWithTier = await Promise.all(
       allEvents.map(async (event) => {
@@ -738,6 +739,14 @@ export async function registerRoutes(
         return { ...event, businessMembershipTier };
       })
     );
+    if (zipCode && typeof zipCode === "string") {
+      const filtered = eventsWithTier.filter(event => {
+        if (event.zipCode === zipCode) return true;
+        if (event.targetZipCodes && event.targetZipCodes.includes(zipCode)) return true;
+        return false;
+      });
+      return res.json(filtered);
+    }
     res.json(eventsWithTier);
   });
 
@@ -747,16 +756,24 @@ export async function registerRoutes(
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
       
       let serverBusinessId: number | null = null;
+      let businessZipCode: string | null = null;
       if (user.length > 0 && user[0].linkedBusinessId) {
         serverBusinessId = user[0].linkedBusinessId;
+        const [biz] = await pgDb.select({ zipCode: businesses.zipCode })
+          .from(businesses).where(eq(businesses.id, user[0].linkedBusinessId)).limit(1);
+        if (biz) businessZipCode = biz.zipCode;
       }
 
-      const { businessId: _clientBusinessId, ...bodyWithoutBusinessId } = req.body;
+      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, ...bodyWithoutBusinessId } = req.body;
+
+      const eventZipCode = businessZipCode || req.body.zipCode || "27929";
 
       const input = api.events.create.input.parse({
           ...bodyWithoutBusinessId,
           businessId: serverBusinessId,
           date: new Date(req.body.date),
+          zipCode: eventZipCode,
+          targetZipCodes: [eventZipCode],
       });
       const event = await storage.createEvent(input);
       res.status(201).json(event);
@@ -1530,8 +1547,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
   // Get active ads for display (public, by placement type)
   app.get("/api/ads/active", async (req, res) => {
     try {
-      const { type, category } = req.query;
-      const now = new Date();
+      const { type, category, zipCode } = req.query;
       
       let query = pgDb.select({
         id: adPlacements.id,
@@ -1542,6 +1558,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         imageUrl: adPlacements.imageUrl,
         linkUrl: adPlacements.linkUrl,
         category: adPlacements.category,
+        targetZipCodes: adPlacements.targetZipCodes,
         businessName: businesses.name,
         businessImageUrl: businesses.imageUrl,
       }).from(adPlacements)
@@ -1553,13 +1570,18 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       
       const results = await query;
       
-      // Filter by type and category if provided
       let filtered = results;
       if (type && typeof type === "string") {
         filtered = filtered.filter(ad => ad.placementType === type);
       }
       if (category && typeof category === "string") {
         filtered = filtered.filter(ad => !ad.category || ad.category === category);
+      }
+      if (zipCode && typeof zipCode === "string") {
+        filtered = filtered.filter(ad => {
+          if (!ad.targetZipCodes || ad.targetZipCodes.length === 0) return true;
+          return ad.targetZipCodes.includes(zipCode);
+        });
       }
       
       res.json(filtered);
@@ -1636,6 +1658,10 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
+      const [biz] = await pgDb.select({ zipCode: businesses.zipCode })
+        .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
+      const businessZip = biz?.zipCode || "27929";
+
       const [newAd] = await pgDb.insert(adPlacements).values({
         businessId: user.linkedBusinessId,
         placementType,
@@ -1646,15 +1672,83 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         category,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
-        pricePerWeek: pricing.pricePerWeek, // Use server-side pricing
+        pricePerWeek: pricing.pricePerWeek,
         status: "pending",
         paymentStatus: "unpaid",
+        targetZipCodes: [businessZip],
       }).returning();
 
       res.json(newAd);
     } catch (err) {
       console.error("Error creating ad request:", err);
       res.status(500).json({ message: "Failed to create ad request" });
+    }
+  });
+
+  app.get("/api/zip-expansion/pricing", (req, res) => {
+    const BASE_PRICE_PER_ZIP = 2500; // $25/month in cents
+    res.json({
+      basePrice: BASE_PRICE_PER_ZIP,
+      discounts: {
+        none: 0,
+        basic: 10,    // Bronze 10% off
+        standard: 25, // Silver 25% off
+        premium: 50,  // Gold 50% off
+      },
+    });
+  });
+
+  app.post("/api/ads/:id/add-zip-codes", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (user.accountType !== "business" || !user.linkedBusinessId) {
+        return res.status(403).json({ message: "Business account required" });
+      }
+      const adId = parseInt(req.params.id);
+      const { zipCodes } = req.body;
+      if (!Array.isArray(zipCodes) || zipCodes.length === 0) {
+        return res.status(400).json({ message: "At least one zip code is required" });
+      }
+      const [ad] = await pgDb.select().from(adPlacements).where(
+        and(eq(adPlacements.id, adId), eq(adPlacements.businessId, user.linkedBusinessId))
+      );
+      if (!ad) return res.status(404).json({ message: "Ad not found" });
+      const existing = ad.targetZipCodes || [];
+      const merged = [...new Set([...existing, ...zipCodes])];
+      const [updated] = await pgDb.update(adPlacements)
+        .set({ targetZipCodes: merged })
+        .where(eq(adPlacements.id, adId))
+        .returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Error adding zip codes to ad:", err);
+      res.status(500).json({ message: "Failed to add zip codes" });
+    }
+  });
+
+  app.post("/api/events/:id/add-zip-codes", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const eventId = parseInt(req.params.id);
+      const { zipCodes } = req.body;
+      if (!Array.isArray(zipCodes) || zipCodes.length === 0) {
+        return res.status(400).json({ message: "At least one zip code is required" });
+      }
+      const [event] = await pgDb.select().from(events).where(eq(events.id, eventId));
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      if (event.businessId && event.businessId !== user.linkedBusinessId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const existing = event.targetZipCodes || [];
+      const merged = [...new Set([...existing, ...zipCodes])];
+      const [updated] = await pgDb.update(events)
+        .set({ targetZipCodes: merged })
+        .where(eq(events.id, eventId))
+        .returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Error adding zip codes to event:", err);
+      res.status(500).json({ message: "Failed to add zip codes" });
     }
   });
 

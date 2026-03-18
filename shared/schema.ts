@@ -86,6 +86,7 @@ export const events = pgTable("events", {
   imageUrl: text("image_url"),
   flyerUrl: text("flyer_url"),
   businessId: integer("business_id").references(() => businesses.id),
+  targetZipCodes: text("target_zip_codes").array().default([]),
 });
 
 export const posts = pgTable("posts", {
@@ -187,21 +188,22 @@ export const jobListingsRelations = relations(jobListings, ({ one }) => ({
 export const adPlacements = pgTable("ad_placements", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").references(() => businesses.id).notNull(),
-  placementType: text("placement_type").notNull(), // 'homepage_banner', 'category_spotlight', 'directory_boost', 'featured_listing'
+  placementType: text("placement_type").notNull(),
   title: text("title").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
-  linkUrl: text("link_url"), // Optional custom link
-  category: text("category"), // For category-specific ads
-  status: text("status").default("pending"), // 'pending', 'active', 'expired', 'rejected'
+  linkUrl: text("link_url"),
+  category: text("category"),
+  status: text("status").default("pending"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
-  pricePerWeek: integer("price_per_week"), // Price in cents
-  totalPaid: integer("total_paid").default(0), // Total paid in cents (for manual tracking)
-  paymentStatus: text("payment_status").default("unpaid"), // 'unpaid', 'paid', 'refunded'
-  paymentNotes: text("payment_notes"), // Admin notes about payment
+  pricePerWeek: integer("price_per_week"),
+  totalPaid: integer("total_paid").default(0),
+  paymentStatus: text("payment_status").default("unpaid"),
+  paymentNotes: text("payment_notes"),
   impressions: integer("impressions").default(0),
   clicks: integer("clicks").default(0),
+  targetZipCodes: text("target_zip_codes").array().default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
