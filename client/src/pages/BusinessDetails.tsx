@@ -38,7 +38,8 @@ export default function BusinessDetails() {
   const { id: paramId } = useParams<{ id: string }>();
   const id = paramId ? parseInt(paramId) : 0;
   const { data: business, isLoading } = useBusiness(id);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isOwner = isAuthenticated && user && (user as any).linkedBusinessId === id;
 
   useEffect(() => {
     if (id > 0) {
@@ -327,13 +328,13 @@ export default function BusinessDetails() {
                 <h2 className="font-display text-2xl font-bold text-[#1a1a2e]">Reviews</h2>
                 <div className="w-12 h-1 bg-[#d4a373] rounded-full mt-1"></div>
               </div>
-              {isAuthenticated ? (
+              {isAuthenticated && !isOwner ? (
                 <ReviewDialog businessId={business.id} businessName={business.name} />
-              ) : (
+              ) : !isAuthenticated ? (
                 <Link to="/auth">
                    <Button variant="outline" className="border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82] hover:text-white">Sign in to Review</Button>
                 </Link>
-              )}
+              ) : null}
             </div>
 
             {business.reviews?.length === 0 ? (

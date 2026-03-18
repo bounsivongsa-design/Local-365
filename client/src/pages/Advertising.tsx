@@ -144,6 +144,21 @@ export default function Advertising() {
     enabled: isAuthenticated && user?.accountType === "business",
   });
 
+  const { data: linkedBusiness } = useQuery<any>({
+    queryKey: ["/api/businesses", user?.linkedBusinessId],
+    queryFn: async () => {
+      if (!user?.linkedBusinessId) return null;
+      const res = await fetch(`/api/businesses/${user.linkedBusinessId}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: isAuthenticated && user?.accountType === "business" && !!user?.linkedBusinessId,
+  });
+
+  const businessMedia: string[] = [];
+  if (linkedBusiness?.logoUrl) businessMedia.push(linkedBusiness.logoUrl);
+  if (linkedBusiness?.galleryPhotos?.length) businessMedia.push(...linkedBusiness.galleryPhotos);
+
   const createAdRequest = useMutation({
     mutationFn: async (data: typeof formData) => {
       const selectedPricing = pricing?.find(p => p.placementType === data.placementType);
@@ -451,14 +466,43 @@ export default function Advertising() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="imageUrl">Image URL (optional)</Label>
-                        <Input
-                          id="imageUrl"
-                          placeholder="https://example.com/image.jpg"
-                          value={formData.imageUrl}
-                          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                          data-testid="input-ad-image"
-                        />
+                        <Label>Ad Image</Label>
+                        {businessMedia.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-[#4a4a5a]">Choose from your uploaded media:</p>
+                            <div className="grid grid-cols-4 gap-2">
+                              {businessMedia.map((url, i) => {
+                                const src = url.startsWith("/objects/") ? url : `/objects/${url}`;
+                                const isSelected = formData.imageUrl === url;
+                                return (
+                                  <div
+                                    key={i}
+                                    onClick={() => setFormData({ ...formData, imageUrl: url })}
+                                    className={`aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-[#0a4a82] ring-2 ring-[#0a4a82]/30 scale-95" : "border-transparent hover:border-[#d4a373]/50"}`}
+                                    data-testid={`media-option-${i}`}
+                                  >
+                                    <img src={src} alt={`Media ${i + 1}`} className="w-full h-full object-cover" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        <div className="pt-1">
+                          <p className="text-xs text-[#4a4a5a] mb-1">{businessMedia.length > 0 ? "Or paste an external URL:" : "Paste an image URL:"}</p>
+                          <Input
+                            id="imageUrl"
+                            placeholder="https://example.com/image.jpg"
+                            value={formData.imageUrl}
+                            onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                            data-testid="input-ad-image"
+                          />
+                        </div>
+                        {!businessMedia.length && user?.accountType === "business" && (
+                          <p className="text-xs text-[#d4a373]">
+                            Tip: Upload a logo and gallery photos on your listing page to easily use them here.
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
