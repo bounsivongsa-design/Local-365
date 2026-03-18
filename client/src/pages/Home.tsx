@@ -351,14 +351,14 @@ export default function Home() {
             <p className="text-white/70 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
           </div>
 
-          {/* Large Ad Carousel — Full Width */}
-          <div className="relative max-w-5xl mx-auto mb-8">
-            <div className="overflow-hidden rounded-2xl">
+          {/* Large Ad Carousel — Full Width, Tallest */}
+          <div className="relative max-w-5xl mx-auto mb-10">
+            <div className="overflow-hidden rounded-2xl shadow-2xl shadow-black/30">
               <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${largeAdPos * 100}%)` }}>
                 {largeAds.slides.map((slide, idx) => (
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-large-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                        <div className="relative aspect-[3/1] overflow-hidden rounded-2xl group">
+                        <div className="relative aspect-[2.2/1] md:aspect-[2.5/1] overflow-hidden rounded-2xl group">
                           <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" />
                           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
                           <div className="relative h-full flex flex-col justify-center p-8 md:p-10">
@@ -392,14 +392,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Medium Ad Carousel — 75% Width */}
-          <div className="relative w-full sm:max-w-[85%] md:max-w-[75%] mx-auto mb-8">
-            <div className="overflow-hidden rounded-xl">
+          {/* Medium Ad Carousel — 70% Width, Mid Height */}
+          <div className="relative w-full sm:max-w-[80%] md:max-w-[70%] mx-auto mb-8">
+            <div className="overflow-hidden rounded-xl shadow-lg shadow-black/20">
               <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${mediumAdPos * 100}%)` }}>
                 {mediumAds.slides.map((slide, idx) => (
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-medium-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                        <div className="relative aspect-[3.5/1] overflow-hidden rounded-xl group">
+                        <div className="relative aspect-[3.5/1] md:aspect-[4/1] overflow-hidden rounded-xl group">
                           <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
                           <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent" />
                           <div className="relative h-full flex flex-col justify-center p-5 md:p-8">
@@ -433,14 +433,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Small Ad Carousel — 50% Width */}
-          <div className="relative w-full sm:max-w-[70%] md:max-w-[50%] mx-auto">
-            <div className="overflow-hidden rounded-lg">
+          {/* Small Ad Carousel — 45% Width on Desktop, Compact */}
+          <div className="relative w-full sm:max-w-[75%] md:max-w-[50%] mx-auto">
+            <div className="overflow-hidden rounded-lg shadow-md shadow-black/15">
               <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${smallAdPos * 100}%)` }}>
                 {smallAds.slides.map((slide, idx) => (
                     <div key={slide.id > 0 ? slide.id : `ph-${idx}`} className="w-full flex-shrink-0" data-testid={`ad-small-${idx}`}>
                       <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                        <div className="relative aspect-[3/1] overflow-hidden rounded-lg group">
+                        <div className="relative aspect-[3.5/1] md:aspect-[5/1] overflow-hidden rounded-lg group">
                           <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                           <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent" />
                           <div className="relative h-full flex flex-col justify-center p-4 md:p-6">

@@ -116,30 +116,66 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
     const isPlaceholder = !ad;
 
     const sizeConfig = {
-      large_banner: { rounded: "rounded-2xl", padding: "p-8 md:p-10", titleSize: "text-2xl md:text-3xl", showDesc: true, badge: "bg-amber-500", label: "Large Ad — $1,000/mo" },
-      medium_banner: { rounded: "rounded-xl", padding: "p-5 md:p-8", titleSize: "text-lg md:text-xl", showDesc: true, badge: "bg-[#0a4a82]", label: "Medium Ad — $500/mo" },
-      small_banner: { rounded: "rounded-lg", padding: "p-4 md:p-6", titleSize: "text-sm md:text-base", showDesc: false, badge: "bg-gray-600", label: "Small Ad — $250/mo" },
+      large_banner: { 
+        height: "min-h-[280px] md:min-h-[320px]", 
+        rounded: "rounded-2xl", 
+        padding: "p-8 md:p-12", 
+        titleSize: "text-3xl md:text-4xl", 
+        descSize: "text-base md:text-lg",
+        showDesc: true, 
+        badge: "bg-amber-500", 
+        badgeSize: "text-sm px-3 py-1",
+        label: "Large Ad — $1,000/mo",
+        iconSize: "h-4 w-4",
+        imgOpacity: "opacity-30 group-hover:opacity-40",
+      },
+      medium_banner: { 
+        height: "min-h-[180px] md:min-h-[200px]", 
+        rounded: "rounded-xl", 
+        padding: "p-6 md:p-8", 
+        titleSize: "text-xl md:text-2xl", 
+        descSize: "text-sm",
+        showDesc: true, 
+        badge: "bg-[#0a4a82]", 
+        badgeSize: "text-xs px-2.5 py-0.5",
+        label: "Medium Ad — $500/mo",
+        iconSize: "h-3.5 w-3.5",
+        imgOpacity: "opacity-25 group-hover:opacity-30",
+      },
+      small_banner: { 
+        height: "min-h-[90px] md:min-h-[100px]", 
+        rounded: "rounded-lg", 
+        padding: "p-4 md:p-5", 
+        titleSize: "text-sm md:text-base", 
+        descSize: "text-xs",
+        showDesc: false, 
+        badge: "bg-gray-600", 
+        badgeSize: "text-[10px] px-2 py-0.5",
+        label: "Small Ad — $250/mo",
+        iconSize: "h-3 w-3",
+        imgOpacity: "opacity-20 group-hover:opacity-25",
+      },
     }[placementType];
 
     return (
       <div
-        className={`relative overflow-hidden ${sizeConfig.rounded} text-white cursor-pointer group ${className}`}
+        className={`relative overflow-hidden ${sizeConfig.rounded} ${sizeConfig.height} text-white cursor-pointer group flex flex-col justify-center ${className}`}
         onClick={() => isPlaceholder ? (window.location.href = "/advertising") : ad && handleClick(ad)}
         data-testid={`ad-${placementType}-${ad?.id || "placeholder"}`}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82] via-[#0d5a9e] to-[#0a4a82]/90" />
         {imageUrl && (
-          <img src={imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-25 transition-opacity duration-500" />
+          <img src={imageUrl} alt={title} className={`absolute inset-0 w-full h-full object-cover ${sizeConfig.imgOpacity} transition-opacity duration-500`} />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/80 via-[#0a4a82]/50 to-[#0a4a82]/60" />
         <div className={`relative ${sizeConfig.padding}`}>
-          <Badge className={`mb-2 ${sizeConfig.badge} text-white border-none text-xs`}>
-            <Megaphone className="h-3 w-3 mr-1.5" />
+          <Badge className={`mb-2 ${sizeConfig.badge} ${sizeConfig.badgeSize} text-white border-none`}>
+            <Megaphone className={`${sizeConfig.iconSize} mr-1.5`} />
             {isPlaceholder ? "Ad Space Available" : sizeConfig.label}
           </Badge>
           <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-lg`}>{title}</h3>
           {sizeConfig.showDesc && description && (
-            <p className="text-white/95 max-w-2xl text-sm leading-relaxed drop-shadow-sm">{description}</p>
+            <p className={`text-white/95 max-w-2xl ${sizeConfig.descSize} leading-relaxed drop-shadow-sm`}>{description}</p>
           )}
         </div>
       </div>
