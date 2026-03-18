@@ -175,7 +175,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
             <Megaphone className={`${sizeConfig.iconSize} mr-1.5`} />
             {isPlaceholder ? "Ad Space Available" : sizeConfig.label}
           </Badge>
-          <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-lg`}>{title}</h3>
+          <h3 className={`${sizeConfig.titleSize} font-bold mb-1 drop-shadow-lg text-white`}>{title}</h3>
           {sizeConfig.showDesc && description && (
             <p className={`text-white/95 max-w-2xl ${sizeConfig.descSize} leading-relaxed drop-shadow-sm`}>{description}</p>
           )}
