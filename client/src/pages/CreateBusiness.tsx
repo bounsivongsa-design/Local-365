@@ -56,11 +56,13 @@ export default function CreateBusiness() {
       </div>
 
       <div className="container py-8 max-w-4xl">
-        <CreateBusinessForm
-          onSuccess={() => {
-            navigate("/dashboard");
-          }}
-        />
+        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10">
+          <CreateBusinessForm
+            onSuccess={() => {
+              navigate("/dashboard");
+            }}
+          />
+        </div>
       </div>
     </div>
   );

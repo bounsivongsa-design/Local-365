@@ -429,7 +429,7 @@ export function CreateBusinessForm({
         )}
       />
 
-      <div className="space-y-3 rounded-xl border border-border p-4 bg-white/50 dark:bg-gray-900/50">
+      <div className="space-y-3 rounded-xl border border-border p-4 bg-gray-50 dark:bg-gray-900/50">
         <p className="text-sm font-semibold text-foreground">
           Service Type <span className="text-red-500">*</span>
         </p>
@@ -483,11 +483,11 @@ export function CreateBusinessForm({
         )}
       </div>
 
-      <div className="rounded-xl border-2 border-[#0a4a82] bg-[#0a4a82]/5 p-5 space-y-4">
+      <div className="rounded-xl border-2 border-[#0a4a82]/30 bg-[#f0f6fc] p-5 space-y-4">
         <div className="flex items-start gap-3">
           <AlertCircle className="h-6 w-6 text-[#0a4a82] shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-base font-bold text-[#0a4a82]">Local Vendor Eligibility Policy</h4>
+            <h4 className="text-base font-bold text-[#0a4a82]" style={{ color: '#0a4a82' }}>Local Vendor Eligibility Policy</h4>
             <p className="text-sm text-gray-700 mt-1 leading-relaxed">
               Local List 365 is exclusively for <strong>independently owned and locally operated businesses</strong> serving Currituck County. National chains, franchises, and corporate-controlled operations are <strong>not eligible</strong>.
             </p>
@@ -531,7 +531,7 @@ export function CreateBusinessForm({
           control={form.control}
           name="policyAcknowledged"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-[#0a4a82]/20 bg-white p-3">
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-[#0a4a82]/30 bg-white p-4 shadow-sm">
               <FormControl>
                 <Checkbox
                   checked={field.value ?? false}
@@ -686,7 +686,7 @@ export function CreateBusinessForm({
         )}
       />
 
-      <div className="space-y-4 rounded-xl border border-border p-4 bg-white/50 dark:bg-gray-900/50">
+      <div className="space-y-4 rounded-xl border border-border p-4 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center gap-2 mb-2">
           <Globe className="h-4 w-4 text-[#0a4a82]" />
           <p className="text-sm font-semibold text-foreground">
@@ -795,7 +795,7 @@ export function CreateBusinessForm({
         )}
       />
 
-      <div className="space-y-3 rounded-xl border border-border p-4 bg-white/50 dark:bg-gray-900/50">
+      <div className="space-y-3 rounded-xl border border-border p-4 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center gap-2 mb-2">
           <Clock className="h-4 w-4 text-[#0a4a82]" />
           <p className="text-sm font-semibold text-foreground">
@@ -897,7 +897,7 @@ export function CreateBusinessForm({
         />
 
         {categoryLimit > 1 && (
-          <div className="space-y-3 rounded-xl border border-border p-4 bg-white/50 dark:bg-gray-900/50">
+          <div className="space-y-3 rounded-xl border border-border p-4 bg-gray-50 dark:bg-gray-900/50">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-foreground">
                 Additional Categories
@@ -985,7 +985,7 @@ export function CreateBusinessForm({
         customers.
       </p>
 
-      <div className="space-y-4 rounded-xl border border-border p-4 bg-white/50 dark:bg-gray-900/50">
+      <div className="space-y-4 rounded-xl border border-border p-4 bg-gray-50 dark:bg-gray-900/50">
         <FormField
           control={form.control}
           name="hasInsurance"
