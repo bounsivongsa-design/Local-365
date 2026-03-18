@@ -59,6 +59,7 @@ export const businesses = pgTable("businesses", {
   email: text("email"),
   websiteUrl: text("website_url"),
   logoUrl: text("logo_url"),
+  galleryPhotos: text("gallery_photos").array().default([]),
   promoVideoUrl: text("promo_video_url"),
 });
 

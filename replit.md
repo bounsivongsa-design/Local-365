@@ -30,7 +30,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Key Database Tables
 - `users`: Stores user accounts with `accountType` (loyalty columns still in DB but feature is deferred).
-- `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `isVeteran`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), owner info (`ownerName`), `email` (required), `businessHours` (JSON), `socialMediaUrls` (JSON), `searchKeywords` (250 char max), `additionalCategories` (text array), membership tiers, and ratings.
+- `businesses`: Manages business listings with credentials (`hasLLC`, `hasInsurance`, `isLicensed`, `isVeteran`, `establishedYear`, `establishedZipCode`, `servicesCommercial`, `servicesResidential`), owner info (`ownerName`), `email` (required), `businessHours` (JSON), `socialMediaUrls` (JSON), `searchKeywords` (250 char max), `additionalCategories` (text array), membership tiers, ratings, `logoUrl`, `galleryPhotos` (text array, tier-gated: Silver=6, Gold=10), and `promoVideoUrl` (Gold only).
 - `quoteRequests`: Handles customer project requests.
 - `quotes`: Stores business bids on customer projects.
 - `events`: Contains local events calendar data.
@@ -95,6 +95,8 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - `BusinessCard`: Card with image, category, rating, trust badges, membership badge
 - `LocationPicker`: Zillow-style location search dialog with geolocation support
 - `EventCard`: Tier-based event display — shows/hides image and flyer link based on business membership tier (Bronze=basic info, Silver=+image, Gold=+image+flyer link)
+- `LogoUploader`: Upload/replace/delete business logo, owner-only, all tiers (BusinessDetails.tsx)
+- `GalleryManager`: Upload/remove gallery photos with tier-based limits (Silver=6, Gold=10), displays gallery to visitors (BusinessDetails.tsx)
 - `PromoVideoPlayer`: Displays uploaded promo video with Gold Exclusive badge (BusinessDetails.tsx)
 - `PromoVideoUploader`: Upload/replace/delete promo video, Gold tier owners only (BusinessDetails.tsx)
 - `HelpWanted`: Job board page at `/jobs` — businesses post help wanted ads ($7/week via Stripe subscription), sorted by membership tier. Listings start inactive until payment completes. Stripe webhook activates listing on `checkout.session.completed`, renews on `invoice.paid`, deactivates on `customer.subscription.deleted`. "My Listings" section shows Active/Pending Payment badges with Pay Now button for unpaid listings.

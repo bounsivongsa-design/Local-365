@@ -724,6 +724,132 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/businesses/:id/logo", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+      const { logoUrl } = req.body;
+
+      if (!logoUrl || typeof logoUrl !== "string") {
+        return res.status(400).json({ message: "Logo URL is required" });
+      }
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || user[0].linkedBusinessId !== businessId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [updated] = await pgDb
+        .update(businesses)
+        .set({ logoUrl })
+        .where(eq(businesses.id, businessId))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      console.error("Error saving logo:", err);
+      res.status(500).json({ message: "Failed to save logo" });
+    }
+  });
+
+  app.delete("/api/businesses/:id/logo", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || user[0].linkedBusinessId !== businessId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [updated] = await pgDb
+        .update(businesses)
+        .set({ logoUrl: null })
+        .where(eq(businesses.id, businessId))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to remove logo" });
+    }
+  });
+
+  app.post("/api/businesses/:id/gallery", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+      const { photoUrl } = req.body;
+
+      if (!photoUrl || typeof photoUrl !== "string") {
+        return res.status(400).json({ message: "Photo URL is required" });
+      }
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || user[0].linkedBusinessId !== businessId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [business] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!business) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+
+      const tier = business.membershipTier;
+      if (tier === "none" || tier === "basic") {
+        return res.status(403).json({ message: "Gallery photos require Silver or Gold membership" });
+      }
+
+      const maxPhotos = tier === "premium" ? 10 : 6;
+      const currentPhotos = business.galleryPhotos || [];
+
+      if (currentPhotos.length >= maxPhotos) {
+        return res.status(400).json({ message: `You've reached the maximum of ${maxPhotos} gallery photos for your tier` });
+      }
+
+      const [updated] = await pgDb
+        .update(businesses)
+        .set({ galleryPhotos: [...currentPhotos, photoUrl] })
+        .where(eq(businesses.id, businessId))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      console.error("Error adding gallery photo:", err);
+      res.status(500).json({ message: "Failed to add gallery photo" });
+    }
+  });
+
+  app.delete("/api/businesses/:id/gallery", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+      const { photoUrl } = req.body;
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0 || user[0].linkedBusinessId !== businessId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [business] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!business) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+
+      const currentPhotos = business.galleryPhotos || [];
+      const updatedPhotos = currentPhotos.filter((p: string) => p !== photoUrl);
+
+      const [updated] = await pgDb
+        .update(businesses)
+        .set({ galleryPhotos: updatedPhotos })
+        .where(eq(businesses.id, businessId))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to remove gallery photo" });
+    }
+  });
+
   // Events
   app.get(api.events.list.path, async (req, res) => {
     const { zipCode } = req.query;

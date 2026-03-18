@@ -185,6 +185,10 @@ export default function BusinessDetails() {
             )}
           </div>
 
+          <LogoUploader business={business} />
+
+          <GalleryManager business={business} />
+
           {business.promoVideoUrl && (
             <PromoVideoPlayer videoUrl={business.promoVideoUrl} businessName={business.name} />
           )}
@@ -422,6 +426,315 @@ export default function BusinessDetails() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function LogoUploader({ business }: { business: any }) {
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading, progress } = useUpload();
+
+  const isOwner = isAuthenticated && user && (user as any).linkedBusinessId === business.id;
+  if (!isOwner) return null;
+
+  const saveMutation = useMutation({
+    mutationFn: async (logoUrl: string) => {
+      const res = await apiRequest("POST", `/api/businesses/${business.id}/logo`, { logoUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.businesses.get.path, business.id] });
+      toast({ title: "Logo updated", description: "Your business logo is now live!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to save logo", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/businesses/${business.id}/logo`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.businesses.get.path, business.id] });
+      toast({ title: "Logo removed" });
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please upload a JPG, PNG, WebP, or SVG image.", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Logo must be under 5MB.", variant: "destructive" });
+      return;
+    }
+
+    const result = await uploadFile(file);
+    if (result) {
+      saveMutation.mutate(result.objectPath);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-[#0a4a82]/5 to-[#0a4a82]/10 rounded-2xl p-6 border border-[#0a4a82]/15 shadow-sm" data-testid="section-logo-upload">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#062d54] flex items-center justify-center">
+          <Building2 className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-display text-lg font-bold text-[#1a1a2e]">Business Logo</h3>
+          <p className="text-sm text-[#4a4a5a]">Upload your company logo (all membership tiers)</p>
+        </div>
+      </div>
+
+      {business.logoUrl ? (
+        <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-xl border border-[#0a4a82]/10">
+          <div className="flex items-center gap-4">
+            <img
+              src={business.logoUrl.startsWith("/objects/") ? business.logoUrl : `/objects/${business.logoUrl}`}
+              alt="Business logo"
+              className="w-16 h-16 rounded-xl object-cover border-2 border-[#0a4a82]/10"
+              data-testid="img-logo-preview"
+            />
+            <div>
+              <p className="font-medium text-sm text-[#1a1a2e]">Logo uploaded</p>
+              <p className="text-xs text-[#4a4a5a]">Visible on your listing and directory card</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading || saveMutation.isPending} data-testid="button-replace-logo">
+              <Upload className="h-4 w-4 mr-1" /> Replace
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} className="text-red-600 hover:text-red-700 hover:bg-red-50" data-testid="button-remove-logo">
+              <Trash2 className="h-4 w-4 mr-1" /> Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-[#0a4a82]/20 bg-white/50 cursor-pointer hover:border-[#0a4a82]/40 transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+          data-testid="dropzone-logo-upload"
+        >
+          <div className="w-14 h-14 rounded-full bg-[#0a4a82]/10 flex items-center justify-center">
+            <Upload className="h-7 w-7 text-[#0a4a82]" />
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-[#1a1a2e]">Upload your logo</p>
+            <p className="text-sm text-[#4a4a5a] mt-1">JPG, PNG, WebP, or SVG · Max 5MB</p>
+          </div>
+        </div>
+      )}
+
+      {isUploading && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="text-[#4a4a5a]">Uploading logo...</span>
+            <span className="font-medium text-[#0a4a82]">{progress}%</span>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#0a4a82] to-[#d4a373] rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      )}
+
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" data-testid="input-logo-file" />
+    </div>
+  );
+}
+
+function GalleryManager({ business }: { business: any }) {
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading, progress } = useUpload();
+
+  const isOwner = isAuthenticated && user && (user as any).linkedBusinessId === business.id;
+  const tier = business.membershipTier;
+  const canUploadPhotos = tier === "standard" || tier === "premium";
+  const maxPhotos = tier === "premium" ? 10 : tier === "standard" ? 6 : 0;
+  const currentPhotos: string[] = business.galleryPhotos || [];
+  const remaining = maxPhotos - currentPhotos.length;
+
+  const addMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      const res = await apiRequest("POST", `/api/businesses/${business.id}/gallery`, { photoUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.businesses.get.path, business.id] });
+      toast({ title: "Photo added", description: "Gallery photo uploaded successfully!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to add photo", variant: "destructive" });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      const res = await apiRequest("DELETE", `/api/businesses/${business.id}/gallery`, { photoUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.businesses.get.path, business.id] });
+      toast({ title: "Photo removed" });
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please upload a JPG, PNG, or WebP image.", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Photo must be under 10MB.", variant: "destructive" });
+      return;
+    }
+
+    const result = await uploadFile(file);
+    if (result) {
+      addMutation.mutate(result.objectPath);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  if (currentPhotos.length > 0 && !isOwner) {
+    return (
+      <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md border border-[#0a4a82]/8 relative overflow-hidden" data-testid="section-gallery">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#d4a373] via-[#0a4a82] to-[#8a9a5b]"></div>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a373] to-[#b8834f] flex items-center justify-center">
+            <Award className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-[#1a1a2e]">Photo Gallery</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {currentPhotos.map((photo: string, i: number) => (
+            <div key={i} className="aspect-[4/3] rounded-xl overflow-hidden shadow-sm border border-[#0a4a82]/10">
+              <img
+                src={photo.startsWith("/objects/") ? photo : `/objects/${photo}`}
+                alt={`Gallery photo ${i + 1}`}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                data-testid={`img-gallery-${i}`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!isOwner) return null;
+
+  return (
+    <div className="bg-gradient-to-br from-[#d4a373]/5 to-[#d4a373]/10 rounded-2xl p-6 border border-[#d4a373]/15 shadow-sm" data-testid="section-gallery-upload">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a373] to-[#b8834f] flex items-center justify-center">
+            <Award className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-bold text-[#1a1a2e]">Photo Gallery</h3>
+            <p className="text-sm text-[#4a4a5a]">
+              {canUploadPhotos
+                ? `${currentPhotos.length} / ${maxPhotos} photos · ${remaining} remaining`
+                : "Upgrade to Silver or Gold to add gallery photos"}
+            </p>
+          </div>
+        </div>
+        {canUploadPhotos && (
+          <Badge className={tier === "premium" ? "bg-gradient-to-r from-yellow-500 to-amber-400 text-white border-0" : "bg-gray-400 text-white border-0"}>
+            {tier === "premium" ? "Gold · 10 photos" : "Silver · 6 photos"}
+          </Badge>
+        )}
+      </div>
+
+      {!canUploadPhotos ? (
+        <div className="p-6 rounded-xl bg-white/50 border border-[#d4a373]/15 text-center">
+          <Crown className="h-10 w-10 text-[#d4a373]/40 mx-auto mb-3" />
+          <p className="font-medium text-[#1a1a2e] mb-1">Gallery Photos Require a Membership</p>
+          <p className="text-sm text-[#4a4a5a] mb-4">Silver members get 6 photos, Gold members get 10 photos</p>
+          <Link to="/membership">
+            <Button size="sm" className="bg-gradient-to-r from-[#d4a373] to-[#b8834f] text-white border-0 shadow-sm" data-testid="button-upgrade-for-gallery">
+              <Crown className="h-4 w-4 mr-1" /> View Membership Plans
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          {currentPhotos.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+              {currentPhotos.map((photo: string, i: number) => (
+                <div key={i} className="relative group aspect-[4/3] rounded-xl overflow-hidden shadow-sm border border-[#d4a373]/15">
+                  <img
+                    src={photo.startsWith("/objects/") ? photo : `/objects/${photo}`}
+                    alt={`Gallery photo ${i + 1}`}
+                    className="w-full h-full object-cover"
+                    data-testid={`img-gallery-${i}`}
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => removeMutation.mutate(photo)}
+                      disabled={removeMutation.isPending}
+                      data-testid={`button-remove-photo-${i}`}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {remaining > 0 && (
+            <div
+              className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed border-[#d4a373]/25 bg-white/50 cursor-pointer hover:border-[#d4a373]/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="dropzone-gallery-upload"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#d4a373]/10 flex items-center justify-center">
+                <Upload className="h-6 w-6 text-[#d4a373]" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-[#1a1a2e]">Add photos to your gallery</p>
+                <p className="text-sm text-[#4a4a5a] mt-1">JPG, PNG, or WebP · Max 10MB per photo · {remaining} slots remaining</p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {isUploading && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="text-[#4a4a5a]">Uploading photo...</span>
+            <span className="font-medium text-[#d4a373]">{progress}%</span>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#d4a373] to-[#0a4a82] rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      )}
+
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" data-testid="input-gallery-file" />
     </div>
   );
 }
