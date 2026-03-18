@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useEvents, useCreateEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
+import { useBusiness } from "@/hooks/use-businesses";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -13,7 +15,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +31,7 @@ import { insertEventSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -204,28 +215,29 @@ export default function Events() {
                 </Button>
               </div>
 
-              <a href="#event-advertising">
-                <Button className="rounded-full bg-white/15 text-white border border-white/30 shadow-lg" data-testid="link-advertise-event">
-                  <Megaphone className="mr-2 h-4 w-4" />
-                  Advertise Your Event
-                </Button>
-              </a>
-
-              {isBusinessAccount && (
+              {isBusinessAccount ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-[shadow,transform] duration-200 border-0" data-testid="button-create-event">
                       <Plus className="mr-2 h-4 w-4" />
-                      Create Event
+                      Advertise Your Event
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Create New Event</DialogTitle>
+                      <DialogTitle>Create & Advertise Your Event</DialogTitle>
+                      <DialogDescription>Fill in your event details below. Fields available depend on your membership tier.</DialogDescription>
                     </DialogHeader>
-                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} />
+                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} linkedBusinessId={user?.linkedBusinessId} />
                   </DialogContent>
                 </Dialog>
+              ) : (
+                <a href="#event-advertising">
+                  <Button className="rounded-full bg-white/15 text-white border border-white/30 shadow-lg" data-testid="link-advertise-event">
+                    <Megaphone className="mr-2 h-4 w-4" />
+                    Event Ad Pricing
+                  </Button>
+                </a>
               )}
             </div>
           </div>
@@ -356,6 +368,7 @@ export default function Events() {
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Description</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Flyer / event link</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> <span className="font-semibold text-amber-700 dark:text-amber-400">30-sec promo video</span></li>
                 </ul>
               </div>
             </div>
@@ -367,17 +380,44 @@ export default function Events() {
 }
 
 
-function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
+function getTierLevel(membershipTier: string | undefined | null): "none" | "bronze" | "silver" | "gold" {
+  if (!membershipTier) return "none";
+  const tierMap: Record<string, "none" | "bronze" | "silver" | "gold"> = {
+    basic: "bronze", bronze: "bronze",
+    standard: "silver", silver: "silver",
+    premium: "gold", gold: "gold",
+  };
+  return tierMap[membershipTier] || "none";
+}
+
+const TIER_LABELS: Record<string, { label: string; color: string }> = {
+  none: { label: "Non-Member", color: "bg-slate-500" },
+  bronze: { label: "Bronze", color: "bg-gradient-to-r from-amber-700 to-amber-600" },
+  silver: { label: "Silver", color: "bg-gradient-to-r from-gray-500 to-gray-400" },
+  gold: { label: "Gold", color: "bg-gradient-to-r from-yellow-600 to-amber-500" },
+};
+
+function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => void; linkedBusinessId?: number | null }) {
   const createEvent = useCreateEvent();
   const { toast } = useToast();
+  const { data: business } = useBusiness(linkedBusinessId || 0);
+  const tier = getTierLevel(business?.membershipTier);
+  const tierInfo = TIER_LABELS[tier];
+
+  const canDescription = tier === "silver" || tier === "gold";
+  const canImage = tier === "silver" || tier === "gold";
+  const canFlyer = tier === "gold";
+  const canVideo = tier === "gold";
   
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional(),
-    location: z.string().optional(),
-    date: z.string().transform((str) => new Date(str)),
+    location: z.string().min(1, "Location is required"),
+    date: z.string().min(1, "Date is required"),
     imageUrl: z.string().optional(),
     flyerUrl: z.string().optional(),
+    adDuration: z.string().min(1, "Select an ad duration"),
+    adSize: z.string().min(1, "Select an ad size"),
   });
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -386,18 +426,35 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
       title: "",
       description: "",
       location: "",
+      date: "",
       imageUrl: "",
+      flyerUrl: "",
+      adDuration: "",
+      adSize: "",
     },
   });
 
+  const adDuration = form.watch("adDuration");
+  const adSize = form.watch("adSize");
+
+  const discount = tier === "gold" ? 0.50 : tier === "silver" ? 0.25 : tier === "bronze" ? 0.10 : 0;
+  const basePricing = adDuration === "2week" ? EVENT_BASE_PRICING.event2Week : EVENT_BASE_PRICING.eventMonthly;
+  const basePrice = adSize ? (basePricing as any)[adSize] || 0 : 0;
+  const finalPrice = Math.round(basePrice * (1 - discount));
+
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    if (!data.imageUrl) {
-      data.imageUrl = "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop"; 
-    }
+    const eventData: any = {
+      title: data.title,
+      location: data.location,
+      date: data.date,
+      description: canDescription && data.description ? data.description : "",
+      imageUrl: canImage && data.imageUrl ? data.imageUrl : "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop",
+    };
+    if (canFlyer && data.flyerUrl) eventData.flyerUrl = data.flyerUrl;
     
-    createEvent.mutate(data, {
+    createEvent.mutate(eventData, {
       onSuccess: () => {
-        toast({ title: "Event Created", description: "Your event is now live on the calendar." });
+        toast({ title: "Event Created", description: "Your event has been submitted. It will appear on the calendar once payment is confirmed." });
         onSuccess();
       },
       onError: (err) => {
@@ -408,14 +465,24 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-2">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <Crown className="h-4 w-4 text-amber-600" />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Your Tier:</span>
+          </div>
+          <Badge className={`${tierInfo.color} text-white border-0`} data-testid="badge-event-tier">
+            {tierInfo.label}
+          </Badge>
+        </div>
+
         <FormField
           control={form.control}
           name="title"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Event Title</FormLabel>
-              <FormControl><Input placeholder="Summer Night Market" {...field} data-testid="input-event-title" /></FormControl>
+              <FormControl><Input placeholder="Summer Night Market" className="bg-white text-[#1a1a2e]" {...field} data-testid="input-event-title" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -430,8 +497,8 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
                 <FormControl>
                   <Input 
                     type="datetime-local" 
+                    className="bg-white text-[#1a1a2e]"
                     {...field} 
-                    value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value} 
                     data-testid="input-event-date"
                   />
                 </FormControl>
@@ -445,50 +512,175 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Location</FormLabel>
-                <FormControl><Input placeholder="Town Square" {...field} data-testid="input-event-location" /></FormControl>
+                <FormControl><Input placeholder="Town Square, Moyock" className="bg-white text-[#1a1a2e]" {...field} data-testid="input-event-location" /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl><Input placeholder="What's happening?" {...field} data-testid="input-event-description" /></FormControl>
-              <FormMessage />
-            </FormItem>
+
+        {canDescription ? (
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Textarea placeholder="Describe your event..." className="bg-white text-[#1a1a2e] min-h-[80px]" {...field} data-testid="input-event-description" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>Description — available with Silver or Gold membership</span>
+          </div>
+        )}
+
+        {canImage ? (
+          <FormField
+            control={form.control}
+            name="imageUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cover Image URL</FormLabel>
+                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>Cover image — available with Silver or Gold membership</span>
+          </div>
+        )}
+
+        {canFlyer ? (
+          <FormField
+            control={form.control}
+            name="flyerUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Flyer / Event Link URL</FormLabel>
+                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-flyer" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>Flyer / event link — available with Gold membership</span>
+          </div>
+        )}
+
+        {canVideo ? (
+          <div className="p-3 rounded-xl bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-700/30">
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">30-Sec Promo Video</span>
+            </div>
+            <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Your business listing's promo video will be featured alongside this event.</p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>30-sec promo video — available with Gold membership</span>
+          </div>
+        )}
+
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+            <Megaphone className="h-4 w-4" />
+            Ad Package
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="adDuration"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Duration</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-white text-[#1a1a2e]" data-testid="select-ad-duration">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="2week">2-Week Event</SelectItem>
+                      <SelectItem value="monthly">Monthly Event</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adSize"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ad Size</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-white text-[#1a1a2e]" data-testid="select-ad-size">
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="small">Small</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="large">Large</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {adDuration && adSize && (
+            <div className="mt-4 p-4 rounded-xl bg-[#0a4a82]/5 border border-[#0a4a82]/15">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {adDuration === "2week" ? "2-Week" : "Monthly"} · {adSize.charAt(0).toUpperCase() + adSize.slice(1)} Ad
+                  </p>
+                  {discount > 0 && (
+                    <p className="text-xs text-green-600 font-medium mt-0.5">
+                      {tierInfo.label} discount: {discount * 100}% off
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  {discount > 0 && (
+                    <span className="text-sm text-slate-400 line-through mr-2">${basePrice}</span>
+                  )}
+                  <span className="text-2xl font-bold text-[#0a4a82]" data-testid="text-event-price">${finalPrice}</span>
+                </div>
+              </div>
+            </div>
           )}
-        />
-        <FormField
-          control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cover Image URL (Optional)</FormLabel>
-              <FormControl><Input placeholder="https://..." {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="flyerUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Flyer / Event Link URL (Optional)</FormLabel>
-              <FormControl><Input placeholder="https://..." {...field} value={field.value || ""} data-testid="input-event-flyer" /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        </div>
+
         <div className="pt-2 flex justify-end">
-          <Button type="submit" disabled={createEvent.isPending} data-testid="button-submit-event">
-            {createEvent.isPending ? "Creating..." : "Create Event"}
+          <Button 
+            type="submit" 
+            disabled={createEvent.isPending} 
+            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
+            data-testid="button-submit-event"
+          >
+            {createEvent.isPending ? "Creating..." : "Create Event & Proceed to Payment"}
           </Button>
         </div>
+
+        <p className="text-xs text-center text-slate-400">
+          <Info className="h-3 w-3 inline mr-1" />
+          Event will appear on the calendar after payment is confirmed.
+        </p>
       </form>
     </Form>
   );

@@ -764,19 +764,30 @@ export async function registerRoutes(
       }
       
       const serverBusinessId = user[0].linkedBusinessId;
-      const [biz] = await pgDb.select({ zipCode: businesses.zipCode })
+      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
         .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
       if (!biz) {
         return res.status(400).json({ message: "Linked business not found. Please contact support." });
       }
       const businessZipCode = biz.zipCode;
 
-      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, ...bodyWithoutBusinessId } = req.body;
+      const tier = biz.membershipTier;
+      const isSilverPlus = tier === "standard" || tier === "premium";
+      const isGold = tier === "premium";
+
+      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: _adSize, ...bodyWithoutMeta } = req.body;
+
+      const sanitizedBody = {
+        ...bodyWithoutMeta,
+        description: isSilverPlus ? (bodyWithoutMeta.description || "") : "",
+        imageUrl: isSilverPlus ? bodyWithoutMeta.imageUrl : undefined,
+        flyerUrl: isGold ? bodyWithoutMeta.flyerUrl : undefined,
+      };
 
       const eventZipCode = businessZipCode || req.body.zipCode || "27929";
 
       const input = api.events.create.input.parse({
-          ...bodyWithoutBusinessId,
+          ...sanitizedBody,
           businessId: serverBusinessId,
           date: new Date(req.body.date),
           zipCode: eventZipCode,
