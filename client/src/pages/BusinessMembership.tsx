@@ -61,7 +61,8 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Business listing in directory",
       "Phone number displayed",
       "Customer reviews enabled",
-      "Up to 4 photos, 4 categories",
+      "Logo display only (no gallery photos)",
+      "Up to 4 categories",
       "Quote access: 3rd round (72+ hrs)",
       "10% off advertising",
       "Email support"
