@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
 import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
 if (!process.env.Stripeintegration) {
@@ -110,6 +110,11 @@ export function registerStripeRoutes(app: Express) {
         }
         if (promo.applicableTiers?.length && !promo.applicableTiers.includes(tier)) {
           return res.status(400).json({ message: `This promo code is not applicable to the ${tier} tier` });
+        }
+        const existingUsage = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+          .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, biz.id))).limit(1);
+        if (existingUsage.length > 0) {
+          return res.status(400).json({ message: "This promo code has already been used by your business" });
         }
         promoId = promo.id;
         if (promo.discountType === "percentage") {

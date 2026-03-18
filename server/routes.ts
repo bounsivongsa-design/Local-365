@@ -1971,7 +1971,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
 
   app.post("/api/promo-codes/validate", async (req, res) => {
     try {
-      const { code, tier } = req.body;
+      const { code, tier, businessId } = req.body;
       if (!code) {
         return res.status(400).json({ valid: false, message: "Promo code is required" });
       }
@@ -1994,6 +1994,13 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
       if (tier && promo.applicableTiers && promo.applicableTiers.length > 0) {
         if (!promo.applicableTiers.includes(tier)) {
           return res.status(400).json({ valid: false, message: `This promo code is not applicable to the ${tier} tier` });
+        }
+      }
+      if (businessId) {
+        const existingUsage = await pgDb.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+          .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, businessId))).limit(1);
+        if (existingUsage.length > 0) {
+          return res.status(400).json({ valid: false, message: "This promo code has already been used by your business" });
         }
       }
       res.json({

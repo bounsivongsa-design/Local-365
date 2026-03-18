@@ -203,7 +203,7 @@ export default function BusinessMembership() {
       const res = await fetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoCode, tier }),
+        body: JSON.stringify({ code: promoCode, tier, businessId: business?.id }),
       });
       const data = await res.json();
       if (data.valid) {
