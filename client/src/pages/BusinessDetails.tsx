@@ -46,32 +46,42 @@ export default function BusinessDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-20">
-      <div className="h-[300px] md:h-[400px] relative w-full bg-slate-900 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-[#f0f4f8] via-[#f5f0eb] to-[#eef2f7] pb-20">
+      <div className="h-[320px] md:h-[420px] relative w-full overflow-hidden">
         {business.imageUrl && (
           <img 
             src={business.imageUrl} 
             alt={business.name} 
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a4a82] via-[#0a4a82]/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a4a82]/40 to-transparent"></div>
         
         <div className="container absolute bottom-0 left-0 right-0 pb-8">
            <Link to="/directory">
-             <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10 mb-6 -ml-4">
+             <Button variant="ghost" className="text-white/90 hover:text-white hover:bg-white/15 mb-6 -ml-4 backdrop-blur-sm border border-white/20">
                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Directory
              </Button>
            </Link>
            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
              <div>
-               <Badge className="mb-3 bg-primary text-primary-foreground border-none px-3 py-1 text-sm">{business.category}</Badge>
-               <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground">{business.name}</h1>
+               <Badge className="mb-3 bg-[#d4a373] text-white border-none px-4 py-1.5 text-sm font-semibold shadow-lg">{business.category}</Badge>
+               <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
+               {business.address && (
+                 <p className="text-white/80 mt-2 flex items-center gap-1.5 text-sm">
+                   <MapPin className="h-4 w-4" /> {business.address}
+                 </p>
+               )}
              </div>
-             <div className="flex items-center gap-2 bg-background/80 backdrop-blur-md px-4 py-2 rounded-full border shadow-sm">
-                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                <span className="font-bold text-lg">{Number(business.averageRating || 0).toFixed(1)}</span>
-                <span className="text-muted-foreground text-sm">({business.reviews?.length || 0} reviews)</span>
+             <div className="flex items-center gap-2.5 bg-white/95 backdrop-blur-md px-5 py-3 rounded-2xl shadow-xl border border-white/50">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={`h-4 w-4 ${i < Math.round(Number(business.averageRating || 0)) ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} />
+                  ))}
+                </div>
+                <span className="font-bold text-lg text-[#1a1a2e]">{Number(business.averageRating || 0).toFixed(1)}</span>
+                <span className="text-[#0a4a82]/60 text-sm">({business.reviews?.length || 0})</span>
              </div>
            </div>
         </div>
@@ -79,59 +89,71 @@ export default function BusinessDetails() {
 
       <div className="container py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white dark:bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
-            <h2 className="font-display text-2xl font-bold mb-4">About</h2>
-            <p className="text-muted-foreground text-lg leading-relaxed">
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md border border-[#0a4a82]/8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0a4a82] via-[#d4a373] to-[#8a9a5b]"></div>
+            <h2 className="font-display text-2xl font-bold mb-2 text-[#1a1a2e]">About</h2>
+            <div className="w-16 h-1 bg-[#d4a373] rounded-full mb-4"></div>
+            <p className="text-[#4a4a5a] text-lg leading-relaxed">
               {business.description}
             </p>
             
             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
-                 <MapPin className="h-5 w-5 text-primary mt-0.5" />
+               <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#0a4a82]/5 to-[#0a4a82]/10 rounded-xl border border-[#0a4a82]/10">
+                 <div className="w-10 h-10 rounded-lg bg-[#0a4a82] flex items-center justify-center flex-shrink-0">
+                   <MapPin className="h-5 w-5 text-white" />
+                 </div>
                  <div>
-                   <h4 className="font-semibold mb-1">Location</h4>
-                   <p className="text-muted-foreground">{business.address}</p>
+                   <h4 className="font-semibold mb-1 text-[#1a1a2e]">Location</h4>
+                   <p className="text-[#4a4a5a] text-sm">{business.address}</p>
                  </div>
                </div>
-               <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
-                 <Clock className="h-5 w-5 text-primary mt-0.5" />
+               <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#8a9a5b]/5 to-[#8a9a5b]/10 rounded-xl border border-[#8a9a5b]/10">
+                 <div className="w-10 h-10 rounded-lg bg-[#8a9a5b] flex items-center justify-center flex-shrink-0">
+                   <Clock className="h-5 w-5 text-white" />
+                 </div>
                  <div>
-                   <h4 className="font-semibold mb-1">Hours</h4>
-                   <p className="text-muted-foreground">Open today: 9:00 AM - 6:00 PM</p>
+                   <h4 className="font-semibold mb-1 text-[#1a1a2e]">Hours</h4>
+                   <p className="text-[#4a4a5a] text-sm">Open today: 9:00 AM - 6:00 PM</p>
                  </div>
                </div>
                {business.phone && (
-                 <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
-                   <Phone className="h-5 w-5 text-primary mt-0.5" />
+                 <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#d4a373]/5 to-[#d4a373]/10 rounded-xl border border-[#d4a373]/15">
+                   <div className="w-10 h-10 rounded-lg bg-[#d4a373] flex items-center justify-center flex-shrink-0">
+                     <Phone className="h-5 w-5 text-white" />
+                   </div>
                    <div>
-                     <h4 className="font-semibold mb-1">Phone</h4>
-                     <a href={`tel:${business.phone}`} className="text-[#0a4a82] hover:underline" data-testid="link-phone">
+                     <h4 className="font-semibold mb-1 text-[#1a1a2e]">Phone</h4>
+                     <a href={`tel:${business.phone}`} className="text-[#0a4a82] hover:underline font-medium" data-testid="link-phone">
                        {business.phone}
                      </a>
                    </div>
                  </div>
                )}
                {business.email && (
-                 <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
-                   <Mail className="h-5 w-5 text-primary mt-0.5" />
+                 <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#0a4a82]/5 to-[#0a4a82]/10 rounded-xl border border-[#0a4a82]/10">
+                   <div className="w-10 h-10 rounded-lg bg-[#0a4a82] flex items-center justify-center flex-shrink-0">
+                     <Mail className="h-5 w-5 text-white" />
+                   </div>
                    <div>
-                     <h4 className="font-semibold mb-1">Email</h4>
-                     <a href={`mailto:${business.email}`} className="text-[#0a4a82] hover:underline" data-testid="link-email">
+                     <h4 className="font-semibold mb-1 text-[#1a1a2e]">Email</h4>
+                     <a href={`mailto:${business.email}`} className="text-[#0a4a82] hover:underline font-medium text-sm" data-testid="link-email">
                        {business.email}
                      </a>
                    </div>
                  </div>
                )}
                {business.websiteUrl && (
-                 <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
-                   <Globe className="h-5 w-5 text-primary mt-0.5" />
+                 <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#8a9a5b]/5 to-[#8a9a5b]/10 rounded-xl border border-[#8a9a5b]/10">
+                   <div className="w-10 h-10 rounded-lg bg-[#8a9a5b] flex items-center justify-center flex-shrink-0">
+                     <Globe className="h-5 w-5 text-white" />
+                   </div>
                    <div>
-                     <h4 className="font-semibold mb-1">Website</h4>
+                     <h4 className="font-semibold mb-1 text-[#1a1a2e]">Website</h4>
                      <a 
                        href={business.websiteUrl} 
                        target="_blank" 
                        rel="noopener noreferrer"
-                       className="text-[#0a4a82] hover:underline flex items-center gap-1"
+                       className="text-[#0a4a82] hover:underline flex items-center gap-1 font-medium text-sm"
                        data-testid="link-website"
                      >
                        Visit Website <ExternalLink className="h-3 w-3" />
@@ -142,7 +164,7 @@ export default function BusinessDetails() {
             </div>
             
             {business.membershipTier && business.membershipTier !== "none" && (
-              <div className="mt-6 pt-6 border-t">
+              <div className="mt-6 pt-6 border-t border-[#0a4a82]/10">
                 <MembershipBadge tier={business.membershipTier} variant="full" />
               </div>
             )}
@@ -154,10 +176,13 @@ export default function BusinessDetails() {
 
           <PromoVideoUploader business={business} />
 
-          <div className="bg-white dark:bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md border border-[#0a4a82]/8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#8a9a5b] via-[#0a4a82] to-[#d4a373]"></div>
             <div className="flex items-center gap-3 mb-4">
-              <Shield className="h-6 w-6 text-[#0a4a82]" />
-              <h2 className="font-display text-2xl font-bold">Business Credentials</h2>
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#0a4a82]/80 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="font-display text-2xl font-bold text-[#1a1a2e]">Business Credentials</h2>
             </div>
             <TrustBadges 
               hasLLC={business.hasLLC ?? false} 
@@ -168,23 +193,27 @@ export default function BusinessDetails() {
 
             {(business.establishedYear || business.establishedZipCode || business.servicesCommercial || business.servicesResidential) && (
               <div className="mt-6 pt-6 border-t border-[#0a4a82]/10">
-                <h3 className="text-lg font-semibold mb-4 text-foreground">Additional Details</h3>
+                <h3 className="text-lg font-semibold mb-4 text-[#1a1a2e]">Additional Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {business.establishedYear && (
-                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl" data-testid="detail-established-year">
-                      <Calendar className="h-5 w-5 text-[#0a4a82] mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#d4a373]/5 to-[#d4a373]/10 rounded-xl border border-[#d4a373]/15" data-testid="detail-established-year">
+                      <div className="w-9 h-9 rounded-lg bg-[#d4a373] flex items-center justify-center flex-shrink-0">
+                        <Calendar className="h-4 w-4 text-white" />
+                      </div>
                       <div>
-                        <h4 className="font-semibold text-sm mb-0.5">Established</h4>
-                        <p className="text-muted-foreground text-sm">{business.establishedYear}</p>
+                        <h4 className="font-semibold text-sm mb-0.5 text-[#1a1a2e]">Established</h4>
+                        <p className="text-[#4a4a5a] text-sm">{business.establishedYear}</p>
                       </div>
                     </div>
                   )}
                   {business.establishedZipCode && (
-                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl" data-testid="detail-established-zip">
-                      <MapPinned className="h-5 w-5 text-[#0a4a82] mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#0a4a82]/5 to-[#0a4a82]/10 rounded-xl border border-[#0a4a82]/10" data-testid="detail-established-zip">
+                      <div className="w-9 h-9 rounded-lg bg-[#0a4a82] flex items-center justify-center flex-shrink-0">
+                        <MapPinned className="h-4 w-4 text-white" />
+                      </div>
                       <div>
-                        <h4 className="font-semibold text-sm mb-0.5">Established Zip Code</h4>
-                        <p className="text-muted-foreground text-sm">{business.establishedZipCode}</p>
+                        <h4 className="font-semibold text-sm mb-0.5 text-[#1a1a2e]">Established Zip Code</h4>
+                        <p className="text-[#4a4a5a] text-sm">{business.establishedZipCode}</p>
                       </div>
                     </div>
                   )}
@@ -192,24 +221,24 @@ export default function BusinessDetails() {
 
                 {(business.servicesCommercial || business.servicesResidential) && (
                   <div className="mt-4">
-                    <h4 className="font-semibold text-sm mb-3">Service Types</h4>
+                    <h4 className="font-semibold text-sm mb-3 text-[#1a1a2e]">Service Types</h4>
                     <div className="flex items-center gap-3 flex-wrap">
                       {business.servicesResidential && (
                         <div 
-                          className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg"
+                          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl shadow-sm"
                           data-testid="badge-residential"
                         >
-                          <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Residential</span>
+                          <Home className="h-4 w-4 text-emerald-600" />
+                          <span className="text-sm font-semibold text-emerald-700">Residential</span>
                         </div>
                       )}
                       {business.servicesCommercial && (
                         <div 
-                          className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-sm"
                           data-testid="badge-commercial"
                         >
-                          <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Commercial</span>
+                          <Briefcase className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-semibold text-blue-700">Commercial</span>
                         </div>
                       )}
                     </div>
@@ -275,46 +304,52 @@ export default function BusinessDetails() {
 
           <div className="space-y-6">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="font-display text-2xl font-bold">Reviews</h2>
+              <div>
+                <h2 className="font-display text-2xl font-bold text-[#1a1a2e]">Reviews</h2>
+                <div className="w-12 h-1 bg-[#d4a373] rounded-full mt-1"></div>
+              </div>
               {isAuthenticated ? (
                 <ReviewDialog businessId={business.id} businessName={business.name} />
               ) : (
                 <Link to="/auth">
-                   <Button variant="outline">Sign in to Review</Button>
+                   <Button variant="outline" className="border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82] hover:text-white">Sign in to Review</Button>
                 </Link>
               )}
             </div>
 
             {business.reviews?.length === 0 ? (
-              <div className="text-center py-12 bg-white dark:bg-card rounded-2xl border border-dashed">
-                <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">No reviews yet. Be the first to share your experience!</p>
+              <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-[#0a4a82]/15 shadow-sm">
+                <div className="w-14 h-14 rounded-full bg-[#0a4a82]/5 flex items-center justify-center mx-auto mb-3">
+                  <MessageSquare className="h-7 w-7 text-[#0a4a82]/30" />
+                </div>
+                <p className="text-[#4a4a5a] font-medium">No reviews yet</p>
+                <p className="text-[#4a4a5a]/60 text-sm mt-1">Be the first to share your experience!</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {business.reviews?.map((review) => (
-                  <div key={review.id} className="bg-white dark:bg-card p-6 rounded-2xl border shadow-sm">
+                  <div key={review.id} className="bg-white p-6 rounded-2xl shadow-md border border-[#0a4a82]/8 hover:shadow-lg transition-shadow">
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
                       <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback className="bg-primary/10 text-primary">
+                        <Avatar className="ring-2 ring-[#0a4a82]/10">
+                          <AvatarFallback className="bg-gradient-to-br from-[#0a4a82] to-[#0a4a82]/70 text-white font-bold">
                             {review.user?.firstName?.charAt(0) || "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                           <p className="font-semibold">{review.user?.firstName || "Anonymous"}</p>
-                           <p className="text-xs text-muted-foreground">
+                           <p className="font-semibold text-[#1a1a2e]">{review.user?.firstName || "Anonymous"}</p>
+                           <p className="text-xs text-[#4a4a5a]/60">
                              {review.createdAt && formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
                            </p>
                         </div>
                       </div>
-                      <div className="flex text-yellow-400">
+                      <div className="flex gap-0.5">
                         {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`h-4 w-4 ${i < review.rating ? "fill-current" : "text-gray-200 fill-gray-200"}`} />
+                          <Star key={i} className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} />
                         ))}
                       </div>
                     </div>
-                    <p className="text-foreground/80">{review.comment}</p>
+                    <p className="text-[#4a4a5a] leading-relaxed">{review.comment}</p>
                   </div>
                 ))}
               </div>
@@ -323,19 +358,50 @@ export default function BusinessDetails() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white dark:bg-card p-6 rounded-2xl border shadow-sm sticky top-24">
-             <div className="aspect-video w-full bg-muted rounded-xl mb-4 relative overflow-hidden group cursor-pointer">
-               <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-122.4194,37.7749,12,0/600x400')] bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity"></div>
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-[#0a4a82]/8 sticky top-24 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0a4a82] to-[#d4a373]"></div>
+             <div className="aspect-video w-full rounded-xl mb-5 relative overflow-hidden group cursor-pointer shadow-inner">
+               <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82]/20 to-[#8a9a5b]/20"></div>
+               <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-122.4194,37.7749,12,0/600x400')] bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity"></div>
                <div className="absolute inset-0 flex items-center justify-center">
-                 <Button variant="secondary" size="sm" className="shadow-lg pointer-events-none">
-                    View on Map
+                 <Button size="sm" className="shadow-xl bg-white/90 text-[#0a4a82] hover:bg-white border-0 font-semibold pointer-events-none">
+                   <MapPin className="h-4 w-4 mr-1.5" /> View on Map
                  </Button>
                </div>
              </div>
-             <Button className="w-full mb-3" size="lg">Get Directions</Button>
-             <Button variant="outline" className="w-full">
+             <Button className="w-full mb-3 bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90 hover:from-[#0a4a82]/90 hover:to-[#0a4a82] text-white shadow-lg" size="lg">
+               <MapPin className="h-4 w-4 mr-2" /> Get Directions
+             </Button>
+             <Button variant="outline" className="w-full border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5">
                <Globe className="h-4 w-4 mr-2" /> Visit Website
              </Button>
+
+             {(business.phone || business.email) && (
+               <div className="mt-5 pt-5 border-t border-[#0a4a82]/10 space-y-3">
+                 {business.phone && (
+                   <a href={`tel:${business.phone}`} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#8a9a5b]/5 to-[#8a9a5b]/10 hover:from-[#8a9a5b]/10 hover:to-[#8a9a5b]/15 transition-colors group" data-testid="sidebar-phone">
+                     <div className="w-9 h-9 rounded-lg bg-[#8a9a5b] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                       <Phone className="h-4 w-4 text-white" />
+                     </div>
+                     <div>
+                       <p className="text-xs text-[#4a4a5a]/60 font-medium">Call Now</p>
+                       <p className="text-sm font-semibold text-[#1a1a2e]">{business.phone}</p>
+                     </div>
+                   </a>
+                 )}
+                 {business.email && (
+                   <a href={`mailto:${business.email}`} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#d4a373]/5 to-[#d4a373]/10 hover:from-[#d4a373]/10 hover:to-[#d4a373]/15 transition-colors group" data-testid="sidebar-email">
+                     <div className="w-9 h-9 rounded-lg bg-[#d4a373] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                       <Mail className="h-4 w-4 text-white" />
+                     </div>
+                     <div>
+                       <p className="text-xs text-[#4a4a5a]/60 font-medium">Email</p>
+                       <p className="text-sm font-semibold text-[#1a1a2e]">{business.email}</p>
+                     </div>
+                   </a>
+                 )}
+               </div>
+             )}
           </div>
         </div>
       </div>

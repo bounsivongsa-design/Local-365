@@ -112,89 +112,92 @@ export function TrustBadges({ hasLLC, hasInsurance, isLicensed, variant = "compa
   }
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      <div className="flex items-center gap-2">
-        {isVerifiedBusiness ? (
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-            <ShieldCheck className="h-5 w-5" />
-            <span className="font-semibold">Verified Business</span>
+    <div className={`space-y-4 ${className}`}>
+      {isVerifiedBusiness && (
+        <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
+            <ShieldCheck className="h-5 w-5 text-white" />
           </div>
-        ) : !isPartiallyVerified ? (
-          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-5 w-5" />
-            <span className="font-semibold">Unverified Business</span>
-          </div>
-        ) : null}
-      </div>
+          <span className="font-bold text-emerald-700">Fully Verified Business</span>
+        </div>
+      )}
       
       <div className="grid grid-cols-2 gap-3">
         <div 
-          className={`p-3 rounded-lg border ${
+          className={`p-4 rounded-xl border-2 transition-colors ${
             hasLLC 
-              ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800" 
-              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+              ? "bg-gradient-to-br from-[#0a4a82]/5 to-[#0a4a82]/10 border-[#0a4a82]/20" 
+              : "bg-gray-50 border-gray-200"
           }`}
           data-testid="credential-llc"
         >
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className={`h-4 w-4 ${hasLLC ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
-            <span className={`text-sm font-medium ${hasLLC ? "text-blue-700 dark:text-blue-300" : "text-gray-500"}`}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${hasLLC ? "bg-[#0a4a82]" : "bg-gray-300"}`}>
+              <Shield className="h-4 w-4 text-white" />
+            </div>
+            <span className={`text-sm font-bold ${hasLLC ? "text-[#0a4a82]" : "text-gray-400"}`}>
               LLC/Corporation
             </span>
           </div>
-          <p className={`text-xs ${hasLLC ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`}>
+          <p className={`text-xs ml-10 ${hasLLC ? "text-[#0a4a82]/70" : "text-gray-400"}`}>
             {hasLLC ? "Registered business entity" : "Not registered"}
           </p>
         </div>
         
         <div 
-          className={`p-3 rounded-lg border ${
+          className={`p-4 rounded-xl border-2 transition-colors ${
             hasInsurance 
-              ? "bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800" 
-              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+              ? "bg-gradient-to-br from-emerald-50 to-teal-50 border-teal-200" 
+              : "bg-gray-50 border-gray-200"
           }`}
           data-testid="credential-insurance"
         >
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className={`h-4 w-4 ${hasInsurance ? "text-teal-600 dark:text-teal-400" : "text-gray-400"}`} />
-            <span className={`text-sm font-medium ${hasInsurance ? "text-teal-700 dark:text-teal-300" : "text-gray-500"}`}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${hasInsurance ? "bg-teal-500" : "bg-gray-300"}`}>
+              <ShieldCheck className="h-4 w-4 text-white" />
+            </div>
+            <span className={`text-sm font-bold ${hasInsurance ? "text-teal-700" : "text-gray-400"}`}>
               Insurance
             </span>
           </div>
-          <p className={`text-xs ${hasInsurance ? "text-teal-600 dark:text-teal-400" : "text-gray-400"}`}>
+          <p className={`text-xs ml-10 ${hasInsurance ? "text-teal-600" : "text-gray-400"}`}>
             {hasInsurance ? "Liability coverage" : "No insurance on file"}
           </p>
         </div>
 
         <div 
-          className={`p-3 rounded-lg border ${
+          className={`p-4 rounded-xl border-2 transition-colors ${
             isLicensed 
-              ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800" 
-              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+              ? "bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200" 
+              : "bg-gray-50 border-gray-200"
           }`}
           data-testid="credential-licensed"
         >
-          <div className="flex items-center gap-2 mb-1">
-            <FileCheck className={`h-4 w-4 ${isLicensed ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400"}`} />
-            <span className={`text-sm font-medium ${isLicensed ? "text-indigo-700 dark:text-indigo-300" : "text-gray-500"}`}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLicensed ? "bg-indigo-500" : "bg-gray-300"}`}>
+              <FileCheck className="h-4 w-4 text-white" />
+            </div>
+            <span className={`text-sm font-bold ${isLicensed ? "text-indigo-700" : "text-gray-400"}`}>
               Licensed
             </span>
           </div>
-          <p className={`text-xs ${isLicensed ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400"}`}>
+          <p className={`text-xs ml-10 ${isLicensed ? "text-indigo-600" : "text-gray-400"}`}>
             {isLicensed ? "State licensed professional" : "No license on file"}
           </p>
         </div>
       </div>
       
       {!isVerifiedBusiness && (
-        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <div className={`p-4 rounded-xl border-2 ${isPartiallyVerified ? "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200" : "bg-gradient-to-r from-amber-50 to-red-50 border-amber-300"}`}>
+          <div className="flex items-start gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isPartiallyVerified ? "bg-amber-400" : "bg-amber-500"}`}>
+              <AlertTriangle className="h-4 w-4 text-white" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              <p className="text-sm font-bold text-amber-800">
                 {!isPartiallyVerified ? "Unverified Business" : "Partially Verified"}
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p className="text-xs text-amber-700/80 mt-1 leading-relaxed">
                 {!isPartiallyVerified 
                   ? "This business hasn't provided LLC registration or insurance documentation. Consider asking for proof before hiring."
                   : hasLLC 
