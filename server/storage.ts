@@ -40,6 +40,7 @@ export interface IStorage {
 
   // Reviews
   getReviewsForBusiness(businessId: number): Promise<(Review & { user: typeof users.$inferSelect })[]>;
+  getRecentReviews(limit?: number): Promise<(Review & { user: typeof users.$inferSelect; business: typeof businesses.$inferSelect })[]>;
   createReview(review: CreateReviewRequest & { userId: string, businessId: number }): Promise<Review>;
 
   // Job Listings
@@ -167,6 +168,17 @@ export class DatabaseStorage implements IStorage {
         user: true,
       },
       orderBy: desc(reviews.createdAt),
+    });
+  }
+
+  async getRecentReviews(limit = 10): Promise<(Review & { user: typeof users.$inferSelect; business: typeof businesses.$inferSelect })[]> {
+    return await db.query.reviews.findMany({
+      with: {
+        user: true,
+        business: true,
+      },
+      orderBy: desc(reviews.createdAt),
+      limit,
     });
   }
 

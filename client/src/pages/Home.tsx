@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { usePosts, useLikePost } from "@/hooks/use-posts";
 import { useEvents } from "@/hooks/use-events";
 import { useBusinesses } from "@/hooks/use-businesses";
-import { CreatePostForm } from "@/components/CreatePostForm";
 import { BusinessCard } from "@/components/BusinessCard";
 import { EventCard } from "@/components/EventCard";
 import { IntakeForm } from "@/components/IntakeForm";
@@ -22,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, MessageCircle, Share2, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Truck, Bug, Camera, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronLeft, ChevronRight, Music, MapPinned, Film } from "lucide-react";
+import { MessageCircle, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Truck, Bug, Camera, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronLeft, ChevronRight, Music, MapPinned, Film } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -88,10 +86,9 @@ const DIRECTORY_CATEGORIES = [
 
 export default function Home() {
   const { location: selectedLocation } = useLocation();
-  const { data: posts, isLoading: postsLoading } = usePosts();
+  const { data: recentReviews, isLoading: reviewsLoading } = useQuery<any[]>({ queryKey: ['/api/reviews/recent'] });
   const { data: businesses, isLoading: businessesLoading } = useBusinesses();
   const { data: events, isLoading: eventsLoading } = useEvents(selectedLocation?.zipCode);
-  const likePost = useLikePost();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -592,18 +589,16 @@ export default function Home() {
       
 
       <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
-        {/* Main Feed */}
+        {/* Recent Reviews */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between mb-4 bg-white dark:bg-card rounded-xl px-4 py-3 shadow-sm">
-            <h2 className="font-display text-2xl font-bold text-foreground">Community Feed</h2>
-            <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5">
-              Latest Updates
-            </Button>
+            <h2 className="font-display text-2xl font-bold text-foreground" data-testid="heading-recent-reviews">Recent Reviews</h2>
+            <Link to="/directory" className="text-sm font-medium text-primary hover:underline flex items-center" data-testid="link-browse-directory">
+              Browse Directory <ArrowRight className="h-3 w-3 ml-1" />
+            </Link>
           </div>
 
-          <CreatePostForm />
-
-          {postsLoading ? (
+          {reviewsLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="p-6">
@@ -618,64 +613,46 @@ export default function Home() {
                 </Card>
               ))}
             </div>
-          ) : posts?.length === 0 ? (
+          ) : !recentReviews?.length ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-dashed">
               <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="font-medium text-lg mb-2">No posts yet</h3>
-              <p className="text-muted-foreground mb-6">Be the first to share something with the community!</p>
+              <h3 className="font-medium text-lg mb-2">No reviews yet</h3>
+              <p className="text-muted-foreground mb-6">Be the first to review a local business!</p>
             </div>
           ) : (
-            posts?.map((post) => (
-              <Card key={post.id} className="overflow-hidden border-border/50 shadow-3d">
+            recentReviews.map((review: any) => (
+              <Card key={review.id} className="overflow-hidden border-border/50 shadow-3d" data-testid={`review-card-${review.id}`}>
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <Avatar>
-                      <AvatarImage src={post.author.profileImageUrl || undefined} />
+                      <AvatarImage src={review.user?.profileImageUrl || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary">
-                        {post.author.firstName?.charAt(0)}
+                        {review.user?.firstName?.charAt(0) || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-semibold text-foreground">
-                            {post.author.firstName} {post.author.lastName}
+                            {review.user?.firstName} {review.user?.lastName}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true }) : 'Just now'}
+                          <Link to={`/directory/${review.businessId}`} className="text-sm text-primary hover:underline font-medium" data-testid={`link-review-business-${review.id}`}>
+                            {review.business?.name}
+                          </Link>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {review.createdAt ? formatDistanceToNow(new Date(review.createdAt), { addSuffix: true }) : 'Just now'}
                           </p>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <StarIcon key={i} filled={i < review.rating} />
+                          ))}
                         </div>
                       </div>
                       
                       <p className="mt-3 text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                        {post.content}
+                        {review.comment}
                       </p>
-
-                      {post.imageUrl && (
-                        <div className="mt-4 rounded-xl overflow-hidden">
-                          <img src={post.imageUrl} alt="Post content" className="w-full h-auto max-h-[400px] object-cover" />
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-6 mt-6 pt-4 border-t">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors px-2"
-                          onClick={() => isAuthenticated && likePost.mutate(post.id)}
-                          disabled={!isAuthenticated}
-                        >
-                          <Heart className={`h-4 w-4 mr-2 ${post.likes && post.likes > 0 ? "fill-red-500 text-red-500" : ""}`} />
-                          {post.likes || 0} Likes
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/5 px-2">
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Comment
-                        </Button>
-                        <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground hover:text-primary hover:bg-primary/5 px-2">
-                          <Share2 className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 </CardContent>

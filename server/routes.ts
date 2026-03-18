@@ -907,6 +907,15 @@ export async function registerRoutes(
   });
 
   // Reviews
+  app.get("/api/reviews/recent", async (_req, res) => {
+    try {
+      const recentReviews = await storage.getRecentReviews(10);
+      res.json(recentReviews);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch recent reviews" });
+    }
+  });
+
   app.post(api.reviews.create.path, isAuthenticated, async (req, res) => {
     try {
       const businessId = Number(req.params.id);
