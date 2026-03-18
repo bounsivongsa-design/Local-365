@@ -370,8 +370,13 @@ function CreateEventForm({ onSuccess }: { onSuccess: () => void }) {
   const createEvent = useCreateEvent();
   const { toast } = useToast();
   
-  const formSchema = insertEventSchema.extend({
-    date: z.string().transform((str) => new Date(str)), 
+  const formSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().optional(),
+    location: z.string().optional(),
+    date: z.string().transform((str) => new Date(str)),
+    imageUrl: z.string().optional(),
+    flyerUrl: z.string().optional(),
   });
   
   const form = useForm<z.infer<typeof formSchema>>({
