@@ -129,7 +129,8 @@ function EventAdPricingGrid() {
 export default function Events() {
   const { location: selectedLocation } = useLocation();
   const { data: events, isLoading } = useEvents(selectedLocation?.zipCode);
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const isBusinessAccount = isAuthenticated && user?.accountType === "business";
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
 
@@ -210,7 +211,7 @@ export default function Events() {
                 </Button>
               </a>
 
-              {isAuthenticated && (
+              {isBusinessAccount && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-[shadow,transform] duration-200 border-0" data-testid="button-create-event">

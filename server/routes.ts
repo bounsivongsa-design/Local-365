@@ -754,15 +754,22 @@ export async function registerRoutes(
     try {
       const userId = (req as any).user?.id;
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      
-      let serverBusinessId: number | null = null;
-      let businessZipCode: string | null = null;
-      if (user.length > 0 && user[0].linkedBusinessId) {
-        serverBusinessId = user[0].linkedBusinessId;
-        const [biz] = await pgDb.select({ zipCode: businesses.zipCode })
-          .from(businesses).where(eq(businesses.id, user[0].linkedBusinessId)).limit(1);
-        if (biz) businessZipCode = biz.zipCode;
+
+      if (!user.length || user[0].accountType !== "business") {
+        return res.status(403).json({ message: "Only business accounts can create events." });
       }
+
+      if (!user[0].linkedBusinessId) {
+        return res.status(403).json({ message: "You must have a linked business to create events." });
+      }
+      
+      const serverBusinessId = user[0].linkedBusinessId;
+      const [biz] = await pgDb.select({ zipCode: businesses.zipCode })
+        .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
+      if (!biz) {
+        return res.status(400).json({ message: "Linked business not found. Please contact support." });
+      }
+      const businessZipCode = biz.zipCode;
 
       const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, ...bodyWithoutBusinessId } = req.body;
 
