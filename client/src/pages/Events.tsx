@@ -5,7 +5,7 @@ import { useLocation } from "@/context/LocationContext";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, ArrowRight } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -260,14 +260,6 @@ export default function Events() {
             </div>
           </div>
 
-          <div className="text-center mt-8">
-            <Link to="/advertising">
-              <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-14 px-8 rounded-xl text-lg font-semibold" data-testid="link-full-advertising">
-                View All Advertising Options
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
         </div>
       </div>
     </div>
