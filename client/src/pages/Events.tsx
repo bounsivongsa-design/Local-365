@@ -5,7 +5,7 @@ import { useLocation } from "@/context/LocationContext";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Calendar, LayoutGrid, List, Megaphone } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -25,6 +25,106 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
+
+const EVENT_BASE_PRICING = {
+  event2Week: { small: 25, medium: 35, large: 50 },
+  eventMonthly: { small: 50, medium: 75, large: 100 },
+};
+
+const EVENT_TIER_DISCOUNTS = [
+  { id: null, name: "Non-Member", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null },
+  { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
+  { id: "silver", name: "Silver", discount: 0.25, icon: Crown, gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
+  { id: "gold", name: "Gold", discount: 0.50, icon: Crown, gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
+] as const;
+
+function EventAdPricingGrid() {
+  const getPrice = (base: number, discount: number) => Math.round(base * (1 - discount));
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+      {EVENT_TIER_DISCOUNTS.map((tier) => {
+        const TierIcon = tier.icon;
+        const isGold = tier.id === "gold";
+        return (
+          <div
+            key={tier.name}
+            className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
+            data-testid={`card-event-pricing-${tier.id || "non-member"}`}
+          >
+            {tier.badgeText && (
+              <div className="absolute -top-0 right-4 z-10">
+                <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-1.5 rounded-b-xl text-xs font-bold shadow-lg flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  {tier.badgeText}
+                </div>
+              </div>
+            )}
+
+            <div className={`bg-gradient-to-br ${tier.gradient} p-5 text-white`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <TierIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">{tier.name}</h3>
+                  <p className="text-white/70 text-xs">
+                    {tier.discount > 0 ? `${tier.discount * 100}% off all ads` : "Standard pricing"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">2-Week Event</h4>
+                </div>
+                <div className="space-y-2">
+                  {(["small", "medium", "large"] as const).map((size) => (
+                    <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+                      <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
+                        ${getPrice(EVENT_BASE_PRICING.event2Week[size], tier.discount)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Monthly Event</h4>
+                </div>
+                <div className="space-y-2">
+                  {(["small", "medium", "large"] as const).map((size) => (
+                    <div key={size} className={`rounded-xl p-3 text-center ${tier.id ? "bg-[#8a9a5b]/10 border border-[#8a9a5b]/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+                      <p className={`text-xl font-bold ${tier.id ? "text-[#8a9a5b]" : "text-slate-900 dark:text-white"}`}>
+                        ${getPrice(EVENT_BASE_PRICING.eventMonthly[size], tier.discount)}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{size}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {isGold && (
+                <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-700/30" data-testid="gold-promo-video-perk-event">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">30-Sec Promo Video</span>
+                  </div>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Upload a video spotlight to your business listing</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Events() {
   const { location: selectedLocation } = useLocation();
@@ -103,12 +203,12 @@ export default function Events() {
                 </Button>
               </div>
 
-              <Link to="/advertising#event-advertising">
+              <a href="#event-advertising">
                 <Button className="rounded-full bg-white/15 text-white border border-white/30 shadow-lg" data-testid="link-advertise-event">
                   <Megaphone className="mr-2 h-4 w-4" />
                   Advertise Your Event
                 </Button>
-              </Link>
+              </a>
 
               {isAuthenticated && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -185,6 +285,82 @@ export default function Events() {
         )}
       </div>
 
+      {/* Event Advertising Pricing Section */}
+      <div className="bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 py-16" id="event-advertising">
+        <div className="container">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 px-4 py-2 rounded-full mb-4">
+              <Megaphone className="h-4 w-4 text-[#0a4a82]" />
+              <span className="text-[#0a4a82] text-sm font-semibold">Promote Your Event</span>
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4" data-testid="heading-event-ad-pricing">
+              Event Advertising Rates
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Get your event in front of thousands of local residents. Members save up to 50%.
+            </p>
+          </div>
+
+          <EventAdPricingGrid />
+
+          <div className="mt-12 max-w-4xl mx-auto">
+            <h3 className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-6" data-testid="heading-event-display-tiers">
+              Event Display by Membership Tier
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm" data-testid="card-event-tier-bronze">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-700 to-amber-600 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Bronze</h4>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Description</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Cover image</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
+                </ul>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-300 dark:border-gray-600 shadow-sm" data-testid="card-event-tier-silver">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-500 to-gray-400 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Silver</h4>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Description</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
+                  <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
+                </ul>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 border-yellow-400 dark:border-yellow-600 shadow-lg ring-1 ring-yellow-400/20" data-testid="card-event-tier-gold">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-600 to-amber-500 flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Gold</h4>
+                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold">Best Value</span>
+                </div>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Date &amp; time</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Location</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Description</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Flyer / event link</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
