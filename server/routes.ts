@@ -1366,7 +1366,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(403).json({ message: "Business accounts cannot create quote requests" });
       }
       
-      const { title, description, category, budget, timeline, location, phone, email, customerName } = req.body;
+      const { title, description, category, budget, timeline, location, address, phone, email, customerName } = req.body;
       if (!title || !description || !category) {
         return res.status(400).json({ message: "Title, description, and category are required" });
       }
@@ -1387,6 +1387,7 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         budget,
         timeline,
         location,
+        address: address || null,
         status: "open",
         isEmergency,
         customerName: customerName || null,

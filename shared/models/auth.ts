@@ -94,6 +94,7 @@ export const quoteRequests = pgTable("quote_requests", {
   budget: varchar("budget"), // optional budget range
   timeline: varchar("timeline"), // e.g., "Within a week", "Flexible"
   location: text("location"),
+  address: text("address"),
   status: varchar("status").default("open"), // open, in_progress, completed, cancelled
   isEmergency: boolean("is_emergency").default(false), // True for HVAC, electrical, plumbing emergencies
   customerName: text("customer_name"), // Name of the person requesting the quote

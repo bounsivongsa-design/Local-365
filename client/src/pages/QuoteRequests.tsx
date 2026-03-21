@@ -135,6 +135,7 @@ export default function QuoteRequests() {
     budget: "",
     timeline: "",
     location: "",
+    address: "",
     phone: "",
     email: "",
   });
@@ -325,7 +326,7 @@ export default function QuoteRequests() {
                     </div>
                     <Button onClick={() => {
                       setFormSubmitted(false);
-                      setFormData({ customerName: "", title: "", description: "", category: "", budget: "", timeline: "", location: "", phone: "", email: "" });
+                      setFormData({ customerName: "", title: "", description: "", category: "", budget: "", timeline: "", location: "", address: "", phone: "", email: "" });
                     }} variant="outline" data-testid="button-submit-another">
                       Submit Another Request
                     </Button>
@@ -417,7 +418,7 @@ export default function QuoteRequests() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="budget">Budget Range <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                          <Label htmlFor="budget">Budget Range <span className="text-slate-400 text-xs">(optional)</span></Label>
                           <Select value={formData.budget} onValueChange={(v) => setFormData({ ...formData, budget: v })}>
                             <SelectTrigger data-testid="select-budget">
                               <SelectValue placeholder="Select budget" />
@@ -432,7 +433,18 @@ export default function QuoteRequests() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="timeline">Timeline <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                        <Label htmlFor="address">Street Address <span className="text-slate-400 text-xs">(optional — helps with accurate quotes)</span></Label>
+                        <Input
+                          id="address"
+                          placeholder="e.g., 123 Main St, Moyock, NC 27958"
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          data-testid="input-project-address"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="timeline">Timeline <span className="text-slate-400 text-xs">(optional)</span></Label>
                         <Select value={formData.timeline} onValueChange={(v) => setFormData({ ...formData, timeline: v })}>
                           <SelectTrigger data-testid="select-timeline">
                             <SelectValue placeholder="When do you need this done?" />
@@ -751,6 +763,11 @@ export default function QuoteRequests() {
                         <span className="flex items-center gap-1">
                           <MapPin className="h-4 w-4" />
                           {req.location}
+                        </span>
+                      )}
+                      {req.address && (
+                        <span className="flex items-center gap-1 text-slate-500">
+                          {req.address}
                         </span>
                       )}
                       {req.lowestQuote && (
