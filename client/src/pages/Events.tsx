@@ -423,19 +423,17 @@ export default function Events() {
                   <p className="text-slate-700 leading-relaxed text-base">{selectedCalendarEvent.description}</p>
                 )}
                 {selectedCalendarEvent.adSize === "large" && selectedCalendarEvent.flyerUrl && (
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-xl p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
-                        <Info className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-amber-900 text-sm">Event Flyer Available</p>
-                        <p className="text-xs text-amber-700/80">View the official flyer for more details</p>
-                      </div>
-                      <a href={selectedCalendarEvent.flyerUrl} target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-shadow">
-                        View Flyer
-                      </a>
+                  <div className="rounded-xl overflow-hidden border border-amber-200/60 shadow-sm">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200/40">
+                      <Info className="h-4 w-4 text-amber-600" />
+                      <span className="text-sm font-semibold text-amber-900">Event Flyer</span>
                     </div>
+                    <img
+                      src={selectedCalendarEvent.flyerUrl}
+                      alt={`${selectedCalendarEvent.title} flyer`}
+                      className="w-full object-contain max-h-[500px] bg-white"
+                      data-testid="img-calendar-event-flyer"
+                    />
                   </div>
                 )}
                 {selectedCalendarEvent.promoVideoUrl && (

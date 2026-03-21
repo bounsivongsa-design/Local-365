@@ -2624,7 +2624,7 @@ async function seedDatabase() {
       state: "NC",
       zipCode: "27958",
       imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop",
-      flyerUrl: "https://example.com/spring-expo-flyer",
+      flyerUrl: null,
       adSize: "large",
       businessId: goldBiz?.id,
       targetZipCodes: ["27958"],
