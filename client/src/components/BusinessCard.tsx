@@ -5,11 +5,40 @@ import { Badge } from "@/components/ui/badge";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 
+function StarRating({ rating, reviewCount }: { rating: number; reviewCount: number }) {
+  const stars = [];
+  for (let i = 1; i <= 5; i++) {
+    const fill = Math.min(1, Math.max(0, rating - (i - 1)));
+    stars.push(
+      <div key={i} className="relative h-4 w-4">
+        <Star className="absolute inset-0 h-4 w-4 text-gray-200 fill-gray-200" />
+        {fill > 0 && (
+          <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+            <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5" data-testid="star-rating">
+      <div className="flex items-center gap-0.5">{stars}</div>
+      {rating > 0 ? (
+        <span className="text-sm font-semibold text-slate-700">{rating.toFixed(1)}</span>
+      ) : null}
+      <span className="text-xs text-muted-foreground">({reviewCount})</span>
+    </div>
+  );
+}
+
 interface BusinessCardProps {
   business: BusinessWithRating;
 }
 
 export function BusinessCard({ business }: BusinessCardProps) {
+  const rating = business.averageRating ? Number(business.averageRating) : 0;
+  const reviewCount = business.reviewCount ?? 0;
+
   return (
     <Link to={`/directory/${business.id}`}>
       <div 
@@ -43,16 +72,28 @@ export function BusinessCard({ business }: BusinessCardProps) {
             )}
           </div>
           
-          <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-sm">
-            <Star className="h-3.5 w-3.5 fill-current" />
-            {business.averageRating ? Number(business.averageRating).toFixed(1) : "New"}
-          </div>
+          {rating > 0 && (
+            <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/95 backdrop-blur-sm text-slate-800 px-2.5 py-1 rounded-full text-sm font-bold shadow-sm border border-white/50">
+              <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+              {rating.toFixed(1)}
+            </div>
+          )}
+          {rating === 0 && (
+            <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-sm">
+              <Star className="h-3.5 w-3.5 fill-current" />
+              New
+            </div>
+          )}
         </div>
         
         <div className="p-5">
           <h3 className="text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
             {business.name}
           </h3>
+
+          <div className="mt-1.5">
+            <StarRating rating={rating} reviewCount={reviewCount} />
+          </div>
           
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
             <MapPin className="h-4 w-4 text-[#d4a373] flex-shrink-0" />
