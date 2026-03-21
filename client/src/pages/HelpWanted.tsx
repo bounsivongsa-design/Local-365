@@ -29,9 +29,13 @@ import {
   Mail,
   Clock,
   MapPin,
+  Upload,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import type { JobListingWithBusiness } from "@shared/schema";
 
 function getTierLabel(tier: string | null | undefined): string {
@@ -150,6 +154,39 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
     contactPhone: "",
     contactEmail: "",
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: (response) => {
+      setFormData((prev) => ({ ...prev, imageUrl: response.objectPath }));
+      toast({ title: "Image uploaded", description: "Your image has been uploaded successfully." });
+    },
+    onError: (error) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleImageSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Image must be under 5MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+    const result = await uploadFile(file);
+    if (!result) {
+      setImagePreview(null);
+    }
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,6 +216,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
             },
           });
           setFormData({ title: "", description: "", imageUrl: "", contactPhone: "", contactEmail: "" });
+          setImagePreview(null);
           onSuccess();
         },
         onError: (err: Error) => {
@@ -214,14 +252,51 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="job-image">Image URL (optional)</Label>
-        <Input
-          id="job-image"
-          placeholder="https://example.com/photo.jpg"
-          value={formData.imageUrl}
-          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          data-testid="input-job-image"
-        />
+        <Label>Image (optional)</Label>
+        {imagePreview ? (
+          <div className="relative rounded-lg overflow-hidden border border-slate-200">
+            <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover" />
+            <button
+              type="button"
+              onClick={removeImage}
+              className="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-1 shadow-sm"
+              data-testid="button-remove-job-image"
+            >
+              <X className="h-4 w-4 text-slate-600" />
+            </button>
+            {isUploading && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <span className="text-white text-sm font-medium">Uploading...</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <label
+            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-[#0a4a82] hover:bg-slate-50 transition-colors"
+            data-testid="dropzone-job-image"
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleImageSelect(file);
+            }}
+          >
+            <ImageIcon className="h-8 w-8 text-slate-400 mb-2" />
+            <span className="text-sm text-slate-500 font-medium">Click or drag to upload an image</span>
+            <span className="text-xs text-slate-400 mt-1">JPG, PNG, or WebP — max 5MB</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageSelect(file);
+              }}
+              data-testid="input-job-image-file"
+            />
+          </label>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
@@ -258,7 +333,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
 
       <Button
         type="submit"
-        disabled={createMutation.isPending}
+        disabled={createMutation.isPending || isUploading}
         className="w-full h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold"
         data-testid="button-post-job"
       >

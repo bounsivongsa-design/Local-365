@@ -46,6 +46,16 @@ export function registerObjectStorageRoutes(app: Express): void {
         });
       }
 
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+      if (contentType && !allowedTypes.includes(contentType)) {
+        return res.status(400).json({ error: "File type not allowed. Supported: JPG, PNG, WebP, GIF, PDF." });
+      }
+
+      const maxSize = 10 * 1024 * 1024;
+      if (size && size > maxSize) {
+        return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
+      }
+
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
 
       // Extract object path from the presigned URL for later reference
