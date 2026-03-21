@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useEvents, useCreateEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
 import { useBusiness } from "@/hooks/use-businesses";
+import { useUpload } from "@/hooks/use-upload";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -437,6 +438,21 @@ export default function Events() {
                     </div>
                   </div>
                 )}
+                {selectedCalendarEvent.promoVideoUrl && (
+                  <div className="rounded-xl overflow-hidden border border-[#d4a373]/20 shadow-sm">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-amber-200/40">
+                      <Video className="h-4 w-4 text-[#d4a373]" />
+                      <span className="text-sm font-semibold text-amber-800">Event Promo Video</span>
+                      <span className="text-xs bg-gradient-to-r from-yellow-600 to-amber-500 text-white px-2 py-0.5 rounded-full font-bold ml-auto">Gold</span>
+                    </div>
+                    <video
+                      src={selectedCalendarEvent.promoVideoUrl}
+                      controls
+                      className="w-full max-h-64 object-contain bg-black"
+                      preload="metadata"
+                    />
+                  </div>
+                )}
                 <Button variant="outline" className="w-full rounded-xl" onClick={() => setSelectedCalendarEvent(null)} data-testid="button-close-calendar-event">
                   Close
                 </Button>
@@ -473,6 +489,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const { data: business } = useBusiness(linkedBusinessId || 0);
   const tier = getTierLevel(business?.membershipTier);
   const tierInfo = TIER_LABELS[tier];
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading, progress } = useUpload();
 
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -481,6 +499,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
     date: z.string().min(1, "Date is required"),
     imageUrl: z.string().optional(),
     flyerUrl: z.string().optional(),
+    promoVideoUrl: z.string().optional(),
     adDuration: z.string().min(1, "Select an ad duration"),
     adSize: z.string().min(1, "Select an ad size"),
   });
@@ -494,6 +513,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
       date: "",
       imageUrl: "",
       flyerUrl: "",
+      promoVideoUrl: "",
       adDuration: "",
       adSize: "",
     },
@@ -505,6 +525,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const canDescription = adSize === "medium" || adSize === "large";
   const canImage = adSize === "medium" || adSize === "large";
   const canFlyer = adSize === "large";
+  const canVideo = adSize === "large" && tier === "gold";
 
   const discount = tier === "gold" ? 0.50 : tier === "silver" ? 0.25 : tier === "bronze" ? 0.10 : 0;
   const basePricing = adDuration === "2week" ? EVENT_BASE_PRICING.event2Week : EVENT_BASE_PRICING.eventMonthly;
@@ -526,6 +547,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
       imageUrl: sizeCanImage && data.imageUrl ? data.imageUrl : undefined,
     };
     if (sizeCanFlyer && data.flyerUrl) eventData.flyerUrl = data.flyerUrl;
+    if (sizeCanFlyer && tier === "gold" && data.promoVideoUrl) eventData.promoVideoUrl = data.promoVideoUrl;
     
     createEvent.mutate(eventData, {
       onSuccess: () => {
@@ -723,6 +745,75 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
           <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
             <Lock className="h-4 w-4 flex-shrink-0" />
             <span>Flyer / event link — select Large ad size to unlock</span>
+          </div>
+        )}
+
+        {canVideo ? (
+          <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-4 border border-[#d4a373]/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Video className="h-5 w-5 text-[#d4a373]" />
+              <span className="font-semibold text-sm">30-Sec Promo Video</span>
+              <span className="text-xs bg-gradient-to-r from-yellow-600 to-amber-500 text-white px-2 py-0.5 rounded-full font-bold">Gold</span>
+            </div>
+            {form.watch("promoVideoUrl") ? (
+              <div className="flex items-center justify-between gap-3 p-3 bg-white rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <Play className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <p className="text-sm font-medium">Video attached</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => form.setValue("promoVideoUrl", "")} data-testid="button-remove-event-video">
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-dashed border-[#d4a373]/30 bg-white/50 cursor-pointer hover:border-[#d4a373]/50 transition-colors"
+                onClick={() => videoInputRef.current?.click()}
+                data-testid="dropzone-event-video"
+              >
+                <Upload className="h-6 w-6 text-[#d4a373]" />
+                <p className="text-sm font-medium">Upload a promo video for this event</p>
+                <p className="text-xs text-muted-foreground">MP4, WebM, or MOV · Max 50MB · Up to 30 seconds</p>
+              </div>
+            )}
+            {isUploading && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-muted-foreground">Uploading...</span>
+                  <span className="font-medium text-[#0a4a82]">{progress}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 50 * 1024 * 1024) {
+                  toast({ title: "File too large", description: "Video must be under 50MB.", variant: "destructive" });
+                  return;
+                }
+                const result = await uploadFile(file);
+                if (result) {
+                  form.setValue("promoVideoUrl", result.objectPath);
+                }
+                if (videoInputRef.current) videoInputRef.current.value = "";
+              }}
+              data-testid="input-event-video-file"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>30-sec promo video — Gold tier + Large ad size to unlock</span>
           </div>
         )}
 

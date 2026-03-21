@@ -86,6 +86,7 @@ export const events = pgTable("events", {
   zipCode: text("zip_code").default("27929"),
   imageUrl: text("image_url"),
   flyerUrl: text("flyer_url"),
+  promoVideoUrl: text("promo_video_url"),
   adSize: text("ad_size").default("small"),
   businessId: integer("business_id").references(() => businesses.id),
   targetZipCodes: text("target_zip_codes").array().default([]),

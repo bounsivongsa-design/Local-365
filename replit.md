@@ -76,7 +76,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - **Category Management**: 35+ top-level categories (alphabetically sorted) with subcategories, including Entertainment Services, Entertainment Locations, Catering / Food Trucks. Community-driven category suggestions via `POST /api/category-requests`.
 - **Tiered Systems**: Implemented for advertising and business memberships.
 - **Ad Pricing** (50% cut applied): Website ads — Large $1,000/mo, Medium $500/mo, Small $250/mo (non-member base). Event ads — 2-week: $50-$100, Monthly: $100-$200. Member discounts (Bronze 10%, Silver 25%, Gold 50%) apply on top.
-- **Event Display Tiers**: Bronze = name/location/date only; Silver = +cover image; Gold = +image+flyer/event link. `flyerUrl` field on events table.
+- **Event Ad Sizes**: Small = title/date/location only (compact card); Medium = +cover image+description+"Promoted" badge; Large = full-width horizontal layout+flyer link+"Featured" badge+amber border+30-sec promo video (Gold only). `adSize`, `flyerUrl`, `promoVideoUrl` fields on events table.
 - **Quote System**: Priority queue for businesses based on membership tier and ratings.
 - **Promo Codes**: Admin-managed promotional discount codes (`promoCodes` table). Supports percentage and fixed-dollar discounts, tier restrictions, max uses, date ranges. Validated at checkout and applied to Stripe session pricing. Admin CRUD at `/admin/promo-codes`. Validation endpoint: `POST /api/promo-codes/validate`.
 - **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive Gold-tier features for their first 30 days (trial period). After trial, tier reverts to what was purchased. Managed via Stripe subscription metadata (`isAutoUpgrade`, `originalTier`).
@@ -94,7 +94,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - `CreateBusinessForm`: 5-step wizard form (Business Info, Owner & Contact, Hours & Location, Categories & Tags, Credentials) with per-step validation, veteran badge, social media URLs, business hours, search keywords (250 char), and tier-based category limits
 - `BusinessCard`: Card with image, category, rating, trust badges, membership badge
 - `LocationPicker`: Zillow-style location search dialog with geolocation support
-- `EventCard`: Tier-based event display — shows/hides image and flyer link based on business membership tier (Bronze=basic info, Silver=+image, Gold=+image+flyer link)
+- `EventCard`: Ad-size-based event display — Small=compact text card, Medium=card with image+description+"Promoted" badge, Large=full-width horizontal layout+image+description+flyer+"Featured" badge+promo video (Gold only)
 - `LogoUploader`: Upload/replace/delete business logo, owner-only, all tiers (BusinessDetails.tsx)
 - `GalleryManager`: Upload/remove gallery photos with tier-based limits (Silver=6, Gold=10), displays gallery to visitors (BusinessDetails.tsx)
 - `PromoVideoPlayer`: Displays uploaded promo video with Gold Exclusive badge (BusinessDetails.tsx)

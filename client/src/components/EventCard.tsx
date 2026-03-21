@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar as CalendarIcon, MapPin, ArrowRight, ExternalLink, Image as ImageIcon, Clock, Crown, Star, X } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, ArrowRight, ExternalLink, Image as ImageIcon, Clock, Crown, Star, X, Video } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,18 @@ export function EventCard({ event }: EventCardProps) {
                 <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-amber-500" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span></div>
               </div>
               {event.description && <p className="text-base text-muted-foreground line-clamp-4 mb-5">{event.description}</p>}
+              {event.promoVideoUrl && (
+                <div className="rounded-xl overflow-hidden border border-amber-200 shadow-sm mb-3">
+                  <video
+                    src={event.promoVideoUrl}
+                    controls
+                    className="w-full max-h-48 object-contain bg-black"
+                    preload="metadata"
+                    data-testid={`video-event-promo-${event.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              )}
               <div className="flex flex-wrap gap-3 mt-auto">
                 {event.flyerUrl && (
                   <Button variant="default" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`link-event-flyer-${event.id}`}>
@@ -231,6 +243,23 @@ export function EventCard({ event }: EventCardProps) {
                     View Flyer
                   </a>
                 </div>
+              </div>
+            )}
+
+            {event.promoVideoUrl && (
+              <div className="rounded-xl overflow-hidden border border-[#d4a373]/20 shadow-sm">
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-amber-200/40">
+                  <Video className="h-4 w-4 text-[#d4a373]" />
+                  <span className="text-sm font-semibold text-amber-800">Event Promo Video</span>
+                  <span className="text-xs bg-gradient-to-r from-yellow-600 to-amber-500 text-white px-2 py-0.5 rounded-full font-bold ml-auto">Gold</span>
+                </div>
+                <video
+                  src={event.promoVideoUrl}
+                  controls
+                  className="w-full max-h-64 object-contain bg-black"
+                  preload="metadata"
+                  data-testid={`video-event-detail-${event.id}`}
+                />
               </div>
             )}
 
