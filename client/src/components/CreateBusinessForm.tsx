@@ -26,6 +26,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { CardImagePicker } from "@/components/CardImagePicker";
 import { Link } from "react-router-dom";
 import {
   Shield,
@@ -575,24 +576,6 @@ export function CreateBusinessForm({
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="imageUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Cover Image URL (Optional)</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="https://..."
-                {...field}
-                value={field.value || ""}
-                data-testid="input-image-url"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
     </div>
   );
 
@@ -914,6 +897,23 @@ export function CreateBusinessForm({
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <CardImagePicker
+                  category={primaryCategory}
+                  value={field.value || ""}
+                  onChange={(url) => field.onChange(url)}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
