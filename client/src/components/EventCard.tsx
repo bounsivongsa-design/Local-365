@@ -76,11 +76,11 @@ export function EventCard({ event }: EventCardProps) {
             </div>
             <CardContent className="p-6 md:p-8 flex-1 flex flex-col justify-center">
               <h3 className="text-2xl md:text-3xl font-bold mb-3 group-hover:text-[#0a4a82] transition-colors">{event.title}</h3>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
-                <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-amber-500" /><span>{event.location}</span></div>
-                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-amber-500" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span></div>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-4">
+                <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-amber-600" /><span>{event.location}</span></div>
+                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-amber-600" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span></div>
               </div>
-              {event.description && <p className="text-base text-muted-foreground line-clamp-4 mb-5">{event.description}</p>}
+              {event.description && <p className="text-base text-slate-600 line-clamp-4 mb-5">{event.description}</p>}
               {event.promoVideoUrl && (
                 <div className="rounded-xl overflow-hidden border border-amber-200 shadow-sm mb-3">
                   <video
@@ -135,14 +135,14 @@ export function EventCard({ event }: EventCardProps) {
             </div>
           </div>
           <CardContent className="p-5 flex-1 flex flex-col">
-            <h3 className="text-lg font-bold mb-2 group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <MapPin className="h-4 w-4 shrink-0 text-[#0a4a82]/60" /><span className="truncate">{event.location}</span>
+            <h3 className="text-lg font-bold text-[#1a1a2e] mb-2 group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
+            <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
+              <MapPin className="h-4 w-4 shrink-0 text-[#0a4a82]" /><span className="line-clamp-1">{event.location}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <Clock className="h-4 w-4 shrink-0 text-[#0a4a82]/60" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span>
+            <div className="flex items-center gap-2 text-sm text-slate-600 mb-4">
+              <Clock className="h-4 w-4 shrink-0 text-[#0a4a82]" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span>
             </div>
-            {event.description && <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">{event.description}</p>}
+            {event.description && <p className="text-sm text-slate-600 line-clamp-3 mb-4 flex-1">{event.description}</p>}
             <Button variant="outline" className="w-full group-hover:border-[#0a4a82]/50 group-hover:text-[#0a4a82] group-hover:bg-[#0a4a82]/5 rounded-xl shadow-sm mt-auto" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
               Event Details <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -156,21 +156,21 @@ export function EventCard({ event }: EventCardProps) {
         >
           <CardContent className="p-4 flex flex-col gap-2">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <h3 className="text-base font-semibold group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1.5">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]/50" /><span className="truncate">{event.location}</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-[#1a1a2e] group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
+                <div className="flex items-center gap-2 text-sm text-slate-600 mt-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]" /><span className="line-clamp-1">{event.location}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                  <Clock className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]/50" /><span>{format(date, "MMMM d, yyyy")}</span>
+                <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]" /><span>{format(date, "MMMM d, yyyy")}</span>
                 </div>
               </div>
-              <div className="bg-[#0a4a82]/5 rounded-lg p-2 text-center min-w-[3.5rem] shrink-0 border border-[#0a4a82]/10">
+              <div className="bg-[#0a4a82]/8 rounded-lg p-2 text-center min-w-[3.5rem] shrink-0 border border-[#0a4a82]/15">
                 <div className="text-[10px] font-bold text-[#0a4a82] uppercase tracking-wider">{format(date, "MMM")}</div>
-                <div className="text-xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
+                <div className="text-xl font-bold text-[#1a1a2e] leading-none mt-0.5">{format(date, "d")}</div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="w-full text-[#0a4a82] hover:bg-[#0a4a82]/5 rounded-lg mt-1" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
+            <Button variant="ghost" size="sm" className="w-full text-[#0a4a82] font-semibold hover:bg-[#0a4a82]/5 rounded-lg mt-1" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
               View Details <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           </CardContent>

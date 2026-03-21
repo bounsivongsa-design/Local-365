@@ -84,7 +84,7 @@ export default function BusinessDetails() {
                <Badge className="mb-3 bg-[#d4a373] text-white border-none px-4 py-1.5 text-sm font-semibold shadow-lg">{business.category}</Badge>
                <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
                {business.address && (
-                 <p className="text-white/80 mt-2 flex items-center gap-1.5 text-sm">
+                 <p className="text-white/90 mt-2 flex items-center gap-1.5 text-sm drop-shadow-sm">
                    <MapPin className="h-4 w-4" /> {business.address}
                  </p>
                )}
@@ -96,7 +96,7 @@ export default function BusinessDetails() {
                   ))}
                 </div>
                 <span className="font-bold text-lg text-[#1a1a2e]">{Number(business.averageRating || 0).toFixed(1)}</span>
-                <span className="text-[#0a4a82]/60 text-sm">({business.reviews?.length || 0})</span>
+                <span className="text-[#0a4a82] text-sm">({business.reviews?.length || 0})</span>
              </div>
            </div>
         </div>

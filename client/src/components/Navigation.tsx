@@ -50,8 +50,8 @@ export function Navigation() {
                 <span className={`
                   flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-[background-color,color] duration-200
                   ${isActive(item.href) 
-                    ? "bg-white/20 text-white" 
-                    : "text-white/80 hover:text-white hover:bg-white/10"}
+                    ? "bg-white/25 text-white font-semibold" 
+                    : "text-white/90 hover:text-white hover:bg-white/10"}
                 `}>
                   <item.icon className="h-4 w-4" />
                   {item.label}

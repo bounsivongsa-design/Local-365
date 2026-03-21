@@ -262,7 +262,7 @@ export default function Home() {
           <p className="text-xl md:text-2xl mb-4 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
             Connect with verified local businesses and discover events in {selectedLocation.city}.
           </p>
-          <p className="text-base mb-8 text-white/80 max-w-xl mx-auto">
+          <p className="text-base mb-8 text-white/90 max-w-xl mx-auto">
             Post a project and get competitive quotes from local contractors. Join the community.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center items-center max-w-2xl mx-auto">
@@ -319,7 +319,7 @@ export default function Home() {
         <div className="container relative z-10">
           <div className="text-center mb-8">
             <h2 className="font-display text-2xl font-bold text-white">Featured Local Businesses</h2>
-            <p className="text-white/70 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
+            <p className="text-white/85 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
           </div>
 
           {/* 3-Column Ad Layout: Large (left) | Medium (middle) | Small (right) */}
@@ -340,11 +340,11 @@ export default function Home() {
                               <Sparkles className="h-3 w-3" />
                               {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Sponsored"}
                             </span>
-                            {largeAds.isPlaceholder && <span className="text-white/50 text-[10px]">Example</span>}
+                            {largeAds.isPlaceholder && <span className="text-white/70 text-[10px]">Example</span>}
                           </div>
                           <p className="text-[#d4a373] text-sm font-semibold tracking-wide mb-1">{slide.businessName}</p>
                           <h3 className="text-lg md:text-2xl font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
-                          {slide.description && <p className="text-white/80 text-xs mt-2 leading-relaxed line-clamp-3">{slide.description}</p>}
+                          {slide.description && <p className="text-white/90 text-xs mt-2 leading-relaxed line-clamp-3">{slide.description}</p>}
                         </div>
                       </div>
                     </div>
@@ -575,9 +575,9 @@ export default function Home() {
             </div>
           ) : !recentReviews?.length ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-dashed">
-              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="font-medium text-lg mb-2">No reviews yet</h3>
-              <p className="text-muted-foreground mb-6">Be the first to review a local business!</p>
+              <MessageCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="font-medium text-lg text-[#1a1a2e] mb-2">No reviews yet</h3>
+              <p className="text-slate-500 mb-6">Be the first to review a local business!</p>
             </div>
           ) : (
             recentReviews.map((review: any) => (
@@ -599,7 +599,7 @@ export default function Home() {
                           <Link to={`/directory/${review.businessId}`} className="text-sm text-primary hover:underline font-medium" data-testid={`link-review-business-${review.id}`}>
                             {review.business?.name}
                           </Link>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="text-xs text-slate-500 mt-0.5">
                             {review.createdAt ? formatDistanceToNow(new Date(review.createdAt), { addSuffix: true }) : 'Just now'}
                           </p>
                         </div>
@@ -653,7 +653,7 @@ export default function Home() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">{biz.name}</h4>
-                        <p className="text-xs text-muted-foreground truncate">{biz.category}</p>
+                        <p className="text-xs text-slate-500 truncate">{biz.category}</p>
                         <div className="flex items-center gap-1 mt-1">
                           <div className="flex text-yellow-400">
                             <StarIcon filled />

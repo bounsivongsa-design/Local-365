@@ -26,7 +26,7 @@ function StarRating({ rating, reviewCount }: { rating: number; reviewCount: numb
       {rating > 0 ? (
         <span className="text-sm font-semibold text-slate-700">{rating.toFixed(1)}</span>
       ) : null}
-      <span className="text-xs text-muted-foreground">({reviewCount})</span>
+      <span className="text-xs text-slate-500">({reviewCount})</span>
     </div>
   );
 }
@@ -95,12 +95,12 @@ export function BusinessCard({ business }: BusinessCardProps) {
             <StarRating rating={rating} reviewCount={reviewCount} />
           </div>
           
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 mt-2">
             <MapPin className="h-4 w-4 text-[#d4a373] flex-shrink-0" />
             <span className="truncate">{business.address.split(',')[0] || 'Moyock, NC'}</span>
           </div>
           
-          <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">
+          <p className="text-sm text-slate-600 mt-3 line-clamp-2 leading-relaxed">
             {business.description}
           </p>
           

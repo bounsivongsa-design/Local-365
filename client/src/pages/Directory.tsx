@@ -144,7 +144,7 @@ export default function Directory() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82]" />
                 <Input
                   placeholder="Search businesses..."
-                  className="pl-12 h-12 rounded-xl bg-white/95 border-0 shadow-xl text-base placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="pl-12 h-12 rounded-xl bg-white/95 border-0 shadow-xl text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-white/50"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   data-testid="input-search-businesses"
@@ -214,7 +214,7 @@ export default function Directory() {
               
               {/* Distance Filter */}
               <div className="px-4 py-3 border-b border-[#0a4a82]/10">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Distance from {selectedLocation.city}</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Distance from {selectedLocation.city}</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#0a4a82]" />
                   <select
@@ -230,7 +230,7 @@ export default function Directory() {
                   </select>
                 </div>
                 {!hasCoords && (
-                  <p className="text-xs text-muted-foreground mt-1.5">Distance not available for this location</p>
+                  <p className="text-xs text-slate-500 mt-1.5">Distance not available for this location</p>
                 )}
               </div>
 
@@ -247,7 +247,7 @@ export default function Directory() {
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-[background-color,color,box-shadow] duration-200 group ${
                           isActive 
                             ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6aa8] text-white font-medium shadow-lg shadow-[#0a4a82]/30 scale-[1.02]" 
-                            : "text-foreground/80 hover:bg-[#0a4a82]/5 hover:text-[#0a4a82] dark:hover:bg-[#0a4a82]/20 dark:hover:text-white"
+                            : "text-slate-700 hover:bg-[#0a4a82]/5 hover:text-[#0a4a82] dark:hover:bg-[#0a4a82]/20 dark:hover:text-white"
                         }`}
                       >
                         <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-[background-color] duration-200 ${
@@ -316,7 +316,7 @@ export default function Directory() {
                     {category === "All" ? "All Categories" : category}
                   </h2>
                   {filteredBusinesses && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-slate-500">
                       {filteredBusinesses.length} {filteredBusinesses.length === 1 ? "business" : "businesses"} found
                       {radiusMiles > 0 && ` within ${radiusMiles} miles of ${selectedLocation.city}`}
                     </p>
@@ -342,7 +342,7 @@ export default function Directory() {
                   <Search className="h-12 w-12 text-[#0a4a82]/40" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3 text-foreground">No businesses found</h3>
-                <p className="text-muted-foreground max-w-sm mx-auto">
+                <p className="text-slate-500 max-w-sm mx-auto">
                   {radiusMiles > 0 
                     ? `No businesses found within ${radiusMiles} miles of ${selectedLocation.city}. Try increasing the distance.`
                     : "Try adjusting your search or browse a different category."
