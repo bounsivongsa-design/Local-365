@@ -36,12 +36,23 @@ export function Navigation() {
       <div className="flex h-36 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-            <img 
-              src={logoImage}
-              alt="Local List 365"
-              className="h-24 w-auto"
-              data-testid="img-logo"
-            />
+            <div className="relative h-24 w-24 flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full drop-shadow-lg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+                <defs>
+                  <clipPath id="heart-clip">
+                    <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" />
+                  </clipPath>
+                </defs>
+                <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" fill="white" stroke="white" strokeWidth="3" />
+              </svg>
+              <img 
+                src={logoImage}
+                alt="Local List 365"
+                className="relative z-10 h-[70px] w-[70px] object-contain"
+                style={{ clipPath: 'url(#heart-clip)' }}
+                data-testid="img-logo"
+              />
+            </div>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
