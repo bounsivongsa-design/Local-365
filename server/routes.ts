@@ -2603,22 +2603,51 @@ async function seedDatabase() {
       });
     }
 
+    const allBiz = await storage.getBusinesses();
+    const goldBiz = allBiz.find(b => b.membershipTier === "premium");
+    const silverBiz = allBiz.find(b => b.membershipTier === "standard");
+    const bronzeBiz = allBiz.find(b => b.membershipTier === "basic");
+
     await storage.createEvent({
-      title: "Moyock Home Show",
-      description: "Meet local contractors and home service providers.",
-      date: new Date(Date.now() + 86400000 * 3),
-      location: "Moyock Community Center",
-      imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
+      title: "Moyock Spring Home & Garden Expo 2026",
+      description: "Join us for the biggest home improvement event of the season! Over 40 local vendors showcasing everything from custom renovations and landscaping to smart home technology. Free admission, live demos, kids zone, food trucks, and exclusive show-only discounts from Moyock's top contractors. Whether you're planning a full remodel or just looking for inspiration, this is the can't-miss event of the spring.",
+      date: new Date(Date.now() + 86400000 * 7),
+      location: "Moyock Civic Center, 100 Civic Center Dr",
+      city: "Moyock",
+      state: "NC",
+      zipCode: "27958",
+      imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop",
+      flyerUrl: "https://example.com/spring-expo-flyer",
+      businessId: goldBiz?.id,
+      targetZipCodes: ["27958"],
     });
 
     await storage.createEvent({
-      title: "Community Farmers Market",
-      description: "Fresh veggies, local crafts, and live music.",
-      date: new Date(Date.now() + 86400000 * 5),
-      location: "Town Square",
-      imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800",
+      title: "Currituck County Farmers Market — Opening Day",
+      description: "Kick off the 2026 market season with over 25 local farmers, artisans, and food vendors! Enjoy farm-fresh produce, handmade crafts, kettle corn, live bluegrass music, and a petting zoo for the kids. Support local growers and makers every Saturday through October.",
+      date: new Date(Date.now() + 86400000 * 14),
+      location: "Moyock Town Square, Caratoke Hwy",
+      city: "Moyock",
+      state: "NC",
+      zipCode: "27958",
+      imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&h=500&fit=crop",
+      businessId: silverBiz?.id,
+      targetZipCodes: ["27958"],
     });
 
-    console.log("Database seeded with 26 placeholder businesses!");
+    await storage.createEvent({
+      title: "Free Lawn Care & Spring Planting Workshop",
+      description: "Learn native plant landscaping tips, soil prep techniques, and seasonal lawn care from certified horticulturists. Hands-on demonstrations and free seed packets for all attendees.",
+      date: new Date(Date.now() + 86400000 * 21),
+      location: "Moyock Public Library, 200 Library Ln",
+      city: "Moyock",
+      state: "NC",
+      zipCode: "27958",
+      imageUrl: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=500&fit=crop",
+      businessId: bronzeBiz?.id,
+      targetZipCodes: ["27958"],
+    });
+
+    console.log("Database seeded with 26 placeholder businesses and 3 events!");
   }
 }
