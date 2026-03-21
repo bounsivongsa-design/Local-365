@@ -122,7 +122,11 @@ export async function setupAuth(app: Express) {
 
   app.post("/api/auth/register", async (req, res, next) => {
     try {
-      const { email, password, firstName, lastName, accountType, businessName } = req.body;
+      const { email, password, firstName, lastName, accountType, businessName, acceptedTerms } = req.body;
+
+      if (!acceptedTerms) {
+        return res.status(400).json({ message: "You must accept the Terms of Service and Privacy Policy to register" });
+      }
 
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });

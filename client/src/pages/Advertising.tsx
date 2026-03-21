@@ -53,21 +53,8 @@ import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import type { AdPricing, AdPlacement } from "@shared/schema";
 
-const CATEGORIES = [
-  "Animal & Pet", "Auto Detailing", "Auto Repair", "Baby Sitting & Nanny",
-  "Baking & Cooking", "Beauty & Salon", "Catering / Food Trucks", "Cleaning",
-  "Concrete", "Dock & Marine", "Electrical", "Entertainment Locations",
-  "Entertainment Services", "Event Planning & Rentals", "Fencing", "Fitness & Gym",
-  "Flooring", "Garage Door", "Health & Wellness", "Home Repair", "HVAC",
-  "Insurance", "Landscaping", "Lawn Care", "Legal", "Metal Work",
-  "Moving & Hauling", "New Construction", "Painting", "Pest Control",
-  "Photo & Video", "Plumbing", "Pool & Spa", "Pressure Washing", "Printing",
-  "Real Estate / Realtors", "Remodeling & Addition", "Restaurants & Dining",
-  "Roofing", "Security Services", "Septic & Well", "Shopping / Retail",
-  "Small Engine Repair", "Tax CPA", "Trash & Junk Removal", "Tree Care",
-  "Tutor & Mentor Counseling", "Web Design & Logo Design", "Window Tinting",
-  "Windows & Doors", "Woodworking"
-].sort();
+import { DIRECTORY_CATEGORY_NAMES } from "@shared/config/categories";
+const CATEGORIES = DIRECTORY_CATEGORY_NAMES;
 
 const placementIcons: Record<string, any> = {
   homepage_banner: Home,
@@ -354,7 +341,7 @@ export default function Advertising() {
                 <div
                   key={tier.name}
                   className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
-                  data-testid={`card-web-pricing-${tier.id || "non-member"}`}
+                  data-testid={`card-web-pricing-${tier.id || "basic"}`}
                 >
                   {tier.badgeText && (
                     <div className="absolute -top-0 right-4 z-10">

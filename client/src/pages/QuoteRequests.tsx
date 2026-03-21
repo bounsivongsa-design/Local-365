@@ -95,21 +95,8 @@ interface QuoteWithBusiness {
   } | null;
 }
 
-const CATEGORIES = [
-  "Animal & Pet", "Auto Detailing", "Auto Repair", "Baby Sitting & Nanny",
-  "Baking & Cooking", "Beauty & Salon", "Catering / Food Trucks", "Cleaning",
-  "Concrete", "Dock & Marine", "Electrical", "Entertainment Locations",
-  "Entertainment Services", "Event Planning & Rentals", "Fencing", "Fitness & Gym",
-  "Flooring", "Garage Door", "Health & Wellness", "Home Repair", "HVAC",
-  "Insurance", "Landscaping", "Lawn Care", "Legal", "Metal Work",
-  "Moving & Hauling", "New Construction", "Painting", "Pest Control",
-  "Photo & Video", "Plumbing", "Pool & Spa", "Pressure Washing", "Printing",
-  "Real Estate / Realtors", "Remodeling & Addition", "Restaurants & Dining",
-  "Roofing", "Security Services", "Septic & Well", "Shopping / Retail",
-  "Small Engine Repair", "Tax CPA", "Trash & Junk Removal", "Tree Care",
-  "Tutor & Mentor Counseling", "Web Design & Logo Design", "Window Tinting",
-  "Windows & Doors", "Woodworking"
-].sort();
+import { DIRECTORY_CATEGORY_NAMES } from "@shared/config/categories";
+const CATEGORIES = DIRECTORY_CATEGORY_NAMES;
 
 const TIMELINES = [
   "ASAP",
@@ -333,7 +320,7 @@ export default function QuoteRequests() {
                       <ul className="text-sm text-muted-foreground space-y-1 text-left">
                         <li>Gold members see your request first (0-48 hrs)</li>
                         <li>Silver members join at 48-72 hrs</li>
-                        <li>Bronze members join at 72+ hrs</li>
+                        <li>Bronze members cannot submit quotes</li>
                       </ul>
                     </div>
                     <Button onClick={() => {
@@ -560,8 +547,8 @@ export default function QuoteRequests() {
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-amber-700 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
                       <div>
-                        <p className="font-medium">Bronze Members (72+ hrs)</p>
-                        <p className="text-muted-foreground text-xs">All member businesses can now quote</p>
+                        <p className="font-medium">Bronze Members</p>
+                        <p className="text-muted-foreground text-xs">Quote access not included — upgrade to Silver or Gold</p>
                       </div>
                     </div>
                   </div>

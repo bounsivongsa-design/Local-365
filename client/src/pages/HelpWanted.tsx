@@ -512,7 +512,7 @@ export default function HelpWanted() {
                 </div>
                 <p className="text-white/80 mb-6 max-w-xl">
                   Members get priority placement. Gold members always appear first, followed by Silver, then Bronze. 
-                  Non-members can post too, but appear after all member listings.
+                  Basic (non-paying) users can post too, but appear after all member listings.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                   <div className="bg-white/10 rounded-xl p-4 text-center">

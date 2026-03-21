@@ -98,6 +98,7 @@ export default function AuthPage() {
           lastName: registerData.lastName,
           accountType: accountType,
           businessName: accountType === "business" ? registerData.businessName : undefined,
+          acceptedTerms: true,
         }),
         credentials: "include",
       });

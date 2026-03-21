@@ -43,7 +43,7 @@ const EVENT_BASE_PRICING = {
 };
 
 const EVENT_TIER_DISCOUNTS = [
-  { id: null, name: "Basic", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null },
+  { id: null, name: "Basic", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null, testId: "basic" },
   { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
   { id: "silver", name: "Silver", discount: 0.25, icon: Crown, gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
@@ -60,7 +60,7 @@ function EventAdPricingGrid() {
           <div
             key={tier.name}
             className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
-            data-testid={`card-event-pricing-${tier.id || "non-member"}`}
+            data-testid={`card-event-pricing-${tier.id || "basic"}`}
           >
             {tier.badgeText && (
               <div className="absolute -top-0 right-4 z-10">

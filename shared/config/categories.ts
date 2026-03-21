@@ -745,6 +745,8 @@ export function getSubcategoryCount(): number {
   return BUSINESS_CATEGORIES.reduce((sum, cat) => sum + cat.subcategories.length, 0);
 }
 
+export const DIRECTORY_CATEGORY_NAMES: string[] = BUSINESS_CATEGORIES.map(c => c.name).sort();
+
 export const EMERGENCY_CATEGORIES = ["hvac", "electrical", "plumbing", "roofing", "locksmith", "towing", "storm-damage"] as const;
 
 export function isEmergencyCategory(subcategoryId: string): boolean {

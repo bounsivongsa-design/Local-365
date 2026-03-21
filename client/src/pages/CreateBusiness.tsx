@@ -37,7 +37,7 @@ export default function CreateBusiness() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f0eb] pb-20">
+    <div className="bg-[#f5f0eb] pb-20">
       <div className="bg-gradient-to-r from-[#0a4a82] to-[#0d5a9e] text-white">
         <div className="container py-8">
           <Link to="/membership">
