@@ -150,28 +150,26 @@ export function EventCard({ event }: EventCardProps) {
         </Card>
       ) : (
         <Card
-          className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 rounded-xl flex flex-col h-full cursor-pointer border border-border/50 hover:border-[#0a4a82]/30"
+          className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 rounded-xl cursor-pointer border border-border/50 hover:border-[#0a4a82]/30 aspect-square max-w-[280px]"
           data-testid={`card-event-${event.id}`}
           onClick={() => setShowDetail(true)}
         >
-          <CardContent className="p-4 flex flex-col gap-2">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-[#1a1a2e] group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mt-1.5">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]" /><span className="line-clamp-1">{event.location}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
-                  <Clock className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]" /><span>{format(date, "MMMM d, yyyy")}</span>
-                </div>
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div>
+              <div className="bg-[#0a4a82] text-white rounded-lg px-3 py-2 text-center mb-3 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">{format(date, "MMM")}</div>
+                <div className="text-2xl font-bold leading-none mt-0.5">{format(date, "d")}</div>
               </div>
-              <div className="bg-[#0a4a82]/8 rounded-lg p-2 text-center min-w-[3.5rem] shrink-0 border border-[#0a4a82]/15">
-                <div className="text-[10px] font-bold text-[#0a4a82] uppercase tracking-wider">{format(date, "MMM")}</div>
-                <div className="text-xl font-bold text-[#1a1a2e] leading-none mt-0.5">{format(date, "d")}</div>
+              <h3 className="text-sm font-bold text-[#1a1a2e] group-hover:text-[#0a4a82] transition-colors line-clamp-3 leading-snug">{event.title}</h3>
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-2">
+                <MapPin className="h-3 w-3 shrink-0 text-[#0a4a82]" /><span className="line-clamp-1">{event.location}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1">
+                <Clock className="h-3 w-3 shrink-0 text-[#0a4a82]" /><span>{format(date, "MMM d, yyyy")}</span>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="w-full text-[#0a4a82] font-semibold hover:bg-[#0a4a82]/5 rounded-lg mt-1" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
-              View Details <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            <Button variant="ghost" size="sm" className="w-full text-[#0a4a82] font-semibold hover:bg-[#0a4a82]/5 rounded-lg text-xs mt-2" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
+              View Details <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
           </CardContent>
         </Card>
