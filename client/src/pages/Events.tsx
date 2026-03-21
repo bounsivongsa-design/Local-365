@@ -144,6 +144,7 @@ export default function Events() {
   const isBusinessAccount = isAuthenticated && user?.accountType === "business";
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
+  const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<any>(null);
 
   const calendarEvents = events?.map(event => ({
     id: String(event.id),
@@ -152,6 +153,7 @@ export default function Events() {
     extendedProps: {
       description: event.description,
       location: event.location,
+      eventId: event.id,
     }
   })) || [];
 
@@ -276,7 +278,11 @@ export default function Events() {
                 eventColor="#0a4a82"
                 height="auto"
                 eventClick={(info) => {
-                  alert(`${info.event.title}\n${info.event.extendedProps.location || ''}\n${info.event.extendedProps.description || ''}`);
+                  const eventId = info.event.extendedProps.eventId;
+                  const matchedEvent = events?.find(e => e.id === eventId);
+                  if (matchedEvent) {
+                    setSelectedCalendarEvent(matchedEvent);
+                  }
                 }}
               />
             </div>
@@ -375,6 +381,64 @@ export default function Events() {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!selectedCalendarEvent} onOpenChange={(open) => { if (!open) setSelectedCalendarEvent(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+          {selectedCalendarEvent && (
+            <>
+              {selectedCalendarEvent.imageUrl && (selectedCalendarEvent.adSize === "medium" || selectedCalendarEvent.adSize === "large") && (
+                <div className="relative h-64 w-full overflow-hidden rounded-t-2xl">
+                  <img src={selectedCalendarEvent.imageUrl} alt={selectedCalendarEvent.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-6 right-6">
+                    <h2 className="text-2xl font-bold text-white drop-shadow-lg">{selectedCalendarEvent.title}</h2>
+                  </div>
+                </div>
+              )}
+              <div className="p-6 space-y-5">
+                {!(selectedCalendarEvent.imageUrl && (selectedCalendarEvent.adSize === "medium" || selectedCalendarEvent.adSize === "large")) && (
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold text-slate-900">{selectedCalendarEvent.title}</DialogTitle>
+                    <DialogDescription className="sr-only">Event details for {selectedCalendarEvent.title}</DialogDescription>
+                  </DialogHeader>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(selectedCalendarEvent.date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                  </div>
+                  <div className="inline-flex items-center gap-2 bg-[#8a9a5b]/10 text-[#8a9a5b] px-4 py-2 rounded-xl text-sm font-medium">
+                    <Megaphone className="h-4 w-4" />
+                    {selectedCalendarEvent.location}
+                  </div>
+                </div>
+                {selectedCalendarEvent.description && (
+                  <p className="text-slate-700 leading-relaxed text-base">{selectedCalendarEvent.description}</p>
+                )}
+                {selectedCalendarEvent.adSize === "large" && selectedCalendarEvent.flyerUrl && (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
+                        <Info className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-amber-900 text-sm">Event Flyer Available</p>
+                        <p className="text-xs text-amber-700/80">View the official flyer for more details</p>
+                      </div>
+                      <a href={selectedCalendarEvent.flyerUrl} target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-shadow">
+                        View Flyer
+                      </a>
+                    </div>
+                  </div>
+                )}
+                <Button variant="outline" className="w-full rounded-xl" onClick={() => setSelectedCalendarEvent(null)} data-testid="button-close-calendar-event">
+                  Close
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
