@@ -35,21 +35,22 @@ export function Navigation() {
     <header className="sticky top-0 z-50 w-full border-b border-[#0a4a82]/10 bg-gradient-to-r from-[#0a4a82] via-[#0a4a82]/95 to-[#0a4a82] shadow-lg shadow-[#0a4a82]/10">
       <div className="flex h-36 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-            <div className="relative h-24 w-24 flex items-center justify-center">
-              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full drop-shadow-lg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity group">
+            <div className="relative h-28 w-28 flex items-center justify-center">
+              <svg viewBox="0 0 120 110" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.35))' }}>
                 <defs>
-                  <clipPath id="heart-clip">
-                    <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" />
-                  </clipPath>
+                  <linearGradient id="heart-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="100%" stopColor="#e8edf2" />
+                  </linearGradient>
                 </defs>
-                <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" fill="white" stroke="white" strokeWidth="3" />
+                <path d="M60 100 C30 75, 4 52, 4 32 C4 16, 16 4, 32 4 C42 4, 52 9, 60 18 C68 9, 78 4, 88 4 C104 4, 116 16, 116 32 C116 52, 90 75, 60 100Z" fill="url(#heart-gradient)" stroke="white" strokeWidth="2.5" />
               </svg>
               <img 
                 src={logoImage}
                 alt="Local List 365"
-                className="relative z-10 h-[70px] w-[70px] object-contain"
-                style={{ clipPath: 'url(#heart-clip)' }}
+                className="relative z-10 h-[60px] w-[60px] object-contain transition-transform duration-200 group-hover:scale-105"
+                style={{ marginTop: '-4px' }}
                 data-testid="img-logo"
               />
             </div>
