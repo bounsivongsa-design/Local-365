@@ -45,105 +45,125 @@ export function EventCard({ event }: EventCardProps) {
 
   return (
     <>
-      <Card
-        className={`group overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl flex flex-col h-full cursor-pointer ${
-          adSize === "large"
-            ? "border-2 border-amber-400/60 ring-1 ring-amber-300/30 shadow-amber-200/30"
-            : adSize === "medium"
-            ? "border border-[#0a4a82]/30 shadow-blue-100/20"
-            : "border border-border/50 hover:border-primary/30"
-        }`}
-        data-testid={`card-event-${event.id}`}
-        onClick={() => setShowDetail(true)}
-      >
-        {badge && (
-          <div className="absolute top-3 left-3 z-20">
-            <div className={`bg-gradient-to-r ${badge.gradient} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5`}>
-              <badge.icon className="h-3 w-3" />
-              {badge.label}
-            </div>
-          </div>
-        )}
-
-        <div className={`relative overflow-hidden bg-muted ${adSize === "large" ? "h-56" : "h-48"}`}>
-          {showImage && event.imageUrl ? (
-            <img
-              src={event.imageUrl}
-              alt={event.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#0a4a82]/10 to-[#0a4a82]/5 flex items-center justify-center">
-              <CalendarIcon className="h-12 w-12 text-[#0a4a82]/15" />
+      {adSize === "large" ? (
+        <Card
+          className="group overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl cursor-pointer border-2 border-amber-400/60 ring-1 ring-amber-300/30 shadow-amber-200/30 relative"
+          data-testid={`card-event-${event.id}`}
+          onClick={() => setShowDetail(true)}
+        >
+          {badge && (
+            <div className="absolute top-4 left-4 z-20">
+              <div className={`bg-gradient-to-r ${badge.gradient} text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5`}>
+                <badge.icon className="h-3.5 w-3.5" />
+                {badge.label}
+              </div>
             </div>
           )}
-
-          {showImage && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-          )}
-
-          <div className="absolute top-3 right-3 bg-white/95 rounded-xl p-2.5 text-center min-w-[4rem] border border-white/50 shadow-md backdrop-blur-sm">
-            <div className="text-xs font-bold text-[#0a4a82] uppercase tracking-wider">
-              {format(date, "MMM")}
+          <div className="flex flex-col md:flex-row">
+            <div className="relative overflow-hidden bg-muted md:w-2/5 h-64 md:h-auto md:min-h-[280px]">
+              {event.imageUrl ? (
+                <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center">
+                  <CalendarIcon className="h-16 w-16 text-amber-300" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-black/10" />
+              <div className="absolute top-4 right-4 bg-white/95 rounded-xl p-3 text-center min-w-[4.5rem] border border-white/50 shadow-lg backdrop-blur-sm">
+                <div className="text-xs font-bold text-amber-600 uppercase tracking-wider">{format(date, "MMM")}</div>
+                <div className="text-3xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-slate-900 leading-none mt-0.5">
-              {format(date, "d")}
+            <CardContent className="p-6 md:p-8 flex-1 flex flex-col justify-center">
+              <h3 className="text-2xl md:text-3xl font-bold mb-3 group-hover:text-[#0a4a82] transition-colors">{event.title}</h3>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
+                <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-amber-500" /><span>{event.location}</span></div>
+                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-amber-500" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span></div>
+              </div>
+              {event.description && <p className="text-base text-muted-foreground line-clamp-4 mb-5">{event.description}</p>}
+              <div className="flex flex-wrap gap-3 mt-auto">
+                {event.flyerUrl && (
+                  <Button variant="default" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`link-event-flyer-${event.id}`}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> View Event Flyer
+                  </Button>
+                )}
+                <Button variant="outline" className="rounded-xl border-amber-300 text-amber-700 hover:bg-amber-50 px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
+                  Event Details <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </div>
+        </Card>
+      ) : adSize === "medium" ? (
+        <Card
+          className="group overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl flex flex-col h-full cursor-pointer border border-[#0a4a82]/30 shadow-blue-100/20 relative"
+          data-testid={`card-event-${event.id}`}
+          onClick={() => setShowDetail(true)}
+        >
+          {badge && (
+            <div className="absolute top-3 left-3 z-20">
+              <div className={`bg-gradient-to-r ${badge.gradient} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5`}>
+                <badge.icon className="h-3 w-3" />
+                {badge.label}
+              </div>
             </div>
-          </div>
-        </div>
-
-        <CardContent className="p-5 flex-1 flex flex-col">
-          <h3 className={`font-bold mb-2 group-hover:text-[#0a4a82] transition-colors ${adSize === "large" ? "text-xl" : "text-lg"} line-clamp-2`}>
-            {event.title}
-          </h3>
-
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-            <MapPin className="h-4 w-4 shrink-0 text-[#0a4a82]/60" />
-            <span className="truncate">{event.location}</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Clock className="h-4 w-4 shrink-0 text-[#0a4a82]/60" />
-            <span>{format(date, "EEEE, MMMM d, yyyy")}</span>
-          </div>
-
-          {showDescription && event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">
-              {event.description}
-            </p>
           )}
-          {!showDescription && <div className="flex-1" />}
-
-          <div className="flex flex-col gap-2 mt-auto">
-            {showFlyerLink && event.flyerUrl && (
-              <Button
-                variant="default"
-                className="w-full bg-gradient-to-r from-[#0a4a82] to-[#1e6bb8] hover:from-[#0a4a82]/90 hover:to-[#1e6bb8]/90 text-white rounded-xl shadow-md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDetail(true);
-                }}
-                data-testid={`link-event-flyer-${event.id}`}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Event Flyer / Details
-              </Button>
+          <div className="relative overflow-hidden bg-muted h-52">
+            {event.imageUrl ? (
+              <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#0a4a82]/10 to-[#0a4a82]/5 flex items-center justify-center">
+                <CalendarIcon className="h-12 w-12 text-[#0a4a82]/15" />
+              </div>
             )}
-            <Button
-              variant="outline"
-              className="w-full group-hover:border-[#0a4a82]/50 group-hover:text-[#0a4a82] group-hover:bg-[#0a4a82]/5 rounded-xl shadow-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDetail(true);
-              }}
-              data-testid={`button-event-details-${event.id}`}
-            >
-              Event Details
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+            <div className="absolute top-3 right-3 bg-white/95 rounded-xl p-2.5 text-center min-w-[4rem] border border-white/50 shadow-md backdrop-blur-sm">
+              <div className="text-xs font-bold text-[#0a4a82] uppercase tracking-wider">{format(date, "MMM")}</div>
+              <div className="text-2xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <CardContent className="p-5 flex-1 flex flex-col">
+            <h3 className="text-lg font-bold mb-2 group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              <MapPin className="h-4 w-4 shrink-0 text-[#0a4a82]/60" /><span className="truncate">{event.location}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <Clock className="h-4 w-4 shrink-0 text-[#0a4a82]/60" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span>
+            </div>
+            {event.description && <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">{event.description}</p>}
+            <Button variant="outline" className="w-full group-hover:border-[#0a4a82]/50 group-hover:text-[#0a4a82] group-hover:bg-[#0a4a82]/5 rounded-xl shadow-sm mt-auto" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
+              Event Details <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card
+          className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 rounded-xl flex flex-col h-full cursor-pointer border border-border/50 hover:border-[#0a4a82]/30"
+          data-testid={`card-event-${event.id}`}
+          onClick={() => setShowDetail(true)}
+        >
+          <CardContent className="p-4 flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <h3 className="text-base font-semibold group-hover:text-[#0a4a82] transition-colors line-clamp-2">{event.title}</h3>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]/50" /><span className="truncate">{event.location}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-[#0a4a82]/50" /><span>{format(date, "MMMM d, yyyy")}</span>
+                </div>
+              </div>
+              <div className="bg-[#0a4a82]/5 rounded-lg p-2 text-center min-w-[3.5rem] shrink-0 border border-[#0a4a82]/10">
+                <div className="text-[10px] font-bold text-[#0a4a82] uppercase tracking-wider">{format(date, "MMM")}</div>
+                <div className="text-xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" className="w-full text-[#0a4a82] hover:bg-[#0a4a82]/5 rounded-lg mt-1" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
+              View Details <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">

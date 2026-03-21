@@ -298,7 +298,12 @@ export default function Events() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {events?.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <div key={event.id} className={
+                event.adSize === "large" ? "md:col-span-2 lg:col-span-3" :
+                event.adSize === "medium" ? "md:col-span-1 lg:col-span-1" : ""
+              }>
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         )}
@@ -386,6 +391,10 @@ export default function Events() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
           {selectedCalendarEvent && (
             <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>{selectedCalendarEvent.title}</DialogTitle>
+                <DialogDescription>Event details</DialogDescription>
+              </DialogHeader>
               {selectedCalendarEvent.imageUrl && (selectedCalendarEvent.adSize === "medium" || selectedCalendarEvent.adSize === "large") && (
                 <div className="relative h-64 w-full overflow-hidden rounded-t-2xl">
                   <img src={selectedCalendarEvent.imageUrl} alt={selectedCalendarEvent.title} className="w-full h-full object-cover" />
@@ -397,10 +406,7 @@ export default function Events() {
               )}
               <div className="p-6 space-y-5">
                 {!(selectedCalendarEvent.imageUrl && (selectedCalendarEvent.adSize === "medium" || selectedCalendarEvent.adSize === "large")) && (
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-slate-900">{selectedCalendarEvent.title}</DialogTitle>
-                    <DialogDescription className="sr-only">Event details for {selectedCalendarEvent.title}</DialogDescription>
-                  </DialogHeader>
+                  <h2 className="text-2xl font-bold text-slate-900">{selectedCalendarEvent.title}</h2>
                 )}
                 <div className="flex flex-wrap gap-3">
                   <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
