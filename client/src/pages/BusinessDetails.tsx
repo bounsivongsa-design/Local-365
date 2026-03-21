@@ -380,14 +380,14 @@ export default function BusinessDetails() {
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-md border border-[#0a4a82]/8 sticky top-24 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0a4a82] to-[#d4a373]"></div>
-             <div className="aspect-video w-full rounded-xl mb-5 relative overflow-hidden group cursor-pointer shadow-inner">
-               <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82]/20 to-[#8a9a5b]/20"></div>
-               <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-122.4194,37.7749,12,0/600x400')] bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity"></div>
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <Button size="sm" className="shadow-xl bg-white/90 text-[#0a4a82] hover:bg-white border-0 font-semibold pointer-events-none">
-                   <MapPin className="h-4 w-4 mr-1.5" /> View on Map
-                 </Button>
-               </div>
+             <div className="aspect-video w-full rounded-xl mb-5 relative overflow-hidden shadow-inner border border-[#0a4a82]/10 cursor-pointer" onClick={() => { trackEvent(business.id, "directions_click"); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address + ', ' + (business.city || 'Moyock') + ', ' + (business.state || 'NC') + ' ' + (business.zipCode || '27958'))}`, '_blank'); }} data-testid="map-embed">
+               <iframe
+                 title="Business Location Map"
+                 className="w-full h-full rounded-xl pointer-events-none"
+                 style={{ border: 0 }}
+                 loading="lazy"
+                 src={`https://maps.google.com/maps?q=${encodeURIComponent(business.address + ', ' + (business.city || 'Moyock') + ', ' + (business.state || 'NC') + ' ' + (business.zipCode || '27958'))}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+               />
              </div>
              <Button className="w-full mb-3 bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90 hover:from-[#0a4a82]/90 hover:to-[#0a4a82] text-white shadow-lg" size="lg" onClick={() => { trackEvent(business.id, "directions_click"); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address + ', ' + (business.city || '') + ', ' + (business.state || ''))}`, '_blank'); }} data-testid="button-directions">
                <MapPin className="h-4 w-4 mr-2" /> Get Directions
