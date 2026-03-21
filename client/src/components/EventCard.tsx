@@ -51,16 +51,8 @@ export function EventCard({ event }: EventCardProps) {
           data-testid={`card-event-${event.id}`}
           onClick={() => setShowDetail(true)}
         >
-          {badge && (
-            <div className="absolute top-4 left-4 z-20">
-              <div className={`bg-gradient-to-r ${badge.gradient} text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5`}>
-                <badge.icon className="h-3.5 w-3.5" />
-                {badge.label}
-              </div>
-            </div>
-          )}
-          <div className="flex flex-col md:flex-row">
-            <div className="relative overflow-hidden bg-muted md:w-2/5 h-64 md:h-auto md:min-h-[280px]">
+          <div className="relative w-full overflow-hidden">
+            <div className="relative h-[300px] md:h-[380px] w-full overflow-hidden">
               {event.imageUrl ? (
                 <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               ) : (
@@ -68,43 +60,53 @@ export function EventCard({ event }: EventCardProps) {
                   <CalendarIcon className="h-16 w-16 text-amber-300" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+              {badge && (
+                <div className="absolute top-4 left-4 z-20">
+                  <div className={`bg-gradient-to-r ${badge.gradient} text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5`}>
+                    <badge.icon className="h-3.5 w-3.5" />
+                    {badge.label}
+                  </div>
+                </div>
+              )}
               <div className="absolute top-4 right-4 bg-white/95 rounded-xl p-3 text-center min-w-[4.5rem] border border-white/50 shadow-lg backdrop-blur-sm">
                 <div className="text-xs font-bold text-amber-600 uppercase tracking-wider">{format(date, "MMM")}</div>
                 <div className="text-3xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
               </div>
-            </div>
-            <CardContent className="p-6 md:p-8 flex-1 flex flex-col justify-center">
-              <h3 className="text-2xl md:text-3xl font-bold mb-3 group-hover:text-[#0a4a82] transition-colors">{event.title}</h3>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-4">
-                <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-amber-600" /><span>{event.location}</span></div>
-                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-amber-600" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span></div>
-              </div>
-              {event.description && <p className="text-base text-slate-600 line-clamp-4 mb-5">{event.description}</p>}
-              {event.promoVideoUrl && (
-                <div className="rounded-xl overflow-hidden border border-amber-200 shadow-sm mb-3">
-                  <video
-                    src={event.promoVideoUrl}
-                    controls
-                    className="w-full max-h-48 object-contain bg-black"
-                    preload="metadata"
-                    data-testid={`video-event-promo-${event.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                  />
+              <div className="absolute bottom-0 left-0 right-0 p-5 md:p-8">
+                <h3 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg mb-2">{event.title}</h3>
+                <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-white/90 mb-3">
+                  <div className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-amber-300" /><span>{event.location}</span></div>
+                  <div className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-amber-300" /><span>{format(date, "EEEE, MMMM d, yyyy")}</span></div>
                 </div>
-              )}
-              <div className="flex flex-wrap gap-3 mt-auto">
-                {event.flyerUrl && (
-                  <Button variant="default" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`link-event-flyer-${event.id}`}>
-                    <ExternalLink className="h-4 w-4 mr-2" /> View Event Flyer
-                  </Button>
-                )}
-                <Button variant="outline" className="rounded-xl border-amber-300 text-amber-700 hover:bg-amber-50 px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
-                  Event Details <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
               </div>
-            </CardContent>
+            </div>
           </div>
+          <CardContent className="p-5 md:p-6 bg-white">
+            {event.description && <p className="text-base text-slate-600 line-clamp-3 mb-4">{event.description}</p>}
+            {event.promoVideoUrl && (
+              <div className="rounded-xl overflow-hidden border border-amber-200 shadow-sm mb-4">
+                <video
+                  src={event.promoVideoUrl}
+                  controls
+                  className="w-full max-h-48 object-contain bg-black"
+                  preload="metadata"
+                  data-testid={`video-event-promo-${event.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
+            <div className="flex flex-wrap gap-3">
+              {event.flyerUrl && (
+                <Button variant="default" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`link-event-flyer-${event.id}`}>
+                  <ExternalLink className="h-4 w-4 mr-2" /> View Event Flyer
+                </Button>
+              )}
+              <Button variant="outline" className="rounded-xl border-amber-300 text-amber-700 hover:bg-amber-50 px-6" onClick={(e) => { e.stopPropagation(); setShowDetail(true); }} data-testid={`button-event-details-${event.id}`}>
+                Event Details <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       ) : adSize === "medium" ? (
         <Card
