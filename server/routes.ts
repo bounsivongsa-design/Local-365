@@ -901,13 +901,19 @@ export async function registerRoutes(
       const isSilverPlus = tier === "standard" || tier === "premium";
       const isGold = tier === "premium";
 
-      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: _adSize, ...bodyWithoutMeta } = req.body;
+      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: clientAdSize, ...bodyWithoutMeta } = req.body;
+
+      const adSizeVal = clientAdSize || "small";
+      const sizeCanDesc = adSizeVal === "medium" || adSizeVal === "large";
+      const sizeCanImage = adSizeVal === "medium" || adSizeVal === "large";
+      const sizeCanFlyer = adSizeVal === "large";
 
       const sanitizedBody = {
         ...bodyWithoutMeta,
-        description: isSilverPlus ? (bodyWithoutMeta.description || "") : "",
-        imageUrl: isSilverPlus ? bodyWithoutMeta.imageUrl : undefined,
-        flyerUrl: isGold ? bodyWithoutMeta.flyerUrl : undefined,
+        description: sizeCanDesc ? (bodyWithoutMeta.description || "") : "",
+        imageUrl: sizeCanImage ? bodyWithoutMeta.imageUrl : undefined,
+        flyerUrl: sizeCanFlyer ? bodyWithoutMeta.flyerUrl : undefined,
+        adSize: adSizeVal,
       };
 
       const eventZipCode = businessZipCode || req.body.zipCode || "27929";
@@ -2618,6 +2624,7 @@ async function seedDatabase() {
       zipCode: "27958",
       imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop",
       flyerUrl: "https://example.com/spring-expo-flyer",
+      adSize: "large",
       businessId: goldBiz?.id,
       targetZipCodes: ["27958"],
     });
@@ -2631,6 +2638,7 @@ async function seedDatabase() {
       state: "NC",
       zipCode: "27958",
       imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&h=500&fit=crop",
+      adSize: "medium",
       businessId: silverBiz?.id,
       targetZipCodes: ["27958"],
     });
@@ -2644,6 +2652,7 @@ async function seedDatabase() {
       state: "NC",
       zipCode: "27958",
       imageUrl: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=500&fit=crop",
+      adSize: "small",
       businessId: bronzeBiz?.id,
       targetZipCodes: ["27958"],
     });

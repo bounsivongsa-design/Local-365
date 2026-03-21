@@ -404,11 +404,6 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const tier = getTierLevel(business?.membershipTier);
   const tierInfo = TIER_LABELS[tier];
 
-  const canDescription = tier === "silver" || tier === "gold";
-  const canImage = tier === "silver" || tier === "gold";
-  const canFlyer = tier === "gold";
-  const canVideo = tier === "gold";
-  
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional(),
@@ -437,20 +432,30 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const adDuration = form.watch("adDuration");
   const adSize = form.watch("adSize");
 
+  const canDescription = adSize === "medium" || adSize === "large";
+  const canImage = adSize === "medium" || adSize === "large";
+  const canFlyer = adSize === "large";
+
   const discount = tier === "gold" ? 0.50 : tier === "silver" ? 0.25 : tier === "bronze" ? 0.10 : 0;
   const basePricing = adDuration === "2week" ? EVENT_BASE_PRICING.event2Week : EVENT_BASE_PRICING.eventMonthly;
   const basePrice = adSize ? (basePricing as any)[adSize] || 0 : 0;
   const finalPrice = Math.round(basePrice * (1 - discount));
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
+    const selectedAdSize = data.adSize || "small";
+    const sizeCanDesc = selectedAdSize === "medium" || selectedAdSize === "large";
+    const sizeCanImage = selectedAdSize === "medium" || selectedAdSize === "large";
+    const sizeCanFlyer = selectedAdSize === "large";
+
     const eventData: any = {
       title: data.title,
       location: data.location,
       date: data.date,
-      description: canDescription && data.description ? data.description : "",
-      imageUrl: canImage && data.imageUrl ? data.imageUrl : "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop",
+      adSize: selectedAdSize,
+      description: sizeCanDesc && data.description ? data.description : "",
+      imageUrl: sizeCanImage && data.imageUrl ? data.imageUrl : undefined,
     };
-    if (canFlyer && data.flyerUrl) eventData.flyerUrl = data.flyerUrl;
+    if (sizeCanFlyer && data.flyerUrl) eventData.flyerUrl = data.flyerUrl;
     
     createEvent.mutate(eventData, {
       onSuccess: () => {
@@ -519,82 +524,10 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
           />
         </div>
 
-        {canDescription ? (
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl><Textarea placeholder="Describe your event..." className="bg-white text-[#1a1a2e] min-h-[80px]" {...field} data-testid="input-event-description" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
-            <Lock className="h-4 w-4 flex-shrink-0" />
-            <span>Description — available with Silver or Gold membership</span>
-          </div>
-        )}
-
-        {canImage ? (
-          <FormField
-            control={form.control}
-            name="imageUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cover Image URL</FormLabel>
-                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
-            <Lock className="h-4 w-4 flex-shrink-0" />
-            <span>Cover image — available with Silver or Gold membership</span>
-          </div>
-        )}
-
-        {canFlyer ? (
-          <FormField
-            control={form.control}
-            name="flyerUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Flyer / Event Link URL</FormLabel>
-                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-flyer" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
-            <Lock className="h-4 w-4 flex-shrink-0" />
-            <span>Flyer / event link — available with Gold membership</span>
-          </div>
-        )}
-
-        {canVideo ? (
-          <div className="p-3 rounded-xl bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-700/30">
-            <div className="flex items-center gap-2">
-              <Video className="h-4 w-4 text-amber-600" />
-              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">30-Sec Promo Video</span>
-            </div>
-            <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Your business listing's promo video will be featured alongside this event.</p>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
-            <Lock className="h-4 w-4 flex-shrink-0" />
-            <span>30-sec promo video — available with Gold membership</span>
-          </div>
-        )}
-
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
           <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
             <Megaphone className="h-4 w-4" />
-            Ad Package
+            Ad Package — Choose your size to unlock features
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <FormField
@@ -631,9 +564,9 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="small">Small</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="large">Large</SelectItem>
+                      <SelectItem value="small">Small — Title, date, location only</SelectItem>
+                      <SelectItem value="medium">Medium — + description & cover image</SelectItem>
+                      <SelectItem value="large">Large — + flyer link (Best Value)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -665,6 +598,63 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
             </div>
           )}
         </div>
+
+        {canDescription ? (
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Textarea placeholder="Describe your event..." className="bg-white text-[#1a1a2e] min-h-[80px]" {...field} data-testid="input-event-description" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>Description — select Medium or Large ad size to unlock</span>
+          </div>
+        )}
+
+        {canImage ? (
+          <FormField
+            control={form.control}
+            name="imageUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cover Image URL</FormLabel>
+                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>Cover image — select Medium or Large ad size to unlock</span>
+          </div>
+        )}
+
+        {canFlyer ? (
+          <FormField
+            control={form.control}
+            name="flyerUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Flyer / Event Link URL</FormLabel>
+                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-flyer" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span>Flyer / event link — select Large ad size to unlock</span>
+          </div>
+        )}
 
         <div className="pt-2 flex justify-end">
           <Button 
