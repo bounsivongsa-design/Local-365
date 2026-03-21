@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -286,9 +286,9 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                 <div className="flex items-center gap-2 mb-3">
                   <Star className="h-5 w-5 text-amber-300 fill-amber-300" />
                   <span className="text-2xl font-bold text-white" data-testid="text-avg-rating">
-                    {business.averageRating ? Number(business.averageRating).toFixed(1) : "—"}
+                    {(business as any).averageRating ? Number((business as any).averageRating).toFixed(1) : "—"}
                   </span>
-                  <span className="text-sm text-white/60">({business.reviewCount || 0} reviews)</span>
+                  <span className="text-sm text-white/60">({(business as any).reviewCount || 0} reviews)</span>
                 </div>
                 <Link to={`/directory/${business.id}`}>
                   <Button size="sm" className="w-full bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm" data-testid="button-view-reviews">
@@ -311,15 +311,15 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Link to={`/directory/${business.id}`} className="block">
+                <a href="#listing-media" className="block">
                   <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#0a4a82]/15 hover:bg-[#0a4a82]/5 hover:border-[#0a4a82]/30" data-testid="button-edit-listing">
                     <span className="flex items-center gap-2 text-[#1a1a2e]">
                       <Building2 className="h-4 w-4 text-[#0a4a82]" />
-                      Manage Listing
+                      Manage Listing Media
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
                   </Button>
-                </Link>
+                </a>
                 <Link to="/jobs" className="block">
                   <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#8a9a5b]/15 hover:bg-[#8a9a5b]/5 hover:border-[#8a9a5b]/30" data-testid="button-post-job">
                     <span className="flex items-center gap-2 text-[#1a1a2e]">
@@ -397,10 +397,344 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
             </Card>
           </div>
 
+          <DashboardMediaManagement business={business} />
+
           <AnalyticsDashboard businessId={business.id} />
         </>
       )}
     </div>
+  );
+}
+
+function DashboardMediaManagement({ business }: { business: Business }) {
+  return (
+    <div id="listing-media" className="space-y-5 scroll-mt-6">
+      <h2 className="text-xl font-bold text-[#1a1a2e] flex items-center gap-2">
+        <Settings className="h-5 w-5 text-[#0a4a82]" />
+        Listing Media & Content
+      </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <DashboardLogoUploader business={business} />
+        <DashboardGalleryManager business={business} />
+      </div>
+      <DashboardPromoVideoUploader business={business} />
+    </div>
+  );
+}
+
+function DashboardLogoUploader({ business }: { business: Business }) {
+  const { toast } = useToast();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const queryClient = useQueryClient();
+
+  const tier = business.membershipTier;
+  const isBronze = tier === "basic" || tier === "bronze";
+
+  const saveMutation = useMutation({
+    mutationFn: async (logoUrl: string) => {
+      const res = await fetch(`/api/businesses/${business.id}/logo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ logoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to save logo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      toast({ title: "Logo updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save logo", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/businesses/${business.id}/logo`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove logo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      toast({ title: "Logo removed" });
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const result = await uploadFile(file);
+    if (result) saveMutation.mutate(result.objectPath);
+    e.target.value = "";
+  };
+
+  if (isBronze) {
+    return (
+      <Card className="rounded-2xl border-[#0a4a82]/10 opacity-75">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-slate-400" />
+            Business Logo
+          </CardTitle>
+          <CardDescription>Upgrade to Silver or Gold to upload a logo</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="rounded-2xl border-[#0a4a82]/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-[#0a4a82]" />
+          Business Logo
+        </CardTitle>
+        <CardDescription>Visible on your listing and directory card</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {business.logoUrl ? (
+          <div className="flex items-center gap-4">
+            <img src={business.logoUrl} alt="Logo" className="w-16 h-16 rounded-lg object-cover border-2 border-[#0a4a82]/15" />
+            <div className="flex gap-2">
+              <label className="cursor-pointer">
+                <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} data-testid="input-logo-replace" />
+                <Button type="button" variant="outline" size="sm" asChild><span><Upload className="h-3.5 w-3.5 mr-1" /> Replace</span></Button>
+              </label>
+              <Button type="button" variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate()} data-testid="button-logo-remove">
+                Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <label className="cursor-pointer block">
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} data-testid="input-logo-upload" />
+            <div className="border-2 border-dashed border-[#0a4a82]/20 rounded-xl p-4 text-center hover:border-[#0a4a82]/40 transition-colors">
+              <Upload className="h-6 w-6 mx-auto text-[#0a4a82]/50 mb-2" />
+              <p className="text-sm text-muted-foreground">Upload logo (JPG, PNG, WebP)</p>
+            </div>
+          </label>
+        )}
+        {isUploading && (
+          <div className="mt-3 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-[#0a4a82] rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardGalleryManager({ business }: { business: Business }) {
+  const { toast } = useToast();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const queryClient = useQueryClient();
+
+  const tier = business.membershipTier;
+  const canUpload = tier === "standard" || tier === "premium";
+  const maxPhotos = tier === "premium" ? 10 : tier === "standard" ? 6 : 0;
+  const currentPhotos: string[] = (business as any).galleryPhotos || [];
+
+  const addMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      const res = await fetch(`/api/businesses/${business.id}/gallery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ photoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to add photo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      toast({ title: "Photo added" });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      const res = await fetch(`/api/businesses/${business.id}/gallery`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ photoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      toast({ title: "Photo removed" });
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const result = await uploadFile(file);
+    if (result) addMutation.mutate(result.objectPath);
+    e.target.value = "";
+  };
+
+  if (!canUpload) {
+    return (
+      <Card className="rounded-2xl border-[#0a4a82]/10 opacity-75">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Star className="h-4 w-4 text-slate-400" />
+            Photo Gallery
+          </CardTitle>
+          <CardDescription>Upgrade to Silver or Gold to add photos</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="rounded-2xl border-[#0a4a82]/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Star className="h-4 w-4 text-[#d4a373]" />
+          Photo Gallery
+          <Badge variant="secondary" className="ml-auto text-xs">{currentPhotos.length}/{maxPhotos}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {currentPhotos.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {currentPhotos.map((photo, i) => (
+              <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
+                <img src={photo.startsWith("/objects/") ? photo : `/objects/${photo}`} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs"
+                  onClick={() => removeMutation.mutate(photo)}
+                  data-testid={`button-remove-photo-${i}`}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {currentPhotos.length < maxPhotos && (
+          <label className="cursor-pointer block">
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} data-testid="input-gallery-upload" />
+            <div className="border-2 border-dashed border-[#d4a373]/20 rounded-xl p-3 text-center hover:border-[#d4a373]/40 transition-colors">
+              <Upload className="h-5 w-5 mx-auto text-[#d4a373]/50 mb-1" />
+              <p className="text-xs text-muted-foreground">Add photo</p>
+            </div>
+          </label>
+        )}
+        {isUploading && (
+          <div className="mt-2 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-[#d4a373] rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardPromoVideoUploader({ business }: { business: Business }) {
+  const { toast } = useToast();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const queryClient = useQueryClient();
+
+  const tier = business.membershipTier;
+  const isGold = tier === "premium";
+
+  if (!isGold) return null;
+
+  const saveMutation = useMutation({
+    mutationFn: async (videoUrl: string) => {
+      const res = await fetch(`/api/businesses/${business.id}/promo-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ videoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to save video");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      toast({ title: "Promo video updated" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/businesses/${business.id}/promo-video`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      toast({ title: "Video removed" });
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Video must be under 50MB.", variant: "destructive" });
+      return;
+    }
+    const result = await uploadFile(file);
+    if (result) saveMutation.mutate(result.objectPath);
+    e.target.value = "";
+  };
+
+  return (
+    <Card className="rounded-2xl border-yellow-200/50 bg-gradient-to-r from-yellow-50/50 to-white">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Crown className="h-4 w-4 text-yellow-600" />
+          Promo Video
+          <Badge className="bg-yellow-100 text-yellow-800 border-0 text-xs ml-auto">Gold Exclusive</Badge>
+        </CardTitle>
+        <CardDescription>30-second promotional video for your listing</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {(business as any).promoVideoUrl ? (
+          <div className="space-y-3">
+            <video src={(business as any).promoVideoUrl} controls className="w-full rounded-xl max-h-48" />
+            <div className="flex gap-2">
+              <label className="cursor-pointer flex-1">
+                <input type="file" accept="video/*" className="hidden" onChange={handleFileSelect} data-testid="input-video-replace" />
+                <Button type="button" variant="outline" size="sm" className="w-full" asChild><span><Upload className="h-3.5 w-3.5 mr-1" /> Replace</span></Button>
+              </label>
+              <Button type="button" variant="outline" size="sm" className="text-red-500" onClick={() => deleteMutation.mutate()} data-testid="button-video-remove">
+                Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <label className="cursor-pointer block">
+            <input type="file" accept="video/*" className="hidden" onChange={handleFileSelect} data-testid="input-video-upload" />
+            <div className="border-2 border-dashed border-yellow-300/40 rounded-xl p-4 text-center hover:border-yellow-400/60 transition-colors">
+              <Upload className="h-6 w-6 mx-auto text-yellow-500/50 mb-2" />
+              <p className="text-sm text-muted-foreground">Upload promo video (MP4, max 50MB)</p>
+            </div>
+          </label>
+        )}
+        {isUploading && (
+          <div className="mt-3 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-yellow-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
