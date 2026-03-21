@@ -151,7 +151,7 @@ function TermsOfService() {
 
       <SubSection number="4" title="Business Listings and Membership">
         <p>Businesses may create listings on Local List 365 and subscribe to membership tiers (Bronze, Silver, or Gold) for enhanced features and visibility. Membership fees, features, and billing terms are described on the Membership page. All membership subscriptions are managed through Stripe and are subject to Stripe's terms of service. Memberships may be canceled at any time through the billing portal; cancellations take effect at the end of the current billing period.</p>
-        <p className="mt-2"><strong>Eligibility:</strong> All business listings are subject to our <a href="/legal?section=vendor-eligibility" className="text-[#0a4a82] hover:underline font-semibold">Local Vendor Eligibility Policy</a>. Only independently owned and locally operated businesses serving Currituck County are eligible for listing. National chains, franchises, and corporate-controlled operations are not permitted. All listings are reviewed and approved at the sole discretion of directory administrators.</p>
+        <p className="mt-2"><strong>Eligibility:</strong> All business listings are subject to our <a href="/legal?section=vendor-eligibility" className="text-[#0a4a82] hover:underline font-semibold">Local Vendor Eligibility Policy</a>. Only independently owned and locally operated businesses serving their local community are eligible for listing. National chains, franchises, and corporate-controlled operations are not permitted. All listings are reviewed and approved at the sole discretion of directory administrators.</p>
       </SubSection>
 
       <SubSection number="5" title="User-Generated Content">
@@ -196,7 +196,7 @@ function TermsOfService() {
       </SubSection>
 
       <SubSection number="13" title="Governing Law">
-        <p>These Terms are governed by and construed in accordance with the laws of the State of North Carolina, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be subject to the exclusive jurisdiction of the courts located in Currituck County, North Carolina.</p>
+        <p>These Terms are governed by and construed in accordance with the laws of the State of North Carolina, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be subject to the exclusive jurisdiction of the courts located in the applicable local jurisdiction.</p>
       </SubSection>
 
       <SubSection number="14" title="Contact">
@@ -293,13 +293,13 @@ function VendorEligibilityPolicy() {
     <div>
       <SectionHeading icon={Shield} title="Local Vendor Eligibility Policy" />
       <p className="text-gray-600 mb-6 text-[15px] leading-relaxed" style={{ color: "#374151" }}>
-        This directory celebrates and promotes independently owned and operated local businesses based in and primarily serving Currituck County, North Carolina — including mainland areas, Knotts Island, and northern Outer Banks communities like Corolla, Moyock, Grandy, Barco, Shawboro, and beyond.
+        This directory celebrates and promotes independently owned and operated local businesses based in and primarily serving their local community and surrounding areas.
       </p>
 
       <SubSection number="1" title="Who We Welcome">
         <p>We welcome vendors who:</p>
         <ul className="list-disc pl-6 space-y-2 mt-2">
-          <li><strong>Are owned and operated by local Currituck County residents</strong> or individuals primarily serving our community.</li>
+          <li><strong>Are owned and operated by local residents</strong> or individuals primarily serving their community.</li>
           <li><strong>Run their businesses independently,</strong> with personal control over operations, customer relationships, and sales.</li>
           <li><strong>May sell products from national brands</strong> through direct sales or independent consultant models, as long as the business itself is locally driven and not part of a corporate chain, franchise system, or multi-level network requiring ongoing royalties or centralized control.</li>
         </ul>
@@ -310,21 +310,21 @@ function VendorEligibilityPolicy() {
         <ul className="list-disc pl-6 space-y-2 mt-2">
           <li>National or regional corporate chains and fully company-owned operations.</li>
           <li>Franchise locations or businesses operating under national franchise agreements.</li>
-          <li>Any operation where major branding, decision-making, or control is held outside Currituck County by a distant corporate entity.</li>
+          <li>Any operation where major branding, decision-making, or control is held outside the local area by a distant corporate entity.</li>
         </ul>
       </SubSection>
 
       <SubSection number="3" title="Review and Approval">
-        <p>All listings are reviewed and approved at the sole discretion of the directory administrators to align with our mission: <strong>boosting Currituck County's homegrown economy</strong> by highlighting truly local entrepreneurs, artisans, service providers, and independent sellers who contribute directly to our community.</p>
+        <p>All listings are reviewed and approved at the sole discretion of the directory administrators to align with our mission: <strong>boosting the local homegrown economy</strong> by highlighting truly local entrepreneurs, artisans, service providers, and independent sellers who contribute directly to our community.</p>
       </SubSection>
 
       <SubSection number="4" title="Submission Process">
-        <p>Applicants should provide basic details confirming local operation and independence (e.g., home-based in Currituck, no franchise agreement). As part of the business registration form, applicants are required to describe how their business is independently owned and locally operated. We may ask for simple verification to ensure fit.</p>
+        <p>Applicants should provide basic details confirming local operation and independence (e.g., home-based locally, no franchise agreement). As part of the business registration form, applicants are required to describe how their business is independently owned and locally operated. We may ask for simple verification to ensure fit.</p>
         <p className="mt-2">For independent consultants or direct sellers (e.g., Mary Kay, Pampered Chef), please describe how your business is personally run and community-focused — for example, home-based sales, personal customer relationships, or local event participation.</p>
       </SubSection>
 
       <SubSection number="5" title="Our Mission">
-        <p>This policy reflects our core values: supporting Currituck County's local economy by connecting residents and visitors with <strong>truly local, independently operated businesses</strong>. We believe that when you shop local, you invest in your neighbors, your community, and the unique character of Currituck County.</p>
+        <p>This policy reflects our core values: supporting the local economy by connecting residents and visitors with <strong>truly local, independently operated businesses</strong>. We believe that when you shop local, you invest in your neighbors, your community, and the unique character of your local area.</p>
       </SubSection>
     </div>
   );

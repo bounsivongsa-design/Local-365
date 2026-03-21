@@ -489,7 +489,7 @@ export function CreateBusinessForm({
           <div>
             <h4 className="text-base font-bold text-[#0a4a82]" style={{ color: '#0a4a82' }}>Local Vendor Eligibility Policy</h4>
             <p className="text-sm text-gray-700 mt-1 leading-relaxed">
-              Local List 365 is exclusively for <strong>independently owned and locally operated businesses</strong> serving Currituck County. National chains, franchises, and corporate-controlled operations are <strong>not eligible</strong>.
+              Local List 365 is exclusively for <strong>independently owned and locally operated businesses</strong> serving their local community. National chains, franchises, and corporate-controlled operations are <strong>not eligible</strong>.
             </p>
             <Link
               to="/legal?section=vendor-eligibility"
