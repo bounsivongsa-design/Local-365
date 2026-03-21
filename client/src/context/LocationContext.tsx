@@ -21,8 +21,8 @@ const defaultLocation: SelectedLocation = {
   city: "Moyock",
   state: "NC",
   zipCode: "27958",
-  region: "Currituck County",
-  tagline: "Heart of Currituck County"
+  region: "Moyock",
+  tagline: "Heart of Moyock"
 };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);

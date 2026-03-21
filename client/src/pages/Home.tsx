@@ -122,13 +122,13 @@ export default function Home() {
   const impressionsSent = useRef<Set<number>>(new Set());
 
   const LARGE_PLACEHOLDERS = [
-    { id: 0, title: "Full-Service Home Repairs, Renovations & Emergency Calls", businessName: "Currituck Home Services", description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all.", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
-    { id: 0, title: "Custom Homes, Additions & Luxury Renovations", businessName: "Coastal Builders Inc.", description: "Award-winning construction company building dream homes across Currituck County. From blueprints to move-in day — your vision, our craftsmanship.", imageUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
-    { id: 0, title: "Coastal Roofing — Storm-Ready Solutions", businessName: "Currituck County Roofing", description: "GAF-certified roofing pros. Free storm damage inspections, insurance claim assistance, and 25-year warranties on every job.", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
+    { id: 0, title: "Full-Service Home Repairs, Renovations & Emergency Calls", businessName: "Moyock Home Services", description: "Licensed and insured contractors serving Moyock and surrounding areas. From emergency plumbing to full kitchen remodels — we do it all.", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
+    { id: 0, title: "Custom Homes, Additions & Luxury Renovations", businessName: "Coastal Builders Inc.", description: "Award-winning construction company building dream homes across Moyock. From blueprints to move-in day — your vision, our craftsmanship.", imageUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
+    { id: 0, title: "Coastal Roofing — Storm-Ready Solutions", businessName: "Moyock Roofing Co.", description: "GAF-certified roofing pros. Free storm damage inspections, insurance claim assistance, and 25-year warranties on every job.", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
   ];
 
   const MEDIUM_PLACEHOLDERS = [
-    { id: 0, title: "24/7 Emergency HVAC & Plumbing", businessName: "Currituck Climate Control", description: "Same-day service from licensed technicians.", imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", businessId: null, linkUrl: null },
+    { id: 0, title: "24/7 Emergency HVAC & Plumbing", businessName: "Moyock Climate Control", description: "Same-day service from licensed technicians.", imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=300&fit=crop", businessId: null, linkUrl: null },
     { id: 0, title: "Mobile Mechanic — We Come to You", businessName: "Moyock Auto Pros", description: "On-site auto repair and diagnostics.", imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=300&fit=crop", businessId: null, linkUrl: null },
     { id: 0, title: "Professional Tree Care & Removal", businessName: "Coastal Tree Care", description: "Licensed arborists for trimming & removal.", imageUrl: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&h=300&fit=crop", businessId: null, linkUrl: null },
     { id: 0, title: "Custom Kitchen Remodels", businessName: "Coastal Kitchen Co.", description: "Dream kitchens, expertly crafted.", imageUrl: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&h=300&fit=crop", businessId: null, linkUrl: null },
@@ -281,7 +281,7 @@ export default function Home() {
       <section className="text-center py-20 relative overflow-hidden min-h-[650px] flex items-center">
         <img 
           src={heroImage}
-          alt="Moyock and Currituck County local business directory"
+          alt="Moyock NC local business directory"
           className="absolute inset-0 w-full h-full object-cover"
           style={{ objectPosition: 'center 55%' }}
         />

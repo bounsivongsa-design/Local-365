@@ -56,7 +56,7 @@ export function WeatherWidget() {
     <div className="bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-900/20 dark:to-blue-800/10 p-4 rounded-xl" data-testid="weather-widget">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-muted-foreground font-medium mb-1">Currituck Weather</p>
+          <p className="text-xs text-muted-foreground font-medium mb-1">Moyock Weather</p>
           <div className="flex items-center gap-2">
             <WeatherIcon className="h-6 w-6 text-primary" />
             <span className="text-2xl font-bold">{Math.round(temperature)}°F</span>

@@ -37,7 +37,7 @@ export default function AccountSetup() {
         title: "Account set up successfully!",
         description: selectedType === "business" 
           ? "Welcome to your business dashboard." 
-          : "Welcome to Currituck County!",
+          : "Welcome to Moyock!",
       });
       navigate("/dashboard");
     },
@@ -82,7 +82,7 @@ export default function AccountSetup() {
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-display">
-            Welcome to Currituck County
+            Welcome to Moyock
           </h1>
           <p className="text-xl text-white/80 max-w-2xl mx-auto">
             Hi {user?.firstName || "there"}! Let's get you set up. How will you be using Local 365?

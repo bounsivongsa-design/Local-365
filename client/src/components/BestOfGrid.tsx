@@ -12,11 +12,11 @@ interface BestOfItem {
 }
 
 const defaultBestOfData: BestOfItem[] = [
-  { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'Currituck Handyman Services', honorable: 'Beach House Fixers', rating: '4.9' },
-  { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Currituck Plumbing Pros', honorable: 'Island Pipe Works', rating: '4.8' },
-  { category: 'HVAC', winner: 'Currituck HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Beach Breeze HVAC', rating: '4.9' },
-  { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'Currituck Power Solutions', rating: '4.7' },
-  { category: 'Roofing', winner: 'Barrier Island Roofing', runnerUp: 'Coastal Storm Roofing', honorable: 'Currituck Top Roofers', rating: '4.8' },
+  { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'Moyock Handyman Services', honorable: 'Beach House Fixers', rating: '4.9' },
+  { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Moyock Plumbing Pros', honorable: 'Island Pipe Works', rating: '4.8' },
+  { category: 'HVAC', winner: 'Moyock HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Beach Breeze HVAC', rating: '4.9' },
+  { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'Moyock Power Solutions', rating: '4.7' },
+  { category: 'Roofing', winner: 'Barrier Island Roofing', runnerUp: 'Coastal Storm Roofing', honorable: 'Moyock Top Roofers', rating: '4.8' },
   { category: 'Landscaping', winner: 'Sandy Shores Landscaping', runnerUp: 'Dune Gardens', honorable: 'Coastal Green Thumb', rating: '4.9' },
 ];
 
@@ -36,7 +36,7 @@ function BestOfGrid() {
           }
         }
       } catch (err) {
-        setError('Failed to load Best of Currituck data — try refreshing.');
+        setError('Failed to load Best of Moyock data — try refreshing.');
       } finally {
         setIsLoading(false);
       }

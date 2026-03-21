@@ -13,7 +13,7 @@ interface Message {
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { text: "Hey, I'm Ziggy, your Currituck County expert! What can I help with?", sender: 'bot' }
+    { text: "Hey, I'm Ziggy, your Moyock expert! What can I help with?", sender: 'bot' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -124,7 +124,7 @@ export function Chatbot() {
               </div>
               <div>
                 <h3 className="font-bold">Ziggy</h3>
-                <p className="text-xs text-primary-foreground/70">Your Currituck Expert</p>
+                <p className="text-xs text-primary-foreground/70">Your Moyock Expert</p>
               </div>
             </div>
             <Button 
@@ -194,7 +194,7 @@ export function Chatbot() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me anything about Currituck..."
+                placeholder="Ask me anything about Moyock..."
                 className="flex-1"
                 disabled={isTyping}
                 data-testid="input-chat-message"

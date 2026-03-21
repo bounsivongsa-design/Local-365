@@ -497,7 +497,7 @@ export async function registerRoutes(
     }
   });
 
-  // Best of Moyock & Currituck County
+  // Best of Moyock
   app.post("/api/bestof", isAuthenticated, async (req, res) => {
     try {
       const { category, winner, runnerUp, honorable, rating } = req.body;
@@ -534,32 +534,32 @@ export async function registerRoutes(
       } else {
         // Return default data if none in DB
         const defaultBestOf = [
-          { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'Moyock Handyman Services', honorable: 'Currituck Home Fixers', rating: '4.9' },
-          { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Currituck Plumbing Pros', honorable: 'Moyock Pipe Works', rating: '4.8' },
-          { category: 'HVAC', winner: 'Moyock HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Currituck Climate Control', rating: '4.9' },
-          { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'Currituck Power Solutions', rating: '4.7' },
-          { category: 'Roofing', winner: 'Currituck County Roofing', runnerUp: 'Coastal Storm Roofing', honorable: 'Moyock Top Roofers', rating: '4.8' },
+          { category: 'Home Repair', winner: 'Smith Home Repair', runnerUp: 'Moyock Handyman Services', honorable: 'Shore Home Fixers', rating: '4.9' },
+          { category: 'Plumbing', winner: 'Coastal Plumbing Co', runnerUp: 'Moyock Plumbing Pros', honorable: 'Moyock Pipe Works', rating: '4.8' },
+          { category: 'HVAC', winner: 'Moyock HVAC Pros', runnerUp: 'Coastal Comfort Air', honorable: 'Moyock Climate Control', rating: '4.9' },
+          { category: 'Electrical', winner: 'Shore Electric', runnerUp: 'Lighthouse Electrical', honorable: 'Moyock Power Solutions', rating: '4.7' },
+          { category: 'Roofing', winner: 'Moyock Roofing Co', runnerUp: 'Coastal Storm Roofing', honorable: 'Moyock Top Roofers', rating: '4.8' },
           { category: 'Landscaping', winner: 'Sandy Shores Landscaping', runnerUp: 'Moyock Gardens', honorable: 'Coastal Green Thumb', rating: '4.9' },
-          { category: 'Cleaning', winner: 'Crystal Clean Moyock', runnerUp: 'Sparkle Cleaning Co', honorable: 'Tidy Currituck Services', rating: '4.8' },
-          { category: 'Painting', winner: 'Currituck County Painters', runnerUp: 'Coastal Colors Pro', honorable: 'Moyock Painting Co', rating: '4.7' },
-          { category: 'Tree Care', winner: 'Coastal Tree Care', runnerUp: 'Currituck Arborists', honorable: 'Moyock Tree Service', rating: '4.8' },
-          { category: 'Remodeling & Addition', winner: 'Moyock Home Remodeling', runnerUp: 'Currituck Renovations', honorable: 'Coastal Makeover Co', rating: '4.9' },
-          { category: 'New Construction', winner: 'Currituck Custom Builders', runnerUp: 'Moyock Construction Co', honorable: 'Soundside Builders', rating: '4.8' },
-          { category: 'Baby Sitting & Nanny', winner: 'Trusted Nannies Moyock', runnerUp: 'Currituck Kids Care', honorable: 'Coastal Sitters', rating: '4.9' },
-          { category: 'Printing', winner: 'Coastal Print Shop', runnerUp: 'Moyock Graphics', honorable: 'Currituck Signs & Print', rating: '4.6' },
-          { category: 'Web Design & Logo Design', winner: 'Moyock Digital Design', runnerUp: 'Currituck Web Studio', honorable: 'Coastal Creative Co', rating: '4.8' },
-          { category: 'Photo & Video', winner: 'Currituck Photo & Video', runnerUp: 'Lighthouse Lens', honorable: 'Moyock Shots', rating: '4.9' },
-          { category: 'Auto Repair', winner: 'Reliable Auto Repair', runnerUp: 'Moyock Garage', honorable: 'Currituck Auto Care', rating: '4.7' },
+          { category: 'Cleaning', winner: 'Crystal Clean Moyock', runnerUp: 'Sparkle Cleaning Co', honorable: 'Tidy Moyock Services', rating: '4.8' },
+          { category: 'Painting', winner: 'Moyock Painters', runnerUp: 'Coastal Colors Pro', honorable: 'Moyock Painting Co', rating: '4.7' },
+          { category: 'Tree Care', winner: 'Coastal Tree Care', runnerUp: 'Moyock Arborists', honorable: 'Moyock Tree Service', rating: '4.8' },
+          { category: 'Remodeling & Addition', winner: 'Moyock Home Remodeling', runnerUp: 'Moyock Renovations', honorable: 'Coastal Makeover Co', rating: '4.9' },
+          { category: 'New Construction', winner: 'Moyock Custom Builders', runnerUp: 'Moyock Construction Co', honorable: 'Soundside Builders', rating: '4.8' },
+          { category: 'Baby Sitting & Nanny', winner: 'Trusted Nannies Moyock', runnerUp: 'Moyock Kids Care', honorable: 'Coastal Sitters', rating: '4.9' },
+          { category: 'Printing', winner: 'Coastal Print Shop', runnerUp: 'Moyock Graphics', honorable: 'Moyock Signs & Print', rating: '4.6' },
+          { category: 'Web Design & Logo Design', winner: 'Moyock Digital Design', runnerUp: 'Moyock Web Studio', honorable: 'Coastal Creative Co', rating: '4.8' },
+          { category: 'Photo & Video', winner: 'Moyock Photo & Video', runnerUp: 'Lighthouse Lens', honorable: 'Moyock Shots', rating: '4.9' },
+          { category: 'Auto Repair', winner: 'Reliable Auto Repair', runnerUp: 'Moyock Garage', honorable: 'Moyock Auto Care', rating: '4.7' },
           { category: 'Small Engine Repair', winner: 'Small Engine Experts', runnerUp: 'Moyock Power Equipment', honorable: 'Coastal Motor Works', rating: '4.6' },
-          { category: 'Trash & Junk Removal', winner: 'Junk Be Gone Moyock', runnerUp: 'Coastal Cleanout', honorable: 'Currituck Haul Away', rating: '4.8' },
-          { category: 'Tutor & Mentor Counseling', winner: 'Moyock Tutoring Center', runnerUp: 'Bright Minds Currituck', honorable: 'Coastal Learning', rating: '4.9' },
+          { category: 'Trash & Junk Removal', winner: 'Junk Be Gone Moyock', runnerUp: 'Coastal Cleanout', honorable: 'Moyock Haul Away', rating: '4.8' },
+          { category: 'Tutor & Mentor Counseling', winner: 'Moyock Tutoring Center', runnerUp: 'Bright Minds Moyock', honorable: 'Coastal Learning', rating: '4.9' },
           { category: 'Health & Wellness', winner: 'Serenity Wellness', runnerUp: 'Moyock Yoga Studio', honorable: 'Coastal Zen Center', rating: '4.9' },
-          { category: 'Tax CPA', winner: 'Coastal Tax Services', runnerUp: 'Currituck Accounting', honorable: 'Moyock Business CPAs', rating: '4.7' },
-          { category: 'Legal', winner: 'Moyock Law Group', runnerUp: 'Currituck Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
-          { category: 'Woodworking', winner: 'Moyock Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Currituck Timber Creations', rating: '4.9' },
-          { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Moyock Bakehouse', honorable: 'Currituck Bread Company', rating: '4.9' },
-          { category: 'Catering / Food Trucks', winner: 'Moyock Food Truck Co', runnerUp: 'Coastal Catering Co', honorable: 'Currituck Bites Mobile', rating: '4.8' },
-          { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'Moyock Party Pros', honorable: 'Currituck Celebration Co', rating: '4.8' },
+          { category: 'Tax CPA', winner: 'Coastal Tax Services', runnerUp: 'Moyock Accounting', honorable: 'Moyock Business CPAs', rating: '4.7' },
+          { category: 'Legal', winner: 'Moyock Law Group', runnerUp: 'Moyock Legal Services', honorable: 'Coastal Attorneys', rating: '4.8' },
+          { category: 'Woodworking', winner: 'Moyock Woodworks', runnerUp: 'Coastal Craftsmen', honorable: 'Moyock Timber Creations', rating: '4.9' },
+          { category: 'Baking & Cooking', winner: 'Sweet Coastal Bakery', runnerUp: 'Moyock Bakehouse', honorable: 'Moyock Bread Company', rating: '4.9' },
+          { category: 'Catering / Food Trucks', winner: 'Moyock Food Truck Co', runnerUp: 'Coastal Catering Co', honorable: 'Moyock Bites Mobile', rating: '4.8' },
+          { category: 'Event Planning & Rentals', winner: 'Coastal Events & Rentals', runnerUp: 'Moyock Party Pros', honorable: 'Moyock Celebration Co', rating: '4.8' },
         ];
         res.json(defaultBestOf);
       }
@@ -1132,18 +1132,18 @@ export async function registerRoutes(
       }
 
       // Build conversation with Ziggy's system prompt
-      const systemPrompt = `You are Ziggy, a friendly and knowledgeable AI assistant who is an expert on Currituck County, North Carolina. You help visitors and locals with:
+      const systemPrompt = `You are Ziggy, a friendly and knowledgeable AI assistant who is an expert on Moyock, NC and the surrounding area. You help visitors and locals with:
 
-- Restaurant recommendations (local dining spots, seafood restaurants, cafes in Currituck County)
-- Beach information and activities (Corolla wild horses, fishing, kayaking on Currituck Sound)
+- Restaurant recommendations (local dining spots, seafood restaurants, cafes in Moyock)
+- Beach information and activities (Corolla wild horses, fishing, kayaking on the sound)
 - Local attractions (Currituck Beach Lighthouse, Whalehead Club, Historic Corolla, Mackay Island Wildlife Refuge)
-- Things to do in Moyock, Barco, Grandy, Coinjock, Knotts Island, Jarvisburg, and other Currituck County communities
-- Weather and seasonal information for the county
+- Things to do in Moyock, Barco, Grandy, Coinjock, Knotts Island, Jarvisburg, and other nearby communities
+- Weather and seasonal information for the area
 - Contractor and home service referrals (deck building $6K-$15K typical)
 - Fishing charters and water sports on the sound and ocean
-- Family-friendly activities in Currituck County
+- Family-friendly activities in Moyock and nearby areas
 
-You focus exclusively on Currituck County, NC — including communities like Moyock, Currituck, Barco, Maple, Shawboro, Grandy, Jarvisburg, Point Harbor, Coinjock, Aydlett, Poplar Branch, Corolla, Carova Beach, and Knotts Island. Do NOT provide recommendations for Outer Banks towns outside Currituck County (such as Kill Devil Hills, Nags Head, Kitty Hawk, Manteo, or Hatteras). If asked about those areas, let the user know that Local List 365 focuses on Currituck County and redirect to local options.
+You focus on Moyock, NC and the surrounding communities — including Currituck, Barco, Maple, Shawboro, Grandy, Jarvisburg, Point Harbor, Coinjock, Aydlett, Poplar Branch, Corolla, Carova Beach, and Knotts Island. Do NOT provide recommendations for Outer Banks towns far outside the area (such as Kill Devil Hills, Nags Head, Kitty Hawk, Manteo, or Hatteras). If asked about those areas, let the user know that Local List 365 focuses on Moyock and redirect to local options.
 
 Keep responses helpful, warm, and concise. Use a casual, friendly tone. When recommending businesses or services, offer to connect users with local pros when appropriate.`;
 
@@ -2565,21 +2565,21 @@ async function seedDatabase() {
     
     // Placeholder businesses for each of the 26 categories with matching images
     const businessData = [
-      { name: "Smith Home Repair", category: "Home Repair", description: "Quality home repair services for Moyock and Currituck County.", address: "101 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
-      { name: "Coastal Plumbing Co", category: "Plumbing", description: "Licensed plumbers serving Currituck County.", address: "202 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop" },
+      { name: "Smith Home Repair", category: "Home Repair", description: "Quality home repair services for Moyock and surrounding areas.", address: "101 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
+      { name: "Coastal Plumbing Co", category: "Plumbing", description: "Licensed plumbers serving Moyock and nearby communities.", address: "202 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop" },
       { name: "Moyock HVAC Pros", category: "HVAC", description: "Heating and cooling experts for homes and businesses.", address: "303 Princess Anne Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=400&h=300&fit=crop" },
       { name: "Shore Electric", category: "Electrical", description: "Certified electricians for residential and commercial.", address: "404 Courthouse Rd, Currituck", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
-      { name: "Currituck County Roofing", category: "Roofing", description: "Storm-resistant roofing for homes and businesses.", address: "505 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=400&h=300&fit=crop" },
+      { name: "Moyock Roofing Co", category: "Roofing", description: "Storm-resistant roofing for homes and businesses.", address: "505 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=400&h=300&fit=crop" },
       { name: "Sandy Shores Landscaping", category: "Landscaping", description: "Native plant specialists and lawn care.", address: "606 Puddin Ridge Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=300&fit=crop" },
       { name: "Crystal Clean Moyock", category: "Cleaning", description: "Residential and commercial cleaning services.", address: "707 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
-      { name: "Currituck County Painters", category: "Painting", description: "Interior and exterior painting for homes and businesses.", address: "808 Old Hwy 168, Moyock", imageUrl: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400&h=300&fit=crop" },
+      { name: "Moyock Painters", category: "Painting", description: "Interior and exterior painting for homes and businesses.", address: "808 Old Hwy 168, Moyock", imageUrl: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400&h=300&fit=crop" },
       { name: "Coastal Tree Care", category: "Tree Care", description: "Tree trimming and removal services.", address: "909 Gibbs Woods Ln, Moyock", imageUrl: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&h=300&fit=crop" },
       { name: "Moyock Home Remodeling", category: "Remodeling & Addition", description: "Custom renovations and additions.", address: "110 Eagle Creek Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&h=300&fit=crop" },
-      { name: "Currituck Custom Builders", category: "New Construction", description: "New home construction specialists.", address: "211 Wynfield Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&h=300&fit=crop" },
+      { name: "Moyock Custom Builders", category: "New Construction", description: "New home construction specialists.", address: "211 Wynfield Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&h=300&fit=crop" },
       { name: "Trusted Nannies Moyock", category: "Baby Sitting & Nanny", description: "Background-checked childcare providers.", address: "312 Laurel Run Ln, Moyock", imageUrl: "https://images.unsplash.com/photo-1587616211892-f743fcca64f9?w=400&h=300&fit=crop" },
       { name: "Coastal Print Shop", category: "Printing", description: "Business cards, signs, and custom printing.", address: "413 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1562654501-a0ccc0fc3fb1?w=400&h=300&fit=crop" },
       { name: "Moyock Digital Design", category: "Web Design & Logo Design", description: "Websites and branding for local businesses.", address: "514 Commerce Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=400&h=300&fit=crop" },
-      { name: "Currituck Photo & Video", category: "Photo & Video", description: "Wedding and event photography.", address: "615 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=400&h=300&fit=crop" },
+      { name: "Moyock Photo & Video", category: "Photo & Video", description: "Wedding and event photography.", address: "615 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=400&h=300&fit=crop" },
       { name: "Reliable Auto Repair", category: "Auto Repair", description: "Trusted mechanics for all makes and models.", address: "716 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=300&fit=crop" },
       { name: "Small Engine Experts", category: "Small Engine Repair", description: "Lawn mowers, boats, and power equipment.", address: "817 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400&h=300&fit=crop" },
       { name: "Junk Be Gone Moyock", category: "Trash & Junk Removal", description: "Fast and affordable junk removal.", address: "918 Princess Anne Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop" },
@@ -2607,7 +2607,7 @@ async function seedDatabase() {
       title: "Moyock Home Show",
       description: "Meet local contractors and home service providers.",
       date: new Date(Date.now() + 86400000 * 3),
-      location: "Currituck Community Center",
+      location: "Moyock Community Center",
       imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     });
 

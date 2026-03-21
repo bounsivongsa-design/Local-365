@@ -56,7 +56,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
           
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
             <MapPin className="h-4 w-4 text-[#d4a373] flex-shrink-0" />
-            <span className="truncate">{business.address.split(',')[0] || 'Currituck County'}</span>
+            <span className="truncate">{business.address.split(',')[0] || 'Moyock, NC'}</span>
           </div>
           
           <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">
