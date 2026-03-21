@@ -490,6 +490,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const tier = getTierLevel(business?.membershipTier);
   const tierInfo = TIER_LABELS[tier];
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const flyerInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading, progress } = useUpload();
 
   const formSchema = z.object({
@@ -711,17 +713,53 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
         )}
 
         {canImage ? (
-          <FormField
-            control={form.control}
-            name="imageUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cover Image URL</FormLabel>
-                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-image" /></FormControl>
-                <FormMessage />
-              </FormItem>
+          <div>
+            <label className="text-sm font-medium leading-none mb-2 block">Cover Image</label>
+            {form.watch("imageUrl") ? (
+              <div className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#0a4a82]/15">
+                <div className="flex items-center gap-3">
+                  <img src={form.watch("imageUrl")!.startsWith("/objects/") ? form.watch("imageUrl")! : `/objects/${form.watch("imageUrl")}`} alt="Cover" className="w-14 h-14 rounded-lg object-cover border border-[#0a4a82]/10" />
+                  <p className="text-sm font-medium text-[#1a1a2e]">Cover image uploaded</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={isUploading} data-testid="button-replace-event-image">
+                    <Upload className="h-3.5 w-3.5 mr-1" /> Replace
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => form.setValue("imageUrl", "")} data-testid="button-remove-event-image">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-dashed border-[#0a4a82]/20 bg-white/50 cursor-pointer hover:border-[#0a4a82]/40 transition-colors"
+                onClick={() => imageInputRef.current?.click()}
+                data-testid="dropzone-event-image"
+              >
+                <Upload className="h-6 w-6 text-[#0a4a82]/50" />
+                <p className="text-sm font-medium text-[#1a1a2e]">Upload a cover image</p>
+                <p className="text-xs text-muted-foreground">JPG, PNG, or WebP · Max 10MB</p>
+              </div>
             )}
-          />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 10 * 1024 * 1024) {
+                  toast({ title: "File too large", description: "Image must be under 10MB.", variant: "destructive" });
+                  return;
+                }
+                const result = await uploadFile(file);
+                if (result) form.setValue("imageUrl", result.objectPath);
+                if (imageInputRef.current) imageInputRef.current.value = "";
+              }}
+              data-testid="input-event-image-file"
+            />
+          </div>
         ) : (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
             <Lock className="h-4 w-4 flex-shrink-0" />
@@ -730,21 +768,57 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
         )}
 
         {canFlyer ? (
-          <FormField
-            control={form.control}
-            name="flyerUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Flyer / Event Link URL</FormLabel>
-                <FormControl><Input placeholder="https://..." className="bg-white text-[#1a1a2e]" {...field} value={field.value || ""} data-testid="input-event-flyer" /></FormControl>
-                <FormMessage />
-              </FormItem>
+          <div>
+            <label className="text-sm font-medium leading-none mb-2 block">Event Flyer</label>
+            {form.watch("flyerUrl") ? (
+              <div className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#8a9a5b]/15">
+                <div className="flex items-center gap-3">
+                  <img src={form.watch("flyerUrl")!.startsWith("/objects/") ? form.watch("flyerUrl")! : `/objects/${form.watch("flyerUrl")}`} alt="Flyer" className="w-14 h-14 rounded-lg object-cover border border-[#8a9a5b]/10" />
+                  <p className="text-sm font-medium text-[#1a1a2e]">Flyer uploaded</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => flyerInputRef.current?.click()} disabled={isUploading} data-testid="button-replace-event-flyer">
+                    <Upload className="h-3.5 w-3.5 mr-1" /> Replace
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => form.setValue("flyerUrl", "")} data-testid="button-remove-event-flyer">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-dashed border-[#8a9a5b]/20 bg-white/50 cursor-pointer hover:border-[#8a9a5b]/40 transition-colors"
+                onClick={() => flyerInputRef.current?.click()}
+                data-testid="dropzone-event-flyer"
+              >
+                <Upload className="h-6 w-6 text-[#8a9a5b]/50" />
+                <p className="text-sm font-medium text-[#1a1a2e]">Upload an event flyer</p>
+                <p className="text-xs text-muted-foreground">JPG, PNG, WebP, or PDF · Max 10MB</p>
+              </div>
             )}
-          />
+            <input
+              ref={flyerInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 10 * 1024 * 1024) {
+                  toast({ title: "File too large", description: "Flyer must be under 10MB.", variant: "destructive" });
+                  return;
+                }
+                const result = await uploadFile(file);
+                if (result) form.setValue("flyerUrl", result.objectPath);
+                if (flyerInputRef.current) flyerInputRef.current.value = "";
+              }}
+              data-testid="input-event-flyer-file"
+            />
+          </div>
         ) : (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
             <Lock className="h-4 w-4 flex-shrink-0" />
-            <span>Flyer / event link — select Large ad size to unlock</span>
+            <span>Event flyer — select Large ad size to unlock</span>
           </div>
         )}
 
