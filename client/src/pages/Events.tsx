@@ -127,7 +127,7 @@ function EventAdPricingGrid() {
                     <Video className="h-4 w-4 text-amber-600" />
                     <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">30-Sec Promo Video</span>
                   </div>
-                  <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Upload a video spotlight to your business listing</p>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1 ml-6">Upload a video spotlight to your event</p>
                 </div>
               )}
             </div>
