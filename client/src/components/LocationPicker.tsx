@@ -7,6 +7,8 @@ import { MapPin, Search, ChevronDown, Check, Navigation } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Location } from "@shared/schema";
 
+const ACTIVE_ZIPS = new Set(["27958"]);
+
 const NC_REGIONS = [
   { name: "Moyock, NC", city: "Moyock", state: "NC", zipCode: "27958", region: "Currituck County", tagline: "Heart of Currituck County" },
   { name: "Currituck, NC", city: "Currituck", state: "NC", zipCode: "27929", region: "Currituck County", tagline: "County seat with coastal charm" },
@@ -155,34 +157,44 @@ export function LocationPicker() {
                 <p className="text-sm">Try a different search term</p>
               </div>
             ) : (
-              filteredLocations.map((loc, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSelect(loc)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors flex items-start gap-3 ${
-                    location.city === loc.city && location.state === loc.state
-                      ? "bg-primary/10 border border-primary/20"
-                      : "hover:bg-muted"
-                  }`}
-                  data-testid={`location-option-${loc.city.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <MapPin className="h-4 w-4 mt-1 text-primary shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{loc.name}</span>
-                      {location.city === loc.city && location.state === loc.state && (
-                        <Check className="h-4 w-4 text-primary" />
+              filteredLocations.map((loc, i) => {
+                const isActive = ACTIVE_ZIPS.has(loc.zipCode);
+                const isSelected = location.city === loc.city && location.state === loc.state;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => isActive && handleSelect(loc)}
+                    disabled={!isActive}
+                    className={`w-full text-left p-3 rounded-lg transition-colors flex items-start gap-3 ${
+                      isSelected
+                        ? "bg-primary/10 border border-primary/20"
+                        : isActive
+                          ? "hover:bg-muted"
+                          : "opacity-45 cursor-not-allowed"
+                    }`}
+                    data-testid={`location-option-${loc.city.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <MapPin className={`h-4 w-4 mt-1 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={isActive ? "font-medium" : "font-medium text-muted-foreground"}>{loc.name}</span>
+                        {isSelected && (
+                          <Check className="h-4 w-4 text-primary" />
+                        )}
+                        {!isActive && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Coming Soon</span>
+                        )}
+                      </div>
+                      {loc.region && (
+                        <span className="text-xs text-muted-foreground">{loc.region}</span>
+                      )}
+                      {loc.tagline && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{loc.tagline}</p>
                       )}
                     </div>
-                    {loc.region && (
-                      <span className="text-xs text-muted-foreground">{loc.region}</span>
-                    )}
-                    {loc.tagline && (
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{loc.tagline}</p>
-                    )}
-                  </div>
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
 
