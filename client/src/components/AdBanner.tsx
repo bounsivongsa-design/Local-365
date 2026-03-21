@@ -16,13 +16,13 @@ interface AdBannerProps {
 const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imageUrl: string; linkUrl: string }[]> = {
   homepage_banner: [{
     title: "Trusted Local Pros — HVAC, Electrical, Plumbing & More",
-    description: "Find licensed and insured contractors right here in Moyock and Currituck County. From emergency repairs to full home renovations — your neighbors trust Local List 365.",
+    description: "Find licensed and insured contractors right here in Moyock, NC. From emergency repairs to full home renovations — your neighbors trust Local List 365.",
     imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&h=400&fit=crop",
     linkUrl: "/directory",
   }],
   large_banner: [{
     title: "Full-Service Home Repairs, Renovations & Emergency Calls",
-    description: "Licensed and insured contractors serving Moyock and Currituck County. From emergency plumbing to full kitchen remodels — we do it all.",
+    description: "Licensed and insured contractors serving Moyock, NC. From emergency plumbing to full kitchen remodels — we do it all.",
     imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop",
     linkUrl: "/directory",
   }],
@@ -41,7 +41,7 @@ const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imag
   featured_listing: [
     {
       title: "24/7 Emergency HVAC & Plumbing",
-      description: "Licensed technicians serving Moyock, Currituck County & surrounding areas. Same-day service available — call now for a free estimate.",
+      description: "Licensed technicians serving Moyock, NC & surrounding areas. Same-day service available — call now for a free estimate.",
       imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=200&h=200&fit=crop",
       linkUrl: "/directory",
     },
@@ -60,7 +60,7 @@ const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imag
   }],
   directory_boost: [{
     title: "Local Pest Control Experts",
-    description: "Termite inspections, mosquito treatments, and wildlife removal. Serving Moyock and Currituck County for 15+ years.",
+    description: "Termite inspections, mosquito treatments, and wildlife removal. Serving Moyock, NC for 15+ years.",
     imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=200&h=200&fit=crop",
     linkUrl: "/directory",
   }],

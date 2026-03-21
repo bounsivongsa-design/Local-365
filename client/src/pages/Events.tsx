@@ -43,7 +43,7 @@ const EVENT_BASE_PRICING = {
 };
 
 const EVENT_TIER_DISCOUNTS = [
-  { id: null, name: "Non-Member", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null },
+  { id: null, name: "Basic", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null },
   { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
   { id: "silver", name: "Silver", discount: 0.25, icon: Crown, gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
@@ -318,15 +318,15 @@ export default function Events() {
 
           <div className="mt-12 max-w-4xl mx-auto">
             <h3 className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-6" data-testid="heading-event-display-tiers">
-              Event Display by Membership Tier
+              What's Included by Ad Size
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm" data-testid="card-event-tier-bronze">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm" data-testid="card-event-ad-small">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-700 to-amber-600 flex items-center justify-center">
-                    <Crown className="h-4 w-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-500 flex items-center justify-center">
+                    <Calendar className="h-4 w-4 text-white" />
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white">Bronze</h4>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Small Ad</h4>
                 </div>
                 <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
@@ -337,12 +337,12 @@ export default function Events() {
                   <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
                 </ul>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-300 dark:border-gray-600 shadow-sm" data-testid="card-event-tier-silver">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-[#0a4a82]/30 dark:border-[#0a4a82]/50 shadow-sm" data-testid="card-event-ad-medium">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-500 to-gray-400 flex items-center justify-center">
-                    <Crown className="h-4 w-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#0d5a9e] flex items-center justify-center">
+                    <Calendar className="h-4 w-4 text-white" />
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white">Silver</h4>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Medium Ad</h4>
                 </div>
                 <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
@@ -353,13 +353,13 @@ export default function Events() {
                   <li className="flex items-center gap-2 text-slate-400"><span className="text-slate-300">&#10007;</span> Flyer / event link</li>
                 </ul>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 border-yellow-400 dark:border-yellow-600 shadow-lg ring-1 ring-yellow-400/20" data-testid="card-event-tier-gold">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 border-[#d4a373] dark:border-[#d4a373] shadow-lg ring-1 ring-[#d4a373]/20" data-testid="card-event-ad-large">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-600 to-amber-500 flex items-center justify-center">
-                    <Crown className="h-4 w-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4a373] to-amber-500 flex items-center justify-center">
+                    <Calendar className="h-4 w-4 text-white" />
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white">Gold</h4>
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold">Best Value</span>
+                  <h4 className="font-bold text-slate-900 dark:text-white">Large Ad</h4>
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-semibold">Best Value</span>
                 </div>
                 <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Event name &amp; title</li>
@@ -368,7 +368,7 @@ export default function Events() {
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Description</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Cover image</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> Flyer / event link</li>
-                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> <span className="font-semibold text-amber-700 dark:text-amber-400">30-sec promo video</span></li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">&#10003;</span> <span className="font-semibold text-[#d4a373]">30-sec promo video</span></li>
                 </ul>
               </div>
             </div>
@@ -391,7 +391,7 @@ function getTierLevel(membershipTier: string | undefined | null): "none" | "bron
 }
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
-  none: { label: "Non-Member", color: "bg-slate-500" },
+  none: { label: "Basic", color: "bg-slate-500" },
   bronze: { label: "Bronze", color: "bg-gradient-to-r from-amber-700 to-amber-600" },
   silver: { label: "Silver", color: "bg-gradient-to-r from-gray-500 to-gray-400" },
   gold: { label: "Gold", color: "bg-gradient-to-r from-yellow-600 to-amber-500" },

@@ -50,7 +50,7 @@ export default function CreateBusiness() {
             Create Your Business Listing
           </h1>
           <p className="text-white/80 mt-2 max-w-2xl">
-            Get listed in the Local List 365 directory and start connecting with customers in Currituck County.
+            Get listed in the Local List 365 directory and start connecting with customers in Moyock, NC.
           </p>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default function CreateBusiness() {
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10">
           <CreateBusinessForm
             onSuccess={() => {
-              navigate("/dashboard");
+              navigate("/membership");
             }}
           />
         </div>

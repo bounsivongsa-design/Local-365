@@ -96,16 +96,20 @@ interface QuoteWithBusiness {
 }
 
 const CATEGORIES = [
-  "Home Repair", "Plumbing", "HVAC", "Electrical", "Roofing",
-  "Landscaping", "Cleaning", "Painting", "Tree Care", "Remodeling & Addition",
-  "New Construction", "Baby Sitting & Nanny", "Printing", "Web Design & Logo Design",
-  "Photo & Video", "Auto Repair", "Small Engine Repair", "Trash & Junk Removal",
-  "Tutor & Mentor Counseling", "Health & Wellness", "Tax CPA", "Legal",
-  "Concrete", "Lawn Care", "Dog Sitting", "Real Estate / Realtors",
-  "Shopping / Retail", "Food & Drink",
-  "Woodworking", "Baking & Cooking", "Catering Food Trucks", "Event Planning & Rentals",
-  "Animal & Pet", "Garage Door", "Moving & Hauling", "Metal Work", "Fencing"
-];
+  "Animal & Pet", "Auto Detailing", "Auto Repair", "Baby Sitting & Nanny",
+  "Baking & Cooking", "Beauty & Salon", "Catering / Food Trucks", "Cleaning",
+  "Concrete", "Dock & Marine", "Electrical", "Entertainment Locations",
+  "Entertainment Services", "Event Planning & Rentals", "Fencing", "Fitness & Gym",
+  "Flooring", "Garage Door", "Health & Wellness", "Home Repair", "HVAC",
+  "Insurance", "Landscaping", "Lawn Care", "Legal", "Metal Work",
+  "Moving & Hauling", "New Construction", "Painting", "Pest Control",
+  "Photo & Video", "Plumbing", "Pool & Spa", "Pressure Washing", "Printing",
+  "Real Estate / Realtors", "Remodeling & Addition", "Restaurants & Dining",
+  "Roofing", "Security Services", "Septic & Well", "Shopping / Retail",
+  "Small Engine Repair", "Tax CPA", "Trash & Junk Removal", "Tree Care",
+  "Tutor & Mentor Counseling", "Web Design & Logo Design", "Window Tinting",
+  "Windows & Doors", "Woodworking"
+].sort();
 
 const TIMELINES = [
   "ASAP",

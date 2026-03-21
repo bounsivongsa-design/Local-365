@@ -61,9 +61,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Business listing in directory",
       "Phone number displayed",
       "Customer reviews enabled",
-      "Logo display only (no gallery photos)",
       "Up to 4 categories",
-      "Quote access: 3rd round (72+ hrs)",
       "10% off advertising",
       "Email support"
     ],
@@ -82,7 +80,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Business logo displayed",
       "Website link (hyperlink)",
       "Up to 6 photos, 6 categories",
-      "Quote access: 2nd round (48-72 hrs)",
+      "Quote access: 2nd round (48–72 hrs)",
       "Verified business badge",
       "Social media links",
       "25% off advertising",
@@ -303,7 +301,7 @@ export default function BusinessMembership() {
             </h1>
             
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-              Join the premier business directory for Moyock and Currituck County. 
+              Join the premier business directory for Moyock, NC. 
               Connect with local customers and watch your business thrive. 
               Pricing is per zip code — list in as many areas as you want.
             </p>

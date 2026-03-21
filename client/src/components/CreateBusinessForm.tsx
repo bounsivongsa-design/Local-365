@@ -77,13 +77,13 @@ const defaultHours: BusinessHours = Object.fromEntries(
 function getCategoryLimit(tier: string): number {
   switch (tier) {
     case "basic":
-      return 1;
-    case "standard":
       return 3;
-    case "premium":
+    case "standard":
       return 5;
+    case "premium":
+      return 7;
     default:
-      return 1;
+      return 3;
   }
 }
 
@@ -857,6 +857,29 @@ export function CreateBusinessForm({
 
     return (
       <div className="space-y-5">
+        <div className="p-4 bg-gradient-to-r from-[#0a4a82]/5 to-[#d4a373]/5 rounded-xl border border-[#0a4a82]/10">
+          <p className="text-xs font-semibold text-[#0a4a82] mb-2">Categories &amp; Features by Membership Tier:</p>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="bg-white rounded-lg p-2 border border-amber-200">
+              <p className="font-bold text-amber-700">Bronze</p>
+              <p className="text-slate-500">Up to 4 categories</p>
+              <p className="text-slate-400 line-through">No logo/photos</p>
+              <p className="text-slate-400 line-through">No keywords</p>
+            </div>
+            <div className="bg-white rounded-lg p-2 border border-slate-300">
+              <p className="font-bold text-slate-600">Silver</p>
+              <p className="text-slate-500">Up to 6 categories</p>
+              <p className="text-slate-500">Logo + 6 photos</p>
+              <p className="text-slate-400 line-through">No keywords</p>
+            </div>
+            <div className="bg-white rounded-lg p-2 border border-yellow-400">
+              <p className="font-bold text-yellow-700">Gold</p>
+              <p className="text-slate-500">Up to 8 categories</p>
+              <p className="text-slate-500">Logo + 10 photos</p>
+              <p className="text-green-600">Search keywords</p>
+            </div>
+          </div>
+        </div>
         <h3 className="text-lg font-semibold text-[#0a4a82] dark:text-blue-300">
           Categories & Search Tags
         </h3>
@@ -934,43 +957,42 @@ export function CreateBusinessForm({
           </div>
         )}
 
-        <FormField
-          control={form.control}
-          name="searchKeywords"
-          render={({ field }) => {
-            const charCount = (field.value || "").length;
-            return (
-              <FormItem>
-                <FormLabel>
-                  <div className="flex items-center gap-2">
-                    <Tags className="h-4 w-4" />
-                    Search Keywords / Tags (Optional)
-                  </div>
-                </FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Electric, Electrical, Electrician, Local, Veteran, Hometown..."
-                    rows={2}
-                    {...field}
-                    value={field.value || ""}
-                    data-testid="input-keywords"
-                  />
-                </FormControl>
-                <div className="flex justify-between">
+        <div className="relative">
+          <div className="absolute -top-1 right-0">
+            <span className="text-[10px] font-bold bg-gradient-to-r from-yellow-600 to-amber-500 text-white px-2 py-0.5 rounded-full">GOLD ONLY</span>
+          </div>
+          <FormField
+            control={form.control}
+            name="searchKeywords"
+            render={({ field }) => {
+              const charCount = (field.value || "").length;
+              return (
+                <FormItem className="opacity-60">
+                  <FormLabel>
+                    <div className="flex items-center gap-2">
+                      <Tags className="h-4 w-4" />
+                      Search Keywords / Tags
+                    </div>
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Available with Gold membership — upgrade after creating your listing"
+                      rows={2}
+                      {...field}
+                      value={field.value || ""}
+                      disabled
+                      data-testid="input-keywords"
+                    />
+                  </FormControl>
                   <FormDescription>
-                    Comma-separated keywords to help customers find you
+                    Gold members can add keywords to appear in more searches
                   </FormDescription>
-                  <span
-                    className={`text-xs ${charCount > 250 ? "text-red-500" : "text-muted-foreground"}`}
-                  >
-                    {charCount}/250
-                  </span>
-                </div>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
       </div>
     );
   };

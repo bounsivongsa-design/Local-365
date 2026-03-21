@@ -363,11 +363,11 @@ export default function Home() {
           </div>
 
           {/* 3-Column Ad Layout: Large (left) | Medium (middle) | Small (right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr_2fr] gap-5 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr_2fr] gap-5 items-start">
 
             {/* Large Ad Column — 1 ad visible at a time, crossfade */}
             <div>
-              <div className="relative rounded-2xl shadow-2xl shadow-black/30 overflow-hidden aspect-[3/4]">
+              <div className="relative rounded-2xl shadow-2xl shadow-black/30 overflow-hidden max-h-[350px] lg:max-h-none" style={{ aspectRatio: '4/5' }}>
                 {largeAds.slides.map((slide, idx) => (
                   <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === largeAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
                     <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
@@ -378,7 +378,7 @@ export default function Home() {
                           <div className="flex items-center gap-2 mb-2">
                             <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1">
                               <Sparkles className="h-3 w-3" />
-                              {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Sponsored"}
+                              {largeAds.isPlaceholder ? "Large — $500/mo" : "Sponsored"}
                             </span>
                             {largeAds.isPlaceholder && <span className="text-white/50 text-[10px]">Example</span>}
                           </div>
@@ -409,14 +409,14 @@ export default function Home() {
                         {pageSlides.map((slide, idx) => (
                           <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                             <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                              <div className="relative aspect-[4/3] overflow-hidden rounded-xl group">
+                              <div className="relative overflow-hidden rounded-xl group" style={{ aspectRatio: '5/3' }}>
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5">
                                       <Megaphone className="h-2.5 w-2.5" />
-                                      {mediumAds.isPlaceholder ? "Medium — $500/mo" : "Sponsored"}
+                                      {mediumAds.isPlaceholder ? "Medium — $250/mo" : "Sponsored"}
                                     </span>
                                   </div>
                                   <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>
@@ -449,13 +449,13 @@ export default function Home() {
                         {pageSlides.map((slide, idx) => (
                           <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                             <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                              <div className="relative aspect-[3/2] overflow-hidden rounded-lg group">
+                              <div className="relative overflow-hidden rounded-lg group" style={{ aspectRatio: '5/2' }}>
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-3">
                                   <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5 mb-1">
                                     <Megaphone className="h-2 w-2" />
-                                    {smallAds.isPlaceholder ? "$250/mo" : "Ad"}
+                                    {smallAds.isPlaceholder ? "$125/mo" : "Ad"}
                                   </span>
                                   <p className="text-[#d4a373] text-[10px] font-semibold tracking-wide">{slide.businessName}</p>
                                   <h3 className="text-xs font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>

@@ -440,6 +440,24 @@ function LogoUploader({ business }: { business: any }) {
   const isOwner = isAuthenticated && user && (user as any).linkedBusinessId === business.id;
   if (!isOwner) return null;
 
+  const tier = business.membershipTier;
+  const isBronze = tier === "basic" || tier === "bronze";
+  if (isBronze) {
+    return (
+      <div className="bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl p-6 border border-slate-200 shadow-sm opacity-75" data-testid="section-logo-upload-locked">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-lg bg-slate-300 flex items-center justify-center">
+            <Building2 className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-bold text-slate-500">Business Logo</h3>
+            <p className="text-sm text-slate-400">Upgrade to Silver or Gold to upload a logo</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const saveMutation = useMutation({
     mutationFn: async (logoUrl: string) => {
       const res = await apiRequest("POST", `/api/businesses/${business.id}/logo`, { logoUrl });

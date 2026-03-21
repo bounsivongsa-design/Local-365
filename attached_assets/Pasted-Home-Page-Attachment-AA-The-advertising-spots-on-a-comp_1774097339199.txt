@@ -1,0 +1,45 @@
+Home Page:
+Attachment AA: The advertising spots on a computer are positioned as I mentioned.  Proportionally the Large size seems super large.  My thought was that a Large would be the height of two Mediums, and two Mediums would be the height of 3 Smalls.  Now on my cell phone, they are all stacked vertically.  I feel ads are a bonus for the website and should not be so massive.  Also for the example advertising images on the carousel show the old higher pricing in the bottom left corners.
+
+Attachment BB - At the very bottom left of the home page and every page it states, "Your trusted community directory for Currituck County, NC." This verbiage should line up with the Zip Code page listing ie.." Your trusted community directory for Moyock, NC." Everything on the site should be by zip code, not county..
+
+Directory Tab.
+
+Attachment CC - The verbiage above the Categories column also states "Currituck County"; this needs to be specific to "Moyock, NC" Zip code.
+
+Attachment CC - Search column on the left and the verbiage above the first listing both show 26 categories.  The home page has 51 category icons.  I believe we had this issue earlier where they didn't match.
+
+Get Quotes Tab:
+
+Attachment DD - Service Category drop down tab on the form appears to have only 26 categories and they are not alphabetically listed.
+
+Local Events Tab:
+Attachment EE - For advertising at the bottom, the display shows membership tiers (Bronze, Silver, and Gold) along with the information each level displays on the calendar.  Those should display the Small, Medium, and Large fee information. 
+
+Will event posts be editable?  There was a typo issue after publishing, date or time change due to weather etc..
+
+Business Tab:
+Attachment FF - Under "Grow Your Business with Local List 365," it again states "Moyock and Currituck County."  This should state only Moyock. 
+
+Attachment GG - Bronze membership still has the logo display option.  Bronze should not have any logo or photo upload options at all.  I'm starting to think whether Bronze members should have quote ability, perhaps it should be limited to Silver and Gold Members only.
+
+Creating a Business Listing:
+Given the number of items to input I really liked how the event advertising submission form clearly showed what was available per tier and grayed out options if they weren't available for the current tier.  Maybe the business submission form can include the same tier information/grayed-out areas setup?  
+
+Attachment HH - When a business selects a "Primary Category" it can only select one.  This needs to reflect the Package Tiers ie Gold up to 8 categories, etc. I also think the keywords tag input options should be available for gold members.  This is another way for bronze to game the system and appear in more searches.
+
+I did not see how or when a business pays after creating a business listing.  I tried filling out the form completely, and when I hit finish it took me back to the beginning of the form. 
+
+Webage Advertising:
+Attachment II - As we talked last night, the Ad Placement options per week are still on the site.  However, the Monthly Ad rates offer no way for me to select one and create an ad.  Curious what the ad submission form would look like.  I think website ads should have the option for either an image or a short video. Maybe Bronze 10 second, Silver 20 second, Gold 30 second or an Image.
+
+Will businesses be able to change their advertisement during the month?  I think since they pay for a monthly ad they should be able to change the image info as frequently as they like.  Or if they publish an ad and discover a typo, will they be able to edit it after being published?
+
+
+General:
+I love how the business submission form makes the business acknowledge the Local Vendor Eligibility Policy.  Does anyone signing up for the website as a customer or business have to acknowledge the "Terms of Service, Privacy Policy and Disclaimer"?  I think that would cover us from lawsuits down the road.
+
+Non-member:
+Should we change the wording from "Non-Member" to "Basic".  Essentially everyone must sign up for the webpage. In a weird way they are still a member of the website/community, but they just don't receive any perks of paid membership because they pay full price for everything. 
+
+Lastly, what will the dashboard look like for me to create discount codes etc..

@@ -55,8 +55,8 @@ function doesTierHaveAccess(tier: string, createdAt: Date): boolean {
   switch (tier) {
     case "premium": return access.gold;
     case "standard": return access.silver;
-    case "basic": return access.bronze;
-    default: return access.bronze;
+    case "basic": return false;
+    default: return false;
   }
 }
 
@@ -1796,11 +1796,14 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(403).json({ message: "Business account required" });
       }
 
-      const { placementType, title, description, imageUrl, linkUrl, category, startDate, endDate } = req.body;
+      const { placementType, title, description, imageUrl, videoUrl, linkUrl, category, startDate, endDate, adSize } = req.body;
 
       if (!placementType || !title) {
         return res.status(400).json({ message: "Placement type and title are required" });
       }
+
+      const validSizes = ["small", "medium", "large"];
+      const size = validSizes.includes(adSize) ? adSize : "small";
 
       // Get price from server-side pricing table (don't trust client)
       const [pricing] = await pgDb.select()
@@ -1811,21 +1814,41 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
-      const [biz] = await pgDb.select({ zipCode: businesses.zipCode })
+      const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
+      const monthlyPrice = AD_MONTHLY_PRICING[size] || 25000;
+
+      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
       const businessZip = biz?.zipCode || "27929";
+
+      const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
+      const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
+      const discountedMonthly = Math.round(monthlyPrice * (1 - discount));
+
+      let validatedVideoUrl: string | null = null;
+      if (videoUrl) {
+        const tierVideoLimits: Record<string, number> = { basic: 10, standard: 20, premium: 30 };
+        const videoLimit = tierVideoLimits[biz?.membershipTier || "none"] || 0;
+        if (videoLimit === 0) {
+          return res.status(403).json({ message: "Video ads require a membership (Bronze, Silver, or Gold)" });
+        }
+        validatedVideoUrl = videoUrl;
+      }
 
       const [newAd] = await pgDb.insert(adPlacements).values({
         businessId: user.linkedBusinessId,
         placementType,
+        adSize: size,
         title,
         description,
         imageUrl,
+        videoUrl: validatedVideoUrl,
         linkUrl,
         category,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         pricePerWeek: pricing.pricePerWeek,
+        priceMonthly: discountedMonthly,
         status: "pending",
         paymentStatus: "unpaid",
         targetZipCodes: [businessZip],
@@ -1849,6 +1872,50 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         premium: 50,  // Gold 50% off
       },
     });
+  });
+
+  app.patch("/api/ads/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (user.accountType !== "business" || !user.linkedBusinessId) {
+        return res.status(403).json({ message: "Business account required" });
+      }
+      const adId = parseInt(req.params.id);
+      const [ad] = await pgDb.select().from(adPlacements).where(
+        and(eq(adPlacements.id, adId), eq(adPlacements.businessId, user.linkedBusinessId))
+      );
+      if (!ad) return res.status(404).json({ message: "Ad not found" });
+
+      if (ad.status !== "pending" && ad.status !== "expired") {
+        return res.status(400).json({ message: "Only pending or expired ads can be edited." });
+      }
+
+      const { title, description, imageUrl, videoUrl, linkUrl, adSize } = req.body;
+      const updates: any = { updatedAt: new Date() };
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (imageUrl !== undefined) updates.imageUrl = imageUrl;
+      if (videoUrl !== undefined) updates.videoUrl = videoUrl;
+      if (linkUrl !== undefined) updates.linkUrl = linkUrl;
+      if (adSize && ["small", "medium", "large"].includes(adSize)) {
+        updates.adSize = adSize;
+        const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
+        const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier })
+          .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
+        const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
+        const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
+        updates.priceMonthly = Math.round(AD_MONTHLY_PRICING[adSize] * (1 - discount));
+      }
+
+      const [updated] = await pgDb.update(adPlacements)
+        .set(updates)
+        .where(eq(adPlacements.id, adId))
+        .returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating ad:", err);
+      res.status(500).json({ message: "Failed to update ad" });
+    }
   });
 
   app.post("/api/ads/:id/add-zip-codes", isAuthenticated, async (req, res) => {

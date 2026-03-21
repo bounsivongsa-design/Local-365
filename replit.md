@@ -56,9 +56,9 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 8. Email normalization (lowercase + trim) ensures deterministic account linking between local and Google accounts
 
 ### Business Membership Tiers
-- **Bronze** ($50/mo): Basic listing, logo only (no gallery photos), 4 categories, 10% ad discount
-- **Silver** ($100/mo): Logo, website link, 6 photos, 6 categories, 25% ad discount, verified badge
-- **Gold** ($200/mo): Featured placement, 10 photos, 8 categories, 50% ad discount, priority support, 30-sec promo video upload
+- **Bronze** ($50/mo): Basic listing, no logo/photos, 4 categories, 10% ad discount, no quote access
+- **Silver** ($100/mo): Logo, website link, 6 photos, 6 categories, 25% ad discount, verified badge, quote access (48-72hr)
+- **Gold** ($200/mo): Featured placement, 10 photos, 8 categories, 50% ad discount, priority support, 30-sec promo video upload, search keywords, quote access (0-48hr)
 - DB stores as `basic`/`standard`/`premium`; displayed as Bronze/Silver/Gold
 - **Stripe Integration**: Subscription checkout via Stripe (env vars: `Stripeintegration` for secret key, `Stripepublishable` for publishable key). Server creates Checkout Sessions and redirects. Webhook at `/api/stripe/webhook` handles subscription lifecycle. Billing portal for self-service management. `stripeCustomerId` and `stripeSubscriptionId` stored on businesses table.
 
@@ -67,7 +67,7 @@ Custom email/password authentication with optional Google OAuth. Passwords are h
 - **Component Library**: shadcn/ui (New York style variant) for a consistent design system.
 - **Location Search**: Zillow-style search with geolocation and radius filtering.
 - **Content Organization**: Dynamic content updates based on selected location; categorized listings and event displays.
-- **Advertising**: Tiered advertising models with 4-column pricing grids (Non-Member, Bronze, Silver, Gold).
+- **Advertising**: Tiered advertising models with 4-column pricing grids (Basic, Bronze, Silver, Gold). Monthly billing flow with Small/Medium/Large ad sizes. Video ads supported with tier-based duration limits (Bronze 10s, Silver 20s, Gold 30s). Ad editing for pending/expired ads.
 - **Business Credentials**: Visual badges for LLC, Licensed, Insured, membership tier, and service types (Commercial/Residential).
 - **Local Vendor Eligibility Policy**: Dedicated legal page section (`/legal?section=vendor-eligibility`) enforcing local-only business listings. Referenced in Terms of Service. Business signup form requires local operation description field and policy acknowledgment checkbox on Step 1 — businesses cannot proceed without accepting. Policy allows independent consultants (e.g., Mary Kay) if locally operated, while blocking franchises/chains/corporate ops. DB column: `localOperationDescription` on `businesses` table.
 

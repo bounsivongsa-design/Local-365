@@ -135,7 +135,7 @@ export default function Directory() {
                 </h1>
               </div>
               <p className="text-white/90 text-lg max-w-md">
-                Discover trusted businesses and services across Currituck County's beautiful coastal community.
+                Discover trusted businesses and services across Moyock's beautiful coastal community.
               </p>
             </div>
             

@@ -46,28 +46,28 @@ import {
   ArrowRight,
   Gift,
   Check,
-  Video
+  Video,
+  Pencil
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import type { AdPricing, AdPlacement } from "@shared/schema";
 
 const CATEGORIES = [
-  "Home Repair", "Plumbing", "HVAC", "Electrical", "Roofing",
-  "Landscaping", "Lawn Care", "Cleaning", "Painting", "Tree Care",
-  "Concrete", "Flooring", "Remodeling & Addition", "New Construction",
-  "Windows & Doors", "Pressure Washing", "Garage Door", "Fencing",
-  "Pool & Spa", "Septic & Well", "Auto Repair", "Small Engine Repair",
-  "Dock & Marine", "Metal Work", "Woodworking",
-  "Restaurants & Dining", "Baking & Cooking", "Catering Food Trucks",
-  "Beauty & Salon", "Health & Wellness", "Fitness & Gym",
-  "Animal & Pet", "Pest Control", "Baby Sitting & Nanny",
-  "Tutor & Mentor Counseling", "Event Planning & Rentals",
-  "Photo & Video", "Printing", "Web Design & Logo Design",
-  "Real Estate / Realtors", "Insurance", "Tax CPA", "Legal",
-  "Security Services", "Moving & Hauling", "Trash & Junk Removal",
-  "Shopping / Retail"
-];
+  "Animal & Pet", "Auto Detailing", "Auto Repair", "Baby Sitting & Nanny",
+  "Baking & Cooking", "Beauty & Salon", "Catering / Food Trucks", "Cleaning",
+  "Concrete", "Dock & Marine", "Electrical", "Entertainment Locations",
+  "Entertainment Services", "Event Planning & Rentals", "Fencing", "Fitness & Gym",
+  "Flooring", "Garage Door", "Health & Wellness", "Home Repair", "HVAC",
+  "Insurance", "Landscaping", "Lawn Care", "Legal", "Metal Work",
+  "Moving & Hauling", "New Construction", "Painting", "Pest Control",
+  "Photo & Video", "Plumbing", "Pool & Spa", "Pressure Washing", "Printing",
+  "Real Estate / Realtors", "Remodeling & Addition", "Restaurants & Dining",
+  "Roofing", "Security Services", "Septic & Well", "Shopping / Retail",
+  "Small Engine Repair", "Tax CPA", "Trash & Junk Removal", "Tree Care",
+  "Tutor & Mentor Counseling", "Web Design & Logo Design", "Window Tinting",
+  "Windows & Doors", "Woodworking"
+].sort();
 
 const placementIcons: Record<string, any> = {
   homepage_banner: Home,
@@ -83,7 +83,7 @@ const AD_BASE_PRICING = {
 };
 
 const TIER_DISCOUNTS = [
-  { id: null, name: "Non-Member", discount: 0, icon: Users, color: "slate", gradient: "from-slate-600 to-slate-800", badgeText: null },
+  { id: null, name: "Basic", discount: 0, icon: Users, color: "slate", gradient: "from-slate-600 to-slate-800", badgeText: null },
   { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, color: "amber", gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
   { id: "silver", name: "Silver", discount: 0.25, icon: Crown, color: "gray", gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, color: "yellow", gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
@@ -126,11 +126,14 @@ export default function Advertising() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingAd, setEditingAd] = useState<AdPlacement | null>(null);
   const [formData, setFormData] = useState({
     placementType: "",
+    adSize: "small" as "small" | "medium" | "large",
     title: "",
     description: "",
     imageUrl: "",
+    videoUrl: "",
     linkUrl: "",
     category: "",
   });
@@ -159,6 +162,10 @@ export default function Advertising() {
   if (linkedBusiness?.logoUrl) businessMedia.push(linkedBusiness.logoUrl);
   if (linkedBusiness?.galleryPhotos?.length) businessMedia.push(...linkedBusiness.galleryPhotos);
 
+  const membershipTier = linkedBusiness?.membershipTier || "none";
+  const tierVideoLimits: Record<string, number> = { basic: 10, standard: 20, premium: 30 };
+  const videoLimit = tierVideoLimits[membershipTier] || 0;
+
   const createAdRequest = useMutation({
     mutationFn: async (data: typeof formData) => {
       const selectedPricing = pricing?.find(p => p.placementType === data.placementType);
@@ -180,17 +187,10 @@ export default function Advertising() {
     onSuccess: () => {
       toast({
         title: "Ad Request Submitted!",
-        description: "We'll review your ad and contact you about payment.",
+        description: "We'll review your ad and contact you about monthly billing.",
       });
       setIsCreateOpen(false);
-      setFormData({
-        placementType: "",
-        title: "",
-        description: "",
-        imageUrl: "",
-        linkUrl: "",
-        category: "",
-      });
+      resetForm();
       queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
     },
     onError: (error: any) => {
@@ -202,6 +202,52 @@ export default function Advertising() {
     },
   });
 
+  const updateAdRequest = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+      const res = await fetch(`/api/ads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update ad");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Ad Updated!", description: "Your ad changes have been saved." });
+      setEditingAd(null);
+      setIsCreateOpen(false);
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    },
+  });
+
+  function resetForm() {
+    setFormData({ placementType: "", adSize: "small", title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", category: "" });
+    setEditingAd(null);
+  }
+
+  function openEditDialog(ad: AdPlacement) {
+    setEditingAd(ad);
+    setFormData({
+      placementType: ad.placementType,
+      adSize: (ad.adSize as "small" | "medium" | "large") || "small",
+      title: ad.title,
+      description: ad.description || "",
+      imageUrl: ad.imageUrl || "",
+      videoUrl: ad.videoUrl || "",
+      linkUrl: ad.linkUrl || "",
+      category: ad.category || "",
+    });
+    setIsCreateOpen(true);
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.placementType || !formData.title) {
@@ -212,7 +258,11 @@ export default function Advertising() {
       });
       return;
     }
-    createAdRequest.mutate(formData);
+    if (editingAd) {
+      updateAdRequest.mutate({ id: editingAd.id, data: formData });
+    } else {
+      createAdRequest.mutate(formData);
+    }
   };
 
   const selectedPricing = pricing?.find(p => p.placementType === formData.placementType);
@@ -406,18 +456,18 @@ export default function Advertising() {
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Ad Placement Options</h2>
                   <p className="text-slate-600 dark:text-slate-400 mt-1">Choose where your ad appears</p>
                 </div>
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
                   <DialogTrigger asChild>
                     <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-12 px-6 rounded-xl font-semibold" data-testid="button-create-ad">
                       <Megaphone className="mr-2 h-5 w-5" />
                       Request Ad Space
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-lg">
+                  <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <Megaphone className="h-5 w-5 text-[#0a4a82]" />
-                        Request Ad Space
+                        {editingAd ? "Edit Ad" : "Request Ad Space"}
                       </DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -426,6 +476,7 @@ export default function Advertising() {
                         <Select 
                           value={formData.placementType} 
                           onValueChange={(v) => setFormData({ ...formData, placementType: v })}
+                          disabled={!!editingAd}
                         >
                           <SelectTrigger data-testid="select-placement-type">
                             <SelectValue placeholder="Select ad placement" />
@@ -433,7 +484,7 @@ export default function Advertising() {
                           <SelectContent>
                             {pricing?.map((p) => (
                               <SelectItem key={p.placementType} value={p.placementType}>
-                                {p.displayName} - ${(p.pricePerWeek / 100).toFixed(0)}/week
+                                {p.displayName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -444,12 +495,47 @@ export default function Advertising() {
                       </div>
 
                       <div className="space-y-2">
+                        <Label>Ad Size *</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["small", "medium", "large"] as const).map((size) => {
+                            const sizePricing = AD_BASE_PRICING.monthly[size];
+                            const tierDiscount = TIER_DISCOUNTS.find(t => {
+                              if (membershipTier === "basic") return t.id === "bronze";
+                              if (membershipTier === "standard") return t.id === "silver";
+                              if (membershipTier === "premium") return t.id === "gold";
+                              return t.id === null;
+                            });
+                            const discount = tierDiscount?.discount || 0;
+                            const finalPrice = getTierPrice(sizePricing, discount);
+                            const isSelected = formData.adSize === size;
+                            return (
+                              <button
+                                key={size}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, adSize: size })}
+                                className={`rounded-xl p-3 text-center border-2 transition-all ${isSelected ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
+                                data-testid={`ad-size-${size}`}
+                              >
+                                <p className={`text-lg font-bold ${isSelected ? "text-[#0a4a82]" : "text-slate-700"}`}>${finalPrice}</p>
+                                <p className="text-xs text-slate-500 capitalize">{size}/mo</p>
+                                {discount > 0 && (
+                                  <p className="text-[10px] text-green-600 font-medium mt-0.5">{discount * 100}% off</p>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="title">Ad Title *</Label>
                         <Input
                           id="title"
                           placeholder="e.g., Spring Special - 20% Off"
                           value={formData.title}
                           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                          className="bg-white"
                           data-testid="input-ad-title"
                         />
                       </div>
@@ -461,6 +547,8 @@ export default function Advertising() {
                           placeholder="Brief description of your ad..."
                           value={formData.description}
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                          className="bg-white"
                           data-testid="input-ad-description"
                         />
                       </div>
@@ -495,6 +583,8 @@ export default function Advertising() {
                             placeholder="https://example.com/image.jpg"
                             value={formData.imageUrl}
                             onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                            style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                            className="bg-white"
                             data-testid="input-ad-image"
                           />
                         </div>
@@ -506,12 +596,44 @@ export default function Advertising() {
                       </div>
 
                       <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Video className="h-4 w-4" />
+                          Video Ad URL (optional)
+                          {videoLimit > 0 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">max {videoLimit}s</Badge>
+                          )}
+                        </Label>
+                        {videoLimit > 0 ? (
+                          <>
+                            <Input
+                              placeholder="https://example.com/promo-video.mp4"
+                              value={formData.videoUrl}
+                              onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                              className="bg-white"
+                              data-testid="input-ad-video"
+                            />
+                            <p className="text-xs text-slate-500">
+                              {membershipTier === "premium" ? "Gold" : membershipTier === "standard" ? "Silver" : "Bronze"}: up to {videoLimit}-second video ad
+                            </p>
+                          </>
+                        ) : (
+                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                            <p className="text-xs text-slate-500">Video ads require a membership</p>
+                            <p className="text-[10px] text-slate-400 mt-1">Bronze: 10s | Silver: 20s | Gold: 30s</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="linkUrl">Link URL (optional)</Label>
                         <Input
                           id="linkUrl"
                           placeholder="https://yourbusiness.com"
                           value={formData.linkUrl}
                           onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
+                          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                          className="bg-white"
                           data-testid="input-ad-link"
                         />
                       </div>
@@ -535,30 +657,33 @@ export default function Advertising() {
                         </div>
                       )}
 
-                      {selectedPricing && (
-                        <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">Price:</span>
-                            <span className="text-2xl font-bold text-[#0a4a82]">
-                              ${(selectedPricing.pricePerWeek / 100).toFixed(0)}/week
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                            After submitting, we'll contact you to arrange payment and activate your ad.
-                          </p>
+                      <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Monthly Price:</span>
+                          <span className="text-2xl font-bold text-[#0a4a82]">
+                            ${getTierPrice(AD_BASE_PRICING.monthly[formData.adSize], TIER_DISCOUNTS.find(t => {
+                              if (membershipTier === "basic") return t.id === "bronze";
+                              if (membershipTier === "standard") return t.id === "silver";
+                              if (membershipTier === "premium") return t.id === "gold";
+                              return t.id === null;
+                            })?.discount || 0)}/mo
+                          </span>
                         </div>
-                      )}
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                          Billed monthly. After submitting, we'll review and activate your ad.
+                        </p>
+                      </div>
 
                       <Button 
                         type="submit" 
                         className="w-full h-12 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] font-semibold"
-                        disabled={createAdRequest.isPending}
+                        disabled={createAdRequest.isPending || updateAdRequest.isPending}
                         data-testid="button-submit-ad"
                       >
-                        {createAdRequest.isPending ? "Submitting..." : (
+                        {(createAdRequest.isPending || updateAdRequest.isPending) ? "Submitting..." : (
                           <>
                             <Send className="mr-2 h-4 w-4" />
-                            Submit Ad Request
+                            {editingAd ? "Save Changes" : "Submit Ad Request"}
                           </>
                         )}
                       </Button>
@@ -661,13 +786,24 @@ export default function Advertising() {
                     <div className="space-y-3">
                       {myAds.map((ad) => (
                         <div key={ad.id} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl" data-testid={`card-my-ad-${ad.id}`}>
-                          <div className="flex justify-between items-start gap-2 mb-3">
+                          <div className="flex justify-between items-start gap-2 mb-2">
                             <h4 className="font-medium text-sm line-clamp-1 text-slate-900 dark:text-white">{ad.title}</h4>
                             {getStatusBadge(ad.status || "pending")}
                           </div>
-                          <div className="flex items-center gap-2 mb-3">
+                          <div className="flex items-center gap-2 mb-2">
                             {getPaymentBadge(ad.paymentStatus || "unpaid")}
+                            {ad.adSize && (
+                              <Badge variant="outline" className="text-[10px] capitalize">{ad.adSize}</Badge>
+                            )}
+                            {ad.videoUrl && (
+                              <Badge variant="outline" className="text-[10px]"><Video className="h-2.5 w-2.5 mr-0.5" />Video</Badge>
+                            )}
                           </div>
+                          {ad.priceMonthly && (
+                            <p className="text-xs font-semibold text-[#0a4a82] mb-2">
+                              ${(ad.priceMonthly / 100).toFixed(0)}/mo
+                            </p>
+                          )}
                           <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                             <span className="flex items-center gap-1.5">
                               <Eye className="h-3.5 w-3.5" />
@@ -682,6 +818,18 @@ export default function Advertising() {
                             <p className="text-xs text-slate-400 mt-2">
                               Requested {formatDistanceToNow(new Date(ad.createdAt), { addSuffix: true })}
                             </p>
+                          )}
+                          {(ad.status === "pending" || ad.status === "expired") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 h-8 text-xs text-[#0a4a82] hover:text-[#083a6a] hover:bg-[#0a4a82]/5 w-full"
+                              onClick={() => openEditDialog(ad)}
+                              data-testid={`button-edit-ad-${ad.id}`}
+                            >
+                              <Pencil className="h-3 w-3 mr-1" />
+                              Edit Ad
+                            </Button>
                           )}
                         </div>
                       ))}

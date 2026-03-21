@@ -42,6 +42,7 @@ export default function AuthPage() {
   const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "", firstName: "", lastName: "", businessName: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +70,11 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!acceptedTerms) {
+      toast({ title: "Terms Required", description: "You must agree to the Terms of Service, Privacy Policy, and Disclaimers to create an account.", variant: "destructive" });
+      return;
+    }
 
     if (registerData.password !== registerData.confirmPassword) {
       toast({ title: "Passwords don't match", description: "Please make sure your passwords match.", variant: "destructive" });
@@ -440,6 +446,23 @@ export default function AuthPage() {
                       data-testid="input-register-confirm"
                     />
                   </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="accept-terms"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-[#0a4a82] focus:ring-[#0a4a82] cursor-pointer"
+                    data-testid="checkbox-accept-terms"
+                  />
+                  <label htmlFor="accept-terms" className="text-xs text-slate-600 leading-relaxed cursor-pointer">
+                    I agree to the{" "}
+                    <a href="/legal?section=terms" target="_blank" className="text-[#0a4a82] font-semibold hover:underline">Terms of Service</a>,{" "}
+                    <a href="/legal?section=privacy" target="_blank" className="text-[#0a4a82] font-semibold hover:underline">Privacy Policy</a>, and{" "}
+                    <a href="/legal?section=disclaimers" target="_blank" className="text-[#0a4a82] font-semibold hover:underline">Disclaimers</a>.
+                  </label>
                 </div>
 
                 {accountType === "business" && (

@@ -7,39 +7,20 @@ interface Category {
 }
 
 const dummyCategories: Category[] = [
-  { id: 1, name: "Home Repair", subs: [] },
-  { id: 2, name: "Plumbing", subs: [] },
-  { id: 3, name: "HVAC", subs: [] },
-  { id: 4, name: "Electrical", subs: [] },
-  { id: 5, name: "Roofing", subs: [] },
-  { id: 6, name: "Landscaping", subs: [] },
-  { id: 7, name: "Cleaning", subs: [] },
-  { id: 8, name: "Painting", subs: [] },
-  { id: 9, name: "Tree Care", subs: [] },
-  { id: 10, name: "Remodeling & Addition", subs: [] },
-  { id: 11, name: "New Construction", subs: [] },
-  { id: 12, name: "Baby Sitting & Nanny", subs: [] },
-  { id: 13, name: "Printing", subs: [] },
-  { id: 14, name: "Web Design & Logo Design", subs: [] },
-  { id: 15, name: "Photo & Video", subs: [] },
-  { id: 16, name: "Auto Repair", subs: [] },
-  { id: 17, name: "Small Engine Repair", subs: [] },
-  { id: 18, name: "Trash & Junk Removal", subs: [] },
-  { id: 19, name: "Tutor & Mentor Counseling", subs: [] },
-  { id: 20, name: "Health & Wellness", subs: [] },
-  { id: 27, name: "Concrete", subs: [] },
-  { id: 28, name: "Lawn Care", subs: [] },
-  { id: 29, name: "Dog Sitting", subs: [] },
-  { id: 30, name: "Real Estate / Realtors", subs: [] },
-  { id: 31, name: "Shopping / Retail", subs: [] },
-  { id: 32, name: "Food & Drink", subs: [] },
-  { id: 21, name: "Tax CPA", subs: [] },
-  { id: 22, name: "Legal", subs: [] },
-  { id: 23, name: "Woodworking", subs: [] },
-  { id: 24, name: "Baking & Cooking", subs: [] },
-  { id: 25, name: "Catering Food Trucks", subs: [] },
-  { id: 26, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
-];
+  "Animal & Pet", "Auto Detailing", "Auto Repair", "Baby Sitting & Nanny",
+  "Baking & Cooking", "Beauty & Salon", "Catering / Food Trucks", "Cleaning",
+  "Concrete", "Dock & Marine", "Electrical", "Entertainment Locations",
+  "Entertainment Services", "Event Planning & Rentals", "Fencing", "Fitness & Gym",
+  "Flooring", "Garage Door", "Health & Wellness", "Home Repair", "HVAC",
+  "Insurance", "Landscaping", "Lawn Care", "Legal", "Metal Work",
+  "Moving & Hauling", "New Construction", "Painting", "Pest Control",
+  "Photo & Video", "Plumbing", "Pool & Spa", "Pressure Washing", "Printing",
+  "Real Estate / Realtors", "Remodeling & Addition", "Restaurants & Dining",
+  "Roofing", "Security Services", "Septic & Well", "Shopping / Retail",
+  "Small Engine Repair", "Tax CPA", "Trash & Junk Removal", "Tree Care",
+  "Tutor & Mentor Counseling", "Web Design & Logo Design", "Window Tinting",
+  "Windows & Doors", "Woodworking"
+].sort().map((name, i) => ({ id: i + 1, name, subs: [] }));
 
 function CategoriesGrid() {
   const [categories, setCategories] = useState<Category[]>([]);

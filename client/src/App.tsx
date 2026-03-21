@@ -64,7 +64,7 @@ function AppRouter() {
         <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <h3 className="font-display text-xl font-bold text-white mb-4" data-testid="text-footer-brand">Local List 365</h3>
-            <p className="max-w-xs text-sm leading-relaxed">Your trusted community directory for Currituck County, NC. Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
+            <p className="max-w-xs text-sm leading-relaxed">Your trusted community directory for Moyock, NC. Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
           </div>
           <div>
             <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Discover</h4>
