@@ -2455,6 +2455,24 @@ export async function registerRoutes(
 
   // ============ JOB LISTING ROUTES ============
 
+  app.get("/api/jobs/pricing", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId) {
+        return res.json({ tier: "none", tierLabel: "Basic", pricePerWeek: 2000 });
+      }
+      const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
+      const JOB_PRICES: Record<string, number> = { premium: 1000, standard: 1500, basic: 1800, none: 2000 };
+      const tierKey = biz?.membershipTier || "none";
+      const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "Basic";
+      res.json({ tier: tierKey, tierLabel, pricePerWeek: JOB_PRICES[tierKey] ?? 2000 });
+    } catch (err) {
+      console.error("Error fetching job pricing:", err);
+      res.status(500).json({ message: "Failed to fetch pricing" });
+    }
+  });
+
   app.get("/api/jobs", async (_req, res) => {
     try {
       const listings = await storage.getActiveJobListings();

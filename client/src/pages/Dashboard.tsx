@@ -442,7 +442,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                   <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#8a9a5b]/15 hover:bg-[#8a9a5b]/5 hover:border-[#8a9a5b]/30" data-testid="button-post-job">
                     <span className="flex items-center gap-2 text-[#1a1a2e]">
                       <Briefcase className="h-4 w-4 text-[#8a9a5b]" />
-                      Post a Job ($7/week)
+                      Post a Job
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#8a9a5b]" />
                   </Button>

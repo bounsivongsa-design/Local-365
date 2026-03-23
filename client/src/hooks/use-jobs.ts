@@ -1,6 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type JobListingWithBusiness, type JobListing } from "@shared/schema";
 
+export function useJobPricing(enabled: boolean = true) {
+  return useQuery<{ tier: string; tierLabel: string; pricePerWeek: number }>({
+    queryKey: ["/api/jobs/pricing"],
+    queryFn: async () => {
+      const res = await fetch("/api/jobs/pricing", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pricing");
+      return res.json();
+    },
+    enabled,
+  });
+}
+
 export function useJobListings() {
   return useQuery<JobListingWithBusiness[]>({
     queryKey: ["/api/jobs"],

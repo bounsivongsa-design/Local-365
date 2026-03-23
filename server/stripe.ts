@@ -275,6 +275,16 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "Business not found" });
       }
 
+      const JOB_PRICES_BY_TIER: Record<string, number> = {
+        premium: 1000,
+        standard: 1500,
+        basic: 1800,
+        none: 2000,
+      };
+      const tierKey = biz.membershipTier || "none";
+      const unitAmount = JOB_PRICES_BY_TIER[tierKey] ?? 2000;
+      const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "Basic";
+
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
       const baseUrl = process.env.REPLIT_DEV_DOMAIN
@@ -290,9 +300,9 @@ export function registerStripeRoutes(app: Express) {
               currency: "usd",
               product_data: {
                 name: `Help Wanted Post — ${listing.title}`,
-                description: `Weekly job listing for ${biz.name} on Local List 365`,
+                description: `Weekly job listing for ${biz.name} on Local List 365 (${tierLabel} rate)`,
               },
-              unit_amount: 700,
+              unit_amount: unitAmount,
               recurring: { interval: "week", interval_count: 1 },
             },
             quantity: 1,

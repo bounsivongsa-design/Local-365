@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useJobListings, useMyJobListings, useCreateJobListing, useJobCheckout, useDeleteJobListing } from "@/hooks/use-jobs";
+import { useJobListings, useMyJobListings, useCreateJobListing, useJobCheckout, useDeleteJobListing, useJobPricing } from "@/hooks/use-jobs";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -147,6 +147,8 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
   const { toast } = useToast();
   const createMutation = useCreateJobListing();
   const checkoutMutation = useJobCheckout();
+  const { data: pricing } = useJobPricing(true);
+  const priceDisplay = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}` : "$20";
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -326,9 +328,14 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
         <div className="flex items-center gap-2 font-semibold mb-1">
           <DollarSign className="h-4 w-4" />
-          $7/week — billed weekly until you remove the listing
+          {priceDisplay}/week — billed weekly until you remove the listing
         </div>
-        <p className="text-blue-700 text-xs">Your listing stays live until you take it down. Gold members appear first, then Silver, then Bronze.</p>
+        <p className="text-blue-700 text-xs">
+          {pricing?.tierLabel && pricing.tierLabel !== "Basic"
+            ? `Your ${pricing.tierLabel} membership rate. `
+            : ""}
+          Listing stays live until you take it down. Gold members appear first, then Silver, then Bronze.
+        </p>
       </div>
 
       <Button
@@ -337,7 +344,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         className="w-full h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold"
         data-testid="button-post-job"
       >
-        {createMutation.isPending || checkoutMutation.isPending ? "Processing..." : "Post Help Wanted Ad — $7/week"}
+        {createMutation.isPending || checkoutMutation.isPending ? "Processing..." : `Post Help Wanted Ad — ${priceDisplay}/week`}
       </Button>
     </form>
   );
@@ -345,6 +352,8 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
 
 function MyListingsSection({ listings, onDelete, isDeleting }: { listings: import("@shared/schema").JobListing[]; onDelete: (id: number) => void; isDeleting: boolean }) {
   const checkoutMutation = useJobCheckout();
+  const { data: pricing } = useJobPricing(true);
+  const priceLabel = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}/wk` : "$20/wk";
   const { toast } = useToast();
 
   const handlePayNow = (listingId: number) => {
@@ -392,7 +401,7 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
                       data-testid={`button-pay-job-${listing.id}`}
                     >
                       <DollarSign className="h-3 w-3 mr-1" />
-                      Pay $7/wk
+                      Pay {priceLabel}
                     </Button>
                   )}
                   <Button
@@ -473,7 +482,7 @@ export default function HelpWanted() {
             Help Wanted / Now Hiring
           </h1>
           <p className="text-lg text-white/80 max-w-2xl mx-auto mb-8 drop-shadow">
-            Local businesses are hiring! Browse open positions or post your own for just $7/week.
+            Local businesses are hiring! Browse open positions or post your own starting at $10/week for Gold members.
           </p>
 
           <div className="flex items-center justify-center gap-3">
@@ -530,13 +539,16 @@ export default function HelpWanted() {
 
         <div className="flex items-center gap-6 mb-6 text-xs text-white/70">
           <span className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-yellow-500" /> Gold — Top Placement
+            <div className="w-3 h-3 rounded-sm bg-yellow-500" /> Gold — $10/wk
           </span>
           <span className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-gray-400" /> Silver
+            <div className="w-3 h-3 rounded-sm bg-gray-400" /> Silver — $15/wk
           </span>
           <span className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-amber-700" /> Bronze
+            <div className="w-3 h-3 rounded-sm bg-amber-700" /> Bronze — $18/wk
+          </span>
+          <span className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm bg-white/40" /> Basic — $20/wk
           </span>
         </div>
 
@@ -560,7 +572,7 @@ export default function HelpWanted() {
                 No Openings Yet
               </h3>
               <p className="text-sm text-gray-400 max-w-md mx-auto">
-                Be the first local business to post a job! Help wanted listings are just $7/week and stay up until you remove them.
+                Be the first local business to post a job! Help wanted listings start at $10/week for Gold members and stay up until you remove them.
               </p>
               {isAuthenticated && isBusinessAccount && (
                 <Button
@@ -589,30 +601,34 @@ export default function HelpWanted() {
                   Members get priority placement. Gold members always appear first, followed by Silver, then Bronze. 
                   Basic (non-paying) users can post too, but appear after all member listings.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                   <div className="bg-white/10 rounded-xl p-4 text-center">
                     <div className="text-yellow-400 font-bold text-lg mb-1">Gold</div>
-                    <p className="text-xs text-white/70">Top of the list, always first</p>
+                    <p className="text-white font-semibold">$10/wk</p>
+                    <p className="text-xs text-white/70">Top placement</p>
                   </div>
                   <div className="bg-white/10 rounded-xl p-4 text-center">
                     <div className="text-gray-300 font-bold text-lg mb-1">Silver</div>
-                    <p className="text-xs text-white/70">Second tier placement</p>
+                    <p className="text-white font-semibold">$15/wk</p>
+                    <p className="text-xs text-white/70">2nd tier placement</p>
                   </div>
                   <div className="bg-white/10 rounded-xl p-4 text-center">
                     <div className="text-amber-600 font-bold text-lg mb-1">Bronze</div>
-                    <p className="text-xs text-white/70">Third tier placement</p>
+                    <p className="text-white font-semibold">$18/wk</p>
+                    <p className="text-xs text-white/70">3rd tier placement</p>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-4 text-center">
+                    <div className="text-white/80 font-bold text-lg mb-1">Basic</div>
+                    <p className="text-white font-semibold">$20/wk</p>
+                    <p className="text-xs text-white/70">Standard placement</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Link to="/membership">
                     <Button className="bg-[#d4a373] hover:bg-[#c49363] text-white rounded-xl" data-testid="button-view-membership">
-                      View Membership Plans
+                      Upgrade & Save on Job Posts
                     </Button>
                   </Link>
-                  <div className="flex items-center gap-2 text-sm text-white/60">
-                    <DollarSign className="h-4 w-4" />
-                    Job posting: $7/week for everyone
-                  </div>
                 </div>
               </div>
             </CardContent>
