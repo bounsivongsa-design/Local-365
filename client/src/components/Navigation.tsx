@@ -1,7 +1,6 @@
 import { Link, useLocation as useRouterLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { LocationPicker } from "./LocationPicker";
@@ -67,13 +66,10 @@ export function Navigation() {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2">
-                  <Avatar className="h-10 w-10 border-2 border-white/30">
-                    <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
-                    <AvatarFallback className="bg-white/20 text-white">
-                      {user?.firstName?.charAt(0) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2" data-testid="button-settings-menu">
+                  <div className="h-10 w-10 rounded-full border-2 border-white/30 bg-white/20 flex items-center justify-center">
+                    <Settings className="h-5 w-5 text-white" />
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
@@ -83,6 +79,13 @@ export function Navigation() {
                     {user?.email && <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>}
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                <Link to="/dashboard">
+                  <DropdownMenuItem className="cursor-pointer rounded-lg" data-testid="menu-dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </DropdownMenuItem>
+                </Link>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout()} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg">
                   <LogOut className="mr-2 h-4 w-4" />
