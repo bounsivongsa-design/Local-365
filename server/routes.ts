@@ -445,13 +445,13 @@ export async function registerRoutes(
       if (state) conditions.push(eq(events.state, state as string));
       if (zipCode) conditions.push(eq(events.zipCode, zipCode as string));
       
-      if (conditions.length === 0) {
-        // Default to all events if no filter
+      conditions.push(eq(events.status, "approved"));
+      
+      if (conditions.length === 1) {
         const allEvents = await storage.getEvents();
-        return res.json(allEvents);
+        return res.json(allEvents.filter(e => e.status === "approved"));
       }
       
-      // Use AND to narrow results when multiple filters are provided
       const locationEvents = await pgDb.select().from(events).where(and(...conditions));
       res.json(locationEvents);
     } catch (err) {
@@ -1099,8 +1099,9 @@ export async function registerRoutes(
   app.get(api.events.list.path, async (req, res) => {
     const { zipCode } = req.query;
     const allEvents = await storage.getEvents();
+    const approvedEvents = allEvents.filter(e => e.status === "approved");
     const eventsWithTier = await Promise.all(
-      allEvents.map(async (event) => {
+      approvedEvents.map(async (event) => {
         let businessMembershipTier: string | null = null;
         if (event.businessId) {
           const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier })
@@ -1179,6 +1180,12 @@ export async function registerRoutes(
           targetZipCodes: [eventZipCode],
       });
       const event = await storage.createEvent(input);
+      
+      if (isAdmin) {
+        await pgDb.update(events).set({ status: "approved" }).where(eq(events.id, event.id));
+        return res.status(201).json({ ...event, status: "approved" });
+      }
+      
       res.status(201).json(event);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -2196,7 +2203,9 @@ export async function registerRoutes(
       }
       const [event] = await pgDb.select().from(events).where(eq(events.id, eventId));
       if (!event) return res.status(404).json({ message: "Event not found" });
-      if (event.businessId && event.businessId !== user.linkedBusinessId) {
+      const [dbUser] = await pgDb.select().from(users).where(eq(users.id, user.id)).limit(1);
+      const isAdmin = dbUser?.isAdmin;
+      if (!isAdmin && (!event.businessId || event.businessId !== user.linkedBusinessId)) {
         return res.status(403).json({ message: "Not authorized" });
       }
       const existing = event.targetZipCodes || [];
@@ -2209,6 +2218,86 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error adding zip codes to event:", err);
       res.status(500).json({ message: "Failed to add zip codes" });
+    }
+  });
+
+  // Get all events for admin moderation
+  app.get("/api/admin/events", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.isAdmin) return res.status(403).json({ message: "Admin access required" });
+
+      const allEvents = await pgDb.select().from(events).orderBy(desc(events.createdAt));
+      const eventsWithBiz = await Promise.all(
+        allEvents.map(async (event) => {
+          let businessName: string | null = null;
+          let businessMembershipTier: string | null = null;
+          if (event.businessId) {
+            const [biz] = await pgDb.select({ name: businesses.name, membershipTier: businesses.membershipTier })
+              .from(businesses).where(eq(businesses.id, event.businessId)).limit(1);
+            if (biz) {
+              businessName = biz.name;
+              businessMembershipTier = biz.membershipTier;
+            }
+          }
+          return { ...event, businessName, businessMembershipTier };
+        })
+      );
+      res.json(eventsWithBiz);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Approve/deny an event (admin)
+  app.patch("/api/admin/events/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.isAdmin) return res.status(403).json({ message: "Admin access required" });
+
+      const eventId = Number(req.params.id);
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json({ message: "Invalid event ID" });
+      }
+      const { status, adminNote } = req.body;
+      if (!["approved", "denied", "pending"].includes(status)) {
+        return res.status(400).json({ message: "Status must be 'approved', 'denied', or 'pending'" });
+      }
+      const noteStr = typeof adminNote === "string" ? adminNote.slice(0, 1000) : null;
+
+      const [updated] = await pgDb.update(events)
+        .set({ status, adminNote: noteStr })
+        .where(eq(events.id, eventId))
+        .returning();
+
+      if (!updated) return res.status(404).json({ message: "Event not found" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Delete an event (admin)
+  app.delete("/api/admin/events/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.isAdmin) return res.status(403).json({ message: "Admin access required" });
+
+      const eventId = Number(req.params.id);
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json({ message: "Invalid event ID" });
+      }
+      const [deleted] = await pgDb.delete(events).where(eq(events.id, eventId)).returning();
+      if (!deleted) return res.status(404).json({ message: "Event not found" });
+      res.json({ message: "Event deleted" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 
@@ -2801,6 +2890,7 @@ export async function registerRoutes(
       const totalPromosCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodes));
       const usedPromosCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodeUsages));
       const pendingCategoriesCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(categoryRequests).where(eq(categoryRequests.status, "pending")));
+      const pendingEventsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(events).where(eq(events.status, "pending")));
       const downgradesCountVal = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(membershipDowngrades));
       const customerAccountsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "customer")));
       const businessAccountsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "business")));
@@ -2859,6 +2949,7 @@ export async function registerRoutes(
           totalPromos: totalPromosCount,
           usedPromos: usedPromosCount,
           pendingCategories: pendingCategoriesCount,
+          pendingEvents: pendingEventsCount,
           downgradesCount: downgradesCountVal,
           customerAccounts: customerAccountsCount,
           businessAccounts: businessAccountsCount,

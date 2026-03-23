@@ -74,6 +74,7 @@ type AdminStats = {
     totalPromos: number;
     usedPromos: number;
     pendingCategories: number;
+    pendingEvents: number;
     downgradesCount: number;
     customerAccounts: number;
     businessAccounts: number;
@@ -234,7 +235,7 @@ function OverviewTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Total Users" value={o?.totalUsers || 0} sub={`${o?.customerAccounts || 0} customers · ${o?.businessAccounts || 0} businesses`} color="blue" />
         <StatCard icon={Building2} label="Businesses" value={o?.totalBusinesses || 0} sub="Registered listings" color="purple" />
-        <StatCard icon={Calendar} label="Events" value={o?.totalEvents || 0} sub="Community calendar" color="green" />
+        <StatCard icon={Calendar} label="Events" value={o?.totalEvents || 0} sub={`${o?.pendingEvents || 0} pending review`} color="green" />
         <StatCard icon={Briefcase} label="Active Jobs" value={o?.totalJobs || 0} sub="Help wanted posts" color="amber" />
         <StatCard icon={MessageSquare} label="Quote Requests" value={o?.totalQuoteRequests || 0} sub={`${o?.totalQuotes || 0} bids submitted`} color="teal" />
         <StatCard icon={Megaphone} label="Advertisements" value={o?.totalAds || 0} sub={`${o?.activeAds || 0} active · ${o?.pendingAds || 0} pending`} color="rose" />
@@ -242,7 +243,7 @@ function OverviewTab() {
         <StatCard icon={Tag} label="Promo Codes" value={o?.totalPromos || 0} sub={`${o?.usedPromos || 0} redeemed`} color="emerald" />
       </div>
 
-      {((o?.pendingAds || 0) > 0 || (o?.pendingCategories || 0) > 0) && (
+      {((o?.pendingAds || 0) > 0 || (o?.pendingCategories || 0) > 0 || (o?.pendingEvents || 0) > 0) && (
         <Card className="bg-amber-50 border-amber-200 shadow-sm rounded-2xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -255,6 +256,15 @@ function OverviewTab() {
                   <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 rounded-xl gap-2">
                     <Eye className="h-4 w-4" />
                     {o?.pendingAds} Pending Ad{(o?.pendingAds || 0) > 1 ? "s" : ""}
+                    <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              )}
+              {(o?.pendingEvents || 0) > 0 && (
+                <Link to="/admin/events" data-testid="link-pending-events">
+                  <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 rounded-xl gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {o?.pendingEvents} Pending Event{(o?.pendingEvents || 0) > 1 ? "s" : ""}
                     <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
@@ -386,6 +396,9 @@ function OverviewTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link to="/admin/ads" data-testid="link-admin-manage-ads">
           <QuickActionCard icon={Megaphone} label="Manage Ads" sub="Review & approve" color="bg-rose-500/10" iconColor="text-rose-500" />
+        </Link>
+        <Link to="/admin/events" data-testid="link-admin-manage-events">
+          <QuickActionCard icon={Calendar} label="Event Moderation" sub="Review & approve" color="bg-green-500/10" iconColor="text-green-500" />
         </Link>
         <Link to="/admin/promo-codes" data-testid="link-admin-manage-promos">
           <QuickActionCard icon={Tag} label="Promo Codes" sub="Create & track" color="bg-emerald-500/10" iconColor="text-emerald-500" />

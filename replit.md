@@ -37,6 +37,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Promo Codes**: Admin-managed promotional discount codes for various discounts and restrictions.
 - **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.
 - **Admin Dashboard**: Full admin command center at `/admin` with platform-wide stats (users, businesses, memberships, ads, quotes, jobs, posts, promos), pending approvals alerts, membership breakdown charts, recent activity feeds, and quick-action links.
+- **Event Moderation**: Admin event moderation queue at `/admin/events`. Business-submitted events default to "pending" status and require admin approval before appearing on the public calendar. Admins can approve, deny (with optional reason), unpublish, or delete events. Admin-created events auto-approve.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.

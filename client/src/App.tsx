@@ -18,6 +18,7 @@ import QuoteRequests from "@/pages/QuoteRequests";
 import Advertising from "@/pages/Advertising";
 import AdminAds from "@/pages/AdminAds";
 import AdminPromoCodes from "@/pages/AdminPromoCodes";
+import AdminEvents from "@/pages/AdminEvents";
 import AdminDashboard from "@/pages/AdminDashboard";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
@@ -54,6 +55,7 @@ function AppRouter() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/ads" element={<AdminAds />} />
           <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
+          <Route path="/admin/events" element={<AdminEvents />} />
           <Route path="/membership" element={<BusinessMembership />} />
           <Route path="/jobs" element={<HelpWanted />} />
           <Route path="/create-business" element={<CreateBusiness />} />

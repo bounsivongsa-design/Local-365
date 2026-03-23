@@ -92,6 +92,9 @@ export const events = pgTable("events", {
   adSize: text("ad_size").default("small"),
   businessId: integer("business_id").references(() => businesses.id),
   targetZipCodes: text("target_zip_codes").array().default([]),
+  status: text("status").default("pending"),
+  adminNote: text("admin_note"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const posts = pgTable("posts", {
@@ -281,7 +284,7 @@ export const businessAnalytics = pgTable("business_analytics", {
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
-export const insertEventSchema = createInsertSchema(events).omit({ id: true }).refine(
+export const insertEventSchema = createInsertSchema(events).omit({ id: true, status: true, adminNote: true, createdAt: true }).refine(
   (data) => {
     if (data.flyerUrl && !/^https?:\/\//i.test(data.flyerUrl)) {
       return false;
