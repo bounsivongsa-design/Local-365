@@ -360,7 +360,7 @@ export default function BusinessDetails() {
               ) : null}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed" data-testid="text-review-guidelines">
-              Reviews should be respectful, honest, and based on a real experience. A receipt or proof of purchase is required. Personal attacks or unverified claims may be removed.
+              Reviews should be respectful, honest, and based on a real experience. A receipt or proof of purchase is required. Local List 365 reserves the right to remove any review that does not adhere to our <a href="/legal?section=terms" className="text-[#0a4a82] hover:underline">Terms of Service</a>.
             </p>
 
             {business.reviews?.length === 0 ? (
@@ -598,6 +598,9 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 rounded-xl px-4 py-3 mt-2">
           <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
             <span className="font-semibold">Community Guidelines:</span> Please be respectful and constructive. Share your honest experience with specific details — what went well or what could be improved. Personal attacks, vague complaints without proof, or inflammatory language will be removed. Reviews should help our community, not harm it.
+          </p>
+          <p className="text-xs text-amber-800/80 dark:text-amber-300/80 leading-relaxed mt-2 pt-2 border-t border-amber-200/40 dark:border-amber-700/30">
+            <span className="font-semibold">Notice:</span> Local List 365 reserves the right to remove any review that violates our <a href="/legal?section=terms" className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200">Terms of Service</a>. By submitting a review, you agree to these terms.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
