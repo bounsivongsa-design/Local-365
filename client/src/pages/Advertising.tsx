@@ -57,11 +57,14 @@ import { DIRECTORY_CATEGORY_NAMES } from "@shared/config/categories";
 const CATEGORIES = DIRECTORY_CATEGORY_NAMES;
 
 const placementIcons: Record<string, any> = {
-  homepage_banner: Home,
-  featured_listing: Star,
+  large_banner: Home,
+  medium_banner: Home,
+  small_banner: Home,
   category_spotlight: LayoutGrid,
   directory_boost: TrendingUp,
 };
+
+const BANNER_PLACEMENTS = ["large_banner", "medium_banner", "small_banner"];
 
 const AD_BASE_PRICING = {
   monthly: { small: 250, medium: 500, large: 1000 },
@@ -481,38 +484,40 @@ export default function Advertising() {
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Ad Size *</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(["small", "medium", "large"] as const).map((size) => {
-                            const sizePricing = AD_BASE_PRICING.monthly[size];
-                            const tierDiscount = TIER_DISCOUNTS.find(t => {
-                              if (membershipTier === "basic") return t.id === "bronze";
-                              if (membershipTier === "standard") return t.id === "silver";
-                              if (membershipTier === "premium") return t.id === "gold";
-                              return t.id === null;
-                            });
-                            const discount = tierDiscount?.discount || 0;
-                            const finalPrice = getTierPrice(sizePricing, discount);
-                            const isSelected = formData.adSize === size;
-                            return (
-                              <button
-                                key={size}
-                                type="button"
-                                onClick={() => setFormData({ ...formData, adSize: size })}
-                                className={`rounded-xl p-3 text-center border-2 transition-all ${isSelected ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
-                                data-testid={`ad-size-${size}`}
-                              >
-                                <p className={`text-lg font-bold ${isSelected ? "text-[#0a4a82]" : "text-slate-700"}`}>${finalPrice}</p>
-                                <p className="text-xs text-slate-500 capitalize">{size}/mo</p>
-                                {discount > 0 && (
-                                  <p className="text-[10px] text-green-600 font-medium mt-0.5">{discount * 100}% off</p>
-                                )}
-                              </button>
-                            );
-                          })}
+                      {BANNER_PLACEMENTS.includes(formData.placementType) && (
+                        <div className="space-y-2">
+                          <Label>Ad Size *</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(["small", "medium", "large"] as const).map((size) => {
+                              const sizePricing = AD_BASE_PRICING.monthly[size];
+                              const tierDiscount = TIER_DISCOUNTS.find(t => {
+                                if (membershipTier === "basic") return t.id === "bronze";
+                                if (membershipTier === "standard") return t.id === "silver";
+                                if (membershipTier === "premium") return t.id === "gold";
+                                return t.id === null;
+                              });
+                              const discount = tierDiscount?.discount || 0;
+                              const finalPrice = getTierPrice(sizePricing, discount);
+                              const isSelected = formData.adSize === size;
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, adSize: size })}
+                                  className={`rounded-xl p-3 text-center border-2 transition-all ${isSelected ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
+                                  data-testid={`ad-size-${size}`}
+                                >
+                                  <p className={`text-lg font-bold ${isSelected ? "text-[#0a4a82]" : "text-slate-700"}`}>${finalPrice}</p>
+                                  <p className="text-xs text-slate-500 capitalize">{size}/mo</p>
+                                  {discount > 0 && (
+                                    <p className="text-[10px] text-green-600 font-medium mt-0.5">{discount * 100}% off</p>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label htmlFor="title">Ad Title *</Label>
@@ -646,18 +651,33 @@ export default function Advertising() {
 
                       <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
                         <div className="flex justify-between items-center">
-                          <span className="font-medium text-slate-700 dark:text-slate-300">Monthly Price:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                            {BANNER_PLACEMENTS.includes(formData.placementType) ? "Monthly Price:" : "Weekly Price:"}
+                          </span>
                           <span className="text-2xl font-bold text-[#0a4a82]">
-                            ${getTierPrice(AD_BASE_PRICING.monthly[formData.adSize], TIER_DISCOUNTS.find(t => {
-                              if (membershipTier === "basic") return t.id === "bronze";
-                              if (membershipTier === "standard") return t.id === "silver";
-                              if (membershipTier === "premium") return t.id === "gold";
-                              return t.id === null;
-                            })?.discount || 0)}/mo
+                            {BANNER_PLACEMENTS.includes(formData.placementType) ? (
+                              <>
+                                ${getTierPrice(AD_BASE_PRICING.monthly[formData.adSize], TIER_DISCOUNTS.find(t => {
+                                  if (membershipTier === "basic") return t.id === "bronze";
+                                  if (membershipTier === "standard") return t.id === "silver";
+                                  if (membershipTier === "premium") return t.id === "gold";
+                                  return t.id === null;
+                                })?.discount || 0)}/mo
+                              </>
+                            ) : selectedPricing ? (
+                              <>
+                                ${getTierPrice(selectedPricing.pricePerWeek / 100, TIER_DISCOUNTS.find(t => {
+                                  if (membershipTier === "basic") return t.id === "bronze";
+                                  if (membershipTier === "standard") return t.id === "silver";
+                                  if (membershipTier === "premium") return t.id === "gold";
+                                  return t.id === null;
+                                })?.discount || 0)}/wk
+                              </>
+                            ) : "$0"}
                           </span>
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                          Billed monthly. After submitting, we'll review and activate your ad.
+                          After submitting, we'll review and activate your ad.
                         </p>
                       </div>
 
@@ -691,52 +711,107 @@ export default function Advertising() {
                   ))}
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-6">
-                  {pricing?.map((p, index) => {
-                    const Icon = placementIcons[p.placementType] || Megaphone;
-                    const gradients = [
-                      "from-[#0a4a82] to-[#083a6a]",
-                      "from-[#8a9a5b] to-[#6b7a4a]",
-                      "from-[#d4a373] to-[#c49363]",
-                      "from-purple-600 to-purple-800"
-                    ];
-                    return (
-                      <div 
-                        key={p.id} 
-                        className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl hover:-translate-y-1 transition-[shadow,transform] duration-200 border border-slate-100 dark:border-slate-700"
-                        data-testid={`card-pricing-${p.placementType}`}
-                      >
-                        <div className={`bg-gradient-to-br ${gradients[index % 4]} p-5`}>
-                          <div className="flex items-center justify-between">
-                            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                              <Icon className="h-6 w-6 text-white" />
-                            </div>
-                            <div className="text-right">
-                              <span className="text-3xl font-bold text-white">
-                                ${(p.pricePerWeek / 100).toFixed(0)}
-                              </span>
-                              <span className="text-white/70 text-sm">/week</span>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Homepage Banners</h3>
+                  <div className="grid md:grid-cols-3 gap-5 mb-10">
+                    {pricing?.filter(p => BANNER_PLACEMENTS.includes(p.placementType)).map((p) => {
+                      const Icon = placementIcons[p.placementType] || Megaphone;
+                      const sizeLabel = p.placementType === "large_banner" ? "Large" : p.placementType === "medium_banner" ? "Medium" : "Small";
+                      const sizeDesc = p.placementType === "large_banner" ? "Full-width" : p.placementType === "medium_banner" ? "75% width" : "Compact";
+                      const gradients: Record<string, string> = {
+                        large_banner: "from-[#0a4a82] to-[#083a6a]",
+                        medium_banner: "from-[#8a9a5b] to-[#6b7a4a]",
+                        small_banner: "from-[#d4a373] to-[#c49363]",
+                      };
+                      return (
+                        <div 
+                          key={p.id} 
+                          className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl hover:-translate-y-1 transition-[shadow,transform] duration-200 border border-slate-100 dark:border-slate-700"
+                          data-testid={`card-pricing-${p.placementType}`}
+                        >
+                          <div className={`bg-gradient-to-br ${gradients[p.placementType] || "from-slate-600 to-slate-800"} p-5`}>
+                            <div className="flex items-center justify-between">
+                              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                                <Icon className="h-6 w-6 text-white" />
+                              </div>
+                              <div className="text-right">
+                                <span className="text-3xl font-bold text-white">
+                                  ${(p.pricePerWeek * 4 / 100).toFixed(0)}
+                                </span>
+                                <span className="text-white/70 text-sm">/mo</span>
+                              </div>
                             </div>
                           </div>
+                          <div className="p-5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{sizeLabel} Banner</h3>
+                              <Badge variant="outline" className="text-xs">{sizeDesc}</Badge>
+                            </div>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{p.description}</p>
+                            <Button 
+                              className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
+                              onClick={() => {
+                                const size = p.placementType === "large_banner" ? "large" : p.placementType === "medium_banner" ? "medium" : "small";
+                                setFormData({ ...formData, placementType: p.placementType, adSize: size as any });
+                                setIsCreateOpen(true);
+                              }}
+                              data-testid={`button-select-${p.placementType}`}
+                            >
+                              Select This Placement
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="p-5">
-                          <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">{p.displayName}</h3>
-                          <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{p.description}</p>
-                          <Button 
-                            className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
-                            onClick={() => {
-                              setFormData({ ...formData, placementType: p.placementType });
-                              setIsCreateOpen(true);
-                            }}
-                            data-testid={`button-select-${p.placementType}`}
-                          >
-                            Select This Placement
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
+                      );
+                    })}
+                  </div>
+
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Boost Your Listing</h3>
+                  <div className="grid md:grid-cols-2 gap-5">
+                    {pricing?.filter(p => !BANNER_PLACEMENTS.includes(p.placementType)).map((p) => {
+                      const Icon = placementIcons[p.placementType] || Megaphone;
+                      const gradients: Record<string, string> = {
+                        category_spotlight: "from-purple-600 to-purple-800",
+                        directory_boost: "from-amber-600 to-amber-700",
+                      };
+                      return (
+                        <div 
+                          key={p.id} 
+                          className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl hover:-translate-y-1 transition-[shadow,transform] duration-200 border border-slate-100 dark:border-slate-700"
+                          data-testid={`card-pricing-${p.placementType}`}
+                        >
+                          <div className={`bg-gradient-to-br ${gradients[p.placementType] || "from-slate-600 to-slate-800"} p-5`}>
+                            <div className="flex items-center justify-between">
+                              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                                <Icon className="h-6 w-6 text-white" />
+                              </div>
+                              <div className="text-right">
+                                <span className="text-3xl font-bold text-white">
+                                  ${(p.pricePerWeek / 100).toFixed(0)}
+                                </span>
+                                <span className="text-white/70 text-sm">/week</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-5">
+                            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">{p.displayName}</h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{p.description}</p>
+                            <Button 
+                              className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
+                              onClick={() => {
+                                setFormData({ ...formData, placementType: p.placementType });
+                                setIsCreateOpen(true);
+                              }}
+                              data-testid={`button-select-${p.placementType}`}
+                            >
+                              Select This Placement
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
