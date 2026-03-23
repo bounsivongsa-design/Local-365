@@ -1848,6 +1848,31 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/my-business", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const linkedBusinessId = user[0].linkedBusinessId;
+      if (!linkedBusinessId) {
+        return res.json(null);
+      }
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
+      if (!biz) {
+        return res.json(null);
+      }
+      res.json(biz);
+    } catch (err) {
+      console.error("Error fetching my business:", err);
+      res.status(500).json({ message: "Failed to fetch business" });
+    }
+  });
+
   // Get my business's vendor metrics
   app.get("/api/my-business/metrics", isAuthenticated, async (req, res) => {
     try {
