@@ -75,6 +75,7 @@ type AdminStats = {
     usedPromos: number;
     pendingCategories: number;
     pendingEvents: number;
+    unverifiedBusinesses: number;
     downgradesCount: number;
     customerAccounts: number;
     businessAccounts: number;
@@ -200,7 +201,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="container py-8">
-        {activeTab === "overview" && <OverviewTab />}
+        {activeTab === "overview" && <OverviewTab onSwitchTab={setActiveTab} />}
         {activeTab === "users" && <UsersTab />}
         {activeTab === "businesses" && <BusinessesTab />}
       </div>
@@ -208,7 +209,7 @@ export default function AdminDashboard() {
   );
 }
 
-function OverviewTab() {
+function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
   const { data: stats, isLoading } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     queryFn: async () => {
@@ -234,7 +235,7 @@ function OverviewTab() {
     <div className="space-y-8">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Total Users" value={o?.totalUsers || 0} sub={`${o?.customerAccounts || 0} customers · ${o?.businessAccounts || 0} businesses`} color="blue" />
-        <StatCard icon={Building2} label="Businesses" value={o?.totalBusinesses || 0} sub="Registered listings" color="purple" />
+        <StatCard icon={Building2} label="Businesses" value={o?.totalBusinesses || 0} sub={`${o?.unverifiedBusinesses || 0} unverified`} color="purple" />
         <StatCard icon={Calendar} label="Events" value={o?.totalEvents || 0} sub={`${o?.pendingEvents || 0} pending review`} color="green" />
         <StatCard icon={Briefcase} label="Active Jobs" value={o?.totalJobs || 0} sub="Help wanted posts" color="amber" />
         <StatCard icon={MessageSquare} label="Quote Requests" value={o?.totalQuoteRequests || 0} sub={`${o?.totalQuotes || 0} bids submitted`} color="teal" />
@@ -243,7 +244,7 @@ function OverviewTab() {
         <StatCard icon={Tag} label="Promo Codes" value={o?.totalPromos || 0} sub={`${o?.usedPromos || 0} redeemed`} color="emerald" />
       </div>
 
-      {((o?.pendingAds || 0) > 0 || (o?.pendingCategories || 0) > 0 || (o?.pendingEvents || 0) > 0) && (
+      {((o?.pendingAds || 0) > 0 || (o?.pendingCategories || 0) > 0 || (o?.pendingEvents || 0) > 0 || (o?.unverifiedBusinesses || 0) > 0) && (
         <Card className="bg-amber-50 border-amber-200 shadow-sm rounded-2xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -268,6 +269,13 @@ function OverviewTab() {
                     <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
+              )}
+              {(o?.unverifiedBusinesses || 0) > 0 && (
+                <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 rounded-xl gap-2" onClick={() => onSwitchTab("businesses")} data-testid="link-unverified-businesses">
+                  <Building2 className="h-4 w-4" />
+                  {o?.unverifiedBusinesses} Unverified Business{(o?.unverifiedBusinesses || 0) > 1 ? "es" : ""}
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
               )}
               {(o?.pendingCategories || 0) > 0 && (
                 <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 rounded-xl gap-2">
@@ -1000,16 +1008,31 @@ function BusinessesTab() {
                       {b.createdAt ? format(new Date(b.createdAt), "MMM d, yyyy") : "—"}
                     </td>
                     <td className="p-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-3 text-[#0a4a82] hover:bg-blue-50 rounded-lg gap-1"
-                        onClick={() => openEdit(b)}
-                        data-testid={`button-edit-biz-${b.id}`}
-                      >
-                        <UserCog className="h-4 w-4" />
-                        Edit
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {!b.verified && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-green-600 hover:bg-green-50 rounded-lg gap-1"
+                            onClick={() => updateBizMutation.mutate({ id: b.id, membershipTier: b.membershipTier || "none", verified: true })}
+                            disabled={updateBizMutation.isPending}
+                            data-testid={`button-verify-biz-${b.id}`}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Verify
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-[#0a4a82] hover:bg-blue-50 rounded-lg gap-1"
+                          onClick={() => openEdit(b)}
+                          data-testid={`button-edit-biz-${b.id}`}
+                        >
+                          <UserCog className="h-4 w-4" />
+                          Edit
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

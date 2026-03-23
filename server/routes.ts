@@ -2891,6 +2891,7 @@ export async function registerRoutes(
       const usedPromosCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodeUsages));
       const pendingCategoriesCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(categoryRequests).where(eq(categoryRequests.status, "pending")));
       const pendingEventsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(events).where(eq(events.status, "pending")));
+      const unverifiedBusinessesCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses).where(eq(businesses.verified, false)));
       const downgradesCountVal = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(membershipDowngrades));
       const customerAccountsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "customer")));
       const businessAccountsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "business")));
@@ -2950,6 +2951,7 @@ export async function registerRoutes(
           usedPromos: usedPromosCount,
           pendingCategories: pendingCategoriesCount,
           pendingEvents: pendingEventsCount,
+          unverifiedBusinesses: unverifiedBusinessesCount,
           downgradesCount: downgradesCountVal,
           customerAccounts: customerAccountsCount,
           businessAccounts: businessAccountsCount,
