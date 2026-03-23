@@ -129,12 +129,12 @@ export default function AuthPage() {
           <h1 className="text-3xl font-bold text-white drop-shadow-lg" data-testid="heading-auth">
             {mode === "login"
               ? loginType === "business" ? "Business Sign In" : "Welcome Back"
-              : accountType === "business" ? "Register Your Business" : "Join the Community"}
+              : accountType === "business" ? "Business Account" : "Customer Account"}
           </h1>
           <p className="text-white/80 mt-2 drop-shadow">
             {mode === "login"
               ? loginType === "business" ? "Access your business dashboard & manage your listing" : "Sign in to your Local List 365 account"
-              : accountType === "business" ? "Create a business account — first month FREE" : "Create your free account to get started"}
+              : accountType === "business" ? "Create a business account — first month FREE" : "Always free — browse, discover, and connect locally"}
           </p>
         </div>
 
@@ -161,7 +161,7 @@ export default function AuthPage() {
                 }`}
                 data-testid="tab-register"
               >
-                Join Free
+                Customer
               </button>
               <button
                 onClick={() => { setMode("register"); setAccountType("business"); }}
@@ -172,7 +172,7 @@ export default function AuthPage() {
                 }`}
                 data-testid="tab-register-business"
               >
-                List Business
+                Business
               </button>
             </div>
 
@@ -444,11 +444,11 @@ export default function AuthPage() {
             <>
               Don't have an account?{" "}
               <button onClick={() => { setMode("register"); setAccountType("customer"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-register">
-                Join free
+                Customer account
               </button>
               {" | "}
               <button onClick={() => { setMode("register"); setAccountType("business"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-business">
-                List your business
+                Business account
               </button>
             </>
           ) : (
