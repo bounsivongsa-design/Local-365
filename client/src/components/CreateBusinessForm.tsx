@@ -2,7 +2,6 @@ import { useState, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { insertBusinessSchema } from "@shared/schema";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { useCreateBusiness } from "@/hooks/use-businesses";
 import { useUpload } from "@/hooks/use-upload";
@@ -104,30 +103,34 @@ function getTierDisplayName(tier: string): string {
   }
 }
 
-const formSchema = insertBusinessSchema.extend({
+const formSchema = z.object({
   name: z.string().min(2, "Business name must be at least 2 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   ownerName: z.string().min(2, "Owner name is required"),
   email: z.string().email("Valid email address is required"),
   phone: z.string().min(7, "Valid phone number is required"),
   category: z.string().min(1, "Please select a primary category"),
-  imageUrl: z.string().optional().or(z.literal("")),
-  logoUrl: z.string().optional().or(z.literal("")),
-  websiteUrl: z.string().optional().or(z.literal("")),
-  address: z.string().optional().or(z.literal("")),
-  establishedYear: z.coerce
-    .number({ invalid_type_error: "Established year is required" })
-    .min(1800, "Please enter a valid year")
-    .max(new Date().getFullYear(), "Year cannot be in the future"),
+  imageUrl: z.string().optional().default(""),
+  logoUrl: z.string().optional().default(""),
+  websiteUrl: z.string().optional().default(""),
+  address: z.string().optional().default(""),
+  establishedYear: z.string().min(1, "Established year is required").refine(
+    (val) => {
+      const num = parseInt(val, 10);
+      return !isNaN(num) && num >= 1800 && num <= new Date().getFullYear();
+    },
+    { message: "Please enter a valid year (1800 or later)" }
+  ),
   establishedZipCode: z.string().min(5, "Zip code is required"),
-  servicesResidential: z.boolean().optional(),
-  servicesCommercial: z.boolean().optional(),
-  searchKeywords: z
-    .string()
-    .max(250, "Keywords must be 250 characters or less")
-    .optional(),
+  servicesResidential: z.boolean().optional().default(false),
+  servicesCommercial: z.boolean().optional().default(false),
+  hasLLC: z.boolean().optional().default(false),
+  hasInsurance: z.boolean().optional().default(false),
+  isLicensed: z.boolean().optional().default(false),
+  isVeteran: z.boolean().optional().default(false),
+  searchKeywords: z.string().max(250, "Keywords must be 250 characters or less").optional().default(""),
   localOperationDescription: z.string().min(20, "Please describe how your business is independently owned and locally operated (at least 20 characters)"),
-  policyAcknowledged: z.literal(true, { errorMap: () => ({ message: "You must acknowledge the Local Vendor Eligibility Policy to proceed" }) }),
+  policyAcknowledged: z.boolean().refine((val) => val === true, { message: "You must acknowledge the Local Vendor Eligibility Policy to proceed" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -167,6 +170,8 @@ export function CreateBusinessForm({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onTouched",
+    shouldUnregister: false,
     defaultValues: {
       name: "",
       description: "",
@@ -188,7 +193,7 @@ export function CreateBusinessForm({
       searchKeywords: "",
       logoUrl: "",
       localOperationDescription: "",
-      policyAcknowledged: false as any,
+      policyAcknowledged: false,
     },
   });
 
@@ -235,8 +240,12 @@ export function CreateBusinessForm({
         );
 
         const { policyAcknowledged, ...restData } = data;
+        const establishedYearNum = typeof restData.establishedYear === "string"
+          ? parseInt(restData.establishedYear, 10)
+          : restData.establishedYear;
         const submitData = {
           ...restData,
+          establishedYear: establishedYearNum,
           imageUrl:
             restData.imageUrl ||
             "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop",
@@ -279,21 +288,31 @@ export function CreateBusinessForm({
           return err?.message || f;
         });
 
+        let targetStep = step;
+        let stepName = "";
         if (errorFields.some((f) => step0Fields.includes(f))) {
-          setStep(0);
+          targetStep = 0;
+          stepName = "Business Info";
         } else if (errorFields.some((f) => step1Fields.includes(f))) {
-          setStep(1);
+          targetStep = 1;
+          stepName = "Owner & Contact";
         } else if (errorFields.some((f) => step2Fields.includes(f))) {
-          setStep(2);
+          targetStep = 2;
+          stepName = "Hours & Location";
         } else if (errorFields.some((f) => step3Fields.includes(f))) {
-          setStep(3);
+          targetStep = 3;
+          stepName = "Categories & Tags";
         }
 
+        setStep(targetStep);
+
+        const description = errorMessages.length <= 3
+          ? errorMessages.join(". ")
+          : `Please fill in all required fields in "${stepName}" before submitting.`;
+
         toast({
-          title: "Missing Information",
-          description: errorMessages.length <= 2
-            ? errorMessages.join(". ")
-            : "Please fill in all required fields before submitting.",
+          title: stepName ? `Missing info in "${stepName}"` : "Missing Information",
+          description,
           variant: "destructive",
         });
       }
@@ -336,6 +355,18 @@ export function CreateBusinessForm({
     const valid = await validateStep();
     if (valid && step < STEPS.length - 1) {
       setStep(step + 1);
+    } else if (!valid) {
+      const stepErrors = form.formState.errors;
+      const errorMessages = Object.values(stepErrors)
+        .map((err) => err?.message)
+        .filter(Boolean);
+      if (errorMessages.length > 0) {
+        toast({
+          title: "Please fix the following",
+          description: errorMessages.slice(0, 3).join(". "),
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -1190,23 +1221,6 @@ export function CreateBusinessForm({
     </div>
   );
 
-  const renderCurrentStep = () => {
-    switch (step) {
-      case 0:
-        return renderStep0();
-      case 1:
-        return renderStep1();
-      case 2:
-        return renderStep2();
-      case 3:
-        return renderStep3();
-      case 4:
-        return renderStep4();
-      default:
-        return null;
-    }
-  };
-
   return (
     <Form {...form}>
       <form
@@ -1216,7 +1230,13 @@ export function CreateBusinessForm({
       >
         {renderStepIndicator()}
 
-        <div className="min-h-[350px]">{renderCurrentStep()}</div>
+        <div className="min-h-[350px]">
+          <div style={{ display: step === 0 ? "block" : "none" }}>{renderStep0()}</div>
+          <div style={{ display: step === 1 ? "block" : "none" }}>{renderStep1()}</div>
+          <div style={{ display: step === 2 ? "block" : "none" }}>{renderStep2()}</div>
+          <div style={{ display: step === 3 ? "block" : "none" }}>{renderStep3()}</div>
+          <div style={{ display: step === 4 ? "block" : "none" }}>{renderStep4()}</div>
+        </div>
 
         <div className="flex justify-between items-center pt-4 border-t">
           <Button
