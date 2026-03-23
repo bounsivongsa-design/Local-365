@@ -334,7 +334,7 @@ export default function FAQ() {
                       }`}>
                         <HelpCircle className="h-4 w-4" />
                       </div>
-                      <span className="flex-1 font-bold text-base leading-snug text-[#1a1a2e] dark:text-slate-200">
+                      <span className="flex-1 font-bold text-base leading-snug" style={{ color: "#1a1a2e" }}>
                         {item.question}
                       </span>
                       <ChevronDown className={`h-5 w-5 shrink-0 mt-0.5 text-slate-400 transition-transform duration-200 ${
