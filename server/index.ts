@@ -62,6 +62,16 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
+  const adminEmails = ["boun.sivongsa@gmail.com", "goatlockerprinting@gmail.com"];
+  try {
+    const { db } = await import("./db");
+    const { users } = await import("@shared/schema");
+    const { sql } = await import("drizzle-orm");
+    await db.execute(sql`UPDATE users SET is_admin = true WHERE LOWER(email) IN (${sql.join(adminEmails.map(e => sql`${e}`), sql`, `)})`);
+  } catch (e) {
+    console.error("Admin setup:", e);
+  }
+
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
