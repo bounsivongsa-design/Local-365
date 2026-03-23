@@ -334,9 +334,7 @@ export default function FAQ() {
                       }`}>
                         <HelpCircle className="h-4 w-4" />
                       </div>
-                      <span className={`flex-1 font-semibold text-base leading-snug ${
-                        isOpen ? "text-[#0a4a82] dark:text-blue-400" : "text-slate-800 dark:text-slate-200"
-                      }`}>
+                      <span className="flex-1 font-bold text-base leading-snug text-[#1a1a2e] dark:text-slate-200">
                         {item.question}
                       </span>
                       <ChevronDown className={`h-5 w-5 shrink-0 mt-0.5 text-slate-400 transition-transform duration-200 ${
