@@ -202,7 +202,7 @@ export default function BusinessMembership() {
       const res = await fetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoCode, tier, businessId: business?.id }),
+        body: JSON.stringify({ code: promoCode.trim(), tier, businessId: business?.id }),
       });
       const data = await res.json();
       if (data.valid) {
@@ -211,7 +211,7 @@ export default function BusinessMembership() {
         setPromoStatus({ valid: false, message: data.message || "Invalid promo code" });
       }
     } catch {
-      setPromoStatus({ valid: false, message: "Failed to validate promo code" });
+      setPromoStatus({ valid: false, message: "Could not connect to server. Please check your connection and try again." });
     } finally {
       setValidatingPromo(false);
     }

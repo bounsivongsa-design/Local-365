@@ -2370,9 +2370,18 @@ export async function registerRoutes(
       if (!code) {
         return res.status(400).json({ valid: false, message: "Promo code is required" });
       }
-      const [promo] = await pgDb.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
+
+      let promo: any;
+      try {
+        const results = await pgDb.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase().trim())).limit(1);
+        promo = results[0];
+      } catch (dbErr) {
+        console.error("Error querying promo_codes table:", dbErr);
+        return res.status(500).json({ valid: false, message: "Unable to validate promo code at this time. Please try again." });
+      }
+
       if (!promo) {
-        return res.status(404).json({ valid: false, message: "Invalid promo code" });
+        return res.status(404).json({ valid: false, message: "Invalid promo code. Please check the code and try again." });
       }
       if (!promo.isActive) {
         return res.status(400).json({ valid: false, message: "This promo code is no longer active" });
@@ -2392,10 +2401,14 @@ export async function registerRoutes(
         }
       }
       if (businessId) {
-        const existingUsage = await pgDb.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
-          .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, businessId))).limit(1);
-        if (existingUsage.length > 0) {
-          return res.status(400).json({ valid: false, message: "This promo code has already been used by your business" });
+        try {
+          const existingUsage = await pgDb.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+            .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, businessId))).limit(1);
+          if (existingUsage.length > 0) {
+            return res.status(400).json({ valid: false, message: "This promo code has already been used by your business" });
+          }
+        } catch (usageErr) {
+          console.error("Error checking promo code usage:", usageErr);
         }
       }
       res.json({
@@ -2406,7 +2419,7 @@ export async function registerRoutes(
       });
     } catch (err) {
       console.error("Error validating promo code:", err);
-      res.status(500).json({ valid: false, message: "Failed to validate promo code" });
+      res.status(500).json({ valid: false, message: "Unable to validate promo code. Please try again later." });
     }
   });
 
