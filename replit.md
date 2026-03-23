@@ -32,6 +32,8 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions.
 - **Advertising**: Tiered advertising models for website and event ads, with member discounts.
 - **Business Analytics**: Tracks listing engagement (page views, clicks) for businesses.
+- **Quote Messaging**: Customers and businesses can message back and forth within quote threads (`quote_messages` table).
+- **Membership Expiration Alerts**: Dashboard banner warns business owners 7 days before free/promo membership expires, with link to subscribe.
 - **Promo Codes**: Admin-managed promotional discount codes for various discounts and restrictions.
 - **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.
 

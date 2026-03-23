@@ -161,3 +161,14 @@ export type QuotePriorityAssignment = typeof quotePriorityAssignments.$inferSele
 export type InsertQuotePriorityAssignment = typeof quotePriorityAssignments.$inferInsert;
 export type VendorMetrics = typeof vendorMetrics.$inferSelect;
 export type InsertVendorMetrics = typeof vendorMetrics.$inferInsert;
+
+export const quoteMessages = pgTable("quote_messages", {
+  id: serial("id").primaryKey(),
+  quoteId: integer("quote_id").notNull().references(() => quotes.id),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type QuoteMessage = typeof quoteMessages.$inferSelect;
+export type InsertQuoteMessage = typeof quoteMessages.$inferInsert;

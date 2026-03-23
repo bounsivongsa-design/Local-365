@@ -41,6 +41,7 @@ import {
   Users,
   Calendar,
   LayoutDashboard,
+  Bell,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
@@ -244,6 +245,73 @@ function AnalyticsDashboard({ businessId }: { businessId: number }) {
   );
 }
 
+function MembershipExpirationBanner() {
+  const { data } = useQuery<{
+    expiring: boolean;
+    daysLeft?: number;
+    endDate?: string;
+    expired?: boolean;
+    currentTier?: string;
+  }>({
+    queryKey: ["/api/user/membership-expiration"],
+  });
+
+  if (!data?.expiring) return null;
+
+  const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", premium: "Gold", bronze: "Bronze", silver: "Silver", gold: "Gold" };
+  const tierLabel = tierMap[data.currentTier || ""] || "Free";
+
+  if (tierLabel === "Free" || data.currentTier === "none") return null;
+
+  if (data.expired) {
+    return (
+      <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-5 text-white shadow-lg" data-testid="banner-membership-expired">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-lg">Your Free {tierLabel} Membership Has Expired</h3>
+            <p className="text-white/80 text-sm mt-0.5">
+              Your complimentary membership ended on {new Date(data.endDate!).toLocaleDateString()}. 
+              Subscribe to a paid plan to keep your listing active and visible.
+            </p>
+          </div>
+          <Link to="/membership">
+            <Button className="bg-white text-red-700 hover:bg-white/90 font-semibold" data-testid="button-subscribe-now">
+              <Crown className="h-4 w-4 mr-2" />
+              Subscribe Now
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-5 text-white shadow-lg" data-testid="banner-membership-expiring">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <Bell className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg">Your Free {tierLabel} Membership Expires in {data.daysLeft} {data.daysLeft === 1 ? "Day" : "Days"}</h3>
+          <p className="text-white/80 text-sm mt-0.5">
+            Your complimentary membership ends on {new Date(data.endDate!).toLocaleDateString()}. 
+            Choose a paid plan to continue enjoying all your benefits without interruption.
+          </p>
+        </div>
+        <Link to="/membership">
+          <Button className="bg-white text-amber-700 hover:bg-white/90 font-semibold" data-testid="button-choose-plan">
+            <Crown className="h-4 w-4 mr-2" />
+            Choose a Plan
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function BusinessDashboard({ user, business }: { user: any; business: Business | null }) {
   const hasBusiness = !!business;
   const tier = business?.membershipTier;
@@ -251,6 +319,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
 
   return (
     <div className="container py-8 space-y-6">
+      <MembershipExpirationBanner />
       {!hasBusiness ? (
         <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-[#d4a373]/30 rounded-2xl">
           <CardContent className="py-12 text-center">

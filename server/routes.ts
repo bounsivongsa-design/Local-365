@@ -8,7 +8,7 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { registerStripeRoutes } from "./stripe";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
-import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
+import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
 import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
@@ -808,6 +808,164 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error withdrawing quote:", error);
       res.status(500).json({ message: "Failed to withdraw quote" });
+    }
+  });
+
+  app.get("/api/quotes/:quoteId/messages", isAuthenticated, async (req, res) => {
+    try {
+      const quoteId = parseInt(req.params.quoteId);
+      const userId = (req as any).user?.id;
+
+      const quote = await pgDb.select().from(quotes).where(eq(quotes.id, quoteId));
+      if (!quote.length) return res.status(404).json({ message: "Quote not found" });
+
+      const request = await pgDb.select().from(quoteRequests).where(eq(quoteRequests.id, quote[0].requestId));
+      if (!request.length) return res.status(404).json({ message: "Request not found" });
+
+      const isCustomer = request[0].userId === userId;
+      const isBusiness = quote[0].userId === userId;
+      if (!isCustomer && !isBusiness) return res.status(403).json({ message: "Not authorized" });
+
+      const messages = await pgDb
+        .select({
+          id: quoteMessages.id,
+          quoteId: quoteMessages.quoteId,
+          senderId: quoteMessages.senderId,
+          message: quoteMessages.message,
+          createdAt: quoteMessages.createdAt,
+          senderFirstName: users.firstName,
+          senderLastName: users.lastName,
+          senderAccountType: users.accountType,
+        })
+        .from(quoteMessages)
+        .leftJoin(users, eq(quoteMessages.senderId, users.id))
+        .where(eq(quoteMessages.quoteId, quoteId))
+        .orderBy(asc(quoteMessages.createdAt));
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching quote messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/quotes/:quoteId/messages", isAuthenticated, async (req, res) => {
+    try {
+      const quoteId = parseInt(req.params.quoteId);
+      const userId = (req as any).user?.id;
+      const { message } = req.body;
+
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const quote = await pgDb.select().from(quotes).where(eq(quotes.id, quoteId));
+      if (!quote.length) return res.status(404).json({ message: "Quote not found" });
+
+      const request = await pgDb.select().from(quoteRequests).where(eq(quoteRequests.id, quote[0].requestId));
+      if (!request.length) return res.status(404).json({ message: "Request not found" });
+
+      const isCustomer = request[0].userId === userId;
+      const isBusiness = quote[0].userId === userId;
+      if (!isCustomer && !isBusiness) return res.status(403).json({ message: "Not authorized" });
+
+      const [newMessage] = await pgDb
+        .insert(quoteMessages)
+        .values({
+          quoteId,
+          senderId: userId,
+          message: message.trim(),
+        })
+        .returning();
+
+      res.json(newMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.get("/api/user/message-counts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length) return res.json({ count: 0 });
+
+      let result;
+      if (user[0].accountType === "business") {
+        result = await pgDb
+          .select({ count: sql<number>`count(*)` })
+          .from(quoteMessages)
+          .innerJoin(quotes, eq(quoteMessages.quoteId, quotes.id))
+          .where(and(
+            eq(quotes.userId, userId),
+            sql`${quoteMessages.senderId} != ${userId}`
+          ));
+      } else {
+        result = await pgDb
+          .select({ count: sql<number>`count(*)` })
+          .from(quoteMessages)
+          .innerJoin(quotes, eq(quoteMessages.quoteId, quotes.id))
+          .innerJoin(quoteRequests, eq(quotes.requestId, quoteRequests.id))
+          .where(and(
+            eq(quoteRequests.userId, userId),
+            sql`${quoteMessages.senderId} != ${userId}`
+          ));
+      }
+
+      res.json({ count: Number(result[0]?.count || 0) });
+    } catch (error) {
+      console.error("Error fetching message count:", error);
+      res.json({ count: 0 });
+    }
+  });
+
+  app.get("/api/user/membership-expiration", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length || !user[0].linkedBusinessId) {
+        return res.json({ expiring: false });
+      }
+
+      const biz = await pgDb
+        .select()
+        .from(businesses)
+        .where(eq(businesses.id, user[0].linkedBusinessId))
+        .limit(1);
+
+      if (!biz.length || !biz[0].membershipEndDate) {
+        return res.json({ expiring: false });
+      }
+
+      const endDate = new Date(biz[0].membershipEndDate);
+      const now = new Date();
+      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysLeft <= 7 && daysLeft > 0) {
+        const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", premium: "Gold" };
+        return res.json({
+          expiring: true,
+          daysLeft,
+          endDate: endDate.toISOString(),
+          currentTier: tierMap[biz[0].membershipTier || ""] || biz[0].membershipTier,
+        });
+      }
+
+      if (daysLeft <= 0) {
+        return res.json({
+          expiring: true,
+          daysLeft: 0,
+          endDate: endDate.toISOString(),
+          expired: true,
+          currentTier: biz[0].membershipTier,
+        });
+      }
+
+      res.json({ expiring: false });
+    } catch (error) {
+      console.error("Error checking membership expiration:", error);
+      res.json({ expiring: false });
     }
   });
 

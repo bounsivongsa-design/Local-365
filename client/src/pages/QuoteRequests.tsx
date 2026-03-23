@@ -48,9 +48,124 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { QuoteRequest } from "@shared/models/auth";
+
+interface QuoteMessageData {
+  id: number;
+  quoteId: number;
+  senderId: string;
+  message: string;
+  createdAt: string | null;
+  senderFirstName: string | null;
+  senderLastName: string | null;
+  senderAccountType: string | null;
+}
+
+function MessageThread({ quoteId, userId }: { quoteId: number; userId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [newMessage, setNewMessage] = useState("");
+
+  const { data: messages = [], isLoading } = useQuery<QuoteMessageData[]>({
+    queryKey: ["/api/quotes", quoteId, "messages"],
+    queryFn: async () => {
+      const res = await fetch(`/api/quotes/${quoteId}/messages`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch messages");
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await apiRequest("POST", `/api/quotes/${quoteId}/messages`, { message });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "messages"] });
+      setNewMessage("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+    },
+  });
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+    sendMutation.mutate(newMessage.trim());
+  };
+
+  return (
+    <div className="mt-3 border border-[#0a4a82]/15 rounded-xl overflow-hidden" data-testid={`thread-quote-${quoteId}`}>
+      <div className="bg-[#0a4a82]/5 px-4 py-2 flex items-center gap-2 border-b border-[#0a4a82]/10">
+        <MessageSquare className="h-4 w-4 text-[#0a4a82]" />
+        <span className="text-sm font-semibold text-[#0a4a82]">Messages</span>
+        {messages.length > 0 && (
+          <Badge variant="secondary" className="text-xs">{messages.length}</Badge>
+        )}
+      </div>
+      <div className="max-h-64 overflow-y-auto p-3 space-y-3 bg-white dark:bg-slate-900">
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-[#0a4a82]" />
+          </div>
+        ) : messages.length === 0 ? (
+          <p className="text-center text-sm text-slate-400 py-4">No messages yet. Start the conversation!</p>
+        ) : (
+          messages.map((msg) => {
+            const isMe = msg.senderId === userId;
+            return (
+              <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-xl px-3 py-2 ${
+                  isMe 
+                    ? "bg-[#0a4a82] text-white" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                }`}>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`text-xs font-medium ${isMe ? "text-white/70" : "text-slate-500"}`}>
+                      {isMe ? "You" : `${msg.senderFirstName || "User"} ${msg.senderLastName?.charAt(0) || ""}.`}
+                    </span>
+                    {msg.senderAccountType === "business" && !isMe && (
+                      <Badge className="text-[10px] px-1 py-0 bg-[#d4a373]/20 text-[#d4a373] border-0">Business</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                  {msg.createdAt && (
+                    <p className={`text-[10px] mt-1 ${isMe ? "text-white/50" : "text-slate-400"}`}>
+                      {format(new Date(msg.createdAt), "MMM d, h:mm a")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <form onSubmit={handleSend} className="flex gap-2 p-3 border-t border-[#0a4a82]/10 bg-slate-50 dark:bg-slate-800">
+        <Input
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type a message..."
+          className="flex-1 bg-white"
+          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+          data-testid={`input-message-${quoteId}`}
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={sendMutation.isPending || !newMessage.trim()}
+          className="bg-[#0a4a82] hover:bg-[#083a6a]"
+          data-testid={`button-send-message-${quoteId}`}
+        >
+          {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </form>
+    </div>
+  );
+}
 
 interface CustomerInfo {
   firstName: string | null;
@@ -141,6 +256,7 @@ export default function QuoteRequests() {
     email: "",
   });
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
+  const [openMessageThread, setOpenMessageThread] = useState<number | null>(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
 
   const cancelRequestMutation = useMutation({
@@ -921,24 +1037,46 @@ export default function QuoteRequests() {
                                               <Button size="sm" className="bg-[#0a4a82]" data-testid={`button-accept-quote-${quote.id}`}>
                                                 Accept Quote
                                               </Button>
-                                              <Button size="sm" variant="outline" data-testid={`button-message-quote-${quote.id}`}>
+                                              <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                onClick={() => setOpenMessageThread(openMessageThread === quote.id ? null : quote.id)}
+                                                className={openMessageThread === quote.id ? "bg-[#0a4a82]/10 border-[#0a4a82]/30" : ""}
+                                                data-testid={`button-message-quote-${quote.id}`}
+                                              >
+                                                <MessageSquare className="h-3 w-3 mr-1" />
                                                 Message
                                               </Button>
                                             </>
                                           ) : quote.userId === user?.id && quote.status !== "withdrawn" ? (
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                              onClick={() => withdrawQuoteMutation.mutate(quote.id)}
-                                              disabled={withdrawQuoteMutation.isPending}
-                                              data-testid={`button-withdraw-quote-${quote.id}`}
-                                            >
-                                              <X className="h-3 w-3 mr-1" />
-                                              Withdraw Quote
-                                            </Button>
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setOpenMessageThread(openMessageThread === quote.id ? null : quote.id)}
+                                                className={openMessageThread === quote.id ? "bg-[#0a4a82]/10 border-[#0a4a82]/30" : ""}
+                                                data-testid={`button-message-quote-${quote.id}`}
+                                              >
+                                                <MessageSquare className="h-3 w-3 mr-1" />
+                                                Message Customer
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                onClick={() => withdrawQuoteMutation.mutate(quote.id)}
+                                                disabled={withdrawQuoteMutation.isPending}
+                                                data-testid={`button-withdraw-quote-${quote.id}`}
+                                              >
+                                                <X className="h-3 w-3 mr-1" />
+                                                Withdraw Quote
+                                              </Button>
+                                            </div>
                                           ) : null}
                                         </div>
+                                        {openMessageThread === quote.id && user?.id && (
+                                          <MessageThread quoteId={quote.id} userId={user.id} />
+                                        )}
                                       </div>
                                     </div>
                                   </div>
