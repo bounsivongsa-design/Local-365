@@ -32,8 +32,8 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions.
 - **Advertising**: Tiered advertising models for website and event ads, with member discounts.
 - **Business Analytics**: Tracks listing engagement (page views, clicks) for businesses.
-- **Quote Messaging**: Customers and businesses can message back and forth within quote threads (`quote_messages` table) with read tracking (`readAt`).
-- **Direct Messaging Inbox**: Full communication portal in the Dashboard with inbox view, direct messaging between users, compose dialog with user search, unread indicators, and message filters (All/Direct/Quotes). Tables: `direct_conversations`, `direct_messages`. Navigation shows unread message badge.
+- **Quote Messaging**: Customers and businesses can message back and forth within quote threads (`quote_messages` table) with read tracking (`readAt`). Navigation badge shows unread quote message count. No direct messaging between users outside of quotes (spam prevention). Dashboard inbox shows quote message threads only.
+- **Contact Admin**: Users can submit messages to admin anytime via "Contact Admin" button in the dashboard inbox. Submissions stored in `admin_submissions` table with status tracking (pending/resolved). Admin can view and respond via `/api/admin/submissions`.
 - **Membership Expiration Alerts**: Dashboard banner warns business owners 7 days before free/promo membership expires, with link to subscribe.
 - **Promo Codes**: Admin-managed promotional discount codes for various discounts and restrictions.
 - **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.

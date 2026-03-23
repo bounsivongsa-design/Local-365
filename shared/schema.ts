@@ -371,6 +371,29 @@ export type CreateEventRequest = z.infer<typeof insertEventSchema>;
 export type CreatePostRequest = z.infer<typeof insertPostSchema>;
 export type CreateReviewRequest = z.infer<typeof insertReviewSchema>;
 
+export const adminSubmissions = pgTable("admin_submissions", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status").default("pending"),
+  adminNote: text("admin_note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const insertAdminSubmissionSchema = createInsertSchema(adminSubmissions).omit({
+  id: true,
+  status: true,
+  adminNote: true,
+  createdAt: true,
+  resolvedAt: true,
+});
+export type AdminSubmission = typeof adminSubmissions.$inferSelect;
+export type InsertAdminSubmission = z.infer<typeof insertAdminSubmissionSchema>;
+
 // Complex response types
 export type EventWithTier = Event & { businessMembershipTier?: string | null };
 export type BusinessWithRating = Business & { averageRating: number; reviewCount: number };

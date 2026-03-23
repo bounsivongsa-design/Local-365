@@ -44,6 +44,7 @@ import {
   Bell,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+
 import { DashboardInbox } from "@/components/DashboardInbox";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow, format, subDays, eachDayOfInterval } from "date-fns";

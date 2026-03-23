@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, MessageSquare } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -98,17 +98,6 @@ export function Navigation() {
                   <DropdownMenuItem className="cursor-pointer rounded-lg" data-testid="menu-dashboard">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
-                  </DropdownMenuItem>
-                </Link>
-                <Link to="/dashboard">
-                  <DropdownMenuItem className="cursor-pointer rounded-lg" data-testid="menu-messages">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Messages
-                    {unreadCount > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
                   </DropdownMenuItem>
                 </Link>
                 <DropdownMenuSeparator />
