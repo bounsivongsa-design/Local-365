@@ -563,11 +563,11 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptUploaded) {
+    if (!receiptUploaded && !user?.isAdmin) {
       toast({ title: "Receipt required", description: "Please upload a receipt or proof of purchase from this business.", variant: "destructive" });
       return;
     }
-    createReview.mutate({ businessId, rating, comment, receiptUrl: receiptPath }, {
+    createReview.mutate({ businessId, rating, comment, receiptUrl: receiptPath || undefined }, {
       onSuccess: () => {
         setIsOpen(false);
         setComment("");
@@ -620,6 +620,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
               data-testid="input-review-comment"
             />
           </div>
+          {!user?.isAdmin && (
           <div className="space-y-2">
             <Label className="font-semibold">
               Upload Receipt / Proof of Purchase <span className="text-red-500">*</span>
@@ -655,6 +656,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
               )}
             </div>
           </div>
+          )}
           <Button type="submit" disabled={createReview.isPending || isUploading} className="w-full" data-testid="button-submit-review">
             {createReview.isPending ? "Submitting..." : "Post Review"}
           </Button>

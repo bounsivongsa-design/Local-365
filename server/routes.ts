@@ -1190,9 +1190,8 @@ export async function registerRoutes(
     try {
       const userId = (req as any).user?.id;
       
-      // Check if user is validated before allowing post
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (user.length === 0 || !user[0].isValidated) {
+      if (user.length === 0 || (!user[0].isValidated && !user[0].isAdmin)) {
         return res.status(403).json({ 
           message: "You must verify your account by uploading a receipt before posting. Visit your dashboard to verify." 
         });
@@ -1315,7 +1314,9 @@ export async function registerRoutes(
     try {
       const businessId = Number(req.params.id);
       const input = api.reviews.create.input.parse(req.body);
-      if (!input.receiptUrl) {
+      const reviewUserId = (req as any).user?.id;
+      const [reviewUser] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, reviewUserId));
+      if (!input.receiptUrl && !reviewUser?.isAdmin) {
         return res.status(400).json({ message: "A receipt or proof of purchase is required to submit a review." });
       }
       const review = await storage.createReview({

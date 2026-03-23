@@ -959,7 +959,7 @@ export default function Dashboard() {
     );
   }
 
-  const isValidated = validationData?.isValidated || false;
+  const isValidated = validationData?.isValidated || user?.isAdmin || false;
   const receipts = validationData?.receipts || [];
   const pendingReceipts = receipts.filter(r => r.status === "pending");
 
@@ -1133,6 +1133,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
+          {!user?.isAdmin && (
           <Card className="lg:col-span-2 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
@@ -1182,7 +1183,9 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+          )}
 
+          {!user?.isAdmin && (
           <Card className="lg:col-span-3 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
@@ -1223,6 +1226,7 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
       )}
     </div>
