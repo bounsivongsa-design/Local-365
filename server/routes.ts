@@ -2638,36 +2638,59 @@ export async function registerRoutes(
       const limit = 25;
       const offset = (page - 1) * limit;
 
-      let query = pgDb.select({
-        id: businesses.id,
-        name: businesses.name,
-        email: businesses.email,
-        phone: businesses.phone,
-        zipCode: businesses.zipCode,
-        membershipTier: businesses.membershipTier,
-        membershipStartDate: businesses.membershipStartDate,
-        membershipEndDate: businesses.membershipEndDate,
-        verified: businesses.verified,
-        acceptsQuotes: businesses.acceptsQuotes,
-        createdAt: businesses.createdAt,
-      }).from(businesses);
+      let allBiz: any[] = [];
+      let totalCount = 0;
 
-      if (search) {
-        query = query.where(
-          or(
-            ilike(businesses.name, `%${search}%`),
-            ilike(businesses.email, `%${search}%`),
-            ilike(businesses.phone, `%${search}%`)
-          )
-        ) as any;
+      try {
+        let query = pgDb.select({
+          id: businesses.id,
+          name: businesses.name,
+          email: businesses.email,
+          phone: businesses.phone,
+          zipCode: businesses.zipCode,
+          membershipTier: businesses.membershipTier,
+          membershipStartDate: businesses.membershipStartDate,
+          membershipEndDate: businesses.membershipEndDate,
+          verified: businesses.verified,
+          acceptsQuotes: businesses.acceptsQuotes,
+          createdAt: businesses.createdAt,
+        }).from(businesses);
+
+        if (search) {
+          query = query.where(
+            or(
+              ilike(businesses.name, `%${search}%`),
+              ilike(businesses.email, `%${search}%`),
+              ilike(businesses.phone, `%${search}%`)
+            )
+          ) as any;
+        }
+
+        allBiz = await (query as any).orderBy(desc(businesses.createdAt)).limit(limit).offset(offset);
+      } catch (colErr) {
+        console.error("Admin businesses select error (retrying with basic columns):", colErr);
+        let fallback = pgDb.select({
+          id: businesses.id,
+          name: businesses.name,
+          zipCode: businesses.zipCode,
+          membershipTier: businesses.membershipTier,
+          verified: businesses.verified,
+          createdAt: businesses.createdAt,
+        }).from(businesses);
+        if (search) {
+          fallback = fallback.where(ilike(businesses.name, `%${search}%`)) as any;
+        }
+        allBiz = await (fallback as any).orderBy(desc(businesses.createdAt)).limit(limit).offset(offset);
       }
 
-      const allBiz = await (query as any).orderBy(desc(businesses.createdAt)).limit(limit).offset(offset);
-      const [{ count: totalCount }] = search
-        ? await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses).where(
-            or(ilike(businesses.name, `%${search}%`), ilike(businesses.email, `%${search}%`), ilike(businesses.phone, `%${search}%`))
-          )
-        : await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses);
+      try {
+        const [countResult] = search
+          ? await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses).where(ilike(businesses.name, `%${search}%`))
+          : await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses);
+        totalCount = countResult?.count ?? 0;
+      } catch {
+        totalCount = allBiz.length;
+      }
 
       res.json({ businesses: allBiz, total: totalCount, page, pages: Math.ceil(totalCount / limit) });
     } catch (err) {
@@ -2709,82 +2732,86 @@ export async function registerRoutes(
       const [user] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId));
       if (!user?.isAdmin) return res.status(403).json({ message: "Forbidden" });
 
-      const [totalUsers] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(users);
-      const [totalBusinesses] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses);
-      const [totalEvents] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(events);
-      const [totalJobs] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(jobListings).where(eq(jobListings.isActive, true));
-      const [totalPosts] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(postsTable);
-      const [totalQuoteRequests] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(quoteRequests);
-      const [totalQuotes] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(quotes);
-      const [totalAds] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements);
-      const [activeAds] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "active"));
-      const [pendingAds] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "pending"));
-      const [totalPromos] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodes);
-      const [usedPromos] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodeUsages);
-      const [pendingCategories] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(categoryRequests).where(eq(categoryRequests.status, "pending"));
+      const safeCount = async (query: Promise<any[]>) => {
+        try { const r = await query; return r?.[0]?.count ?? 0; } catch { return 0; }
+      };
 
-      const tierCounts = await pgDb.select({
-        tier: businesses.membershipTier,
-        count: sql<number>`count(*)::int`,
-      }).from(businesses).groupBy(businesses.membershipTier);
+      const totalUsersCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users));
+      const totalBusinessesCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses));
+      const totalEventsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(events));
+      const totalJobsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(jobListings).where(eq(jobListings.isActive, true)));
+      const totalPostsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(postsTable));
+      const totalQuoteRequestsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(quoteRequests));
+      const totalQuotesCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(quotes));
+      const totalAdsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements));
+      const activeAdsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "active")));
+      const pendingAdsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "pending")));
+      const totalPromosCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodes));
+      const usedPromosCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodeUsages));
+      const pendingCategoriesCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(categoryRequests).where(eq(categoryRequests.status, "pending")));
+      const downgradesCountVal = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(membershipDowngrades));
+      const customerAccountsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "customer")));
+      const businessAccountsCount = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "business")));
 
-      const customerAccounts = await pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "customer"));
-      const businessAccounts = await pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "business"));
+      let tierCounts: Array<{ tier: string | null; count: number }> = [];
+      try {
+        tierCounts = await pgDb.select({
+          tier: businesses.membershipTier,
+          count: sql<number>`count(*)::int`,
+        }).from(businesses).groupBy(businesses.membershipTier);
+      } catch {}
 
-      const recentUsers = await pgDb.select({
-        id: users.id,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        accountType: users.accountType,
-        createdAt: users.createdAt,
-      }).from(users).orderBy(desc(users.createdAt)).limit(10);
+      let recentUsers: any[] = [];
+      try {
+        recentUsers = await pgDb.select({
+          id: users.id, email: users.email, firstName: users.firstName,
+          lastName: users.lastName, accountType: users.accountType, createdAt: users.createdAt,
+        }).from(users).orderBy(desc(users.createdAt)).limit(10);
+      } catch {}
 
-      const recentBusinesses = await pgDb.select({
-        id: businesses.id,
-        name: businesses.name,
-        membershipTier: businesses.membershipTier,
-        verified: businesses.verified,
-        createdAt: businesses.createdAt,
-      }).from(businesses).orderBy(desc(businesses.createdAt)).limit(10);
+      let recentBusinesses: any[] = [];
+      try {
+        recentBusinesses = await pgDb.select({
+          id: businesses.id, name: businesses.name, membershipTier: businesses.membershipTier,
+          verified: businesses.verified, createdAt: businesses.createdAt,
+        }).from(businesses).orderBy(desc(businesses.createdAt)).limit(10);
+      } catch {}
 
-      const recentQuoteRequests = await pgDb.select({
-        id: quoteRequests.id,
-        title: quoteRequests.title,
-        status: quoteRequests.status,
-        createdAt: quoteRequests.createdAt,
-      }).from(quoteRequests).orderBy(desc(quoteRequests.createdAt)).limit(10);
+      let recentQuoteRequests: any[] = [];
+      try {
+        recentQuoteRequests = await pgDb.select({
+          id: quoteRequests.id, title: quoteRequests.title, status: quoteRequests.status, createdAt: quoteRequests.createdAt,
+        }).from(quoteRequests).orderBy(desc(quoteRequests.createdAt)).limit(10);
+      } catch {}
 
-      const recentAds = await pgDb.select({
-        id: adPlacements.id,
-        title: adPlacements.title,
-        status: adPlacements.status,
-        placement: adPlacements.placement,
-        createdAt: adPlacements.createdAt,
-      }).from(adPlacements).orderBy(desc(adPlacements.createdAt)).limit(10);
-
-      const downgradesCount = await pgDb.select({ count: sql<number>`count(*)::int` }).from(membershipDowngrades);
+      let recentAds: any[] = [];
+      try {
+        recentAds = await pgDb.select({
+          id: adPlacements.id, title: adPlacements.title, status: adPlacements.status,
+          placement: adPlacements.placement, createdAt: adPlacements.createdAt,
+        }).from(adPlacements).orderBy(desc(adPlacements.createdAt)).limit(10);
+      } catch {}
 
       res.json({
         overview: {
-          totalUsers: totalUsers.count,
-          totalBusinesses: totalBusinesses.count,
-          totalEvents: totalEvents.count,
-          totalJobs: totalJobs.count,
-          totalPosts: totalPosts.count,
-          totalQuoteRequests: totalQuoteRequests.count,
-          totalQuotes: totalQuotes.count,
-          totalAds: totalAds.count,
-          activeAds: activeAds.count,
-          pendingAds: pendingAds.count,
-          totalPromos: totalPromos.count,
-          usedPromos: usedPromos.count,
-          pendingCategories: pendingCategories.count,
-          downgradesCount: downgradesCount[0].count,
-          customerAccounts: customerAccounts[0].count,
-          businessAccounts: businessAccounts[0].count,
+          totalUsers: totalUsersCount,
+          totalBusinesses: totalBusinessesCount,
+          totalEvents: totalEventsCount,
+          totalJobs: totalJobsCount,
+          totalPosts: totalPostsCount,
+          totalQuoteRequests: totalQuoteRequestsCount,
+          totalQuotes: totalQuotesCount,
+          totalAds: totalAdsCount,
+          activeAds: activeAdsCount,
+          pendingAds: pendingAdsCount,
+          totalPromos: totalPromosCount,
+          usedPromos: usedPromosCount,
+          pendingCategories: pendingCategoriesCount,
+          downgradesCount: downgradesCountVal,
+          customerAccounts: customerAccountsCount,
+          businessAccounts: businessAccountsCount,
         },
-        membershipBreakdown: tierCounts.reduce((acc, t) => {
+        membershipBreakdown: (tierCounts || []).reduce((acc, t) => {
           acc[t.tier || "none"] = t.count;
           return acc;
         }, {} as Record<string, number>),
