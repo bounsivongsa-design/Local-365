@@ -34,7 +34,7 @@ function getResponseWindowHours(category: string): number {
 }
 
 // Helper: Determine which tier has marketplace access to a request based on creation time
-// Access windows are the same for all categories (Gold 0-48h, Silver 48-72h, Bronze 72+h)
+// Access windows are the same for all categories (Gold 0-24h, Silver 24-48h, Bronze 48+h)
 // Emergency response metrics use shorter windows (2h) but marketplace access is unchanged
 function getTierAccessForRequest(createdAt: Date): { gold: boolean; silver: boolean; bronze: boolean } {
   const hoursElapsed = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
