@@ -1,6 +1,5 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
@@ -69,55 +68,6 @@ export async function setupAuth(app: Express) {
       }
     )
   );
-
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    const deployedDomain = process.env.REPLIT_DEPLOYMENT_URL || process.env.REPLIT_DEV_DOMAIN;
-    const callbackURL = deployedDomain
-      ? `https://${deployedDomain.replace(/^https?:\/\//, '')}/api/auth/google/callback`
-      : "/api/auth/google/callback";
-
-    passport.use(
-      new GoogleStrategy(
-        {
-          clientID: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL,
-          passReqToCallback: true as any,
-        },
-        async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
-          try {
-            const googleId = profile.id;
-            const email = profile.emails?.[0]?.value;
-
-            let user = await authStorage.getUserByGoogleId(googleId);
-            if (user) {
-              return done(null, user);
-            }
-
-            if (email) {
-              user = await authStorage.getUserByEmail(email.toLowerCase().trim());
-              if (user) {
-                await authStorage.linkGoogleId(user.id, googleId, profile.photos?.[0]?.value);
-                const updated = await authStorage.getUser(user.id);
-                return done(null, updated);
-              }
-            }
-
-            const newUser = await authStorage.createUser({
-              email: email ? email.toLowerCase().trim() : null,
-              googleId,
-              firstName: profile.name?.givenName || null,
-              lastName: profile.name?.familyName || null,
-              profileImageUrl: profile.photos?.[0]?.value || null,
-            });
-            return done(null, newUser);
-          } catch (err) {
-            return done(err);
-          }
-        }
-      )
-    );
-  }
 
   app.post("/api/auth/register", async (req, res, next) => {
     try {
@@ -195,92 +145,6 @@ export async function setupAuth(app: Express) {
     });
   });
 
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    app.get("/api/auth/google", (req, res, next) => {
-      passport.authenticate("google", {
-        scope: ["profile", "email"],
-      })(req, res, next);
-    });
-
-    app.get("/api/auth/google/callback", (req, res, next) => {
-      passport.authenticate("google", {
-        successRedirect: "/",
-        failureRedirect: "/auth?error=google_failed",
-      })(req, res, next);
-    });
-  } else {
-    app.get("/api/auth/google", (req, res) => {
-      res.status(503).json({ message: "Google sign-in is not configured" });
-    });
-  }
-
-  if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-    const { Strategy: FacebookStrategy } = await import("passport-facebook");
-
-    const fbCallbackURL = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/facebook/callback`
-      : process.env.REPL_SLUG
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/facebook/callback`
-        : "/api/auth/facebook/callback";
-
-    passport.use(
-      new FacebookStrategy(
-        {
-          clientID: process.env.FACEBOOK_APP_ID,
-          clientSecret: process.env.FACEBOOK_APP_SECRET,
-          callbackURL: fbCallbackURL,
-          profileFields: ["id", "emails", "name", "picture.type(large)"],
-        },
-        async (accessToken: string, refreshToken: string, profile: any, done: any) => {
-          try {
-            const facebookId = profile.id;
-            const email = profile.emails?.[0]?.value;
-
-            if (email) {
-              let user = await authStorage.getUserByEmail(email.toLowerCase().trim());
-              if (user) {
-                return done(null, user);
-              }
-            }
-
-            const newUser = await authStorage.createUser({
-              email: email || null,
-              firstName: profile.name?.givenName || null,
-              lastName: profile.name?.familyName || null,
-              profileImageUrl: profile.photos?.[0]?.value || null,
-            });
-            return done(null, newUser);
-          } catch (err) {
-            return done(err);
-          }
-        }
-      )
-    );
-
-    app.get("/api/auth/facebook", (req, res, next) => {
-      passport.authenticate("facebook", {
-        scope: ["email"],
-      })(req, res, next);
-    });
-
-    app.get("/api/auth/facebook/callback", (req, res, next) => {
-      passport.authenticate("facebook", {
-        successRedirect: "/",
-        failureRedirect: "/auth?error=google_failed",
-      })(req, res, next);
-    });
-  } else {
-    app.get("/api/auth/facebook", (req, res) => {
-      res.status(503).json({ message: "Facebook sign-in is not configured" });
-    });
-  }
-
-  app.get("/api/auth/providers", (req, res) => {
-    res.json({
-      google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-      facebook: !!(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET),
-    });
-  });
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
