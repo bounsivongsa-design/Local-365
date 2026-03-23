@@ -8,7 +8,7 @@ import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2 } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -147,16 +147,19 @@ export default function Events() {
   const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<any>(null);
 
-  const calendarEvents = events?.map(event => ({
-    id: String(event.id),
-    title: event.title,
-    date: event.date,
-    extendedProps: {
-      description: event.description,
-      location: event.location,
-      eventId: event.id,
-    }
-  })) || [];
+  const calendarEvents = events?.flatMap(event => {
+    const dates = event.eventDates?.length ? event.eventDates : [event.date];
+    return dates.map((d, i) => ({
+      id: `${event.id}-${i}`,
+      title: event.title,
+      date: d,
+      extendedProps: {
+        description: event.description,
+        location: event.location,
+        eventId: event.id,
+      }
+    }));
+  }) || [];
 
   return (
     <div className="min-h-screen pb-20">
@@ -410,10 +413,12 @@ export default function Events() {
                   <h2 className="text-2xl font-bold text-slate-900">{selectedCalendarEvent.title}</h2>
                 )}
                 <div className="flex flex-wrap gap-3">
-                  <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
-                    <Calendar className="h-4 w-4" />
-                    {new Date(selectedCalendarEvent.date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-                  </div>
+                  {(selectedCalendarEvent.eventDates?.length ? selectedCalendarEvent.eventDates : [selectedCalendarEvent.date]).map((d: string, i: number) => (
+                    <div key={i} className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
+                      <Calendar className="h-4 w-4" />
+                      {new Date(d).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                    </div>
+                  ))}
                   <div className="inline-flex items-center gap-2 bg-[#8a9a5b]/10 text-[#8a9a5b] px-4 py-2 rounded-xl text-sm font-medium">
                     <Megaphone className="h-4 w-4" />
                     {selectedCalendarEvent.location}
@@ -492,11 +497,13 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const flyerInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading, progress } = useUpload();
 
+  const [eventDates, setEventDates] = useState<string[]>([]);
+  const [dateInput, setDateInput] = useState("");
+
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional(),
     location: z.string().min(1, "Location is required"),
-    date: z.string().min(1, "Date is required"),
     imageUrl: z.string().optional(),
     flyerUrl: z.string().optional(),
     promoVideoUrl: z.string().optional(),
@@ -510,7 +517,6 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
       title: "",
       description: "",
       location: "",
-      date: "",
       imageUrl: "",
       flyerUrl: "",
       promoVideoUrl: "",
@@ -533,6 +539,11 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const finalPrice = Math.round(basePrice * (1 - discount));
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
+    if (eventDates.length === 0) {
+      toast({ title: "Missing Dates", description: "Please add at least one event date.", variant: "destructive" });
+      return;
+    }
+
     const selectedAdSize = data.adSize || "small";
     const sizeCanDesc = selectedAdSize === "medium" || selectedAdSize === "large";
     const sizeCanImage = selectedAdSize === "medium" || selectedAdSize === "large";
@@ -541,7 +552,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
     const eventData: any = {
       title: data.title,
       location: data.location,
-      date: data.date,
+      date: eventDates[0],
+      eventDates: eventDates,
       adSize: selectedAdSize,
       description: sizeCanDesc && data.description ? data.description : "",
       imageUrl: sizeCanImage && data.imageUrl ? data.imageUrl : undefined,
@@ -584,36 +596,71 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date & Time</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="datetime-local" 
-                    className="bg-white text-[#1a1a2e]"
-                    {...field} 
-                    data-testid="input-event-date"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
-                <FormControl><Input placeholder="Town Square, Moyock" className="bg-white text-[#1a1a2e]" {...field} data-testid="input-event-location" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location</FormLabel>
+              <FormControl><Input placeholder="Town Square, Moyock" className="bg-white text-[#1a1a2e]" {...field} data-testid="input-event-location" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div>
+          <label className="text-sm font-medium leading-none mb-2 block">Event Dates & Times</label>
+          <p className="text-xs text-muted-foreground mb-2">Add one or more dates for your event. Multi-day or recurring events can have multiple dates.</p>
+          <div className="flex gap-2 mb-3">
+            <Input
+              type="datetime-local"
+              className="bg-white text-[#1a1a2e] flex-1"
+              value={dateInput}
+              onChange={(e) => setDateInput(e.target.value)}
+              data-testid="input-event-date"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82]/5 h-10 px-4"
+              onClick={() => {
+                if (!dateInput) return;
+                if (eventDates.includes(dateInput)) {
+                  toast({ title: "Duplicate date", description: "This date/time has already been added.", variant: "destructive" });
+                  return;
+                }
+                setEventDates(prev => [...prev, dateInput].sort());
+                setDateInput("");
+              }}
+              data-testid="button-add-event-date"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
+          </div>
+          {eventDates.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {eventDates.map((d, i) => (
+                <div key={i} className="inline-flex items-center gap-1.5 bg-[#0a4a82]/10 text-[#0a4a82] px-3 py-1.5 rounded-lg text-sm font-medium" data-testid={`tag-event-date-${i}`}>
+                  <Calendar className="h-3.5 w-3.5" />
+                  {new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  {" "}
+                  {new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                  <button
+                    type="button"
+                    onClick={() => setEventDates(prev => prev.filter((_, idx) => idx !== i))}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-[#0a4a82]/20 transition-colors"
+                    data-testid={`button-remove-date-${i}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-amber-600 font-medium">No dates added yet — add at least one date above</p>
+          )}
         </div>
 
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4">

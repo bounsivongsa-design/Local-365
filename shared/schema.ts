@@ -81,6 +81,7 @@ export const events = pgTable("events", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   date: timestamp("date").notNull(),
+  eventDates: text("event_dates").array().default([]),
   location: text("location").notNull(),
   city: text("city").default("Currituck"),
   state: text("state").default("NC"),

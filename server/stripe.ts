@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users } from "@shared/schema";
+import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users, adPlacements } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
@@ -65,6 +65,9 @@ export function registerStripeRoutes(app: Express) {
       res.status(503).json({ message: "Payment system not configured" });
     });
     app.post("/api/stripe/job-checkout", (req, res) => {
+      res.status(503).json({ message: "Payment system not configured" });
+    });
+    app.post("/api/stripe/ad-checkout", (req, res) => {
       res.status(503).json({ message: "Payment system not configured" });
     });
     return;
@@ -332,6 +335,77 @@ export function registerStripeRoutes(app: Express) {
     }
   });
 
+  app.post("/api/stripe/ad-checkout", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { adPlacementId } = req.body;
+
+      if (!adPlacementId) {
+        return res.status(400).json({ message: "Ad placement ID is required" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId) {
+        return res.status(403).json({ message: "Only business accounts can purchase ads" });
+      }
+
+      const [ad] = await db.select().from(adPlacements).where(eq(adPlacements.id, adPlacementId));
+      if (!ad) {
+        return res.status(404).json({ message: "Ad placement not found" });
+      }
+      if (ad.businessId !== user.linkedBusinessId) {
+        return res.status(403).json({ message: "You can only pay for your own ads" });
+      }
+      if (ad.paymentStatus === "paid") {
+        return res.status(400).json({ message: "This ad has already been paid for" });
+      }
+
+      const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
+      if (!biz) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+
+      const priceInCents = ad.priceMonthly || 25000;
+      const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+
+      const sizeLabel = (ad.adSize || "small").charAt(0).toUpperCase() + (ad.adSize || "small").slice(1);
+      const session = await stripe!.checkout.sessions.create({
+        customer: customerId,
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Ad Placement — ${ad.title}`,
+                description: `${sizeLabel} ${ad.placementType.replace(/_/g, " ")} ad on Local List 365`,
+              },
+              unit_amount: priceInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/advertising?session_id={CHECKOUT_SESSION_ID}&ad_success=true`,
+        cancel_url: `${baseUrl}/advertising?canceled=true`,
+        metadata: {
+          type: "ad_placement",
+          adPlacementId: String(ad.id),
+          businessId: String(biz.id),
+          userId,
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (err: any) {
+      console.error("Ad checkout error:", err);
+      res.status(500).json({ message: err.message || "Failed to create checkout session" });
+    }
+  });
+
   app.post("/api/stripe/webhook", async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -368,6 +442,29 @@ export function registerStripeRoutes(app: Express) {
                 stripeSubscriptionId: session.subscription as string,
               }).where(eq(jobListings.id, jobId));
               console.log(`Job listing ${jobId} activated via Stripe payment`);
+            }
+            break;
+          }
+
+          if (session.metadata?.type === "ad_placement") {
+            if (session.payment_status !== "paid") {
+              console.log(`Ad placement checkout not yet paid (status: ${session.payment_status}), skipping`);
+              break;
+            }
+            const adId = parseInt(session.metadata?.adPlacementId || "0");
+            if (adId) {
+              const [existing] = await db.select().from(adPlacements).where(eq(adPlacements.id, adId));
+              if (existing && existing.paymentStatus === "paid") {
+                console.log(`Ad placement ${adId} already marked paid, skipping duplicate webhook`);
+                break;
+              }
+              const amountPaid = session.amount_total || 0;
+              await db.update(adPlacements).set({
+                paymentStatus: "paid",
+                totalPaid: amountPaid,
+                paymentNotes: `Stripe payment ${session.payment_intent || session.id}`,
+              }).where(eq(adPlacements.id, adId));
+              console.log(`Ad placement ${adId} paid via Stripe (${amountPaid} cents)`);
             }
             break;
           }

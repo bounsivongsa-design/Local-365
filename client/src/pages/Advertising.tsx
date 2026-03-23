@@ -174,14 +174,35 @@ export default function Advertising() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Ad Request Submitted!",
-        description: "We'll review your ad and contact you about monthly billing.",
-      });
+    onSuccess: async (newAd: any) => {
       setIsCreateOpen(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+
+      try {
+        const checkoutRes = await fetch("/api/stripe/ad-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ adPlacementId: newAd.id }),
+        });
+        if (checkoutRes.ok) {
+          const { url } = await checkoutRes.json();
+          if (url) {
+            window.location.href = url;
+            return;
+          }
+        }
+        toast({
+          title: "Ad Request Submitted!",
+          description: "Payment could not be initiated. You can pay from your ad management panel.",
+        });
+      } catch {
+        toast({
+          title: "Ad Request Submitted!",
+          description: "Payment could not be initiated. You can pay from your ad management panel.",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -677,7 +698,7 @@ export default function Advertising() {
                           </span>
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                          After submitting, we'll review and activate your ad.
+                          You'll be redirected to secure checkout after submitting. Your ad will be reviewed and activated once payment is confirmed.
                         </p>
                       </div>
 
@@ -690,7 +711,7 @@ export default function Advertising() {
                         {(createAdRequest.isPending || updateAdRequest.isPending) ? "Submitting..." : (
                           <>
                             <Send className="mr-2 h-4 w-4" />
-                            {editingAd ? "Save Changes" : "Submit Ad Request"}
+                            {editingAd ? "Save Changes" : "Submit & Pay Now"}
                           </>
                         )}
                       </Button>
@@ -881,18 +902,48 @@ export default function Advertising() {
                               Requested {formatDistanceToNow(new Date(ad.createdAt), { addSuffix: true })}
                             </p>
                           )}
-                          {(ad.status === "pending" || ad.status === "expired") && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="mt-2 h-8 text-xs text-[#0a4a82] hover:text-[#083a6a] hover:bg-[#0a4a82]/5 w-full"
-                              onClick={() => openEditDialog(ad)}
-                              data-testid={`button-edit-ad-${ad.id}`}
-                            >
-                              <Pencil className="h-3 w-3 mr-1" />
-                              Edit Ad
-                            </Button>
-                          )}
+                          <div className="flex gap-2 mt-2">
+                            {ad.paymentStatus === "unpaid" && (
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs bg-[#8a9a5b] hover:bg-[#7a8a4b] text-white flex-1"
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch("/api/stripe/ad-checkout", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      credentials: "include",
+                                      body: JSON.stringify({ adPlacementId: ad.id }),
+                                    });
+                                    if (res.ok) {
+                                      const { url } = await res.json();
+                                      if (url) window.location.href = url;
+                                    } else {
+                                      const err = await res.json();
+                                      toast({ variant: "destructive", title: "Error", description: err.message });
+                                    }
+                                  } catch {
+                                    toast({ variant: "destructive", title: "Error", description: "Could not initiate payment" });
+                                  }
+                                }}
+                                data-testid={`button-pay-ad-${ad.id}`}
+                              >
+                                Pay Now
+                              </Button>
+                            )}
+                            {(ad.status === "pending" || ad.status === "expired") && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-xs text-[#0a4a82] hover:text-[#083a6a] hover:bg-[#0a4a82]/5 flex-1"
+                                onClick={() => openEditDialog(ad)}
+                                data-testid={`button-edit-ad-${ad.id}`}
+                              >
+                                <Pencil className="h-3 w-3 mr-1" />
+                                Edit Ad
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

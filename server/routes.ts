@@ -1146,7 +1146,7 @@ export async function registerRoutes(
       const isSilverPlus = tier === "standard" || tier === "premium";
       const isGold = tier === "premium";
 
-      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: clientAdSize, ...bodyWithoutMeta } = req.body;
+      const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: clientAdSize, eventDates: clientEventDates, ...bodyWithoutMeta } = req.body;
 
       const adSizeVal = clientAdSize || "small";
       const sizeCanDesc = adSizeVal === "medium" || adSizeVal === "large";
@@ -1163,10 +1163,14 @@ export async function registerRoutes(
 
       const eventZipCode = businessZipCode || req.body.zipCode || "27929";
 
+      const parsedEventDates: string[] = Array.isArray(clientEventDates) ? clientEventDates.filter((d: string) => d && !isNaN(new Date(d).getTime())) : [];
+      const primaryDate = parsedEventDates.length > 0 ? new Date(parsedEventDates[0]) : new Date(req.body.date);
+
       const input = api.events.create.input.parse({
           ...sanitizedBody,
           businessId: serverBusinessId,
-          date: new Date(req.body.date),
+          date: primaryDate,
+          eventDates: parsedEventDates,
           zipCode: eventZipCode,
           targetZipCodes: [eventZipCode],
       });
@@ -2107,6 +2111,11 @@ export async function registerRoutes(
         const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
         const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
         updates.priceMonthly = Math.round(AD_MONTHLY_PRICING[adSize] * (1 - discount));
+        if (ad.adSize !== adSize && ad.paymentStatus === "paid") {
+          updates.paymentStatus = "unpaid";
+          updates.totalPaid = 0;
+          updates.paymentNotes = "Reset: ad size changed after payment";
+        }
       }
 
       const [updated] = await pgDb.update(adPlacements)
