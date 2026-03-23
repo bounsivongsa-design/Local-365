@@ -62,7 +62,35 @@ export const businesses = pgTable("businesses", {
   galleryPhotos: text("gallery_photos").array().default([]),
   promoVideoUrl: text("promo_video_url"),
   acceptsQuotes: boolean("accepts_quotes").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const businessVerificationChecks = pgTable("business_verification_checks", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id),
+  checkType: text("check_type").notNull(),
+  status: text("status").default("pending"),
+  result: text("result"),
+  details: text("details"),
+  rawResponse: text("raw_response"),
+  checkedAt: timestamp("checked_at").defaultNow(),
+});
+
+export type BusinessVerificationCheck = typeof businessVerificationChecks.$inferSelect;
+
+export const verificationDocuments = pgTable("verification_documents", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id),
+  documentType: text("document_type").notNull(),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  status: text("status").default("pending"),
+  adminNote: text("admin_note"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export type VerificationDocument = typeof verificationDocuments.$inferSelect;
 
 export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),

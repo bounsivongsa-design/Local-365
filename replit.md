@@ -39,6 +39,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.
 - **Admin Dashboard**: Full admin command center at `/admin` with platform-wide stats (users, businesses, memberships, ads, quotes, jobs, posts, promos), pending approvals alerts, membership breakdown charts, recent activity feeds, and quick-action links.
 - **Event Moderation**: Admin event moderation queue at `/admin/events`. Business-submitted events default to "pending" status and require admin approval before appearing on the public calendar. Admins can approve, deny (with optional reason), unpublish, or delete events. Admin-created events auto-approve.
+- **Business Verification System**: AI-powered NC Secretary of State registry check during business signup (auto-triggered when LLC is claimed). Document upload for insurance certificates, professional licenses, and veteran documentation. Admin verification review panel with AI check results, uploaded doc review (approve/reject with notes), and direct link to sosnc.gov for manual verification. Tables: `business_verification_checks`, `verification_documents`.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.

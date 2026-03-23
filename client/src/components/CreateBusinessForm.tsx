@@ -165,6 +165,11 @@ export function CreateBusinessForm({
   const [logoIsDragging, setLogoIsDragging] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile: uploadLogo, isUploading: isLogoUploading, progress: logoProgress } = useUpload();
+  const { uploadFile: uploadVerificationDoc, isUploading: isDocUploading } = useUpload();
+  const [verificationDocs, setVerificationDocs] = useState<{type: string; fileName: string; fileUrl: string}[]>([]);
+  const insuranceInputRef = useRef<HTMLInputElement>(null);
+  const licenseInputRef = useRef<HTMLInputElement>(null);
+  const veteranInputRef = useRef<HTMLInputElement>(null);
 
   const categoryLimit = getCategoryLimit(membershipTier);
 
@@ -221,6 +226,22 @@ export function CreateBusinessForm({
     if (logoInputRef.current) logoInputRef.current.value = "";
   }, [uploadLogo, form, toast]);
 
+  const handleVerificationDocUpload = useCallback(async (file: File, docType: string) => {
+    try {
+      const result = await uploadVerificationDoc(file);
+      if (result) {
+        setVerificationDocs(prev => [...prev, {
+          type: docType,
+          fileName: file.name,
+          fileUrl: result.objectPath,
+        }]);
+        toast({ title: "Document uploaded", description: `${file.name} uploaded successfully.` });
+      }
+    } catch {
+      toast({ title: "Upload failed", description: "Could not upload document.", variant: "destructive" });
+    }
+  }, [uploadVerificationDoc, toast]);
+
   const handleFormSubmit = () => {
     const values = form.getValues();
 
@@ -259,7 +280,22 @@ export function CreateBusinessForm({
         };
 
         createBusiness.mutate(submitData, {
-          onSuccess: () => {
+          onSuccess: async (createdBusiness: any) => {
+            if (verificationDocs.length > 0 && createdBusiness?.id) {
+              for (const doc of verificationDocs) {
+                try {
+                  await fetch(`/api/businesses/${createdBusiness.id}/verification-documents`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      documentType: doc.type,
+                      fileName: doc.fileName,
+                      fileUrl: doc.fileUrl,
+                    }),
+                  });
+                } catch { /* non-blocking */ }
+              }
+            }
             toast({
               title: "Business Created",
               description:
@@ -1217,6 +1253,167 @@ export function CreateBusinessForm({
             </FormItem>
           )}
         />
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-[#0a4a82]/20 p-4 bg-blue-50/50 dark:bg-blue-900/10 mt-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Upload className="h-4 w-4 text-[#0a4a82]" />
+          <p className="text-sm font-semibold text-[#0a4a82] dark:text-blue-300">
+            Verification Documents (Optional)
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Upload supporting documents to speed up verification. Our admin team reviews these to confirm your credentials.
+        </p>
+
+        {form.watch("hasInsurance") && (
+          <div className="space-y-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium">Insurance Certificate (COI)</span>
+              </div>
+              {verificationDocs.find(d => d.type === "insurance_certificate") ? (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Uploaded
+                </span>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => insuranceInputRef.current?.click()}
+                  disabled={isDocUploading}
+                  data-testid="button-upload-insurance"
+                >
+                  <Upload className="h-3 w-3 mr-1" /> Upload
+                </Button>
+              )}
+            </div>
+            <input
+              ref={insuranceInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleVerificationDocUpload(file, "insurance_certificate");
+                e.target.value = "";
+              }}
+            />
+            <p className="text-xs text-muted-foreground">PDF or image of your Certificate of Insurance</p>
+          </div>
+        )}
+
+        {form.watch("isLicensed") && (
+          <div className="space-y-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium">Professional License</span>
+              </div>
+              {verificationDocs.find(d => d.type === "business_license" || d.type === "contractor_license") ? (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Uploaded
+                </span>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => licenseInputRef.current?.click()}
+                  disabled={isDocUploading}
+                  data-testid="button-upload-license"
+                >
+                  <Upload className="h-3 w-3 mr-1" /> Upload
+                </Button>
+              )}
+            </div>
+            <input
+              ref={licenseInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleVerificationDocUpload(file, "contractor_license");
+                e.target.value = "";
+              }}
+            />
+            <p className="text-xs text-muted-foreground">Photo or PDF of your professional or contractor license</p>
+          </div>
+        )}
+
+        {form.watch("isVeteran") && (
+          <div className="space-y-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium">Veteran Documentation</span>
+              </div>
+              {verificationDocs.find(d => d.type === "veteran_dd214") ? (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Uploaded
+                </span>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => veteranInputRef.current?.click()}
+                  disabled={isDocUploading}
+                  data-testid="button-upload-veteran"
+                >
+                  <Upload className="h-3 w-3 mr-1" /> Upload
+                </Button>
+              )}
+            </div>
+            <input
+              ref={veteranInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleVerificationDocUpload(file, "veteran_dd214");
+                e.target.value = "";
+              }}
+            />
+            <p className="text-xs text-muted-foreground">DD-214 or veteran ID documentation</p>
+          </div>
+        )}
+
+        {!form.watch("hasInsurance") && !form.watch("isLicensed") && !form.watch("isVeteran") && (
+          <p className="text-xs text-muted-foreground italic text-center py-2">
+            Check the credentials above to see upload options
+          </p>
+        )}
+
+        {verificationDocs.length > 0 && (
+          <div className="mt-2 space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Uploaded documents:</p>
+            {verificationDocs.map((doc, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+                <CheckCircle2 className="h-3 w-3" />
+                <span>{doc.fileName}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+              LLC claims are automatically verified
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              If you checked "LLC Registered," we'll run an automated check against the NC Secretary of State registry to confirm your registration status.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

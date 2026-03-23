@@ -9,7 +9,8 @@ import { registerStripeRoutes } from "./stripe";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, directConversations, directMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments } from "@shared/schema";
+import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
 // Tier-Based Quote Access Timing (hours after request creation)
@@ -683,12 +684,305 @@ export async function registerRoutes(
       }
 
       const business = await storage.createBusiness(input);
+
+      const userId = (req as any).user?.id;
+      if (userId) {
+        await pgDb.update(users).set({ linkedBusinessId: business.id }).where(eq(users.id, userId));
+      }
+      
+      if (business.hasLLC) {
+        try {
+          const openai = new OpenAI({
+            apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+          });
+          const searchPrompt = `You are verifying a business registration with the North Carolina Secretary of State (sosnc.gov).
+
+Business Name: "${business.name}"
+Owner Name: "${input.ownerName || 'Not provided'}"
+Location: Currituck County, NC (zip: ${input.zipCode || input.establishedZipCode || '27958'})
+Claims LLC: Yes
+
+Based on your knowledge of NC business registrations and common naming patterns, analyze this business:
+
+1. Is "${business.name}" likely to be found as a registered entity (LLC, Corp, LP, etc.) with the NC Secretary of State?
+2. What is the most likely registered name variant? (e.g., "${business.name} LLC", "${business.name} Inc")
+3. Based on the name and location, does this appear to be a legitimate local business?
+
+Respond in this exact JSON format:
+{
+  "registrationLikelihood": "high" | "medium" | "low" | "unknown",
+  "likelyEntityType": "LLC" | "Corporation" | "Sole Proprietorship" | "Partnership" | "Unknown",
+  "likelyRegisteredName": "string",
+  "statusAssessment": "likely_active" | "uncertain" | "likely_not_registered",
+  "sosSearchUrl": "https://www.sosnc.gov/online_services/search/by_title/_Business_Registration",
+  "confidence": "high" | "medium" | "low",
+  "notes": "Brief explanation of assessment",
+  "flags": ["array of any concerns or notable findings"]
+}`;
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: searchPrompt }],
+            temperature: 0.2,
+            response_format: { type: "json_object" },
+          });
+          const aiResult = completion.choices[0]?.message?.content || "{}";
+          let parsed: any = {};
+          try { parsed = JSON.parse(aiResult); } catch { parsed = {}; }
+          const checkStatus = parsed.registrationLikelihood === "high" ? "verified" :
+                             parsed.registrationLikelihood === "medium" ? "review_needed" :
+                             parsed.registrationLikelihood === "low" ? "not_found" : "review_needed";
+          await pgDb.insert(businessVerificationChecks).values({
+            businessId: business.id,
+            checkType: "nc_sos",
+            status: checkStatus,
+            result: parsed.statusAssessment === "likely_active" ? `Likely registered as ${parsed.likelyEntityType || "business entity"}` : "Needs manual verification",
+            details: JSON.stringify(parsed),
+            rawResponse: aiResult,
+            checkedAt: new Date(),
+          });
+        } catch (aiErr) {
+          console.error("Auto SOS check failed (non-blocking):", aiErr);
+        }
+      }
+
       res.status(201).json(business);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.message });
       }
       throw err;
+    }
+  });
+
+  app.post("/api/businesses/:id/verify-sos", isAuthenticated, async (req: any, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user || (user.linkedBusinessId !== businessId && !user.isAdmin)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const existingCheck = await pgDb.select().from(businessVerificationChecks)
+        .where(and(
+          eq(businessVerificationChecks.businessId, businessId),
+          eq(businessVerificationChecks.checkType, "nc_sos")
+        )).limit(1);
+
+      if (existingCheck.length > 0 && existingCheck[0].status !== "error") {
+        return res.json({ check: existingCheck[0] });
+      }
+
+      try {
+        const openai = new OpenAI({
+          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        });
+
+        const searchPrompt = `You are verifying a business registration with the North Carolina Secretary of State (sosnc.gov).
+
+Business Name: "${biz.name}"
+Owner Name: "${biz.ownerName || 'Not provided'}"
+Location: Currituck County, NC (zip: ${biz.zipCode || '27958'})
+Claims LLC: ${biz.hasLLC ? 'Yes' : 'No'}
+
+Based on your knowledge of NC business registrations and common naming patterns, analyze this business:
+
+1. Is "${biz.name}" likely to be found as a registered entity (LLC, Corp, LP, etc.) with the NC Secretary of State?
+2. What is the most likely registered name variant? (e.g., "${biz.name} LLC", "${biz.name} Inc")
+3. Based on the name and location, does this appear to be a legitimate local business?
+
+Respond in this exact JSON format:
+{
+  "registrationLikelihood": "high" | "medium" | "low" | "unknown",
+  "likelyEntityType": "LLC" | "Corporation" | "Sole Proprietorship" | "Partnership" | "Unknown",
+  "likelyRegisteredName": "string",
+  "statusAssessment": "likely_active" | "uncertain" | "likely_not_registered",
+  "sosSearchUrl": "https://www.sosnc.gov/online_services/search/by_title/_Business_Registration",
+  "confidence": "high" | "medium" | "low",
+  "notes": "Brief explanation of assessment",
+  "flags": ["array of any concerns or notable findings"]
+}`;
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [{ role: "user", content: searchPrompt }],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        });
+
+        const aiResult = completion.choices[0]?.message?.content || "{}";
+        let parsed: any = {};
+        try { parsed = JSON.parse(aiResult); } catch { parsed = { error: "Failed to parse AI response" }; }
+
+        const checkStatus = parsed.registrationLikelihood === "high" ? "verified" :
+                           parsed.registrationLikelihood === "medium" ? "review_needed" :
+                           parsed.registrationLikelihood === "low" ? "not_found" : "review_needed";
+
+        const resultSummary = parsed.statusAssessment === "likely_active" 
+          ? `Likely registered as ${parsed.likelyEntityType || "business entity"}` 
+          : parsed.statusAssessment === "likely_not_registered" 
+            ? "Not likely registered with NC SOS"
+            : "Needs manual verification";
+
+        const [check] = await pgDb.insert(businessVerificationChecks).values({
+          businessId,
+          checkType: "nc_sos",
+          status: checkStatus,
+          result: resultSummary,
+          details: JSON.stringify({
+            registrationLikelihood: parsed.registrationLikelihood,
+            likelyEntityType: parsed.likelyEntityType,
+            likelyRegisteredName: parsed.likelyRegisteredName,
+            statusAssessment: parsed.statusAssessment,
+            sosSearchUrl: parsed.sosSearchUrl,
+            confidence: parsed.confidence,
+            notes: parsed.notes,
+            flags: parsed.flags,
+          }),
+          rawResponse: aiResult,
+          checkedAt: new Date(),
+        }).returning();
+
+        res.json({ check });
+      } catch (aiErr) {
+        console.error("AI SOS check error:", aiErr);
+        const [check] = await pgDb.insert(businessVerificationChecks).values({
+          businessId,
+          checkType: "nc_sos",
+          status: "error",
+          result: "AI verification check failed - manual review needed",
+          details: JSON.stringify({ error: String(aiErr) }),
+          checkedAt: new Date(),
+        }).returning();
+        res.json({ check });
+      }
+    } catch (err) {
+      console.error("SOS verify error:", err);
+      res.status(500).json({ message: "Verification check failed" });
+    }
+  });
+
+  app.get("/api/businesses/:id/verification", isAuthenticated, async (req: any, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+
+      const [biz] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      if (user.linkedBusinessId !== businessId && !user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const checks = await pgDb.select().from(businessVerificationChecks)
+        .where(eq(businessVerificationChecks.businessId, businessId))
+        .orderBy(desc(businessVerificationChecks.checkedAt));
+
+      const docs = await pgDb.select().from(verificationDocuments)
+        .where(eq(verificationDocuments.businessId, businessId))
+        .orderBy(desc(verificationDocuments.uploadedAt));
+
+      res.json({ checks, documents: docs });
+    } catch (err) {
+      console.error("Get verification error:", err);
+      res.status(500).json({ message: "Failed to get verification info" });
+    }
+  });
+
+  app.post("/api/businesses/:id/verification-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user || (user.linkedBusinessId !== businessId && !user.isAdmin)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const { documentType, fileName, fileUrl } = req.body;
+      if (!documentType || !fileName || !fileUrl) {
+        return res.status(400).json({ message: "documentType, fileName, and fileUrl are required" });
+      }
+
+      const validTypes = ["insurance_certificate", "business_license", "contractor_license", "veteran_dd214", "other"];
+      if (!validTypes.includes(documentType)) {
+        return res.status(400).json({ message: "Invalid document type" });
+      }
+
+      if (typeof fileUrl !== "string" || fileUrl.length > 2000) {
+        return res.status(400).json({ message: "Invalid file URL" });
+      }
+
+      const [doc] = await pgDb.insert(verificationDocuments).values({
+        businessId,
+        documentType,
+        fileName,
+        fileUrl,
+        status: "pending",
+      }).returning();
+
+      res.status(201).json(doc);
+    } catch (err) {
+      console.error("Upload verification doc error:", err);
+      res.status(500).json({ message: "Failed to save verification document" });
+    }
+  });
+
+  app.get("/api/admin/businesses/:id/verification", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const businessId = parseInt(req.params.id);
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      const checks = await pgDb.select().from(businessVerificationChecks)
+        .where(eq(businessVerificationChecks.businessId, businessId))
+        .orderBy(desc(businessVerificationChecks.checkedAt));
+
+      const docs = await pgDb.select().from(verificationDocuments)
+        .where(eq(verificationDocuments.businessId, businessId))
+        .orderBy(desc(verificationDocuments.uploadedAt));
+
+      res.json({ business: biz, checks, documents: docs });
+    } catch (err) {
+      console.error("Admin get verification error:", err);
+      res.status(500).json({ message: "Failed to get verification info" });
+    }
+  });
+
+  app.patch("/api/admin/verification-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const docId = parseInt(req.params.id);
+      const { status, adminNote } = req.body;
+
+      if (!["approved", "rejected", "pending"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      await pgDb.update(verificationDocuments)
+        .set({ status, adminNote: adminNote || null, reviewedAt: new Date() })
+        .where(eq(verificationDocuments.id, docId));
+
+      res.json({ message: "Document status updated" });
+    } catch (err) {
+      console.error("Admin update doc error:", err);
+      res.status(500).json({ message: "Failed to update document" });
     }
   });
 

@@ -54,7 +54,14 @@ import {
   Mail,
   Phone,
   BadgeCheck,
+  FileCheck,
+  ExternalLink,
+  Upload,
+  Scale,
+  Award,
+  ClipboardCheck,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -875,6 +882,8 @@ function BusinessesTab() {
   const [editDialog, setEditDialog] = useState<AdminBusiness | null>(null);
   const [editTier, setEditTier] = useState("");
   const [editVerified, setEditVerified] = useState(false);
+  const [verifyDialog, setVerifyDialog] = useState<AdminBusiness | null>(null);
+  const [docReviewNote, setDocReviewNote] = useState("");
 
   const { data, isLoading, isError, refetch } = useQuery<{ businesses: AdminBusiness[]; total: number; page: number; pages: number }>({
     queryKey: ["/api/admin/businesses", search, page],
@@ -904,6 +913,43 @@ function BusinessesTab() {
     setPage(1);
     setSearch(searchInput);
   };
+
+  const verificationQuery = useQuery<{
+    business: any;
+    checks: Array<{ id: number; checkType: string; status: string; result: string; details: string; checkedAt: string }>;
+    documents: Array<{ id: number; documentType: string; fileName: string; fileUrl: string; status: string; adminNote: string | null; uploadedAt: string; reviewedAt: string | null }>;
+  }>({
+    queryKey: ["/api/admin/businesses", verifyDialog?.id, "verification"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/businesses/${verifyDialog!.id}/verification`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load verification data");
+      return res.json();
+    },
+    enabled: !!verifyDialog,
+  });
+
+  const triggerSosCheck = useMutation({
+    mutationFn: async (businessId: number) => {
+      await apiRequest("POST", `/api/businesses/${businessId}/verify-sos`);
+    },
+    onSuccess: () => {
+      toast({ title: "SOS Check", description: "NC Secretary of State check completed." });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses", verifyDialog?.id, "verification"] });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const updateDocMutation = useMutation({
+    mutationFn: async ({ docId, status, adminNote }: { docId: number; status: string; adminNote?: string }) => {
+      await apiRequest("PATCH", `/api/admin/verification-documents/${docId}`, { status, adminNote });
+    },
+    onSuccess: () => {
+      toast({ title: "Updated", description: "Document status updated." });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses", verifyDialog?.id, "verification"] });
+      setDocReviewNote("");
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
 
   const openEdit = (b: AdminBusiness) => {
     setEditDialog(b);
@@ -1025,6 +1071,16 @@ function BusinessesTab() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-8 px-2 text-amber-600 hover:bg-amber-50 rounded-lg gap-1"
+                          onClick={() => setVerifyDialog(b)}
+                          data-testid={`button-review-biz-${b.id}`}
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                          Review
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="h-8 px-2 text-[#0a4a82] hover:bg-blue-50 rounded-lg gap-1"
                           onClick={() => openEdit(b)}
                           data-testid={`button-edit-biz-${b.id}`}
@@ -1101,6 +1157,228 @@ function BusinessesTab() {
             >
               {updateBizMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!verifyDialog} onOpenChange={(open) => !open && setVerifyDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-amber-600" />
+              Verification Review — {verifyDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {verificationQuery.isLoading ? (
+            <div className="space-y-3 py-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                  <span className="text-xs text-gray-400 block">Claims LLC</span>
+                  <span className={`font-medium ${verificationQuery.data?.business?.hasLLC ? "text-green-700" : "text-gray-500"}`}>
+                    {verificationQuery.data?.business?.hasLLC ? "Yes" : "No"}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                  <span className="text-xs text-gray-400 block">Claims Insurance</span>
+                  <span className={`font-medium ${verificationQuery.data?.business?.hasInsurance ? "text-green-700" : "text-gray-500"}`}>
+                    {verificationQuery.data?.business?.hasInsurance ? "Yes" : "No"}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                  <span className="text-xs text-gray-400 block">Claims Licensed</span>
+                  <span className={`font-medium ${verificationQuery.data?.business?.isLicensed ? "text-green-700" : "text-gray-500"}`}>
+                    {verificationQuery.data?.business?.isLicensed ? "Yes" : "No"}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                  <span className="text-xs text-gray-400 block">Claims Veteran</span>
+                  <span className={`font-medium ${verificationQuery.data?.business?.isVeteran ? "text-green-700" : "text-gray-500"}`}>
+                    {verificationQuery.data?.business?.isVeteran ? "Yes" : "No"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-[#0a4a82]" />
+                    AI Verification Checks
+                  </h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => verifyDialog && triggerSosCheck.mutate(verifyDialog.id)}
+                    disabled={triggerSosCheck.isPending}
+                    data-testid="button-run-sos-check"
+                  >
+                    {triggerSosCheck.isPending ? "Checking..." : "Run NC SOS Check"}
+                  </Button>
+                </div>
+
+                {(!verificationQuery.data?.checks || verificationQuery.data.checks.length === 0) ? (
+                  <div className="p-4 rounded-lg bg-gray-50 border border-dashed border-gray-200 text-center">
+                    <p className="text-sm text-gray-400">No AI checks have been run yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Click "Run NC SOS Check" to verify LLC status</p>
+                  </div>
+                ) : (
+                  verificationQuery.data.checks.map((check) => {
+                    let details: any = {};
+                    try { details = JSON.parse(check.details || "{}"); } catch {}
+                    const statusColor = check.status === "verified" ? "bg-green-100 text-green-800" :
+                                       check.status === "not_found" ? "bg-red-100 text-red-800" :
+                                       check.status === "error" ? "bg-red-100 text-red-700" :
+                                       "bg-amber-100 text-amber-800";
+                    return (
+                      <div key={check.id} className="p-3 rounded-lg border border-gray-200 bg-white space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium uppercase text-gray-500">
+                            {check.checkType === "nc_sos" ? "NC Secretary of State" : check.checkType}
+                          </span>
+                          <Badge className={`text-xs ${statusColor}`}>
+                            {check.status === "verified" ? "Match Found" :
+                             check.status === "not_found" ? "Not Found" :
+                             check.status === "error" ? "Error" : "Needs Review"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-700">{check.result}</p>
+                        {details.notes && (
+                          <p className="text-xs text-gray-500 italic">{details.notes}</p>
+                        )}
+                        {details.likelyRegisteredName && (
+                          <p className="text-xs text-gray-500">
+                            Likely registered as: <span className="font-medium">{details.likelyRegisteredName}</span>
+                          </p>
+                        )}
+                        {details.flags && details.flags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {details.flags.map((flag: string, i: number) => (
+                              <span key={i} className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full border border-amber-200">{flag}</span>
+                            ))}
+                          </div>
+                        )}
+                        {details.sosSearchUrl && (
+                          <a href={details.sosSearchUrl} target="_blank" rel="noopener noreferrer"
+                             className="text-xs text-[#0a4a82] flex items-center gap-1 hover:underline">
+                            <ExternalLink className="h-3 w-3" /> Verify on sosnc.gov
+                          </a>
+                        )}
+                        <p className="text-[10px] text-gray-400">
+                          Checked {check.checkedAt ? format(new Date(check.checkedAt), "MMM d, yyyy h:mm a") : "N/A"}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-[#0a4a82]" />
+                  Uploaded Documents
+                </h4>
+
+                {(!verificationQuery.data?.documents || verificationQuery.data.documents.length === 0) ? (
+                  <div className="p-4 rounded-lg bg-gray-50 border border-dashed border-gray-200 text-center">
+                    <p className="text-sm text-gray-400">No documents uploaded by business</p>
+                  </div>
+                ) : (
+                  verificationQuery.data.documents.map((doc) => {
+                    const typeLabels: Record<string, string> = {
+                      insurance_certificate: "Insurance Certificate (COI)",
+                      business_license: "Business License",
+                      contractor_license: "Contractor License",
+                      veteran_dd214: "Veteran Documentation (DD-214)",
+                      other: "Other Document",
+                    };
+                    const docStatusColor = doc.status === "approved" ? "bg-green-100 text-green-800" :
+                                          doc.status === "rejected" ? "bg-red-100 text-red-800" :
+                                          "bg-amber-100 text-amber-800";
+                    return (
+                      <div key={doc.id} className="p-3 rounded-lg border border-gray-200 bg-white space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">
+                            {typeLabels[doc.documentType] || doc.documentType}
+                          </span>
+                          <Badge className={`text-xs ${docStatusColor}`}>{doc.status}</Badge>
+                        </div>
+                        <p className="text-xs text-gray-500">{doc.fileName}</p>
+                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                           className="text-xs text-[#0a4a82] flex items-center gap-1 hover:underline"
+                           data-testid={`link-view-doc-${doc.id}`}>
+                          <Eye className="h-3 w-3" /> View Document
+                        </a>
+                        {doc.adminNote && (
+                          <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded italic">{doc.adminNote}</p>
+                        )}
+                        {doc.status === "pending" && (
+                          <div className="space-y-2 pt-1">
+                            <Textarea
+                              placeholder="Admin note (optional)"
+                              value={docReviewNote}
+                              onChange={(e) => setDocReviewNote(e.target.value)}
+                              className="text-xs h-16 bg-white"
+                              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                              data-testid={`input-doc-note-${doc.id}`}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs gap-1"
+                                onClick={() => updateDocMutation.mutate({ docId: doc.id, status: "approved", adminNote: docReviewNote })}
+                                disabled={updateDocMutation.isPending}
+                                data-testid={`button-approve-doc-${doc.id}`}
+                              >
+                                <CheckCircle2 className="h-3 w-3" /> Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600 border-red-200 hover:bg-red-50 text-xs gap-1"
+                                onClick={() => updateDocMutation.mutate({ docId: doc.id, status: "rejected", adminNote: docReviewNote })}
+                                disabled={updateDocMutation.isPending}
+                                data-testid={`button-reject-doc-${doc.id}`}
+                              >
+                                <XCircle className="h-3 w-3" /> Reject
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {doc.reviewedAt && (
+                          <p className="text-[10px] text-gray-400">
+                            Reviewed {format(new Date(doc.reviewedAt), "MMM d, yyyy h:mm a")}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setVerifyDialog(null)} className="rounded-xl">
+              Close
+            </Button>
+            {verifyDialog && !verifyDialog.verified && (
+              <Button
+                onClick={() => {
+                  updateBizMutation.mutate({ id: verifyDialog.id, membershipTier: verifyDialog.membershipTier || "none", verified: true });
+                  setVerifyDialog(null);
+                }}
+                disabled={updateBizMutation.isPending}
+                className="bg-green-600 hover:bg-green-700 text-white rounded-xl gap-1"
+                data-testid="button-verify-from-review"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Approve & Verify Business
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
