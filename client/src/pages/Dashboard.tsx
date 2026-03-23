@@ -320,7 +320,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
   return (
     <div className="container py-8 space-y-6">
       <MembershipExpirationBanner />
-      {!hasBusiness ? (
+      {!hasBusiness && !user?.isAdmin ? (
         <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-[#d4a373]/30 rounded-2xl">
           <CardContent className="py-12 text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#0a4a82] to-[#0a4a82]/70 flex items-center justify-center mx-auto mb-6">
@@ -340,6 +340,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
             </Link>
           </CardContent>
         </Card>
+      ) : !hasBusiness && user?.isAdmin ? (
+        null
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
