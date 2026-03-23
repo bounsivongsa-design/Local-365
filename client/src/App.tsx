@@ -27,6 +27,7 @@ import HelpWanted from "@/pages/HelpWanted";
 import CreateBusiness from "@/pages/CreateBusiness";
 import NotFound from "@/pages/not-found";
 import { DevModePanel } from "@/components/DevModePanel";
+import { CookieConsent } from "@/components/CookieConsent";
 import backgroundImage from "@assets/image_1773172681995.png";
 
 function AppRouter() {
@@ -115,6 +116,7 @@ function App() {
         <LocationProvider>
           <Toaster />
           <AppRouter />
+          <CookieConsent />
           <DevModePanel />
         </LocationProvider>
       </TooltipProvider>
