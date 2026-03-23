@@ -34,7 +34,10 @@ import {
   MapPin,
   Mail,
   MousePointerClick,
+  MessageCircle,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow, format, subDays, eachDayOfInterval } from "date-fns";
 import type { Business } from "@shared/schema";
 
@@ -73,6 +76,46 @@ const EVENT_LABELS: Record<string, { label: string; icon: any; color: string }> 
   website_click: { label: "Website Clicks", icon: Globe, color: "#6366f1" },
   directions_click: { label: "Directions", icon: MapPin, color: "#ef4444" },
 };
+
+function QuotePreferenceToggle({ businessId, initialValue }: { businessId: number; initialValue: boolean }) {
+  const [enabled, setEnabled] = useState(initialValue);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (acceptsQuotes: boolean) => {
+      const res = await apiRequest("POST", `/api/businesses/${businessId}/quote-preference`, { acceptsQuotes });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/business"] });
+    },
+  });
+
+  return (
+    <div className="flex items-center justify-between h-12 px-3 rounded-xl border border-[#0a4a82]/15 bg-white">
+      <span className="flex items-center gap-2 text-[#1a1a2e] text-sm font-medium">
+        <MessageCircle className="h-4 w-4 text-[#0a4a82]" />
+        Accept Quote Requests
+      </span>
+      <Switch
+        checked={enabled}
+        onCheckedChange={(checked) => {
+          setEnabled(checked);
+          mutation.mutate(checked, {
+            onError: () => {
+              setEnabled(!checked);
+              toast({ title: "Error", description: "Failed to update preference.", variant: "destructive" });
+            },
+            onSuccess: () => {
+              toast({ title: checked ? "Quotes enabled" : "Quotes disabled", description: checked ? "You'll receive quote requests from customers." : "You won't receive new quote requests." });
+            },
+          });
+        }}
+        data-testid="switch-quote-preference"
+      />
+    </div>
+  );
+}
 
 function AnalyticsDashboard({ businessId }: { businessId: number }) {
   const { data: analytics, isLoading } = useQuery<AnalyticsData>({
@@ -347,6 +390,9 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                     <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
                   </Button>
                 </Link>
+                {tier && tier !== "none" && (
+                  <QuotePreferenceToggle businessId={business.id} initialValue={(business as any).acceptsQuotes !== false} />
+                )}
               </CardContent>
             </Card>
 

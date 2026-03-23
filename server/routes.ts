@@ -19,10 +19,12 @@ const openai = new OpenAI({
 });
 
 // Tier-Based Quote Access Timing (hours after request creation)
-const GOLD_ACCESS_WINDOW_HOURS = 48;    // Gold: 1st round, 0-48 hours exclusive
-const SILVER_ACCESS_START_HOURS = 48;   // Silver: 2nd round, starts at 48 hours
-const SILVER_ACCESS_END_HOURS = 72;     // Silver: 2nd round, ends at 72 hours
-const BRONZE_ACCESS_START_HOURS = 72;   // Bronze: 3rd round, starts at 72 hours
+const GOLD_ACCESS_WINDOW_HOURS = 24;    // Gold: 1st round, 0-24 hours exclusive
+const SILVER_ACCESS_START_HOURS = 24;   // Silver: 2nd round, starts at 24 hours
+const SILVER_ACCESS_END_HOURS = 48;     // Silver: 2nd round, ends at 48 hours
+const BRONZE_ACCESS_START_HOURS = 48;   // Bronze: 3rd round, starts at 48 hours
+const QUOTE_MAX_DAYS = 10;              // All quotes expire after 10 business days
+const WEEKEND_RESUME_HOUR = 7;          // Weekend quote timelines resume Mondays at 7am
 
 // Emergency categories have compressed windows
 const EMERGENCY_RESPONSE_HOURS = 2;
@@ -55,9 +57,43 @@ function doesTierHaveAccess(tier: string, createdAt: Date): boolean {
   switch (tier) {
     case "premium": return access.gold;
     case "standard": return access.silver;
-    case "basic": return false;
+    case "basic": return access.bronze;
     default: return false;
   }
+}
+
+// Helper: Calculate business hours elapsed (excludes weekends, resumes Monday 7am)
+function getBusinessHoursElapsed(createdAt: Date): number {
+  let hours = 0;
+  const now = new Date();
+  const current = new Date(createdAt);
+  while (current < now) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) {
+      const remaining = Math.min((now.getTime() - current.getTime()) / (1000 * 60 * 60), 1);
+      hours += remaining;
+      current.setTime(current.getTime() + 60 * 60 * 1000);
+    } else {
+      // Skip to Monday 7am
+      const daysUntilMonday = day === 6 ? 2 : 1;
+      current.setDate(current.getDate() + daysUntilMonday);
+      current.setHours(WEEKEND_RESUME_HOUR, 0, 0, 0);
+    }
+  }
+  return hours;
+}
+
+// Helper: Calculate quote expiration (10 business days from creation)
+function calculateQuoteExpiration(createdAt: Date): Date {
+  const expiry = new Date(createdAt);
+  let businessDays = 0;
+  while (businessDays < QUOTE_MAX_DAYS) {
+    expiry.setDate(expiry.getDate() + 1);
+    const day = expiry.getDay();
+    if (day !== 0 && day !== 6) businessDays++;
+  }
+  expiry.setHours(23, 59, 59, 999);
+  return expiry;
 }
 
 // Helper: Calculate priority expiry timestamp
@@ -94,7 +130,8 @@ async function assignPriorityToPremiumBusinesses(
           eq(businesses.membershipTier, "premium"),
           eq(businesses.membershipTier, "standard"),
           eq(businesses.membershipTier, "basic")
-        )
+        ),
+        sql`${businesses.acceptsQuotes} IS NOT FALSE`
       )
     )
     .orderBy(
@@ -721,6 +758,62 @@ export async function registerRoutes(
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to remove promo video" });
+    }
+  });
+
+  app.post("/api/businesses/:id/quote-preference", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+      const { acceptsQuotes } = req.body;
+
+      const business = await pgDb.select().from(businesses).where(eq(businesses.id, businessId));
+      if (!business.length) return res.status(404).json({ message: "Business not found" });
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user.length || (user[0].linkedBusinessId !== businessId && !user[0].isAdmin)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      await pgDb.update(businesses).set({ acceptsQuotes: !!acceptsQuotes }).where(eq(businesses.id, businessId));
+      res.json({ success: true, acceptsQuotes: !!acceptsQuotes });
+    } catch (error) {
+      console.error("Error updating quote preference:", error);
+      res.status(500).json({ message: "Failed to update quote preference" });
+    }
+  });
+
+  app.post("/api/quote-requests/:id/opt-out", isAuthenticated, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+
+      const request = await pgDb.select().from(quoteRequests).where(eq(quoteRequests.id, requestId));
+      if (!request.length) return res.status(404).json({ message: "Quote request not found" });
+      if (request[0].userId !== userId) return res.status(403).json({ message: "Not authorized" });
+
+      await pgDb.update(quoteRequests).set({ customerOptedOut: true, status: "cancelled" }).where(eq(quoteRequests.id, requestId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error opting out of quote request:", error);
+      res.status(500).json({ message: "Failed to opt out of quote request" });
+    }
+  });
+
+  app.post("/api/quotes/:id/withdraw", isAuthenticated, async (req, res) => {
+    try {
+      const quoteId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+
+      const quote = await pgDb.select().from(quotes).where(eq(quotes.id, quoteId));
+      if (!quote.length) return res.status(404).json({ message: "Quote not found" });
+      if (quote[0].userId !== userId) return res.status(403).json({ message: "Not authorized" });
+
+      await pgDb.update(quotes).set({ businessOptedOut: true, status: "withdrawn" }).where(eq(quotes.id, quoteId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error withdrawing quote:", error);
+      res.status(500).json({ message: "Failed to withdraw quote" });
     }
   });
 
@@ -1394,7 +1487,8 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
         customerPhone: phone || null,
         customerEmail: email || user[0]?.email || null,
         priorityRound: 1,
-        priorityExpiresAt
+        priorityExpiresAt,
+        expiresAt: calculateQuoteExpiration(new Date()),
       }).returning();
       
       // Assign priority to top premium businesses
@@ -1414,10 +1508,23 @@ Keep responses helpful, warm, and concise. Use a casual, friendly tone. When rec
   app.get("/api/quotes/requests/:requestId/quotes", isAuthenticated, async (req, res) => {
     try {
       const requestId = Number(req.params.requestId);
+      const userId = (req as any).user?.id;
+
+      const request = await pgDb.select().from(quoteRequests).where(eq(quoteRequests.id, requestId)).limit(1);
+      if (!request.length) return res.status(404).json({ message: "Request not found" });
+
+      const userRecord = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      const isRequestOwner = request[0].userId === userId;
+      const isAdmin = userRecord[0]?.isAdmin;
+      const isBusiness = userRecord[0]?.accountType === "business";
+
+      if (!isRequestOwner && !isAdmin && !isBusiness) {
+        return res.status(403).json({ message: "Not authorized to view quotes" });
+      }
       
       const requestQuotes = await pgDb.select().from(quotes)
-        .where(eq(quotes.requestId, requestId))
-        .orderBy(quotes.amount); // Order by price (lowest first for bidding war)
+        .where(and(eq(quotes.requestId, requestId), eq(quotes.businessOptedOut, false)))
+        .orderBy(quotes.amount);
       
       // Enrich with business info
       const enrichedQuotes = await Promise.all(requestQuotes.map(async (quote) => {

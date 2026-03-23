@@ -46,6 +46,7 @@ import {
   FileText,
   User,
   Loader2,
+  X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -141,6 +142,38 @@ export default function QuoteRequests() {
   });
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
+
+  const cancelRequestMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/quote-requests/${requestId}/opt-out`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/quote-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes/requests"] });
+      toast({ title: "Request cancelled", description: "Your quote request has been cancelled." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to cancel request.", variant: "destructive" });
+    },
+  });
+
+  const withdrawQuoteMutation = useMutation({
+    mutationFn: async (quoteId: number) => {
+      const res = await apiRequest("POST", `/api/quotes/${quoteId}/withdraw`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes/requests"] });
+      if (expandedProject) {
+        queryClient.invalidateQueries({ queryKey: ["/api/quotes/requests", expandedProject, "quotes"] });
+      }
+      toast({ title: "Quote withdrawn", description: "Your quote has been withdrawn." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to withdraw quote.", variant: "destructive" });
+    },
+  });
 
   const isCustomer = !user || user.accountType === "customer";
   const isBusiness = user?.accountType === "business";
@@ -319,9 +352,10 @@ export default function QuoteRequests() {
                         How it works
                       </h4>
                       <ul className="text-sm text-muted-foreground space-y-1 text-left">
-                        <li>Gold members see your request first (0-48 hrs)</li>
-                        <li>Silver members join at 48-72 hrs</li>
-                        <li>Bronze members cannot submit quotes</li>
+                        <li>Gold members see your request first (0-24 hrs)</li>
+                        <li>Silver members join at 24-48 hrs</li>
+                        <li>Bronze members join after 48 hrs</li>
+                        <li>All quotes expire after 10 business days</li>
                       </ul>
                     </div>
                     <Button onClick={() => {
@@ -522,11 +556,24 @@ export default function QuoteRequests() {
                             <h4 className="font-medium text-sm line-clamp-1">{req.title}</h4>
                             {getStatusBadge(req.status || "open")}
                           </div>
-                          <p className="text-xs text-muted-foreground">{req.category}</p>
+                          <p className="text-xs text-slate-500">{req.category}</p>
                           {req.createdAt && (
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-xs text-slate-500 mt-1">
                               {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
                             </p>
+                          )}
+                          {req.status === "open" && !(req as any).customerOptedOut && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 p-0 px-2"
+                              onClick={() => cancelRequestMutation.mutate(req.id)}
+                              disabled={cancelRequestMutation.isPending}
+                              data-testid={`button-cancel-request-${req.id}`}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancel Request
+                            </Button>
                           )}
                         </div>
                       ))}
@@ -545,22 +592,22 @@ export default function QuoteRequests() {
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
                       <div>
-                        <p className="font-medium">Gold Members (0-48 hrs)</p>
-                        <p className="text-muted-foreground text-xs">Top-tier businesses see your request first</p>
+                        <p className="font-medium">Gold Members (0-24 hrs)</p>
+                        <p className="text-slate-500 text-xs">Top-tier businesses see your request first</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
                       <div>
-                        <p className="font-medium">Silver Members (48-72 hrs)</p>
-                        <p className="text-muted-foreground text-xs">More businesses compete for your project</p>
+                        <p className="font-medium">Silver Members (24-48 hrs)</p>
+                        <p className="text-slate-500 text-xs">More businesses compete for your project</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-amber-700 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
                       <div>
-                        <p className="font-medium">Bronze Members</p>
-                        <p className="text-muted-foreground text-xs">Quote access not included — upgrade to Silver or Gold</p>
+                        <p className="font-medium">Bronze Members (48+ hrs)</p>
+                        <p className="text-slate-500 text-xs">Join the bidding after Gold and Silver members</p>
                       </div>
                     </div>
                   </div>
@@ -869,12 +916,28 @@ export default function QuoteRequests() {
                                           </div>
                                         )}
                                         <div className="flex gap-2 mt-3">
-                                          <Button size="sm" className="bg-[#0a4a82]">
-                                            Accept Quote
-                                          </Button>
-                                          <Button size="sm" variant="outline">
-                                            Message
-                                          </Button>
+                                          {isCustomer ? (
+                                            <>
+                                              <Button size="sm" className="bg-[#0a4a82]" data-testid={`button-accept-quote-${quote.id}`}>
+                                                Accept Quote
+                                              </Button>
+                                              <Button size="sm" variant="outline" data-testid={`button-message-quote-${quote.id}`}>
+                                                Message
+                                              </Button>
+                                            </>
+                                          ) : quote.userId === user?.id && quote.status !== "withdrawn" ? (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                              onClick={() => withdrawQuoteMutation.mutate(quote.id)}
+                                              disabled={withdrawQuoteMutation.isPending}
+                                              data-testid={`button-withdraw-quote-${quote.id}`}
+                                            >
+                                              <X className="h-3 w-3 mr-1" />
+                                              Withdraw Quote
+                                            </Button>
+                                          ) : null}
                                         </div>
                                       </div>
                                     </div>

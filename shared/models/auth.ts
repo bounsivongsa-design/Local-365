@@ -102,6 +102,7 @@ export const quoteRequests = pgTable("quote_requests", {
   customerEmail: text("customer_email"), // Contact info for premium vendors
   priorityRound: integer("priority_round").default(1), // Current priority round (1 = first 5 premium, 2 = next 5, etc.)
   priorityExpiresAt: timestamp("priority_expires_at"), // When current priority round expires
+  customerOptedOut: boolean("customer_opted_out").default(false), // Customer cancelled/opted out of this request
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
 });
@@ -145,6 +146,7 @@ export const quotes = pgTable("quotes", {
   status: varchar("status").default("pending"), // pending, accepted, rejected, withdrawn
   responseTimeMinutes: integer("response_time_minutes"), // How long it took to respond from assignment
   wasPriorityResponse: boolean("was_priority_response").default(false), // True if responded during priority window
+  businessOptedOut: boolean("business_opted_out").default(false), // Business withdrew/opted out of this quote
   createdAt: timestamp("created_at").defaultNow(),
 });
 
