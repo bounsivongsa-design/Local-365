@@ -359,6 +359,9 @@ export default function BusinessDetails() {
                 </Link>
               ) : null}
             </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed" data-testid="text-review-guidelines">
+              Reviews should be respectful, honest, and based on a real experience. A receipt or proof of purchase is required. Personal attacks or unverified claims may be removed.
+            </p>
 
             {business.reviews?.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-[#0a4a82]/15 shadow-sm">
@@ -592,7 +595,12 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
         <DialogHeader>
           <DialogTitle>Review {businessName}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 rounded-xl px-4 py-3 mt-2">
+          <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            <span className="font-semibold">Community Guidelines:</span> Please be respectful and constructive. Share your honest experience with specific details — what went well or what could be improved. Personal attacks, vague complaints without proof, or inflammatory language will be removed. Reviews should help our community, not harm it.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-2">
             <Label>Rating</Label>
             <div className="flex gap-2">
@@ -612,7 +620,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
           <div className="space-y-2">
             <Label>Your Experience</Label>
             <Textarea 
-              placeholder="Tell us what you loved..." 
+              placeholder="Describe your experience — what went well, what could be improved, and any details that would help others..." 
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               required

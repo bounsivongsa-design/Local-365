@@ -224,7 +224,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I leave a review?",
-        answer: "Visit a business's listing page in the directory and scroll to the reviews section. You'll need to be signed in with a customer account to leave a review. Be honest and constructive — reviews help other community members make informed decisions and help businesses improve.",
+        answer: "Visit a business's listing page in the directory and scroll to the reviews section. You'll need to be signed in with a customer account and upload a receipt or proof of purchase to leave a review.\n\nWe ask that all reviews be respectful and constructive. Focus on your specific experience — what went well, what could be improved, and what others should know. Vague complaints or personal attacks without details are not helpful and may be removed.\n\nReviews are not a place for back-and-forth arguments. If you have a dispute with a business, please reach out to them directly or contact us at support@locallist365.com. Our goal is to keep the review space honest, fair, and useful for the entire Moyock community.",
       },
       {
         question: "How do I report a problem?",
