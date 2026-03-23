@@ -100,7 +100,7 @@ export function Navigation() {
                     Dashboard
                   </DropdownMenuItem>
                 </Link>
-                <Link to="/quotes">
+                <Link to="/dashboard">
                   <DropdownMenuItem className="cursor-pointer rounded-lg" data-testid="menu-messages">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Messages

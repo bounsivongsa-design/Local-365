@@ -173,3 +173,27 @@ export const quoteMessages = pgTable("quote_messages", {
 
 export type QuoteMessage = typeof quoteMessages.$inferSelect;
 export type InsertQuoteMessage = typeof quoteMessages.$inferInsert;
+
+export const directConversations = pgTable("direct_conversations", {
+  id: serial("id").primaryKey(),
+  participant1Id: varchar("participant1_id").notNull().references(() => users.id),
+  participant2Id: varchar("participant2_id").notNull().references(() => users.id),
+  subject: text("subject"),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type DirectConversation = typeof directConversations.$inferSelect;
+export type InsertDirectConversation = typeof directConversations.$inferInsert;
+
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => directConversations.id),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type InsertDirectMessage = typeof directMessages.$inferInsert;

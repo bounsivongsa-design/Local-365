@@ -8,7 +8,7 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { registerStripeRoutes } from "./stripe";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
-import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
+import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, directConversations, directMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
 import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics } from "@shared/schema";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
@@ -924,10 +924,297 @@ export async function registerRoutes(
           ));
       }
 
-      res.json({ count: Number(result[0]?.count || 0) });
+      const dmResult = await pgDb
+        .select({ count: sql<number>`count(*)` })
+        .from(directMessages)
+        .innerJoin(directConversations, eq(directMessages.conversationId, directConversations.id))
+        .where(and(
+          or(
+            eq(directConversations.participant1Id, userId),
+            eq(directConversations.participant2Id, userId)
+          ),
+          sql`${directMessages.senderId} != ${userId}`,
+          sql`${directMessages.readAt} IS NULL`
+        ));
+
+      const quoteCount = Number(result[0]?.count || 0);
+      const dmCount = Number(dmResult[0]?.count || 0);
+      res.json({ count: quoteCount + dmCount, quoteCount, dmCount });
     } catch (error) {
       console.error("Error fetching message count:", error);
-      res.json({ count: 0 });
+      res.json({ count: 0, quoteCount: 0, dmCount: 0 });
+    }
+  });
+
+  // ============ DIRECT MESSAGING ROUTES ============
+
+  app.get("/api/messages/inbox", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+
+      const quoteThreads = await pgDb.execute(sql`
+        SELECT 
+          'quote' as type,
+          qm."quote_id" as "threadId",
+          qr.title as subject,
+          qm.message as "lastMessage",
+          qm."created_at" as "lastMessageAt",
+          qm."sender_id" as "lastSenderId",
+          CASE 
+            WHEN q."user_id" = ${userId} THEN qr."user_id"
+            ELSE q."user_id"
+          END as "otherUserId",
+          (SELECT COUNT(*) FROM quote_messages sub 
+           WHERE sub."quote_id" = qm."quote_id" 
+           AND sub."sender_id" != ${userId} 
+           AND sub."read_at" IS NULL) as "unreadCount"
+        FROM quote_messages qm
+        INNER JOIN quotes q ON qm."quote_id" = q.id
+        INNER JOIN quote_requests qr ON q."request_id" = qr.id
+        WHERE (q."user_id" = ${userId} OR qr."user_id" = ${userId})
+        AND qm.id = (
+          SELECT id FROM quote_messages sub2 
+          WHERE sub2."quote_id" = qm."quote_id" 
+          ORDER BY sub2."created_at" DESC LIMIT 1
+        )
+        ORDER BY qm."created_at" DESC
+      `);
+
+      const dmThreads = await pgDb.execute(sql`
+        SELECT 
+          'direct' as type,
+          dc.id as "threadId",
+          dc.subject,
+          dm.message as "lastMessage",
+          dm."created_at" as "lastMessageAt",
+          dm."sender_id" as "lastSenderId",
+          CASE 
+            WHEN dc."participant1_id" = ${userId} THEN dc."participant2_id"
+            ELSE dc."participant1_id"
+          END as "otherUserId",
+          (SELECT COUNT(*) FROM direct_messages sub 
+           WHERE sub."conversation_id" = dc.id 
+           AND sub."sender_id" != ${userId} 
+           AND sub."read_at" IS NULL) as "unreadCount"
+        FROM direct_conversations dc
+        INNER JOIN direct_messages dm ON dm."conversation_id" = dc.id
+        WHERE (dc."participant1_id" = ${userId} OR dc."participant2_id" = ${userId})
+        AND dm.id = (
+          SELECT id FROM direct_messages sub2 
+          WHERE sub2."conversation_id" = dc.id 
+          ORDER BY sub2."created_at" DESC LIMIT 1
+        )
+        ORDER BY dm."created_at" DESC
+      `);
+
+      const allThreads = [...(quoteThreads.rows || []), ...(dmThreads.rows || [])];
+      allThreads.sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+
+      const otherUserIds = [...new Set(allThreads.map((t: any) => t.otherUserId))].filter(Boolean);
+      let userMap: Record<string, any> = {};
+      if (otherUserIds.length > 0) {
+        const otherUsers = await pgDb
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileImageUrl: users.profileImageUrl,
+            accountType: users.accountType,
+            linkedBusinessId: users.linkedBusinessId,
+          })
+          .from(users)
+          .where(inArray(users.id, otherUserIds as string[]));
+        
+        for (const u of otherUsers) {
+          let businessName = null;
+          if (u.linkedBusinessId) {
+            const biz = await pgDb.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, u.linkedBusinessId)).limit(1);
+            if (biz.length) businessName = biz[0].name;
+          }
+          userMap[u.id] = { ...u, businessName };
+        }
+      }
+
+      const enriched = allThreads.map((t: any) => ({
+        ...t,
+        otherUser: userMap[t.otherUserId] || null,
+        unreadCount: Number(t.unreadCount || 0),
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching inbox:", error);
+      res.status(500).json({ message: "Failed to fetch inbox" });
+    }
+  });
+
+  app.get("/api/messages/direct/:conversationId", isAuthenticated, async (req, res) => {
+    try {
+      const conversationId = parseInt(req.params.conversationId);
+      const userId = (req as any).user?.id;
+
+      const conv = await pgDb.select().from(directConversations).where(eq(directConversations.id, conversationId));
+      if (!conv.length) return res.status(404).json({ message: "Conversation not found" });
+      if (conv[0].participant1Id !== userId && conv[0].participant2Id !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const msgs = await pgDb
+        .select({
+          id: directMessages.id,
+          conversationId: directMessages.conversationId,
+          senderId: directMessages.senderId,
+          message: directMessages.message,
+          readAt: directMessages.readAt,
+          createdAt: directMessages.createdAt,
+          senderFirstName: users.firstName,
+          senderLastName: users.lastName,
+          senderAccountType: users.accountType,
+        })
+        .from(directMessages)
+        .leftJoin(users, eq(directMessages.senderId, users.id))
+        .where(eq(directMessages.conversationId, conversationId))
+        .orderBy(asc(directMessages.createdAt));
+
+      await pgDb
+        .update(directMessages)
+        .set({ readAt: new Date() })
+        .where(and(
+          eq(directMessages.conversationId, conversationId),
+          sql`${directMessages.senderId} != ${userId}`,
+          sql`${directMessages.readAt} IS NULL`
+        ));
+
+      res.json(msgs);
+    } catch (error) {
+      console.error("Error fetching direct messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/messages/direct/:conversationId", isAuthenticated, async (req, res) => {
+    try {
+      const conversationId = parseInt(req.params.conversationId);
+      const userId = (req as any).user?.id;
+      const { message } = req.body;
+
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+      if (message.length > 5000) {
+        return res.status(400).json({ message: "Message too long (max 5000 characters)" });
+      }
+
+      const conv = await pgDb.select().from(directConversations).where(eq(directConversations.id, conversationId));
+      if (!conv.length) return res.status(404).json({ message: "Conversation not found" });
+      if (conv[0].participant1Id !== userId && conv[0].participant2Id !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [newMsg] = await pgDb.insert(directMessages).values({
+        conversationId,
+        senderId: userId,
+        message: message.trim(),
+      }).returning();
+
+      await pgDb.update(directConversations)
+        .set({ lastMessageAt: new Date() })
+        .where(eq(directConversations.id, conversationId));
+
+      res.json(newMsg);
+    } catch (error) {
+      console.error("Error sending direct message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.post("/api/messages/new", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const { recipientId, subject, message } = req.body;
+
+      if (!recipientId || !message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ message: "Recipient and message are required" });
+      }
+      if (message.length > 5000) {
+        return res.status(400).json({ message: "Message too long (max 5000 characters)" });
+      }
+      if (recipientId === userId) {
+        return res.status(400).json({ message: "Cannot message yourself" });
+      }
+
+      const recipient = await pgDb.select().from(users).where(eq(users.id, recipientId)).limit(1);
+      if (!recipient.length) return res.status(404).json({ message: "Recipient not found" });
+
+      const existing = await pgDb.select().from(directConversations).where(
+        or(
+          and(eq(directConversations.participant1Id, userId), eq(directConversations.participant2Id, recipientId)),
+          and(eq(directConversations.participant1Id, recipientId), eq(directConversations.participant2Id, userId))
+        )
+      );
+
+      let conversationId: number;
+      if (existing.length) {
+        conversationId = existing[0].id;
+        await pgDb.update(directConversations)
+          .set({ lastMessageAt: new Date() })
+          .where(eq(directConversations.id, conversationId));
+      } else {
+        const [conv] = await pgDb.insert(directConversations).values({
+          participant1Id: userId,
+          participant2Id: recipientId,
+          subject: subject?.trim() || null,
+        }).returning();
+        conversationId = conv.id;
+      }
+
+      const [newMsg] = await pgDb.insert(directMessages).values({
+        conversationId,
+        senderId: userId,
+        message: message.trim(),
+      }).returning();
+
+      res.json({ conversationId, message: newMsg });
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.get("/api/messages/users/search", isAuthenticated, async (req, res) => {
+    try {
+      const q = req.query.q as string;
+      if (!q || q.length < 2) return res.json([]);
+
+      const results = await pgDb
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          accountType: users.accountType,
+          linkedBusinessId: users.linkedBusinessId,
+        })
+        .from(users)
+        .where(or(
+          ilike(users.firstName, `%${q}%`),
+          ilike(users.lastName, `%${q}%`),
+          ilike(users.email, `%${q}%`)
+        ))
+        .limit(10);
+
+      const enriched = await Promise.all(results.map(async (u) => {
+        let businessName = null;
+        if (u.linkedBusinessId) {
+          const biz = await pgDb.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, u.linkedBusinessId)).limit(1);
+          if (biz.length) businessName = biz[0].name;
+        }
+        return { ...u, businessName };
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ message: "Failed to search users" });
     }
   });
 

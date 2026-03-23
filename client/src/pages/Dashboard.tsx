@@ -44,6 +44,7 @@ import {
   Bell,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { DashboardInbox } from "@/components/DashboardInbox";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow, format, subDays, eachDayOfInterval } from "date-fns";
 import type { Business } from "@shared/schema";
@@ -519,6 +520,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
               </CardContent>
             </Card>
           </div>
+
+          <DashboardInbox />
 
           <DashboardMediaManagement business={business} />
 
@@ -1229,6 +1232,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
           )}
+
+          <div className="lg:col-span-3">
+            <DashboardInbox />
+          </div>
         </div>
       )}
     </div>
