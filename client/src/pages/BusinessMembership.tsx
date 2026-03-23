@@ -73,8 +73,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Customer reviews enabled",
       "Up to 4 categories",
       "Quote access: 3rd round (48+ hrs)",
-      "10% off advertising",
-      "Email support"
+      "10% off advertising"
     ],
     icon: Medal,
     gradient: "from-amber-700 to-amber-900",
@@ -94,8 +93,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Quote access: 2nd round (24–48 hrs)",
       "Verified business badge",
       "Social media links",
-      "25% off advertising",
-      "Priority support"
+      "25% off advertising"
     ],
     icon: Star,
     gradient: "from-slate-400 to-slate-600",
@@ -116,7 +114,6 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Quote access: 1st round (0–24 hrs exclusive)",
       "30-sec promo video upload",
       "Advanced analytics dashboard",
-      "Dedicated account manager",
       "50% off all advertising"
     ],
     icon: Crown,
