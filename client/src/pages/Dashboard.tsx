@@ -35,6 +35,12 @@ import {
   Mail,
   MousePointerClick,
   MessageCircle,
+  Shield,
+  Megaphone,
+  Tag,
+  Users,
+  Calendar,
+  LayoutDashboard,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
@@ -937,11 +943,78 @@ export default function Dashboard() {
                 <Badge className={isBusinessAccount ? "bg-[#d4a373] text-white border-0" : "bg-[#8a9a5b] text-white border-0"} data-testid="badge-account-type">
                   {isBusinessAccount ? "Business Account" : "Customer Account"}
                 </Badge>
+                {user?.isAdmin && (
+                  <Badge className="bg-red-500/90 text-white border-0" data-testid="badge-admin">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Admin
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {user?.isAdmin && (
+        <div className="container py-6">
+          <Card className="bg-gradient-to-br from-[#1a1a2e] to-[#0a0a1a] border-0 shadow-[0_8px_30px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#d4a373]/20 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-[#d4a373]" />
+                </div>
+                <div>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    Admin Dashboard
+                    <Badge className="bg-[#d4a373] text-white border-0 text-xs">Admin</Badge>
+                  </CardTitle>
+                  <CardDescription className="text-white/50">Manage your platform</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Link to="/admin/ads" data-testid="link-admin-ads">
+                  <div className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 text-center transition-all cursor-pointer group">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <Megaphone className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <p className="text-white font-medium text-sm">Manage Ads</p>
+                    <p className="text-white/40 text-xs mt-1">Ad placements & pricing</p>
+                  </div>
+                </Link>
+                <Link to="/admin/promo-codes" data-testid="link-admin-promos">
+                  <div className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 text-center transition-all cursor-pointer group">
+                    <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <Tag className="h-6 w-6 text-green-400" />
+                    </div>
+                    <p className="text-white font-medium text-sm">Promo Codes</p>
+                    <p className="text-white/40 text-xs mt-1">Discounts & campaigns</p>
+                  </div>
+                </Link>
+                <Link to="/directory" data-testid="link-admin-businesses">
+                  <div className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 text-center transition-all cursor-pointer group">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <Building2 className="h-6 w-6 text-purple-400" />
+                    </div>
+                    <p className="text-white font-medium text-sm">Businesses</p>
+                    <p className="text-white/40 text-xs mt-1">View all listings</p>
+                  </div>
+                </Link>
+                <Link to="/events" data-testid="link-admin-events">
+                  <div className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 text-center transition-all cursor-pointer group">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <Calendar className="h-6 w-6 text-amber-400" />
+                    </div>
+                    <p className="text-white font-medium text-sm">Events</p>
+                    <p className="text-white/40 text-xs mt-1">Community calendar</p>
+                  </div>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {isBusinessAccount ? (
         <BusinessDashboard user={user} business={business || null} />
