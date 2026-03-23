@@ -145,7 +145,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "Is there a free trial?",
-        answer: "Yes! New businesses get their first month free when choosing monthly billing. You won't be charged until your second month. Additionally, all new Bronze and Silver members automatically receive 30 days of Gold-tier features so you can experience the full platform before your regular tier kicks in.",
+        answer: "Yes! Every new business gets 30 days of Gold-tier access completely free — no matter which tier you choose. Even if you purchase Bronze or Silver, you'll enjoy top search placement, featured badge, promo video upload, advanced analytics, and first-round quote access for a full month. After 30 days, your listing automatically transitions to the tier you purchased. No extra charges, no action needed.",
       },
       {
         question: "How do I cancel my membership?",

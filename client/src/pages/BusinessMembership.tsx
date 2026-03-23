@@ -166,6 +166,8 @@ export default function BusinessMembership() {
   const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number } | null>(null);
   const [validatingPromo, setValidatingPromo] = useState(false);
   const [checkoutTier, setCheckoutTier] = useState<MembershipTier | null>(null);
+  const [showGoldTrialDialog, setShowGoldTrialDialog] = useState(false);
+  const [goldTrialPurchasedTier, setGoldTrialPurchasedTier] = useState<string>("");
 
   const { data: business } = useQuery<{ id: number; membershipTier: string; membershipTrialUsed: boolean }>({
     queryKey: ["/api/my-business"],
@@ -195,12 +197,20 @@ export default function BusinessMembership() {
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
-      toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+      const currentTier = business?.membershipTier;
+      const displayTier = currentTier ? DB_TO_DISPLAY[currentTier] : null;
+      if (displayTier === "gold" && business?.membershipTrialUsed) {
+        const originalPurchased = currentTier === "premium" ? "" : (displayTier || "");
+        setGoldTrialPurchasedTier(originalPurchased);
+        setShowGoldTrialDialog(true);
+      } else {
+        toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+      }
     }
     if (searchParams.get("canceled") === "true") {
       toast({ title: "Checkout canceled", description: "No worries — you can subscribe anytime.", variant: "destructive" });
     }
-  }, []);
+  }, [business]);
 
   const currentTierDb = business?.membershipTier || "none";
   const currentTierDisplay = DB_TO_DISPLAY[currentTierDb] || currentTierDb;
@@ -455,7 +465,13 @@ export default function BusinessMembership() {
                     </div>
                     
                     <div className="space-y-1">
-                      {pricing.freeMonths > 0 && (
+                      {isNewMember && tier.id !== "gold" && (
+                        <div className="inline-flex items-center gap-1.5 bg-amber-400/30 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold border border-amber-300/40">
+                          <Crown className="h-4 w-4 text-amber-200" />
+                          Gold access FREE for 30 days!
+                        </div>
+                      )}
+                      {pricing.freeMonths > 0 && tier.id === "gold" && (
                         <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium">
                           <Gift className="h-4 w-4" />
                           First month FREE!
@@ -644,6 +660,24 @@ export default function BusinessMembership() {
                 </div>
 
                 <div className="p-6 space-y-6">
+                  {isNewMember && checkoutTier.id !== "gold" && (
+                    <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4" data-testid="checkout-gold-trial-banner">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/25">
+                          <Crown className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                            Enjoy Gold access FREE for 30 days!
+                          </p>
+                          <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5 leading-relaxed">
+                            Get top search placement, featured badge, promo video, advanced analytics, and first-round quote access. After 30 days, you'll automatically move to your {checkoutTier.name} plan.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-sm" data-testid="checkout-subtotal">
                       <span className="text-slate-600 dark:text-slate-400">
@@ -770,6 +804,61 @@ export default function BusinessMembership() {
               </>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showGoldTrialDialog} onOpenChange={setShowGoldTrialDialog}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+          <div className="bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 p-8 text-white text-center">
+            <DialogHeader>
+              <DialogTitle className="sr-only">Gold Trial Activated</DialogTitle>
+              <DialogDescription className="sr-only">Your Gold membership trial is now active for 30 days.</DialogDescription>
+            </DialogHeader>
+            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-5 shadow-lg">
+              <Crown className="h-10 w-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              Welcome to Gold!
+            </h2>
+            <p className="text-white/90 text-lg">
+              Enjoy <span className="font-bold">30 days of Gold access</span> — completely free.
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            <p className="text-slate-600 dark:text-slate-400 text-sm text-center leading-relaxed">
+              For the next 30 days, your listing gets all Gold-tier benefits:
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: TrendingUp, text: "Top of search results" },
+                { icon: Award, text: "Featured badge" },
+                { icon: Image, text: "Promo video upload" },
+                { icon: Clock, text: "1st-round quote access" },
+                { icon: Star, text: "Up to 10 photos" },
+                { icon: Sparkles, text: "Advanced analytics" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                    <item.icon className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  <span className="text-slate-700 dark:text-slate-300">{item.text}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                After 30 days, you'll automatically transition to your purchased plan at no extra cost.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowGoldTrialDialog(false)}
+              className="w-full h-12 rounded-xl font-semibold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/25"
+              data-testid="button-gold-trial-dismiss"
+            >
+              <Crown className="mr-2 h-5 w-5" />
+              Let's Go!
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
