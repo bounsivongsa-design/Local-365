@@ -2455,6 +2455,59 @@ export async function registerRoutes(
 
   // ============ ADMIN DASHBOARD ROUTES ============
 
+  app.get("/api/admin/users/:userId/details", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const targetId = req.params.userId;
+      const [user] = await pgDb.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        accountType: users.accountType,
+        isValidated: users.isValidated,
+        isAdmin: users.isAdmin,
+        linkedBusinessId: users.linkedBusinessId,
+        googleId: users.googleId,
+        loyaltyTier: users.loyaltyTier,
+        loyaltyPoints: users.loyaltyPoints,
+        customerRating: users.customerRating,
+        projectsCompleted: users.projectsCompleted,
+        totalSpent: users.totalSpent,
+        engagementBadge: users.engagementBadge,
+        postCount: users.postCount,
+        commentCount: users.commentCount,
+        likesReceived: users.likesReceived,
+        memberSince: users.memberSince,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      }).from(users).where(eq(users.id, targetId));
+
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      let linkedBusiness = null;
+      if (user.linkedBusinessId) {
+        const [biz] = await pgDb.select({
+          id: businesses.id,
+          name: businesses.name,
+          membershipTier: businesses.membershipTier,
+          verified: businesses.verified,
+          category: businesses.category,
+        }).from(businesses).where(eq(businesses.id, user.linkedBusinessId));
+        linkedBusiness = biz || null;
+      }
+
+      res.json({ user, linkedBusiness });
+    } catch (err) {
+      console.error("Admin get user details error:", err);
+      res.status(500).json({ message: "Failed to get user details" });
+    }
+  });
+
   app.get("/api/admin/users", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;

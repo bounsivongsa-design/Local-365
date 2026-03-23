@@ -410,6 +410,7 @@ function UsersTab() {
   const [resetDialog, setResetDialog] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<AdminUser | null>(null);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<{ users: AdminUser[]; total: number; page: number; pages: number }>({
     queryKey: ["/api/admin/users", search, page],
@@ -575,6 +576,16 @@ function UsersTab() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-8 w-8 p-0 text-[#0a4a82] hover:text-[#083a6a] hover:bg-blue-50"
+                          title="View Details"
+                          onClick={() => setDetailUserId(u.id)}
+                          data-testid={`button-view-user-${u.id}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                           title="Reset Password"
                           onClick={() => { setResetDialog(u); setNewPassword(""); }}
@@ -706,6 +717,130 @@ function UsersTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UserDetailsDialog userId={detailUserId} onClose={() => setDetailUserId(null)} />
+    </div>
+  );
+}
+
+function UserDetailsDialog({ userId, onClose }: { userId: string | null; onClose: () => void }) {
+  const { data, isLoading } = useQuery<{ user: any; linkedBusiness: any }>({
+    queryKey: ["/api/admin/users", userId, "details"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${userId}/details`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load details");
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const u = data?.user;
+  const biz = data?.linkedBusiness;
+
+  return (
+    <Dialog open={!!userId} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCog className="h-5 w-5 text-[#0a4a82]" />
+            User Details
+          </DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="space-y-3 py-4">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+        ) : u ? (
+          <div className="space-y-5">
+            <div className="flex items-center gap-4">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold text-white ${u.accountType === "business" ? "bg-purple-500" : "bg-[#0a4a82]"}`}>
+                {u.firstName?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase() || "?"}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#1a1a2e]">
+                  {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.email || "Unknown"}
+                </h3>
+                <p className="text-sm text-slate-400">{u.email}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Badge className={`text-xs ${u.accountType === "business" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
+                    {u.accountType || "customer"}
+                  </Badge>
+                  {u.isAdmin && <Badge className="bg-red-100 text-red-800 text-xs">Admin</Badge>}
+                  {u.isValidated ? (
+                    <Badge className="bg-green-100 text-green-800 text-xs">Verified</Badge>
+                  ) : (
+                    <Badge className="bg-gray-100 text-gray-500 text-xs">Unverified</Badge>
+                  )}
+                  <Badge className={`text-xs ${u.googleId ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}`}>
+                    {u.googleId ? "Google Auth" : "Email Auth"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <DetailField label="User ID" value={u.id} mono />
+              <DetailField label="Account Type" value={u.accountType || "customer"} />
+              <DetailField label="Joined" value={u.createdAt ? format(new Date(u.createdAt), "MMM d, yyyy h:mm a") : "—"} />
+              <DetailField label="Last Updated" value={u.updatedAt ? format(new Date(u.updatedAt), "MMM d, yyyy h:mm a") : "—"} />
+              <DetailField label="Member Since" value={u.memberSince ? format(new Date(u.memberSince), "MMM d, yyyy") : "—"} />
+              <DetailField label="Loyalty Tier" value={u.loyaltyTier || "member"} />
+              <DetailField label="Loyalty Points" value={u.loyaltyPoints?.toLocaleString() || "0"} />
+              <DetailField label="Customer Rating" value={u.customerRating ? `${u.customerRating}/5.0` : "5.0/5.0"} />
+              <DetailField label="Projects Completed" value={u.projectsCompleted?.toString() || "0"} />
+              <DetailField label="Total Spent" value={`$${parseFloat(u.totalSpent || "0").toFixed(2)}`} />
+            </div>
+
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Community Engagement</p>
+              <div className="grid grid-cols-2 gap-3">
+                <DetailField label="Posts" value={u.postCount?.toString() || "0"} />
+                <DetailField label="Comments" value={u.commentCount?.toString() || "0"} />
+                <DetailField label="Likes Received" value={u.likesReceived?.toString() || "0"} />
+                <DetailField label="Badge" value={u.engagementBadge?.replace(/_/g, " ") || "None"} />
+              </div>
+            </div>
+
+            {biz && (
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Linked Business</p>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Link to={`/directory/${biz.id}`} className="font-medium text-[#0a4a82] hover:underline">
+                        {biz.name}
+                      </Link>
+                      <p className="text-xs text-slate-400 mt-0.5">{biz.category}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${tierColor(biz.membershipTier)}`}>{tierLabel(biz.membershipTier)}</Badge>
+                      {biz.verified ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-gray-300" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400 py-4">User not found.</p>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className={`text-sm text-[#1a1a2e] mt-0.5 ${mono ? "font-mono text-xs break-all" : ""}`}>{value}</p>
     </div>
   );
 }
