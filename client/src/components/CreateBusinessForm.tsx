@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertBusinessSchema } from "@shared/schema";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { useCreateBusiness } from "@/hooks/use-businesses";
+import { useUpload } from "@/hooks/use-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +44,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Upload,
+  ImageIcon,
 } from "lucide-react";
 
 interface Props {
@@ -108,6 +111,10 @@ const formSchema = insertBusinessSchema.extend({
   email: z.string().email("Valid email address is required"),
   phone: z.string().min(7, "Valid phone number is required"),
   category: z.string().min(1, "Please select a primary category"),
+  imageUrl: z.string().optional().or(z.literal("")),
+  logoUrl: z.string().optional().or(z.literal("")),
+  websiteUrl: z.string().optional().or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
   establishedYear: z.coerce
     .number({ invalid_type_error: "Established year is required" })
     .min(1800, "Please enter a valid year")
@@ -152,6 +159,9 @@ export function CreateBusinessForm({
     linkedin: "",
   });
   const [serviceTypeError, setServiceTypeError] = useState("");
+  const [logoIsDragging, setLogoIsDragging] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile: uploadLogo, isUploading: isLogoUploading, progress: logoProgress } = useUpload();
 
   const categoryLimit = getCategoryLimit(membershipTier);
 
@@ -181,6 +191,30 @@ export function CreateBusinessForm({
       policyAcknowledged: false as any,
     },
   });
+
+  const handleLogoFile = useCallback(async (file: File) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please upload a JPG, PNG, or WebP image.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Logo must be under 10MB.", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await uploadLogo(file);
+      if (result) {
+        form.setValue("logoUrl", result.objectPath);
+        toast({ title: "Logo uploaded", description: "Your business logo has been uploaded." });
+      } else {
+        toast({ title: "Upload failed", description: "Could not upload logo. Please try again.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Upload failed", description: "Could not upload logo. Please try again.", variant: "destructive" });
+    }
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  }, [uploadLogo, form, toast]);
 
   const handleFormSubmit = () => {
     const values = form.getValues();
@@ -238,7 +272,12 @@ export function CreateBusinessForm({
         const step0Fields = ["name", "description", "servicesResidential", "servicesCommercial", "localOperationDescription", "policyAcknowledged"];
         const step1Fields = ["ownerName", "email", "phone"];
         const step2Fields = ["establishedYear", "establishedZipCode"];
-        const step3Fields = ["category"];
+        const step3Fields = ["category", "imageUrl"];
+
+        const errorMessages = errorFields.map((f) => {
+          const err = errors[f as keyof typeof errors];
+          return err?.message || f;
+        });
 
         if (errorFields.some((f) => step0Fields.includes(f))) {
           setStep(0);
@@ -252,7 +291,9 @@ export function CreateBusinessForm({
 
         toast({
           title: "Missing Information",
-          description: "Please fill in all required fields before submitting.",
+          description: errorMessages.length <= 2
+            ? errorMessages.join(". ")
+            : "Please fill in all required fields before submitting.",
           variant: "destructive",
         });
       }
@@ -554,27 +595,57 @@ export function CreateBusinessForm({
         />
       </div>
 
-      <FormField
-        control={form.control}
-        name="logoUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Business Logo URL (Optional)</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="https://..."
-                {...field}
-                value={field.value || ""}
-                data-testid="input-logo-url"
-              />
-            </FormControl>
-            <FormDescription>
-              Upload your logo via your profile after sign-up
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">Business Logo (Optional)</label>
+        {form.watch("logoUrl") ? (
+          <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-[#0a4a82]">
+            <img src={form.watch("logoUrl")!} alt="Business logo" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+              <Button type="button" variant="secondary" size="sm" className="shadow-lg text-xs px-2 py-1 h-auto" onClick={() => logoInputRef.current?.click()} disabled={isLogoUploading} data-testid="button-replace-logo">
+                <Upload className="h-3 w-3 mr-1" /> Replace
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer ${logoIsDragging ? "border-[#0a4a82] bg-[#0a4a82]/10" : "border-[#0a4a82]/20 bg-[#0a4a82]/5"} hover:border-[#0a4a82]/40 ${isLogoUploading ? "pointer-events-none opacity-60" : ""}`}
+            onClick={() => !isLogoUploading && logoInputRef.current?.click()}
+            onDrop={(e) => { e.preventDefault(); setLogoIsDragging(false); const file = e.dataTransfer.files?.[0]; if (file) handleLogoFile(file); }}
+            onDragOver={(e) => { e.preventDefault(); setLogoIsDragging(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setLogoIsDragging(false); }}
+            data-testid="dropzone-logo"
+          >
+            <div className="w-10 h-10 rounded-full bg-[#0a4a82]/10 flex items-center justify-center shrink-0">
+              <ImageIcon className="h-5 w-5 text-[#0a4a82]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {logoIsDragging ? "Drop your logo here" : "Drag & drop or click to upload"}
+              </p>
+              <p className="text-xs text-muted-foreground">JPG, PNG, or WebP · Max 10MB</p>
+            </div>
+          </div>
         )}
-      />
+        {isLogoUploading && (
+          <div>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-muted-foreground">Uploading...</span>
+              <span className="font-medium text-[#0a4a82]">{logoProgress}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-[#0a4a82] to-[#d4a373] rounded-full transition-all" style={{ width: `${logoProgress}%` }} />
+            </div>
+          </div>
+        )}
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+          data-testid="input-logo-file"
+        />
+      </div>
 
     </div>
   );
