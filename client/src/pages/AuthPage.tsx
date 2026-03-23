@@ -409,9 +409,13 @@ export default function AuthPage() {
                   </label>
                 </div>
 
-                {accountType === "business" && (
+                {accountType === "business" ? (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm text-center">
                     <span className="font-semibold">First month FREE!</span> No charges until your second month. Cancel anytime.
+                  </div>
+                ) : (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[#0a4a82] text-sm text-center">
+                    <span className="font-semibold">Customer accounts are always free!</span> Browse businesses, request quotes, and discover local events.
                   </div>
                 )}
 
