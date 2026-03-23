@@ -2455,6 +2455,26 @@ export async function registerRoutes(
 
   // ============ ADMIN DASHBOARD ROUTES ============
 
+  app.delete("/api/admin/users/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const targetId = req.params.userId;
+      if (targetId === adminId) return res.status(400).json({ message: "Cannot delete your own account" });
+
+      const [target] = await pgDb.select({ id: users.id, email: users.email, linkedBusinessId: users.linkedBusinessId }).from(users).where(eq(users.id, targetId));
+      if (!target) return res.status(404).json({ message: "User not found" });
+
+      await pgDb.delete(users).where(eq(users.id, targetId));
+      res.json({ message: `User ${target.email} deleted successfully` });
+    } catch (err) {
+      console.error("Admin delete user error:", err);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;
