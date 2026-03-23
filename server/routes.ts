@@ -2455,6 +2455,55 @@ export async function registerRoutes(
 
   // ============ ADMIN DASHBOARD ROUTES ============
 
+  app.get("/api/admin/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const search = (req.query.search || "").toString().trim();
+      const parsed = parseInt(req.query.page || "1");
+      const page = isNaN(parsed) ? 1 : Math.max(1, parsed);
+      const limit = 25;
+      const offset = (page - 1) * limit;
+
+      let query = pgDb.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        accountType: users.accountType,
+        isAdmin: users.isAdmin,
+        isValidated: users.isValidated,
+        linkedBusinessId: users.linkedBusinessId,
+        googleId: users.googleId,
+        createdAt: users.createdAt,
+      }).from(users);
+
+      if (search) {
+        query = query.where(
+          or(
+            ilike(users.email, `%${search}%`),
+            ilike(users.firstName, `%${search}%`),
+            ilike(users.lastName, `%${search}%`)
+          )
+        ) as any;
+      }
+
+      const allUsers = await (query as any).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
+      const [{ count: totalCount }] = search
+        ? await pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(
+            or(ilike(users.email, `%${search}%`), ilike(users.firstName, `%${search}%`), ilike(users.lastName, `%${search}%`))
+          )
+        : await pgDb.select({ count: sql<number>`count(*)::int` }).from(users);
+
+      res.json({ users: allUsers, total: totalCount, page, pages: Math.ceil(totalCount / limit) });
+    } catch (err) {
+      console.error("Admin list users error:", err);
+      res.status(500).json({ message: "Failed to list users" });
+    }
+  });
+
   app.delete("/api/admin/users/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
@@ -2472,6 +2521,132 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Admin delete user error:", err);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  app.post("/api/admin/users/:userId/reset-password", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const targetId = req.params.userId;
+      const { newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+      const [target] = await pgDb.select({ id: users.id }).from(users).where(eq(users.id, targetId));
+      if (!target) return res.status(404).json({ message: "User not found" });
+
+      const bcrypt = await import("bcrypt");
+      const hash = await bcrypt.hash(newPassword, 12);
+      await pgDb.update(users).set({ passwordHash: hash, googleId: null }).where(eq(users.id, targetId));
+      res.json({ message: "Password reset successfully" });
+    } catch (err) {
+      console.error("Admin reset password error:", err);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  app.patch("/api/admin/users/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const targetId = req.params.userId;
+      const [target] = await pgDb.select({ id: users.id }).from(users).where(eq(users.id, targetId));
+      if (!target) return res.status(404).json({ message: "User not found" });
+
+      const { isAdmin: makeAdmin, isValidated, accountType } = req.body;
+      const updates: any = {};
+      if (typeof makeAdmin === "boolean") updates.isAdmin = makeAdmin;
+      if (typeof isValidated === "boolean") updates.isValidated = isValidated;
+      if (accountType) updates.accountType = accountType;
+
+      if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No updates provided" });
+
+      await pgDb.update(users).set(updates).where(eq(users.id, targetId));
+      res.json({ message: "User updated successfully" });
+    } catch (err) {
+      console.error("Admin update user error:", err);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.get("/api/admin/businesses", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const search = (req.query.search || "").toString().trim();
+      const parsed = parseInt(req.query.page || "1");
+      const page = isNaN(parsed) ? 1 : Math.max(1, parsed);
+      const limit = 25;
+      const offset = (page - 1) * limit;
+
+      let query = pgDb.select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        phone: businesses.phone,
+        zipCode: businesses.zipCode,
+        membershipTier: businesses.membershipTier,
+        membershipStartDate: businesses.membershipStartDate,
+        membershipEndDate: businesses.membershipEndDate,
+        verified: businesses.verified,
+        acceptsQuotes: businesses.acceptsQuotes,
+        createdAt: businesses.createdAt,
+      }).from(businesses);
+
+      if (search) {
+        query = query.where(
+          or(
+            ilike(businesses.name, `%${search}%`),
+            ilike(businesses.email, `%${search}%`),
+            ilike(businesses.phone, `%${search}%`)
+          )
+        ) as any;
+      }
+
+      const allBiz = await (query as any).orderBy(desc(businesses.createdAt)).limit(limit).offset(offset);
+      const [{ count: totalCount }] = search
+        ? await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses).where(
+            or(ilike(businesses.name, `%${search}%`), ilike(businesses.email, `%${search}%`), ilike(businesses.phone, `%${search}%`))
+          )
+        : await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses);
+
+      res.json({ businesses: allBiz, total: totalCount, page, pages: Math.ceil(totalCount / limit) });
+    } catch (err) {
+      console.error("Admin list businesses error:", err);
+      res.status(500).json({ message: "Failed to list businesses" });
+    }
+  });
+
+  app.patch("/api/admin/businesses/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
+      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const [target] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, bizId));
+      if (!target) return res.status(404).json({ message: "Business not found" });
+
+      const { membershipTier, verified } = req.body;
+      const updates: any = {};
+      if (membershipTier !== undefined) updates.membershipTier = membershipTier;
+      if (typeof verified === "boolean") updates.verified = verified;
+
+      if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No updates provided" });
+
+      await pgDb.update(businesses).set(updates).where(eq(businesses.id, bizId));
+      res.json({ message: "Business updated successfully" });
+    } catch (err) {
+      console.error("Admin update business error:", err);
+      res.status(500).json({ message: "Failed to update business" });
     }
   });
 
