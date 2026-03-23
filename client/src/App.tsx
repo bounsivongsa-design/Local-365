@@ -24,7 +24,6 @@ import Legal from "@/pages/Legal";
 import HelpWanted from "@/pages/HelpWanted";
 import CreateBusiness from "@/pages/CreateBusiness";
 import NotFound from "@/pages/not-found";
-import { Chatbot } from "@/components/Chatbot";
 import { DevModePanel } from "@/components/DevModePanel";
 import backgroundImage from "@assets/image_1773172681995.png";
 
@@ -110,7 +109,6 @@ function App() {
         <LocationProvider>
           <Toaster />
           <AppRouter />
-          <Chatbot />
           <DevModePanel />
         </LocationProvider>
       </TooltipProvider>
