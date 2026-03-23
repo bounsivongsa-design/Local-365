@@ -1028,17 +1028,24 @@ export default function Dashboard() {
         <div className="container py-6">
           <Card className="bg-gradient-to-br from-[#1a1a2e] to-[#0a0a1a] border-0 shadow-[0_8px_30px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden">
             <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#d4a373]/20 flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-[#d4a373]" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#d4a373]/20 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-[#d4a373]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      Admin Controls
+                      <Badge className="bg-[#d4a373] text-white border-0 text-xs">Admin</Badge>
+                    </CardTitle>
+                    <CardDescription className="text-white/50">Quick access to platform tools</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    Admin Dashboard
-                    <Badge className="bg-[#d4a373] text-white border-0 text-xs">Admin</Badge>
-                  </CardTitle>
-                  <CardDescription className="text-white/50">Manage your platform</CardDescription>
-                </div>
+                <Link to="/admin" data-testid="link-full-admin-dashboard">
+                  <Button size="sm" className="bg-[#d4a373] hover:bg-[#c49363] text-white rounded-xl text-xs gap-1">
+                    Full Dashboard <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
               </div>
             </CardHeader>
             <CardContent>

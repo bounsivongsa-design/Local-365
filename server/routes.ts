@@ -2453,6 +2453,104 @@ export async function registerRoutes(
     }
   });
 
+  // ============ ADMIN DASHBOARD ROUTES ============
+
+  app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const [user] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId));
+      if (!user?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+      const [totalUsers] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(users);
+      const [totalBusinesses] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(businesses);
+      const [totalEvents] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(events);
+      const [totalJobs] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(jobListings).where(eq(jobListings.isActive, true));
+      const [totalPosts] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(postsTable);
+      const [totalQuoteRequests] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(quoteRequests);
+      const [totalQuotes] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(quotes);
+      const [totalAds] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements);
+      const [activeAds] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "active"));
+      const [pendingAds] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "pending"));
+      const [totalPromos] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodes);
+      const [usedPromos] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(promoCodeUsages);
+      const [pendingCategories] = await pgDb.select({ count: sql<number>`count(*)::int` }).from(categoryRequests).where(eq(categoryRequests.status, "pending"));
+
+      const tierCounts = await pgDb.select({
+        tier: businesses.membershipTier,
+        count: sql<number>`count(*)::int`,
+      }).from(businesses).groupBy(businesses.membershipTier);
+
+      const customerAccounts = await pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "customer"));
+      const businessAccounts = await pgDb.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.accountType, "business"));
+
+      const recentUsers = await pgDb.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        accountType: users.accountType,
+        createdAt: users.createdAt,
+      }).from(users).orderBy(desc(users.createdAt)).limit(10);
+
+      const recentBusinesses = await pgDb.select({
+        id: businesses.id,
+        name: businesses.name,
+        membershipTier: businesses.membershipTier,
+        verified: businesses.verified,
+        createdAt: businesses.createdAt,
+      }).from(businesses).orderBy(desc(businesses.createdAt)).limit(10);
+
+      const recentQuoteRequests = await pgDb.select({
+        id: quoteRequests.id,
+        title: quoteRequests.title,
+        status: quoteRequests.status,
+        createdAt: quoteRequests.createdAt,
+      }).from(quoteRequests).orderBy(desc(quoteRequests.createdAt)).limit(10);
+
+      const recentAds = await pgDb.select({
+        id: adPlacements.id,
+        title: adPlacements.title,
+        status: adPlacements.status,
+        placement: adPlacements.placement,
+        createdAt: adPlacements.createdAt,
+      }).from(adPlacements).orderBy(desc(adPlacements.createdAt)).limit(10);
+
+      const downgradesCount = await pgDb.select({ count: sql<number>`count(*)::int` }).from(membershipDowngrades);
+
+      res.json({
+        overview: {
+          totalUsers: totalUsers.count,
+          totalBusinesses: totalBusinesses.count,
+          totalEvents: totalEvents.count,
+          totalJobs: totalJobs.count,
+          totalPosts: totalPosts.count,
+          totalQuoteRequests: totalQuoteRequests.count,
+          totalQuotes: totalQuotes.count,
+          totalAds: totalAds.count,
+          activeAds: activeAds.count,
+          pendingAds: pendingAds.count,
+          totalPromos: totalPromos.count,
+          usedPromos: usedPromos.count,
+          pendingCategories: pendingCategories.count,
+          downgradesCount: downgradesCount[0].count,
+          customerAccounts: customerAccounts[0].count,
+          businessAccounts: businessAccounts[0].count,
+        },
+        membershipBreakdown: tierCounts.reduce((acc, t) => {
+          acc[t.tier || "none"] = t.count;
+          return acc;
+        }, {} as Record<string, number>),
+        recentUsers,
+        recentBusinesses,
+        recentQuoteRequests,
+        recentAds,
+      });
+    } catch (err) {
+      console.error("Admin stats error:", err);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
+    }
+  });
+
   // ============ JOB LISTING ROUTES ============
 
   app.get("/api/jobs/pricing", isAuthenticated, async (req: any, res) => {

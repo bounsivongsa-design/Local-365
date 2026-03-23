@@ -28,7 +28,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Business Listings**: Includes credentials (LLC, Insurance, Licensed, Veteran), business hours, social media, search keywords, categories, membership tiers, ratings, logos, gallery photos, and promotional videos.
 - **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier.
 - **Events**: Comprehensive local events calendar.
-- **Job Board**: Businesses can post help wanted ads, sorted by membership tier.
+- **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk, Basic $20/wk.
 - **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions.
 - **Advertising**: Tiered advertising models for website and event ads, with member discounts.
 - **Business Analytics**: Tracks listing engagement (page views, clicks) for businesses.
@@ -36,6 +36,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Membership Expiration Alerts**: Dashboard banner warns business owners 7 days before free/promo membership expires, with link to subscribe.
 - **Promo Codes**: Admin-managed promotional discount codes for various discounts and restrictions.
 - **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.
+- **Admin Dashboard**: Full admin command center at `/admin` with platform-wide stats (users, businesses, memberships, ads, quotes, jobs, posts, promos), pending approvals alerts, membership breakdown charts, recent activity feeds, and quick-action links.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.
