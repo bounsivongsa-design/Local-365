@@ -842,6 +842,15 @@ export async function registerRoutes(
         .where(eq(quoteMessages.quoteId, quoteId))
         .orderBy(asc(quoteMessages.createdAt));
 
+      await pgDb
+        .update(quoteMessages)
+        .set({ readAt: new Date() })
+        .where(and(
+          eq(quoteMessages.quoteId, quoteId),
+          sql`${quoteMessages.senderId} != ${userId}`,
+          sql`${quoteMessages.readAt} IS NULL`
+        ));
+
       res.json(messages);
     } catch (error) {
       console.error("Error fetching quote messages:", error);
@@ -899,7 +908,8 @@ export async function registerRoutes(
           .innerJoin(quotes, eq(quoteMessages.quoteId, quotes.id))
           .where(and(
             eq(quotes.userId, userId),
-            sql`${quoteMessages.senderId} != ${userId}`
+            sql`${quoteMessages.senderId} != ${userId}`,
+            sql`${quoteMessages.readAt} IS NULL`
           ));
       } else {
         result = await pgDb
@@ -909,7 +919,8 @@ export async function registerRoutes(
           .innerJoin(quoteRequests, eq(quotes.requestId, quoteRequests.id))
           .where(and(
             eq(quoteRequests.userId, userId),
-            sql`${quoteMessages.senderId} != ${userId}`
+            sql`${quoteMessages.senderId} != ${userId}`,
+            sql`${quoteMessages.readAt} IS NULL`
           ));
       }
 

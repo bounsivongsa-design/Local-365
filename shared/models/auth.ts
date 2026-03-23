@@ -167,6 +167,7 @@ export const quoteMessages = pgTable("quote_messages", {
   quoteId: integer("quote_id").notNull().references(() => quotes.id),
   senderId: varchar("sender_id").notNull().references(() => users.id),
   message: text("message").notNull(),
+  readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

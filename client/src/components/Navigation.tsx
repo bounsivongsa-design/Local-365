@@ -8,9 +8,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, MessageSquare } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { LocationPicker } from "./LocationPicker";
 import logoImage from "@assets/image_1773172786986.png";
 
@@ -18,6 +19,14 @@ export function Navigation() {
   const routerLocation = useRouterLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  const { data: messageCounts } = useQuery<{ count: number }>({
+    queryKey: ["/api/user/message-counts"],
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = messageCounts?.count || 0;
 
   const navItems = [
     { href: "/", label: "Home", icon: Home },
@@ -70,6 +79,11 @@ export function Navigation() {
                   <div className="h-10 w-10 rounded-full border-2 border-white/30 bg-white/20 flex items-center justify-center">
                     <Settings className="h-5 w-5 text-white" />
                   </div>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-[#0a4a82] animate-pulse" data-testid="badge-unread-messages">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
@@ -84,6 +98,17 @@ export function Navigation() {
                   <DropdownMenuItem className="cursor-pointer rounded-lg" data-testid="menu-dashboard">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
+                  </DropdownMenuItem>
+                </Link>
+                <Link to="/quotes">
+                  <DropdownMenuItem className="cursor-pointer rounded-lg" data-testid="menu-messages">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Messages
+                    {unreadCount > 0 && (
+                      <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                   </DropdownMenuItem>
                 </Link>
                 <DropdownMenuSeparator />

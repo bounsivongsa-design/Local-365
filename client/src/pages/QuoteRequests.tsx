@@ -73,7 +73,9 @@ function MessageThread({ quoteId, userId }: { quoteId: number; userId: string })
     queryFn: async () => {
       const res = await fetch(`/api/quotes/${quoteId}/messages`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch messages");
-      return res.json();
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/user/message-counts"] });
+      return data;
     },
     refetchInterval: 10000,
   });
