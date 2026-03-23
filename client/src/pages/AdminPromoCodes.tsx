@@ -36,6 +36,8 @@ import {
   Copy,
   RefreshCw,
   Gift,
+  Megaphone,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -54,9 +56,9 @@ interface PromoCode {
   createdAt: string | null;
 }
 
-function generateCode(): string {
+function generateCode(prefix = "LL365"): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "LL365-";
+  let code = prefix + "-";
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -65,7 +67,9 @@ function generateCode(): string {
 
 function getExpirationDate(period: string): string {
   const now = new Date();
-  if (period === "1month") {
+  if (period === "1week") {
+    now.setDate(now.getDate() + 7);
+  } else if (period === "1month") {
     now.setMonth(now.getMonth() + 1);
   } else if (period === "2months") {
     now.setMonth(now.getMonth() + 2);
@@ -96,6 +100,15 @@ export default function AdminPromoCodes() {
     description: "",
     membershipTier: "bronze",
     expiresPeriod: "1month",
+  });
+  const [mktDialogOpen, setMktDialogOpen] = useState(false);
+  const [newMktCode, setNewMktCode] = useState({
+    code: generateCode("MKT365"),
+    description: "",
+    discountPercent: "25",
+    expiresPeriod: "1month",
+    applicableTiers: ["bronze", "silver", "gold"] as string[],
+    maxUses: "10",
   });
 
   const { data: promoCodes = [], isLoading } = useQuery<PromoCode[]>({
@@ -213,6 +226,47 @@ export default function AdminPromoCodes() {
     });
   };
 
+  const handleCreateMarketing = () => {
+    if (!newMktCode.code) {
+      toast({ title: "Error", description: "Code is required", variant: "destructive" });
+      return;
+    }
+    const percent = parseInt(newMktCode.discountPercent) || 25;
+    const uses = parseInt(newMktCode.maxUses) || 10;
+    const periodLabel = newMktCode.expiresPeriod === "1month" ? "1 month" : newMktCode.expiresPeriod === "2months" ? "2 months" : "1 week";
+    const autoDesc = newMktCode.description || `Marketing ${percent}% off - ${periodLabel}`;
+    createMutation.mutate({
+      code: newMktCode.code,
+      description: autoDesc,
+      discountType: "percentage",
+      discountValue: percent,
+      applicableTiers: newMktCode.applicableTiers,
+      maxUses: uses,
+      expiresAt: getExpirationDate(newMktCode.expiresPeriod),
+    });
+    setMktDialogOpen(false);
+    setNewMktCode({
+      code: generateCode("MKT365"),
+      description: "",
+      discountPercent: "25",
+      expiresPeriod: "1month",
+      applicableTiers: ["bronze", "silver", "gold"],
+      maxUses: "10",
+    });
+  };
+
+  const toggleMktTier = (tier: string) => {
+    setNewMktCode((prev) => {
+      const has = prev.applicableTiers.includes(tier);
+      return {
+        ...prev,
+        applicableTiers: has
+          ? prev.applicableTiers.filter((t) => t !== tier)
+          : [...prev.applicableTiers, tier],
+      };
+    });
+  };
+
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast({ title: "Copied!", description: `Code "${code}" copied to clipboard` });
@@ -242,6 +296,158 @@ export default function AdminPromoCodes() {
               </h1>
               <p className="text-white/70 mt-1">Create single-use free membership codes to send to customers</p>
             </div>
+            <div className="flex gap-3">
+            <Dialog open={mktDialogOpen} onOpenChange={(open) => {
+              setMktDialogOpen(open);
+              if (open) setNewMktCode({ code: generateCode("MKT365"), description: "", discountPercent: "25", expiresPeriod: "1month", applicableTiers: ["bronze", "silver", "gold"], maxUses: "10" });
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#8a9a5b] hover:bg-[#7a8a4b] text-white" data-testid="button-create-marketing">
+                  <Megaphone className="h-4 w-4 mr-2" />
+                  Marketing Code
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Megaphone className="h-5 w-5 text-[#8a9a5b]" />
+                    Create Marketing Code
+                  </DialogTitle>
+                  <DialogDescription>Multi-use discount code for marketing campaigns and events.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Code</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newMktCode.code}
+                        readOnly
+                        className="font-mono font-bold tracking-wider bg-slate-50"
+                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                        data-testid="input-mkt-code"
+                      />
+                      <Button type="button" variant="outline" size="icon" onClick={() => copyCode(newMktCode.code)} title="Copy code" data-testid="button-copy-mkt-code">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => setNewMktCode({ ...newMktCode, code: generateCode("MKT365") })} title="Generate new code" data-testid="button-regenerate-mkt-code">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description (optional)</label>
+                    <Input
+                      placeholder="e.g. Summer Event 2026 promo"
+                      value={newMktCode.description}
+                      onChange={(e) => setNewMktCode({ ...newMktCode, description: e.target.value })}
+                      style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                      className="bg-white"
+                      data-testid="input-mkt-description"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Discount Percentage</label>
+                    <Select value={newMktCode.discountPercent} onValueChange={(v) => setNewMktCode({ ...newMktCode, discountPercent: v })}>
+                      <SelectTrigger data-testid="select-mkt-discount">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10% Off</SelectItem>
+                        <SelectItem value="15">15% Off</SelectItem>
+                        <SelectItem value="20">20% Off</SelectItem>
+                        <SelectItem value="25">25% Off</SelectItem>
+                        <SelectItem value="30">30% Off</SelectItem>
+                        <SelectItem value="50">50% Off</SelectItem>
+                        <SelectItem value="75">75% Off</SelectItem>
+                        <SelectItem value="100">100% Off (Free)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Applicable Tiers</label>
+                    <div className="flex gap-2">
+                      {(["bronze", "silver", "gold"] as const).map((tier) => (
+                        <Button
+                          key={tier}
+                          type="button"
+                          size="sm"
+                          variant={newMktCode.applicableTiers.includes(tier) ? "default" : "outline"}
+                          onClick={() => toggleMktTier(tier)}
+                          className={newMktCode.applicableTiers.includes(tier) ? TIER_LABELS[tier].color : ""}
+                          data-testid={`button-mkt-tier-${tier}`}
+                        >
+                          {TIER_LABELS[tier].label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Valid For</label>
+                      <Select value={newMktCode.expiresPeriod} onValueChange={(v) => setNewMktCode({ ...newMktCode, expiresPeriod: v })}>
+                        <SelectTrigger data-testid="select-mkt-period">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1week">1 Week</SelectItem>
+                          <SelectItem value="1month">1 Month</SelectItem>
+                          <SelectItem value="2months">2 Months</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Max Uses</label>
+                      <Select value={newMktCode.maxUses} onValueChange={(v) => setNewMktCode({ ...newMktCode, maxUses: v })}>
+                        <SelectTrigger data-testid="select-mkt-uses">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 uses</SelectItem>
+                          <SelectItem value="10">10 uses</SelectItem>
+                          <SelectItem value="25">25 uses</SelectItem>
+                          <SelectItem value="50">50 uses</SelectItem>
+                          <SelectItem value="100">100 uses</SelectItem>
+                          <SelectItem value="999">Unlimited</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="bg-[#8a9a5b]/10 rounded-lg p-4 border border-[#8a9a5b]/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="h-4 w-4 text-[#8a9a5b]" />
+                      <span className="text-sm font-semibold text-[#8a9a5b]">Code Summary</span>
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-600">
+                      <div className="flex justify-between">
+                        <span>Discount:</span>
+                        <span className="font-medium">{newMktCode.discountPercent}% off</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tiers:</span>
+                        <span className="font-medium">{newMktCode.applicableTiers.map(t => TIER_LABELS[t]?.label).join(", ") || "None"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Duration:</span>
+                        <span className="font-medium">{newMktCode.expiresPeriod === "1week" ? "1 week" : newMktCode.expiresPeriod === "1month" ? "1 month" : "2 months"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Usage:</span>
+                        <span className="font-medium">{newMktCode.maxUses === "999" ? "Unlimited" : `${newMktCode.maxUses} uses`}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleCreateMarketing}
+                    disabled={createMutation.isPending}
+                    className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]"
+                    data-testid="button-submit-mkt"
+                  >
+                    {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Megaphone className="h-4 w-4 mr-2" />}
+                    Create Marketing Code
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
               if (open) setNewCode({ code: generateCode(), description: "", membershipTier: "bronze", expiresPeriod: "1month" });
@@ -363,6 +569,7 @@ export default function AdminPromoCodes() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </div>
       </div>
@@ -380,6 +587,7 @@ export default function AdminPromoCodes() {
               const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date();
               const isUsed = (promo.currentUses || 0) >= (promo.maxUses || 1);
               const tierName = getTierFromPromo(promo);
+              const isMarketing = promo.code.startsWith("MKT365") || (promo.discountValue < 100 && (promo.maxUses || 1) > 1);
               return (
                 <div
                   key={promo.id}
@@ -392,8 +600,8 @@ export default function AdminPromoCodes() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="bg-[#0a4a82]/10 rounded-xl p-3">
-                        <Ticket className="h-6 w-6 text-[#0a4a82]" />
+                      <div className={`rounded-xl p-3 ${isMarketing ? "bg-[#8a9a5b]/10" : "bg-[#0a4a82]/10"}`}>
+                        {isMarketing ? <Megaphone className="h-6 w-6 text-[#8a9a5b]" /> : <Ticket className="h-6 w-6 text-[#0a4a82]" />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -410,8 +618,13 @@ export default function AdminPromoCodes() {
                           >
                             <Copy className="h-3.5 w-3.5 text-slate-400" />
                           </Button>
+                          {isMarketing && (
+                            <Badge className="bg-[#8a9a5b]/20 text-[#8a9a5b] border border-[#8a9a5b]/30">Marketing</Badge>
+                          )}
                           <Badge className={TIER_LABELS[tierName]?.color || "bg-slate-400 text-white"}>
-                            {TIER_LABELS[tierName]?.label || "Bronze"}
+                            {isMarketing && promo.applicableTiers && promo.applicableTiers.length > 1
+                              ? "All Tiers"
+                              : TIER_LABELS[tierName]?.label || "Bronze"}
                           </Badge>
                           {promo.isActive && !isExpired && !isUsed ? (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
@@ -429,12 +642,12 @@ export default function AdminPromoCodes() {
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          Free Membership
+                          {isMarketing ? `${promo.discountValue}% Discount` : "Free Membership"}
                         </p>
                         <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                           <span className="flex items-center gap-1">
-                            <Gift className="h-3 w-3" />
-                            {isUsed ? "Redeemed" : "Unused"}
+                            {isMarketing ? <Users className="h-3 w-3" /> : <Gift className="h-3 w-3" />}
+                            {isMarketing ? `${promo.currentUses || 0}/${promo.maxUses === 999 ? "\u221E" : promo.maxUses || 1} used` : (isUsed ? "Redeemed" : "Unused")}
                           </span>
                           {promo.expiresAt && (
                             <span className="flex items-center gap-1">
