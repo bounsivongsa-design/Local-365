@@ -35,6 +35,7 @@ import {
   Pencil,
   Copy,
   RefreshCw,
+  Gift,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -73,6 +74,12 @@ function getExpirationDate(period: string): string {
   return now.toISOString();
 }
 
+const TIER_LABELS: Record<string, { label: string; color: string }> = {
+  bronze: { label: "Bronze", color: "bg-amber-700 text-white" },
+  silver: { label: "Silver", color: "bg-slate-400 text-white" },
+  gold: { label: "Gold", color: "bg-yellow-500 text-white" },
+};
+
 export default function AdminPromoCodes() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -81,17 +88,13 @@ export default function AdminPromoCodes() {
   const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
   const [editForm, setEditForm] = useState({
     description: "",
-    discountType: "percentage",
-    discountValue: "",
-    applicableTiers: [] as string[],
+    membershipTier: "bronze",
     expiresPeriod: "1month",
   });
   const [newCode, setNewCode] = useState({
     code: generateCode(),
     description: "",
-    discountType: "percentage",
-    discountValue: "",
-    applicableTiers: [] as string[],
+    membershipTier: "bronze",
     expiresPeriod: "1month",
   });
 
@@ -107,7 +110,7 @@ export default function AdminPromoCodes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
       setDialogOpen(false);
-      setNewCode({ code: generateCode(), description: "", discountType: "percentage", discountValue: "", applicableTiers: [], expiresPeriod: "1month" });
+      setNewCode({ code: generateCode(), description: "", membershipTier: "bronze", expiresPeriod: "1month" });
       toast({ title: "Promo code created" });
     },
     onError: (err: any) => {
@@ -152,68 +155,62 @@ export default function AdminPromoCodes() {
     },
   });
 
+  const getTierFromPromo = (promo: PromoCode): string => {
+    if (promo.applicableTiers && promo.applicableTiers.length === 1) return promo.applicableTiers[0];
+    if (promo.description) {
+      const desc = promo.description.toLowerCase();
+      if (desc.includes("gold")) return "gold";
+      if (desc.includes("silver")) return "silver";
+      if (desc.includes("bronze")) return "bronze";
+    }
+    return "bronze";
+  };
+
   const openEditDialog = (promo: PromoCode) => {
     setEditingPromo(promo);
     setEditForm({
       description: promo.description || "",
-      discountType: promo.discountType,
-      discountValue: String(promo.discountValue),
-      applicableTiers: promo.applicableTiers || [],
+      membershipTier: getTierFromPromo(promo),
       expiresPeriod: "1month",
     });
     setEditDialogOpen(true);
   };
 
   const handleEdit = () => {
-    if (!editingPromo || !editForm.discountValue) {
-      toast({ title: "Error", description: "Discount value is required", variant: "destructive" });
-      return;
-    }
+    if (!editingPromo) return;
+    const tierLabel = TIER_LABELS[editForm.membershipTier]?.label || "Bronze";
+    const periodLabel = editForm.expiresPeriod === "1month" ? "1 month" : "2 months";
+    const autoDesc = editForm.description || `Free ${tierLabel} membership - ${periodLabel}`;
     editMutation.mutate({
       id: editingPromo.id,
       data: {
-        description: editForm.description || null,
-        discountType: editForm.discountType,
-        discountValue: parseInt(editForm.discountValue),
-        applicableTiers: editForm.applicableTiers.length > 0 ? editForm.applicableTiers : [],
+        description: autoDesc,
+        discountType: "percentage",
+        discountValue: 100,
+        applicableTiers: [editForm.membershipTier],
         maxUses: 1,
         expiresAt: getExpirationDate(editForm.expiresPeriod),
       },
     });
   };
 
-  const handleEditTierToggle = (tier: string) => {
-    setEditForm((prev) => ({
-      ...prev,
-      applicableTiers: prev.applicableTiers.includes(tier)
-        ? prev.applicableTiers.filter((t) => t !== tier)
-        : [...prev.applicableTiers, tier],
-    }));
-  };
-
   const handleCreate = () => {
-    if (!newCode.code || !newCode.discountValue) {
-      toast({ title: "Error", description: "Code and discount value are required", variant: "destructive" });
+    if (!newCode.code) {
+      toast({ title: "Error", description: "Code is required", variant: "destructive" });
       return;
     }
+    const tierLabel = TIER_LABELS[newCode.membershipTier]?.label || "Bronze";
+    const periodLabel = newCode.expiresPeriod === "1month" ? "1 month" : "2 months";
+    const autoDesc = newCode.description || `Free ${tierLabel} membership - ${periodLabel}`;
     createMutation.mutate({
       code: newCode.code,
-      description: newCode.description || null,
-      discountType: newCode.discountType,
-      discountValue: parseInt(newCode.discountValue),
-      applicableTiers: newCode.applicableTiers.length > 0 ? newCode.applicableTiers : [],
+      description: autoDesc,
+      discountType: "percentage",
+      discountValue: 100,
+      applicableTiers: [newCode.membershipTier],
       maxUses: 1,
       expiresAt: getExpirationDate(newCode.expiresPeriod),
     });
-  };
-
-  const handleTierToggle = (tier: string) => {
-    setNewCode((prev) => ({
-      ...prev,
-      applicableTiers: prev.applicableTiers.includes(tier)
-        ? prev.applicableTiers.filter((t) => t !== tier)
-        : [...prev.applicableTiers, tier],
-    }));
   };
 
   const copyCode = (code: string) => {
@@ -243,11 +240,11 @@ export default function AdminPromoCodes() {
                 <Ticket className="h-8 w-8 text-[#d4a373]" />
                 Promo Codes
               </h1>
-              <p className="text-white/70 mt-1">Create and manage single-use promotional discount codes</p>
+              <p className="text-white/70 mt-1">Create single-use free membership codes to send to customers</p>
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
-              if (open) setNewCode({ code: generateCode(), description: "", discountType: "percentage", discountValue: "", applicableTiers: [], expiresPeriod: "1month" });
+              if (open) setNewCode({ code: generateCode(), description: "", membershipTier: "bronze", expiresPeriod: "1month" });
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-[#d4a373] hover:bg-[#c49363] text-white" data-testid="button-create-promo">
@@ -257,8 +254,8 @@ export default function AdminPromoCodes() {
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Create Promo Code</DialogTitle>
-                  <DialogDescription>Single-use code. Copy and send to the customer.</DialogDescription>
+                  <DialogTitle>Create Free Membership Code</DialogTitle>
+                  <DialogDescription>Single-use code for a free membership. Copy and send to the customer.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div>
@@ -294,9 +291,9 @@ export default function AdminPromoCodes() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description (optional)</label>
                     <Input
-                      placeholder="e.g. 25% off first month"
+                      placeholder="e.g. Welcome gift for John"
                       value={newCode.description}
                       onChange={(e) => setNewCode({ ...newCode, description: e.target.value })}
                       style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
@@ -304,54 +301,26 @@ export default function AdminPromoCodes() {
                       data-testid="input-promo-description"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Discount Type</label>
-                      <Select value={newCode.discountType} onValueChange={(v) => setNewCode({ ...newCode, discountType: v })}>
-                        <SelectTrigger data-testid="select-discount-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">Percentage (%)</SelectItem>
-                          <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Discount Value {newCode.discountType === "percentage" ? "(%)" : "($)"}
-                      </label>
-                      <Input
-                        type="number"
-                        placeholder={newCode.discountType === "percentage" ? "25" : "50"}
-                        value={newCode.discountValue}
-                        onChange={(e) => setNewCode({ ...newCode, discountValue: e.target.value })}
-                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                        className="bg-white"
-                        data-testid="input-discount-value"
-                      />
-                    </div>
-                  </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Applicable Tiers (leave empty for all)</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Membership Tier</label>
                     <div className="flex gap-2">
-                      {["bronze", "silver", "gold"].map((tier) => (
+                      {(["bronze", "silver", "gold"] as const).map((tier) => (
                         <Button
                           key={tier}
                           type="button"
                           size="sm"
-                          variant={newCode.applicableTiers.includes(tier) ? "default" : "outline"}
-                          onClick={() => handleTierToggle(tier)}
-                          className={newCode.applicableTiers.includes(tier) ? "bg-[#0a4a82]" : ""}
+                          variant={newCode.membershipTier === tier ? "default" : "outline"}
+                          onClick={() => setNewCode({ ...newCode, membershipTier: tier })}
+                          className={newCode.membershipTier === tier ? TIER_LABELS[tier].color : ""}
                           data-testid={`button-tier-${tier}`}
                         >
-                          {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                          {TIER_LABELS[tier].label}
                         </Button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires In</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Free For</label>
                     <Select value={newCode.expiresPeriod} onValueChange={(v) => setNewCode({ ...newCode, expiresPeriod: v })}>
                       <SelectTrigger data-testid="select-expires-period">
                         <SelectValue />
@@ -362,10 +331,24 @@ export default function AdminPromoCodes() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Usage:</span>
-                      <span className="font-medium text-slate-700 dark:text-slate-300">Single use (1 per customer)</span>
+                  <div className="bg-[#0a4a82]/5 rounded-lg p-4 border border-[#0a4a82]/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Gift className="h-4 w-4 text-[#0a4a82]" />
+                      <span className="text-sm font-semibold text-[#0a4a82]">Code Summary</span>
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-600">
+                      <div className="flex justify-between">
+                        <span>Tier:</span>
+                        <span className="font-medium">{TIER_LABELS[newCode.membershipTier]?.label} membership</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Duration:</span>
+                        <span className="font-medium">{newCode.expiresPeriod === "1month" ? "1 month" : "2 months"} free</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Usage:</span>
+                        <span className="font-medium">Single use</span>
+                      </div>
                     </div>
                   </div>
                   <Button
@@ -389,13 +372,14 @@ export default function AdminPromoCodes() {
           <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
             <Tag className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">No promo codes yet</h3>
-            <p className="text-slate-500 mt-1">Create your first promotional discount code</p>
+            <p className="text-slate-500 mt-1">Create your first free membership code</p>
           </div>
         ) : (
           <div className="grid gap-4">
             {promoCodes.map((promo) => {
               const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date();
               const isUsed = (promo.currentUses || 0) >= (promo.maxUses || 1);
+              const tierName = getTierFromPromo(promo);
               return (
                 <div
                   key={promo.id}
@@ -426,6 +410,9 @@ export default function AdminPromoCodes() {
                           >
                             <Copy className="h-3.5 w-3.5 text-slate-400" />
                           </Button>
+                          <Badge className={TIER_LABELS[tierName]?.color || "bg-slate-400 text-white"}>
+                            {TIER_LABELS[tierName]?.label || "Bronze"}
+                          </Badge>
                           {promo.isActive && !isExpired && !isUsed ? (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
                           ) : (
@@ -442,27 +429,20 @@ export default function AdminPromoCodes() {
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          {promo.discountType === "percentage" ? `${promo.discountValue}% off` : `$${promo.discountValue} off`}
+                          Free Membership
                         </p>
                         <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                           <span className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {isUsed ? "Used" : "Unused"} (single-use)
+                            <Gift className="h-3 w-3" />
+                            {isUsed ? "Redeemed" : "Unused"}
                           </span>
                           {promo.expiresAt && (
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {new Date(promo.expiresAt).toLocaleDateString()}
+                              Expires {new Date(promo.expiresAt).toLocaleDateString()}
                             </span>
                           )}
                         </div>
-                        {promo.applicableTiers && promo.applicableTiers.length > 0 && (
-                          <div className="flex gap-1 mt-1 justify-end">
-                            {promo.applicableTiers.map((t) => (
-                              <Badge key={t} variant="outline" className="text-xs capitalize">{t}</Badge>
-                            ))}
-                          </div>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -511,13 +491,13 @@ export default function AdminPromoCodes() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Promo Code: {editingPromo?.code}</DialogTitle>
-            <DialogDescription>Update discount details and expiration.</DialogDescription>
+            <DialogDescription>Update membership tier and duration.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description (optional)</label>
               <Input
-                placeholder="e.g. 25% off first month"
+                placeholder="e.g. Welcome gift for John"
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
@@ -525,53 +505,26 @@ export default function AdminPromoCodes() {
                 data-testid="input-edit-description"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Discount Type</label>
-                <Select value={editForm.discountType} onValueChange={(v) => setEditForm({ ...editForm, discountType: v })}>
-                  <SelectTrigger data-testid="select-edit-discount-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Discount Value {editForm.discountType === "percentage" ? "(%)" : "($)"}
-                </label>
-                <Input
-                  type="number"
-                  value={editForm.discountValue}
-                  onChange={(e) => setEditForm({ ...editForm, discountValue: e.target.value })}
-                  style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                  className="bg-white"
-                  data-testid="input-edit-discount-value"
-                />
-              </div>
-            </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Applicable Tiers (leave empty for all)</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Membership Tier</label>
               <div className="flex gap-2">
-                {["bronze", "silver", "gold"].map((tier) => (
+                {(["bronze", "silver", "gold"] as const).map((tier) => (
                   <Button
                     key={tier}
                     type="button"
                     size="sm"
-                    variant={editForm.applicableTiers.includes(tier) ? "default" : "outline"}
-                    onClick={() => handleEditTierToggle(tier)}
-                    className={editForm.applicableTiers.includes(tier) ? "bg-[#0a4a82]" : ""}
+                    variant={editForm.membershipTier === tier ? "default" : "outline"}
+                    onClick={() => setEditForm({ ...editForm, membershipTier: tier })}
+                    className={editForm.membershipTier === tier ? TIER_LABELS[tier].color : ""}
                     data-testid={`button-edit-tier-${tier}`}
                   >
-                    {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                    {TIER_LABELS[tier].label}
                   </Button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires In</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Free For</label>
               <Select value={editForm.expiresPeriod} onValueChange={(v) => setEditForm({ ...editForm, expiresPeriod: v })}>
                 <SelectTrigger data-testid="select-edit-expires-period">
                   <SelectValue />
@@ -581,12 +534,6 @@ export default function AdminPromoCodes() {
                   <SelectItem value="2months">2 Months</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">Usage:</span>
-                <span className="font-medium text-slate-700 dark:text-slate-300">Single use (1 per customer)</span>
-              </div>
             </div>
             <Button
               onClick={handleEdit}
