@@ -5,6 +5,7 @@ import { ChevronDown, HelpCircle, UserPlus, Building2, Search, Gavel, Calendar, 
 interface FAQItem {
   question: string;
   answer: string;
+  richContent?: boolean;
   links?: { label: string; to: string }[];
 }
 
@@ -131,7 +132,8 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "What are the membership tiers and pricing?",
-        answer: "There are three membership tiers:\n\n• Bronze ($50/month) — Basic directory listing with phone number, reviews, up to 4 categories, and 3rd-round quote access.\n\n• Silver ($100/month) — Everything in Bronze plus logo display, website link, up to 6 photos and categories, verified badge, social media links, and 2nd-round quote access.\n\n• Gold ($200/month) — Everything in Silver plus top search placement, featured badge, up to 10 photos and 8 categories, 30-second promo video, advanced analytics, and exclusive 1st-round quote access.\n\nSave 20% with semi-annual billing or 45% with annual billing.",
+        answer: "MEMBERSHIP_TIERS_SPECIAL",
+        richContent: true,
         links: [{ label: "View membership plans", to: "/membership" }],
       },
       {
@@ -342,10 +344,41 @@ export default function FAQ() {
                       }`} />
                     </button>
                     {isOpen && (
-                      <div className="px-5 pb-5 pl-17">
-                        <div className="ml-12 border-t border-slate-100 dark:border-slate-700 pt-4">
-                          <div className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line text-[15px]">
-                            {item.answer}
+                      <div className="px-5 pb-5">
+                        <div className="ml-0 sm:ml-12 border-t border-slate-100 dark:border-slate-700 pt-4">
+                          <div className="text-slate-600 dark:text-slate-300 leading-[1.8] text-[15px] space-y-3">
+                            {item.richContent && item.answer === "MEMBERSHIP_TIERS_SPECIAL" ? (
+                              <>
+                                <p>There are three membership tiers:</p>
+                                <div className="space-y-3 my-2">
+                                  <div className="rounded-xl border border-amber-700/20 bg-gradient-to-r from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-transparent p-4">
+                                    <div className="font-bold text-amber-800 dark:text-amber-400 text-base mb-1">Bronze — $50/month</div>
+                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Basic directory listing with phone number, reviews, up to 4 categories, and 3rd-round quote access.</p>
+                                  </div>
+                                  <div className="rounded-xl border border-slate-300/60 bg-gradient-to-r from-slate-100 to-slate-50/50 dark:from-slate-700/30 dark:to-transparent p-4">
+                                    <div className="font-bold text-slate-700 dark:text-slate-300 text-base mb-1">Silver — $100/month</div>
+                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Everything in Bronze plus logo display, website link, up to 6 photos and categories, verified badge, social media links, and 2nd-round quote access.</p>
+                                  </div>
+                                  <div className="rounded-xl border border-yellow-400/40 bg-gradient-to-r from-yellow-50 to-amber-50/30 dark:from-yellow-900/20 dark:to-transparent p-4 shadow-sm">
+                                    <div className="font-bold text-yellow-700 dark:text-yellow-400 text-base mb-1">Gold — $200/month</div>
+                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Everything in Silver plus top search placement, featured badge, up to 10 photos and 8 categories, 30-second promo video, advanced analytics, and exclusive 1st-round quote access.</p>
+                                  </div>
+                                </div>
+                                <p className="text-sm font-medium text-[#0a4a82] dark:text-blue-400 bg-[#0a4a82]/5 dark:bg-blue-400/10 px-4 py-2.5 rounded-lg">Save 20% with semi-annual billing or 45% with annual billing.</p>
+                              </>
+                            ) : (
+                              item.answer.split("\n\n").map((paragraph, pi) => {
+                                if (paragraph.startsWith("•")) {
+                                  return (
+                                    <div key={pi} className="flex gap-2.5 items-start">
+                                      <span className="text-[#0a4a82] font-bold mt-0.5 shrink-0">•</span>
+                                      <span className="flex-1">{paragraph.slice(1).trim()}</span>
+                                    </div>
+                                  );
+                                }
+                                return <p key={pi}>{paragraph}</p>;
+                              })
+                            )}
                           </div>
                           {item.links && item.links.length > 0 && (
                             <div className="mt-4 flex flex-wrap gap-2">
