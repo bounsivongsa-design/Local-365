@@ -1126,52 +1126,56 @@ export async function registerRoutes(
       const userId = (req as any).user?.id;
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
 
-      if (!user.length || user[0].accountType !== "business") {
+      if (!user.length) {
+        return res.status(403).json({ message: "User not found." });
+      }
+
+      const isAdmin = user[0].isAdmin;
+
+      if (!isAdmin && user[0].accountType !== "business") {
         return res.status(403).json({ message: "Only business accounts can create events." });
       }
 
-      if (!user[0].linkedBusinessId) {
+      if (!isAdmin && !user[0].linkedBusinessId) {
         return res.status(403).json({ message: "You must have a linked business to create events." });
       }
       
       const serverBusinessId = user[0].linkedBusinessId;
-      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
-        .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
-      if (!biz) {
-        return res.status(400).json({ message: "Linked business not found. Please contact support." });
+      let businessZipCode = "27958";
+      
+      if (serverBusinessId) {
+        const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
+          .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
+        if (biz) {
+          businessZipCode = biz.zipCode;
+        }
       }
-      const businessZipCode = biz.zipCode;
-
-      const tier = biz.membershipTier;
-      const isSilverPlus = tier === "standard" || tier === "premium";
-      const isGold = tier === "premium";
 
       const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: clientAdSize, eventDates: clientEventDates, ...bodyWithoutMeta } = req.body;
 
-      const adSizeVal = clientAdSize || "small";
-      const sizeCanDesc = adSizeVal === "medium" || adSizeVal === "large";
-      const sizeCanImage = adSizeVal === "medium" || adSizeVal === "large";
-      const sizeCanFlyer = adSizeVal === "large";
+      const adSizeVal = clientAdSize || "large";
 
       const sanitizedBody = {
         ...bodyWithoutMeta,
-        description: sizeCanDesc ? (bodyWithoutMeta.description || "") : "",
-        imageUrl: sizeCanImage ? bodyWithoutMeta.imageUrl : undefined,
-        flyerUrl: sizeCanFlyer ? bodyWithoutMeta.flyerUrl : undefined,
-        adSize: adSizeVal,
+        description: bodyWithoutMeta.description || "",
+        imageUrl: bodyWithoutMeta.imageUrl || undefined,
+        flyerUrl: bodyWithoutMeta.flyerUrl || undefined,
+        adSize: isAdmin ? "large" : adSizeVal,
       };
 
-      const eventZipCode = businessZipCode || req.body.zipCode || "27929";
+      const eventZipCode = req.body.zipCode || businessZipCode || "27958";
 
       const parsedEventDates: string[] = Array.isArray(clientEventDates) ? clientEventDates.filter((d: string) => d && !isNaN(new Date(d).getTime())) : [];
       const primaryDate = parsedEventDates.length > 0 ? new Date(parsedEventDates[0]) : new Date(req.body.date);
 
       const input = api.events.create.input.parse({
           ...sanitizedBody,
-          businessId: serverBusinessId,
+          businessId: serverBusinessId || undefined,
           date: primaryDate,
           eventDates: parsedEventDates,
           zipCode: eventZipCode,
+          city: req.body.city || "Moyock",
+          state: req.body.state || "NC",
           targetZipCodes: [eventZipCode],
       });
       const event = await storage.createEvent(input);

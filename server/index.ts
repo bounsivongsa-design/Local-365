@@ -67,7 +67,7 @@ app.use((req, res, next) => {
     const { db } = await import("./db");
     const { users } = await import("@shared/schema");
     const { sql } = await import("drizzle-orm");
-    await db.execute(sql`UPDATE users SET is_admin = true, verified = true WHERE LOWER(email) IN (${sql.join(adminEmails.map(e => sql`${e}`), sql`, `)})`);
+    await db.execute(sql`UPDATE users SET is_admin = true, is_validated = true WHERE LOWER(email) IN (${sql.join(adminEmails.map(e => sql`${e}`), sql`, `)})`);
     await db.execute(sql`UPDATE users SET first_name = 'Boun', last_name = 'Sivongsa' WHERE LOWER(email) = 'boun.sivongsa@gmail.com' AND (first_name != 'Boun' OR last_name != 'Sivongsa' OR first_name IS NULL)`);
   } catch (e) {
     console.error("Admin setup:", e);

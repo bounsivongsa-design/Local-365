@@ -221,20 +221,20 @@ export default function Events() {
                 </Button>
               </div>
 
-              {isBusinessAccount ? (
+              {isBusinessAccount || user?.isAdmin ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-[shadow,transform] duration-200 border-0" data-testid="button-create-event">
                       <Plus className="mr-2 h-4 w-4" />
-                      Advertise Your Event
+                      {user?.isAdmin ? "Create Event" : "Advertise Your Event"}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Create & Advertise Your Event</DialogTitle>
-                      <DialogDescription>Fill in your event details below. Fields available depend on your membership tier.</DialogDescription>
+                      <DialogTitle>{user?.isAdmin ? "Create Community Event" : "Create & Advertise Your Event"}</DialogTitle>
+                      <DialogDescription>{user?.isAdmin ? "Create an event for the community. All fields are available." : "Fill in your event details below. Fields available depend on your membership tier."}</DialogDescription>
                     </DialogHeader>
-                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} linkedBusinessId={user?.linkedBusinessId} />
+                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} linkedBusinessId={user?.linkedBusinessId} isAdmin={user?.isAdmin} />
                   </DialogContent>
                 </Dialog>
               ) : (
@@ -486,12 +486,12 @@ const TIER_LABELS: Record<string, { label: string; color: string }> = {
   gold: { label: "Gold", color: "bg-gradient-to-r from-yellow-600 to-amber-500" },
 };
 
-function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => void; linkedBusinessId?: number | null }) {
+function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: () => void; linkedBusinessId?: number | null; isAdmin?: boolean }) {
   const createEvent = useCreateEvent();
   const { toast } = useToast();
   const { data: business } = useBusiness(linkedBusinessId || 0);
-  const tier = getTierLevel(business?.membershipTier);
-  const tierInfo = TIER_LABELS[tier];
+  const tier = isAdmin ? "gold" : getTierLevel(business?.membershipTier);
+  const tierInfo = isAdmin ? { label: "Admin", color: "bg-red-500" } : TIER_LABELS[tier];
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const flyerInputRef = useRef<HTMLInputElement>(null);
@@ -507,8 +507,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
     imageUrl: z.string().optional(),
     flyerUrl: z.string().optional(),
     promoVideoUrl: z.string().optional(),
-    adDuration: z.string().min(1, "Select an ad duration"),
-    adSize: z.string().min(1, "Select an ad size"),
+    adDuration: isAdmin ? z.string().optional() : z.string().min(1, "Select an ad duration"),
+    adSize: isAdmin ? z.string().optional() : z.string().min(1, "Select an ad size"),
   });
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -528,15 +528,15 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   const adDuration = form.watch("adDuration");
   const adSize = form.watch("adSize");
 
-  const canDescription = adSize === "medium" || adSize === "large";
-  const canImage = adSize === "medium" || adSize === "large";
-  const canFlyer = adSize === "large";
-  const canVideo = adSize === "large" && tier === "gold";
+  const canDescription = isAdmin || adSize === "medium" || adSize === "large";
+  const canImage = isAdmin || adSize === "medium" || adSize === "large";
+  const canFlyer = isAdmin || adSize === "large";
+  const canVideo = isAdmin || (adSize === "large" && tier === "gold");
 
-  const discount = tier === "gold" ? 0.50 : tier === "silver" ? 0.25 : tier === "bronze" ? 0.10 : 0;
+  const discount = isAdmin ? 1 : tier === "gold" ? 0.50 : tier === "silver" ? 0.25 : tier === "bronze" ? 0.10 : 0;
   const basePricing = adDuration === "2week" ? EVENT_BASE_PRICING.event2Week : EVENT_BASE_PRICING.eventMonthly;
   const basePrice = adSize ? (basePricing as any)[adSize] || 0 : 0;
-  const finalPrice = Math.round(basePrice * (1 - discount));
+  const finalPrice = isAdmin ? 0 : Math.round(basePrice * (1 - discount));
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     if (eventDates.length === 0) {
@@ -544,10 +544,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
       return;
     }
 
-    const selectedAdSize = data.adSize || "small";
-    const sizeCanDesc = selectedAdSize === "medium" || selectedAdSize === "large";
-    const sizeCanImage = selectedAdSize === "medium" || selectedAdSize === "large";
-    const sizeCanFlyer = selectedAdSize === "large";
+    const selectedAdSize = isAdmin ? "large" : (data.adSize || "small");
 
     const eventData: any = {
       title: data.title,
@@ -555,15 +552,18 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
       date: eventDates[0],
       eventDates: eventDates,
       adSize: selectedAdSize,
-      description: sizeCanDesc && data.description ? data.description : "",
-      imageUrl: sizeCanImage && data.imageUrl ? data.imageUrl : undefined,
+      description: data.description || "",
+      imageUrl: data.imageUrl || undefined,
+      zipCode: "27958",
+      city: "Moyock",
+      state: "NC",
     };
-    if (sizeCanFlyer && data.flyerUrl) eventData.flyerUrl = data.flyerUrl;
-    if (sizeCanFlyer && tier === "gold" && data.promoVideoUrl) eventData.promoVideoUrl = data.promoVideoUrl;
+    if (data.flyerUrl) eventData.flyerUrl = data.flyerUrl;
+    if (data.promoVideoUrl) eventData.promoVideoUrl = data.promoVideoUrl;
     
     createEvent.mutate(eventData, {
       onSuccess: () => {
-        toast({ title: "Event Created", description: "Your event has been submitted. It will appear on the calendar once payment is confirmed." });
+        toast({ title: "Event Created", description: isAdmin ? "Your community event has been published." : "Your event has been submitted. It will appear on the calendar once payment is confirmed." });
         onSuccess();
       },
       onError: (err) => {
@@ -575,15 +575,27 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-2">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <Crown className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Your Tier:</span>
+        {isAdmin ? (
+          <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <div className="flex items-center gap-2">
+              <Crown className="h-4 w-4 text-red-600" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Admin — all fields unlocked, no payment required</span>
+            </div>
+            <Badge className="bg-red-500 text-white border-0" data-testid="badge-event-tier">
+              Admin
+            </Badge>
           </div>
-          <Badge className={`${tierInfo.color} text-white border-0`} data-testid="badge-event-tier">
-            {tierInfo.label}
-          </Badge>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <Crown className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Your Tier:</span>
+            </div>
+            <Badge className={`${tierInfo.color} text-white border-0`} data-testid="badge-event-tier">
+              {tierInfo.label}
+            </Badge>
+          </div>
+        )}
 
         <FormField
           control={form.control}
@@ -663,6 +675,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
           )}
         </div>
 
+        {!isAdmin && (
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
           <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
             <Megaphone className="h-4 w-4" />
@@ -737,6 +750,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
             </div>
           )}
         </div>
+        )}
 
         {canDescription ? (
           <FormField
@@ -943,14 +957,16 @@ function CreateEventForm({ onSuccess, linkedBusinessId }: { onSuccess: () => voi
             className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
             data-testid="button-submit-event"
           >
-            {createEvent.isPending ? "Creating..." : "Create Event & Proceed to Payment"}
+            {createEvent.isPending ? "Creating..." : isAdmin ? "Publish Event" : "Create Event & Proceed to Payment"}
           </Button>
         </div>
 
+        {!isAdmin && (
         <p className="text-xs text-center text-slate-400">
           <Info className="h-3 w-3 inline mr-1" />
           Event will appear on the calendar after payment is confirmed.
         </p>
+        )}
       </form>
     </Form>
   );
