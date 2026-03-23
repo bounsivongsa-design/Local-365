@@ -32,8 +32,18 @@ import {
   Tag,
   CheckCircle2,
   X,
+  ShoppingCart,
+  Receipt,
+  Percent,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type PaymentFrequency = "monthly" | "semi_annual" | "annual";
 
@@ -155,6 +165,7 @@ export default function BusinessMembership() {
   const [promoCode, setPromoCode] = useState("");
   const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number } | null>(null);
   const [validatingPromo, setValidatingPromo] = useState(false);
+  const [checkoutTier, setCheckoutTier] = useState<MembershipTier | null>(null);
 
   const { data: business } = useQuery<{ id: number; membershipTier: string; membershipTrialUsed: boolean }>({
     queryKey: ["/api/my-business"],
@@ -217,30 +228,34 @@ export default function BusinessMembership() {
     }
   };
 
-  const handleSelectTier = async (tier: MembershipTier) => {
+  const openCheckout = (tier: MembershipTier) => {
     if (!isAuthenticated) {
       window.location.href = "/auth?mode=register&type=business";
       return;
     }
-
     if (user?.accountType !== "business") {
       window.location.href = "/create-business";
       return;
     }
-
     if (!business?.id) {
       window.location.href = "/create-business";
       return;
     }
+    setPromoCode("");
+    setPromoStatus(null);
+    setCheckoutTier(tier);
+  };
 
-    setCheckoutLoading(tier.id);
+  const handleProceedToPayment = async () => {
+    if (!checkoutTier) return;
+    setCheckoutLoading(checkoutTier.id);
     try {
       const res = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          tier: tier.id,
+          tier: checkoutTier.id,
           frequency: selectedFrequency,
           promoCode: promoStatus?.valid ? promoCode : undefined,
         }),
@@ -257,10 +272,26 @@ export default function BusinessMembership() {
         window.location.href = data.url;
       }
     } catch (err) {
-      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to start checkout. Please try again.", variant: "destructive" });
     } finally {
       setCheckoutLoading(null);
     }
+  };
+
+  const getCheckoutPricing = () => {
+    if (!checkoutTier) return null;
+    const pricing = calculatePrice(checkoutTier.monthlyPrice, selectedFrequency, isNewMember);
+    let discount = 0;
+    if (promoStatus?.valid && promoStatus.discountValue) {
+      if (promoStatus.discountType === "percentage") {
+        discount = pricing.total * (promoStatus.discountValue / 100);
+      } else {
+        discount = promoStatus.discountValue;
+      }
+    }
+    const finalTotal = Math.max(0, pricing.total - discount);
+    const hasFreeTrial = isNewMember;
+    return { ...pricing, discount, finalTotal, hasFreeTrial };
   };
 
   const handleManageSubscription = async () => {
@@ -385,46 +416,6 @@ export default function BusinessMembership() {
         </div>
 
 
-        <div className="max-w-md mx-auto mb-12">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-200/50 dark:border-slate-700/50">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-              <Tag className="h-4 w-4 inline mr-1.5 -mt-0.5" />
-              Have a promo code?
-            </label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter promo code"
-                value={promoCode}
-                onChange={(e) => {
-                  setPromoCode(e.target.value.toUpperCase());
-                  if (promoStatus) setPromoStatus(null);
-                }}
-                className="font-mono"
-                data-testid="input-promo-code"
-              />
-              <Button
-                onClick={validatePromoCode}
-                disabled={!promoCode.trim() || validatingPromo}
-                variant="outline"
-                className="shrink-0"
-                data-testid="button-apply-promo"
-              >
-                {validatingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
-              </Button>
-            </div>
-            {promoStatus && (
-              <div className={`mt-2 flex items-center gap-2 text-sm ${promoStatus.valid ? "text-green-600" : "text-red-500"}`}>
-                {promoStatus.valid ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                <span data-testid="text-promo-status">
-                  {promoStatus.valid
-                    ? `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — ${promoStatus.message}`
-                    : promoStatus.message}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
           {MEMBERSHIP_TIERS.map((tier) => {
             const pricing = calculatePrice(tier.monthlyPrice, selectedFrequency, isNewMember);
@@ -518,7 +509,7 @@ export default function BusinessMembership() {
                       </Button>
                     ) : (
                       <Button 
-                        onClick={() => handleSelectTier(tier)}
+                        onClick={() => openCheckout(tier)}
                         disabled={isLoading}
                         className={`w-full h-12 rounded-xl font-semibold text-base transition-all duration-300 ${
                           tier.popular
@@ -623,6 +614,164 @@ export default function BusinessMembership() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!checkoutTier} onOpenChange={(open) => { if (!open) { setCheckoutTier(null); setPromoCode(""); setPromoStatus(null); } }}>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+          {checkoutTier && (() => {
+            const checkoutPricing = getCheckoutPricing();
+            const Icon = checkoutTier.icon;
+            const freqLabel = selectedFrequency === "monthly" ? "Monthly" : selectedFrequency === "semi_annual" ? "Semi-Annual" : "Annual";
+            const isLoading = checkoutLoading === checkoutTier.id;
+            if (!checkoutPricing) return null;
+
+            return (
+              <>
+                <div className={`bg-gradient-to-br ${checkoutTier.gradient} p-6 text-white`}>
+                  <DialogHeader>
+                    <DialogTitle className="text-white flex items-center gap-3 text-xl">
+                      <div className={`w-10 h-10 rounded-xl ${checkoutTier.iconBg} flex items-center justify-center`}>
+                        <Icon className={`h-5 w-5 ${checkoutTier.id === 'bronze' ? 'text-amber-700' : checkoutTier.id === 'silver' ? 'text-slate-600' : 'text-amber-600'}`} />
+                      </div>
+                      <div>
+                        <span className="block">Order Summary</span>
+                        <span className="block text-sm font-normal text-white/70">{checkoutTier.name} Membership — {freqLabel}</span>
+                      </div>
+                    </DialogTitle>
+                    <DialogDescription className="sr-only">
+                      Review your membership order and apply promo codes before proceeding to payment.
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm" data-testid="checkout-subtotal">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {checkoutTier.name} — {freqLabel}
+                        {checkoutPricing.months > 1 && ` (${checkoutPricing.months} months)`}
+                      </span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        ${checkoutPricing.total.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {checkoutPricing.savings > 0 && (
+                      <div className="flex justify-between items-center text-sm text-[#8a9a5b]" data-testid="checkout-frequency-savings">
+                        <span className="flex items-center gap-1.5">
+                          <Percent className="h-3.5 w-3.5" />
+                          {freqLabel} discount
+                        </span>
+                        <span className="font-medium">-${checkoutPricing.savings.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {checkoutPricing.freeMonths > 0 && (
+                      <div className="flex justify-between items-center text-sm text-emerald-600" data-testid="checkout-free-trial">
+                        <span className="flex items-center gap-1.5">
+                          <Gift className="h-3.5 w-3.5" />
+                          First month free trial
+                        </span>
+                        <span className="font-medium">Included</span>
+                      </div>
+                    )}
+
+                    {promoStatus?.valid && checkoutPricing.discount > 0 && (
+                      <div className="flex justify-between items-center text-sm text-emerald-600" data-testid="checkout-promo-discount">
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" />
+                          Promo: {promoCode}
+                          {promoStatus.discountType === "percentage" ? ` (${promoStatus.discountValue}% off)` : ` ($${promoStatus.discountValue} off)`}
+                        </span>
+                        <span className="font-medium">-${checkoutPricing.discount.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+                      <div className="flex justify-between items-center" data-testid="checkout-total">
+                        <span className="font-bold text-lg text-slate-900 dark:text-white">
+                          {checkoutPricing.hasFreeTrial ? "Due Today" : "Total Due"}
+                        </span>
+                        <span className="font-bold text-2xl text-[#0a4a82] dark:text-blue-400">
+                          {checkoutPricing.hasFreeTrial ? "$0.00" : `$${checkoutPricing.finalTotal.toFixed(2)}`}
+                        </span>
+                      </div>
+                      {checkoutPricing.hasFreeTrial ? (
+                        <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                          <Gift className="h-3 w-3" />
+                          30-day free trial — then ${checkoutPricing.finalTotal.toFixed(2)}/{selectedFrequency === "monthly" ? "mo" : selectedFrequency === "semi_annual" ? "6 mo" : "yr"}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {selectedFrequency === "monthly" ? "Billed monthly" : selectedFrequency === "semi_annual" ? "Billed every 6 months" : "Billed annually"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2.5 flex items-center gap-1.5">
+                      <Tag className="h-4 w-4 text-[#d4a373]" />
+                      Have a promo code?
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter promo code"
+                        value={promoCode}
+                        onChange={(e) => {
+                          setPromoCode(e.target.value.toUpperCase());
+                          if (promoStatus) setPromoStatus(null);
+                        }}
+                        className="font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                        data-testid="input-promo-code"
+                      />
+                      <Button
+                        onClick={() => validatePromoCode(checkoutTier.id)}
+                        disabled={!promoCode.trim() || validatingPromo}
+                        variant="outline"
+                        className="shrink-0 border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82]/5"
+                        data-testid="button-apply-promo"
+                      >
+                        {validatingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      </Button>
+                    </div>
+                    {promoStatus && (
+                      <div className={`mt-2.5 flex items-center gap-2 text-sm ${promoStatus.valid ? "text-emerald-600" : "text-red-500"}`}>
+                        {promoStatus.valid ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                        <span data-testid="text-promo-status">
+                          {promoStatus.valid
+                            ? `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — ${promoStatus.message}`
+                            : promoStatus.message}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={handleProceedToPayment}
+                    disabled={isLoading || validatingPromo}
+                    className="w-full h-13 rounded-xl font-semibold text-base bg-[#0a4a82] hover:bg-[#083a6a] shadow-lg shadow-[#0a4a82]/25 transition-all duration-300"
+                    data-testid="button-proceed-payment"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <CreditCard className="mr-2 h-5 w-5" />
+                        Proceed to Payment — {checkoutPricing.hasFreeTrial ? "$0.00" : `$${checkoutPricing.finalTotal.toFixed(2)}`}
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                    <Shield className="h-3.5 w-3.5" />
+                    <span>Secure checkout powered by Stripe</span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
