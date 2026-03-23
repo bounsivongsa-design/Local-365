@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -32,6 +33,8 @@ import {
   Loader2,
   ArrowLeft,
   Pencil,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -50,6 +53,26 @@ interface PromoCode {
   createdAt: string | null;
 }
 
+function generateCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "LL365-";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+function getExpirationDate(period: string): string {
+  const now = new Date();
+  if (period === "1month") {
+    now.setMonth(now.getMonth() + 1);
+  } else if (period === "2months") {
+    now.setMonth(now.getMonth() + 2);
+  }
+  now.setHours(23, 59, 59, 999);
+  return now.toISOString();
+}
+
 export default function AdminPromoCodes() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -61,17 +84,15 @@ export default function AdminPromoCodes() {
     discountType: "percentage",
     discountValue: "",
     applicableTiers: [] as string[],
-    maxUses: "",
-    expiresAt: "",
+    expiresPeriod: "1month",
   });
   const [newCode, setNewCode] = useState({
-    code: "",
+    code: generateCode(),
     description: "",
     discountType: "percentage",
     discountValue: "",
     applicableTiers: [] as string[],
-    maxUses: "",
-    expiresAt: "",
+    expiresPeriod: "1month",
   });
 
   const { data: promoCodes = [], isLoading } = useQuery<PromoCode[]>({
@@ -86,7 +107,7 @@ export default function AdminPromoCodes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
       setDialogOpen(false);
-      setNewCode({ code: "", description: "", discountType: "percentage", discountValue: "", applicableTiers: [], maxUses: "", expiresAt: "" });
+      setNewCode({ code: generateCode(), description: "", discountType: "percentage", discountValue: "", applicableTiers: [], expiresPeriod: "1month" });
       toast({ title: "Promo code created" });
     },
     onError: (err: any) => {
@@ -138,8 +159,7 @@ export default function AdminPromoCodes() {
       discountType: promo.discountType,
       discountValue: String(promo.discountValue),
       applicableTiers: promo.applicableTiers || [],
-      maxUses: promo.maxUses ? String(promo.maxUses) : "",
-      expiresAt: promo.expiresAt ? new Date(promo.expiresAt).toISOString().slice(0, 16) : "",
+      expiresPeriod: "1month",
     });
     setEditDialogOpen(true);
   };
@@ -156,8 +176,8 @@ export default function AdminPromoCodes() {
         discountType: editForm.discountType,
         discountValue: parseInt(editForm.discountValue),
         applicableTiers: editForm.applicableTiers.length > 0 ? editForm.applicableTiers : [],
-        maxUses: editForm.maxUses ? parseInt(editForm.maxUses) : null,
-        expiresAt: editForm.expiresAt || null,
+        maxUses: 1,
+        expiresAt: getExpirationDate(editForm.expiresPeriod),
       },
     });
   };
@@ -182,8 +202,8 @@ export default function AdminPromoCodes() {
       discountType: newCode.discountType,
       discountValue: parseInt(newCode.discountValue),
       applicableTiers: newCode.applicableTiers.length > 0 ? newCode.applicableTiers : [],
-      maxUses: newCode.maxUses ? parseInt(newCode.maxUses) : null,
-      expiresAt: newCode.expiresAt || null,
+      maxUses: 1,
+      expiresAt: getExpirationDate(newCode.expiresPeriod),
     });
   };
 
@@ -194,6 +214,11 @@ export default function AdminPromoCodes() {
         ? prev.applicableTiers.filter((t) => t !== tier)
         : [...prev.applicableTiers, tier],
     }));
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({ title: "Copied!", description: `Code "${code}" copied to clipboard` });
   };
 
   if (isLoading) {
@@ -218,9 +243,12 @@ export default function AdminPromoCodes() {
                 <Ticket className="h-8 w-8 text-[#d4a373]" />
                 Promo Codes
               </h1>
-              <p className="text-white/70 mt-1">Create and manage promotional discount codes</p>
+              <p className="text-white/70 mt-1">Create and manage single-use promotional discount codes</p>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (open) setNewCode({ code: generateCode(), description: "", discountType: "percentage", discountValue: "", applicableTiers: [], expiresPeriod: "1month" });
+            }}>
               <DialogTrigger asChild>
                 <Button className="bg-[#d4a373] hover:bg-[#c49363] text-white" data-testid="button-create-promo">
                   <Plus className="h-4 w-4 mr-2" />
@@ -230,16 +258,40 @@ export default function AdminPromoCodes() {
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Create Promo Code</DialogTitle>
+                  <DialogDescription>Single-use code. Copy and send to the customer.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div>
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Code</label>
-                    <Input
-                      placeholder="e.g. WELCOME25"
-                      value={newCode.code}
-                      onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })}
-                      data-testid="input-promo-code"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        value={newCode.code}
+                        readOnly
+                        className="font-mono font-bold tracking-wider bg-slate-50"
+                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                        data-testid="input-promo-code"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyCode(newCode.code)}
+                        title="Copy code"
+                        data-testid="button-copy-code"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setNewCode({ ...newCode, code: generateCode() })}
+                        title="Generate new code"
+                        data-testid="button-regenerate-code"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
@@ -247,6 +299,8 @@ export default function AdminPromoCodes() {
                       placeholder="e.g. 25% off first month"
                       value={newCode.description}
                       onChange={(e) => setNewCode({ ...newCode, description: e.target.value })}
+                      style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                      className="bg-white"
                       data-testid="input-promo-description"
                     />
                   </div>
@@ -272,6 +326,8 @@ export default function AdminPromoCodes() {
                         placeholder={newCode.discountType === "percentage" ? "25" : "50"}
                         value={newCode.discountValue}
                         onChange={(e) => setNewCode({ ...newCode, discountValue: e.target.value })}
+                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                        className="bg-white"
                         data-testid="input-discount-value"
                       />
                     </div>
@@ -294,25 +350,22 @@ export default function AdminPromoCodes() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Max Uses (optional)</label>
-                      <Input
-                        type="number"
-                        placeholder="Unlimited"
-                        value={newCode.maxUses}
-                        onChange={(e) => setNewCode({ ...newCode, maxUses: e.target.value })}
-                        data-testid="input-max-uses"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires At (optional)</label>
-                      <Input
-                        type="datetime-local"
-                        value={newCode.expiresAt}
-                        onChange={(e) => setNewCode({ ...newCode, expiresAt: e.target.value })}
-                        data-testid="input-expires-at"
-                      />
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires In</label>
+                    <Select value={newCode.expiresPeriod} onValueChange={(v) => setNewCode({ ...newCode, expiresPeriod: v })}>
+                      <SelectTrigger data-testid="select-expires-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1month">1 Month</SelectItem>
+                        <SelectItem value="2months">2 Months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Usage:</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Single use (1 per customer)</span>
                     </div>
                   </div>
                   <Button
@@ -342,12 +395,12 @@ export default function AdminPromoCodes() {
           <div className="grid gap-4">
             {promoCodes.map((promo) => {
               const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date();
-              const isMaxed = promo.maxUses && (promo.currentUses || 0) >= promo.maxUses;
+              const isUsed = (promo.currentUses || 0) >= (promo.maxUses || 1);
               return (
                 <div
                   key={promo.id}
                   className={`bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border transition-all ${
-                    promo.isActive && !isExpired && !isMaxed
+                    promo.isActive && !isExpired && !isUsed
                       ? "border-slate-100 dark:border-slate-700"
                       : "border-slate-200 dark:border-slate-600 opacity-60"
                   }`}
@@ -363,11 +416,21 @@ export default function AdminPromoCodes() {
                           <span className="font-mono font-bold text-lg text-slate-900 dark:text-white" data-testid={`text-code-${promo.id}`}>
                             {promo.code}
                           </span>
-                          {promo.isActive && !isExpired && !isMaxed ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => copyCode(promo.code)}
+                            title="Copy code"
+                            data-testid={`button-copy-${promo.id}`}
+                          >
+                            <Copy className="h-3.5 w-3.5 text-slate-400" />
+                          </Button>
+                          {promo.isActive && !isExpired && !isUsed ? (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
                           ) : (
                             <Badge variant="secondary">
-                              {isExpired ? "Expired" : isMaxed ? "Maxed Out" : "Inactive"}
+                              {isUsed ? "Used" : isExpired ? "Expired" : "Inactive"}
                             </Badge>
                           )}
                         </div>
@@ -384,7 +447,7 @@ export default function AdminPromoCodes() {
                         <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {promo.currentUses || 0}{promo.maxUses ? `/${promo.maxUses}` : ""} uses
+                            {isUsed ? "Used" : "Unused"} (single-use)
                           </span>
                           {promo.expiresAt && (
                             <span className="flex items-center gap-1">
@@ -448,6 +511,7 @@ export default function AdminPromoCodes() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Promo Code: {editingPromo?.code}</DialogTitle>
+            <DialogDescription>Update discount details and expiration.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
@@ -456,6 +520,8 @@ export default function AdminPromoCodes() {
                 placeholder="e.g. 25% off first month"
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                className="bg-white"
                 data-testid="input-edit-description"
               />
             </div>
@@ -480,6 +546,8 @@ export default function AdminPromoCodes() {
                   type="number"
                   value={editForm.discountValue}
                   onChange={(e) => setEditForm({ ...editForm, discountValue: e.target.value })}
+                  style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                  className="bg-white"
                   data-testid="input-edit-discount-value"
                 />
               </div>
@@ -502,25 +570,22 @@ export default function AdminPromoCodes() {
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Max Uses (optional)</label>
-                <Input
-                  type="number"
-                  placeholder="Unlimited"
-                  value={editForm.maxUses}
-                  onChange={(e) => setEditForm({ ...editForm, maxUses: e.target.value })}
-                  data-testid="input-edit-max-uses"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires At (optional)</label>
-                <Input
-                  type="datetime-local"
-                  value={editForm.expiresAt}
-                  onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
-                  data-testid="input-edit-expires-at"
-                />
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Expires In</label>
+              <Select value={editForm.expiresPeriod} onValueChange={(v) => setEditForm({ ...editForm, expiresPeriod: v })}>
+                <SelectTrigger data-testid="select-edit-expires-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1month">1 Month</SelectItem>
+                  <SelectItem value="2months">2 Months</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Usage:</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">Single use (1 per customer)</span>
               </div>
             </div>
             <Button
