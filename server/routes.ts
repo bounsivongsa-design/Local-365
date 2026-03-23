@@ -2482,71 +2482,28 @@ export async function registerRoutes(
 async function seedAdPricing() {
   try {
     const existingPricing = await pgDb.select().from(adPricing);
-    if (existingPricing.length === 0) {
-      console.log("Seeding ad pricing...");
-      await pgDb.insert(adPricing).values([
-        {
-          placementType: "homepage_banner",
-          displayName: "Homepage Banner",
-          description: "Large banner ad displayed prominently on the homepage. Maximum visibility for your business.",
-          pricePerWeek: 9900, // $99/week
-          maxActive: 3,
-        },
-        {
-          placementType: "featured_listing",
-          displayName: "Featured Listing",
-          description: "Your business appears at the top of directory search results with a 'Featured' badge.",
-          pricePerWeek: 4900, // $49/week
-          maxActive: 10,
-        },
-        {
-          placementType: "category_spotlight",
-          displayName: "Category Spotlight",
-          description: "Featured placement within a specific category page. Perfect for targeting your niche.",
-          pricePerWeek: 2900, // $29/week
-          maxActive: 5,
-        },
-        {
-          placementType: "directory_boost",
-          displayName: "Directory Boost",
-          description: "Increased visibility in directory listings with priority placement.",
-          pricePerWeek: 1900, // $19/week
-          maxActive: 20,
-        },
-        {
-          placementType: "large_banner",
-          displayName: "Large Homepage Banner",
-          description: "Full-width premium banner at the top of the homepage carousel. Maximum visibility and impact.",
-          pricePerWeek: 25000, // $250/week ($1,000/mo)
-          maxActive: 5,
-        },
-        {
-          placementType: "medium_banner",
-          displayName: "Medium Homepage Banner",
-          description: "75%-width banner in the homepage carousel. Great visibility at a mid-range price.",
-          pricePerWeek: 12500, // $125/week ($500/mo)
-          maxActive: 5,
-        },
-        {
-          placementType: "small_banner",
-          displayName: "Small Homepage Banner",
-          description: "Compact banner in the homepage carousel. Affordable visibility for your business.",
-          pricePerWeek: 6250, // $62.50/week ($250/mo)
-          maxActive: 5,
-        },
-      ]);
-      console.log("Ad pricing seeded!");
-    } else {
-      const existingTypes = existingPricing.map(p => p.placementType);
-      const newTypes = [
-        { placementType: "large_banner", displayName: "Large Homepage Banner", description: "Full-width premium banner at the top of the homepage carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
-        { placementType: "medium_banner", displayName: "Medium Homepage Banner", description: "75%-width banner in the homepage carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
-        { placementType: "small_banner", displayName: "Small Homepage Banner", description: "Compact banner in the homepage carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
-      ].filter(t => !existingTypes.includes(t.placementType));
-      if (newTypes.length > 0) {
-        await pgDb.insert(adPricing).values(newTypes);
-        console.log(`Added ${newTypes.length} new ad pricing tiers`);
-      }
+    
+    const deprecatedTypes = ["homepage_banner", "featured_listing"];
+    const toRemove = existingPricing.filter(p => deprecatedTypes.includes(p.placementType));
+    for (const old of toRemove) {
+      await pgDb.delete(adPricing).where(eq(adPricing.id, old.id));
+      console.log(`Removed deprecated ad type: ${old.displayName}`);
+    }
+
+    const desiredPricing = [
+      { placementType: "large_banner", displayName: "Large Homepage Banner", description: "Full-width premium banner at the top of the homepage carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
+      { placementType: "medium_banner", displayName: "Medium Homepage Banner", description: "75%-width banner in the homepage carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
+      { placementType: "small_banner", displayName: "Small Homepage Banner", description: "Compact banner in the homepage carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
+      { placementType: "category_spotlight", displayName: "Category Spotlight", description: "Featured placement within a specific category page. Perfect for targeting your niche.", pricePerWeek: 2900, maxActive: 5 },
+      { placementType: "directory_boost", displayName: "Directory Boost", description: "Increased visibility in directory listings with priority placement.", pricePerWeek: 1900, maxActive: 20 },
+    ];
+
+    const refreshed = await pgDb.select().from(adPricing);
+    const existingTypes = refreshed.map(p => p.placementType);
+    const toAdd = desiredPricing.filter(d => !existingTypes.includes(d.placementType));
+    if (toAdd.length > 0) {
+      await pgDb.insert(adPricing).values(toAdd);
+      console.log(`Seeded ${toAdd.length} ad pricing tiers`);
     }
   } catch (err) {
     console.error("Error seeding ad pricing:", err);
