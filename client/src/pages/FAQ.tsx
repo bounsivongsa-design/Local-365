@@ -102,7 +102,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "Can I add my own event?",
-        answer: "Business account holders can promote events through the advertising system. Contact us to get your community event listed, or use the advertising page to purchase promoted event placement that reaches more people.",
+        answer: "Business account holders can promote events through the advertising system. Email us at support@locallist365.com to get your community event listed, or use the advertising page to purchase promoted event placement that reaches more people.",
         links: [{ label: "Learn about advertising", to: "/advertising" }],
       },
     ],
@@ -226,7 +226,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I report a problem?",
-        answer: "If you encounter an issue with a business listing, a suspicious quote, or any content on the platform, please contact us directly. We take community safety seriously and will investigate all reports promptly.",
+        answer: "If you encounter an issue with a business listing, a suspicious quote, or any content on the platform, please email us at support@locallist365.com. We take community safety seriously and will investigate all reports promptly.",
       },
     ],
   },

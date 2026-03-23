@@ -93,8 +93,8 @@ export default function Legal() {
               <p>Last updated: {LAST_UPDATED}</p>
               <p className="mt-1">
                 Questions? Contact us at{" "}
-                <a href="mailto:legal@locallist365.com" className="text-[#d4a373] hover:underline" data-testid="link-legal-email">
-                  legal@locallist365.com
+                <a href="mailto:support@locallist365.com" className="text-[#d4a373] hover:underline" data-testid="link-legal-email">
+                  support@locallist365.com
                 </a>
               </p>
             </div>
@@ -200,7 +200,7 @@ function TermsOfService() {
       </SubSection>
 
       <SubSection number="14" title="Contact">
-        <p>For questions about these Terms, please contact us at <a href="mailto:legal@locallist365.com" className="text-[#0a4a82] hover:underline font-medium">legal@locallist365.com</a>.</p>
+        <p>For questions about these Terms, please contact us at <a href="mailto:support@locallist365.com" className="text-[#0a4a82] hover:underline font-medium">support@locallist365.com</a>.</p>
       </SubSection>
     </div>
   );
@@ -266,7 +266,7 @@ function PrivacyPolicy() {
           <li>Object to or restrict certain processing activities</li>
           <li>Withdraw consent where processing is based on consent</li>
         </ul>
-        <p className="mt-2">To exercise these rights, contact us at <a href="mailto:privacy@locallist365.com" className="text-[#0a4a82] hover:underline font-medium">privacy@locallist365.com</a>.</p>
+        <p className="mt-2">To exercise these rights, contact us at <a href="mailto:support@locallist365.com" className="text-[#0a4a82] hover:underline font-medium">support@locallist365.com</a>.</p>
       </SubSection>
 
       <SubSection number="8" title="Third-Party Links">
@@ -282,7 +282,7 @@ function PrivacyPolicy() {
       </SubSection>
 
       <SubSection number="11" title="Contact">
-        <p>For questions or concerns about this Privacy Policy, contact us at <a href="mailto:privacy@locallist365.com" className="text-[#0a4a82] hover:underline font-medium">privacy@locallist365.com</a>.</p>
+        <p>For questions or concerns about this Privacy Policy, contact us at <a href="mailto:support@locallist365.com" className="text-[#0a4a82] hover:underline font-medium">support@locallist365.com</a>.</p>
       </SubSection>
     </div>
   );
