@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useEvents } from "@/hooks/use-events";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
+import { ExampleBanner } from "@/components/ExampleBanner";
 import { EventCard } from "@/components/EventCard";
 import { IntakeForm } from "@/components/IntakeForm";
 import { ItineraryBuilder } from "@/components/ItineraryBuilder";
@@ -332,6 +333,7 @@ export default function Home() {
                   <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === largeAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
                     <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                       <div className="relative w-full h-full overflow-hidden group">
+                        {largeAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
                         <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                         <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6">
@@ -340,7 +342,6 @@ export default function Home() {
                               <Sparkles className="h-3 w-3" />
                               {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Sponsored"}
                             </span>
-                            {largeAds.isPlaceholder && <span className="text-white/70 text-[10px]">Example</span>}
                           </div>
                           <p className="text-[#d4a373] text-sm font-semibold tracking-wide mb-1">{slide.businessName}</p>
                           <h3 className="text-lg md:text-2xl font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
@@ -370,6 +371,7 @@ export default function Home() {
                           <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                             <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                               <div className="relative overflow-hidden rounded-xl group" style={{ aspectRatio: '16/7' }}>
+                                {mediumAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -378,7 +380,6 @@ export default function Home() {
                                       <Megaphone className="h-2.5 w-2.5" />
                                       {mediumAds.isPlaceholder ? "Medium — $500/mo" : "Sponsored"}
                                     </span>
-                                    {mediumAds.isPlaceholder && <span className="text-white/70 text-[9px]">Example</span>}
                                   </div>
                                   <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>
                                   <h3 className="text-sm md:text-base font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
@@ -411,6 +412,7 @@ export default function Home() {
                           <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                             <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
                               <div className="relative overflow-hidden rounded-lg group" style={{ aspectRatio: '16/4' }}>
+                                {smallAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -419,7 +421,6 @@ export default function Home() {
                                       <Megaphone className="h-2 w-2" />
                                       {smallAds.isPlaceholder ? "Small — $250/mo" : "Ad"}
                                     </span>
-                                    {smallAds.isPlaceholder && <span className="text-white/70 text-[8px]">Example</span>}
                                   </div>
                                   <p className="text-[#d4a373] text-[10px] font-semibold tracking-wide">{slide.businessName}</p>
                                   <h3 className="text-xs font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
