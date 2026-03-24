@@ -3388,6 +3388,79 @@ Respond in this exact JSON format:
         }).from(adPlacements).orderBy(desc(adPlacements.createdAt)).limit(10);
       } catch {}
 
+      // Revenue breakdown data
+      const SUBSCRIPTION_MONTHLY: Record<string, number> = { basic: 5000, standard: 10000, premium: 20000 };
+      const SUBSCRIPTION_SEMI: Record<string, number> = { basic: 24000, standard: 48000, premium: 96000 };
+      const SUBSCRIPTION_ANNUAL: Record<string, number> = { basic: 33000, standard: 66000, premium: 132000 };
+
+      let subscriptionRevenue = { bronze: { count: 0, monthly: 0 }, silver: { count: 0, monthly: 0 }, gold: { count: 0, monthly: 0 }, total: 0 };
+      try {
+        const activeSubs = await pgDb.select({
+          membershipTier: businesses.membershipTier,
+          paymentFrequency: businesses.membershipPaymentFrequency,
+        }).from(businesses).where(
+          and(
+            sql`${businesses.membershipTier} IS NOT NULL`,
+            sql`${businesses.membershipTier} != 'none'`,
+            sql`${businesses.stripeSubscriptionId} IS NOT NULL`
+          )
+        );
+        for (const sub of activeSubs) {
+          const tier = sub.membershipTier || "none";
+          const freq = sub.paymentFrequency || "monthly";
+          let monthlyEquiv = SUBSCRIPTION_MONTHLY[tier] || 0;
+          if (freq === "semi_annual") monthlyEquiv = Math.round((SUBSCRIPTION_SEMI[tier] || 0) / 6);
+          else if (freq === "annual") monthlyEquiv = Math.round((SUBSCRIPTION_ANNUAL[tier] || 0) / 12);
+          const key = tier === "basic" ? "bronze" : tier === "standard" ? "silver" : tier === "premium" ? "gold" : null;
+          if (key && subscriptionRevenue[key as keyof typeof subscriptionRevenue] && typeof subscriptionRevenue[key as keyof typeof subscriptionRevenue] === "object") {
+            (subscriptionRevenue[key as keyof typeof subscriptionRevenue] as { count: number; monthly: number }).count++;
+            (subscriptionRevenue[key as keyof typeof subscriptionRevenue] as { count: number; monthly: number }).monthly += monthlyEquiv;
+          }
+        }
+        subscriptionRevenue.total = subscriptionRevenue.bronze.monthly + subscriptionRevenue.silver.monthly + subscriptionRevenue.gold.monthly;
+      } catch {}
+
+      let adRevenue = { small: { count: 0, revenue: 0 }, medium: { count: 0, revenue: 0 }, large: { count: 0, revenue: 0 }, total: 0, totalPaid: 0 };
+      try {
+        const adsBySize = await pgDb.select({
+          adSize: adPlacements.adSize,
+          count: sql<number>`count(*)::int`,
+          totalPaid: sql<number>`COALESCE(sum(${adPlacements.totalPaid}), 0)::int`,
+        }).from(adPlacements).where(eq(adPlacements.status, "active")).groupBy(adPlacements.adSize);
+        const AD_MONTHLY: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
+        for (const row of adsBySize) {
+          const size = row.adSize || "small";
+          const key = size as keyof typeof adRevenue;
+          if (adRevenue[key] && typeof adRevenue[key] === "object") {
+            (adRevenue[key] as { count: number; revenue: number }).count = row.count;
+            (adRevenue[key] as { count: number; revenue: number }).revenue = row.count * (AD_MONTHLY[size] || 25000);
+          }
+        }
+        adRevenue.total = adRevenue.small.revenue + adRevenue.medium.revenue + adRevenue.large.revenue;
+        const allAdPaid = await pgDb.select({
+          totalPaid: sql<number>`COALESCE(sum(${adPlacements.totalPaid}), 0)::int`,
+        }).from(adPlacements);
+        adRevenue.totalPaid = allAdPaid[0]?.totalPaid || 0;
+      } catch {}
+
+      let jobRevenue = { activeJobs: 0, totalEstimated: 0 };
+      try {
+        const JOB_PRICES: Record<string, number> = { premium: 1000, standard: 1500, basic: 1800, none: 2000 };
+        const activeJobsWithTier = await pgDb.select({
+          membershipTier: businesses.membershipTier,
+          count: sql<number>`count(*)::int`,
+        }).from(jobListings)
+          .leftJoin(businesses, eq(jobListings.businessId, businesses.id))
+          .where(eq(jobListings.isActive, true))
+          .groupBy(businesses.membershipTier);
+        for (const row of activeJobsWithTier) {
+          const weeklyPrice = JOB_PRICES[row.membershipTier || "none"] || 2000;
+          const monthlyEstimate = weeklyPrice * 4;
+          jobRevenue.activeJobs += row.count;
+          jobRevenue.totalEstimated += row.count * monthlyEstimate;
+        }
+      } catch {}
+
       res.json({
         overview: {
           totalUsers: totalUsersCount,
@@ -3413,6 +3486,11 @@ Respond in this exact JSON format:
           acc[t.tier || "none"] = t.count;
           return acc;
         }, {} as Record<string, number>),
+        revenueBreakdown: {
+          subscriptions: subscriptionRevenue,
+          ads: adRevenue,
+          jobs: jobRevenue,
+        },
         recentUsers,
         recentBusinesses,
         recentQuoteRequests,

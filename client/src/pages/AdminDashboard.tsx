@@ -60,6 +60,10 @@ import {
   Scale,
   Award,
   ClipboardCheck,
+  DollarSign,
+  TrendingUp,
+  Receipt,
+  CircleDollarSign,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
@@ -88,6 +92,25 @@ type AdminStats = {
     businessAccounts: number;
   };
   membershipBreakdown: Record<string, number>;
+  revenueBreakdown: {
+    subscriptions: {
+      bronze: { count: number; monthly: number };
+      silver: { count: number; monthly: number };
+      gold: { count: number; monthly: number };
+      total: number;
+    };
+    ads: {
+      small: { count: number; revenue: number };
+      medium: { count: number; revenue: number };
+      large: { count: number; revenue: number };
+      total: number;
+      totalPaid: number;
+    };
+    jobs: {
+      activeJobs: number;
+      totalEstimated: number;
+    };
+  };
   recentUsers: Array<{ id: string; email: string | null; firstName: string | null; lastName: string | null; accountType: string | null; createdAt: string | null }>;
   recentBusinesses: Array<{ id: number; name: string; membershipTier: string | null; verified: boolean | null; createdAt: string | null }>;
   recentQuoteRequests: Array<{ id: number; title: string; status: string | null; createdAt: string | null }>;
@@ -237,6 +260,10 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
 
   const o = stats?.overview;
   const mb = stats?.membershipBreakdown || {};
+  const rev = stats?.revenueBreakdown;
+  const formatCents = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const totalMonthlyRevenue = (rev?.subscriptions?.total || 0) + (rev?.ads?.total || 0) + (rev?.jobs?.totalEstimated || 0);
+  const totalAnnualProjection = totalMonthlyRevenue * 12;
 
   return (
     <div className="space-y-8">
@@ -294,6 +321,197 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Revenue & Subscriptions Breakdown */}
+      <div className="space-y-4" data-testid="section-revenue-breakdown">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg">
+            <DollarSign className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-[#1a1a2e]">Revenue & Subscriptions</h3>
+            <p className="text-xs text-slate-500">Monthly recurring revenue breakdown</p>
+          </div>
+        </div>
+
+        {/* Revenue Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 border-0 rounded-2xl shadow-lg" data-testid="card-total-mrr">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-white/80" />
+                <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Total MRR</span>
+              </div>
+              <p className="text-2xl font-bold text-white">{formatCents(totalMonthlyRevenue)}</p>
+              <p className="text-xs text-white/60 mt-1">Est. annual: {formatCents(totalAnnualProjection)}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-subscription-revenue">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Receipt className="h-4 w-4 text-[#0a4a82]" />
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subscriptions</span>
+              </div>
+              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.total || 0)}</p>
+              <p className="text-xs text-slate-400 mt-1">{(rev?.subscriptions?.bronze?.count || 0) + (rev?.subscriptions?.silver?.count || 0) + (rev?.subscriptions?.gold?.count || 0)} active subscribers</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-ad-revenue">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Megaphone className="h-4 w-4 text-rose-500" />
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ad Revenue</span>
+              </div>
+              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.total || 0)}</p>
+              <p className="text-xs text-slate-400 mt-1">{(rev?.ads?.small?.count || 0) + (rev?.ads?.medium?.count || 0) + (rev?.ads?.large?.count || 0)} active ads</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-job-revenue">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Briefcase className="h-4 w-4 text-amber-500" />
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Job Listings</span>
+              </div>
+              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(rev?.jobs?.totalEstimated || 0)}</p>
+              <p className="text-xs text-slate-400 mt-1">{rev?.jobs?.activeJobs || 0} active postings</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detailed Breakdowns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Subscription Breakdown */}
+          <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-subscription-breakdown">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-[#1a1a2e] text-sm font-semibold">
+                <Crown className="h-4 w-4 text-yellow-500" />
+                Subscription Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-yellow-50 border border-yellow-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Gold</span>
+                  <Badge className="bg-yellow-500 text-white text-[10px] px-1.5">{rev?.subscriptions?.gold?.count || 0}</Badge>
+                </div>
+                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.gold?.monthly || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-slate-400" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Silver</span>
+                  <Badge className="bg-slate-400 text-white text-[10px] px-1.5">{rev?.subscriptions?.silver?.count || 0}</Badge>
+                </div>
+                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.silver?.monthly || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-amber-700" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Bronze</span>
+                  <Badge className="bg-amber-700 text-white text-[10px] px-1.5">{rev?.subscriptions?.bronze?.count || 0}</Badge>
+                </div>
+                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.bronze?.monthly || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+              </div>
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase">Total Subscription MRR</span>
+                <span className="text-sm font-bold text-emerald-600">{formatCents(rev?.subscriptions?.total || 0)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ad Revenue Breakdown */}
+          <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-ad-breakdown">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-[#1a1a2e] text-sm font-semibold">
+                <Megaphone className="h-4 w-4 text-rose-500" />
+                Advertising Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-rose-50 border border-rose-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-rose-500" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Large Ads</span>
+                  <Badge className="bg-rose-500 text-white text-[10px] px-1.5">{rev?.ads?.large?.count || 0}</Badge>
+                </div>
+                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.large?.revenue || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-blue-50 border border-blue-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#0a4a82]" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Medium Ads</span>
+                  <Badge className="bg-[#0a4a82] text-white text-[10px] px-1.5">{rev?.ads?.medium?.count || 0}</Badge>
+                </div>
+                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.medium?.revenue || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-gray-50 border border-gray-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-gray-500" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Small Ads</span>
+                  <Badge className="bg-gray-500 text-white text-[10px] px-1.5">{rev?.ads?.small?.count || 0}</Badge>
+                </div>
+                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.small?.revenue || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+              </div>
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase">Total Ad MRR</span>
+                <span className="text-sm font-bold text-emerald-600">{formatCents(rev?.ads?.total || 0)}</span>
+              </div>
+              {(rev?.ads?.totalPaid || 0) > 0 && (
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Lifetime ad payments collected</span>
+                  <span className="font-semibold text-slate-600">{formatCents(rev?.ads?.totalPaid || 0)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Job Listings Revenue */}
+          <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-job-breakdown">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-[#1a1a2e] text-sm font-semibold">
+                <Briefcase className="h-4 w-4 text-amber-500" />
+                Job Board Revenue
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-medium text-[#1a1a2e]">Active Job Posts</span>
+                </div>
+                <span className="text-lg font-bold text-[#1a1a2e]">{rev?.jobs?.activeJobs || 0}</span>
+              </div>
+              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100">
+                <p className="text-xs text-amber-700 font-semibold uppercase tracking-wider mb-1">Est. Monthly Revenue</p>
+                <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(rev?.jobs?.totalEstimated || 0)}</p>
+                <p className="text-xs text-slate-400 mt-1">Based on tier-specific weekly pricing</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-xs font-semibold text-slate-500 mb-2">Weekly Pricing by Tier</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-yellow-600 font-medium">Gold</span>
+                    <span className="font-semibold">$10/wk</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">Silver</span>
+                    <span className="font-semibold">$15/wk</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-amber-700 font-medium">Bronze</span>
+                    <span className="font-semibold">$18/wk</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 font-medium">Basic</span>
+                    <span className="font-semibold">$20/wk</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0 lg:col-span-1">
