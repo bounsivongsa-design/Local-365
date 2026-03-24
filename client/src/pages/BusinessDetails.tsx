@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle } from "lucide-react";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
+import { ExampleBanner } from "@/components/ExampleBanner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,6 +105,9 @@ export default function BusinessDetails() {
 
       <div className="container py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
+          {business.isExample && (
+            <ExampleBanner variant="inline" />
+          )}
           <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md border border-[#0a4a82]/8 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0a4a82] via-[#d4a373] to-[#8a9a5b]"></div>
             <h2 className="font-display text-2xl font-bold mb-2 text-[#1a1a2e]">About</h2>

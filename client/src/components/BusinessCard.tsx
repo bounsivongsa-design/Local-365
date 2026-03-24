@@ -4,6 +4,7 @@ import { type BusinessWithRating } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
+import { ExampleBanner } from "@/components/ExampleBanner";
 
 function StarRating({ rating, reviewCount }: { rating: number; reviewCount: number }) {
   const stars = [];
@@ -45,7 +46,8 @@ export function BusinessCard({ business }: BusinessCardProps) {
         className="group relative bg-white dark:bg-card rounded-2xl overflow-hidden border border-[#0a4a82]/10 hover:border-[#0a4a82]/25 shadow-md hover:shadow-xl transition-shadow duration-300"
         data-testid={`card-business-${business.id}`}
       >
-        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10">
+        {business.isExample && <ExampleBanner variant="ribbon" />}
+        <div className={`relative h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10 ${business.isExample ? "opacity-75" : ""}`}>
           {business.imageUrl ? (
             <img 
               src={business.imageUrl} 

@@ -8,7 +8,7 @@ import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -409,6 +409,12 @@ export default function Events() {
                 </div>
               )}
               <div className="p-6 space-y-5">
+                {selectedCalendarEvent.isExample && (
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3" data-testid="banner-example-event-detail">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                    <span className="text-sm text-amber-800 font-medium">This is an example event — not a real listing</span>
+                  </div>
+                )}
                 {!(selectedCalendarEvent.imageUrl && (selectedCalendarEvent.adSize === "medium" || selectedCalendarEvent.adSize === "large")) && (
                   <h2 className="text-2xl font-bold text-slate-900">{selectedCalendarEvent.title}</h2>
                 )}

@@ -62,6 +62,7 @@ export const businesses = pgTable("businesses", {
   galleryPhotos: text("gallery_photos").array().default([]),
   promoVideoUrl: text("promo_video_url"),
   acceptsQuotes: boolean("accepts_quotes").default(true),
+  isExample: boolean("is_example").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -122,6 +123,7 @@ export const events = pgTable("events", {
   targetZipCodes: text("target_zip_codes").array().default([]),
   status: text("status").default("pending"),
   adminNote: text("admin_note"),
+  isExample: boolean("is_example").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

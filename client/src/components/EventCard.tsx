@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar as CalendarIcon, MapPin, ArrowRight, ExternalLink, Image as ImageIcon, Clock, Crown, Star, X, Video } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, ArrowRight, ExternalLink, Image as ImageIcon, Clock, Crown, Star, X, Video, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { type EventWithTier } from "@shared/schema";
+import { ExampleEventBanner } from "@/components/ExampleBanner";
 
 function getAdSizeLevel(adSize: string | null | undefined): "small" | "medium" | "large" {
   if (adSize === "large") return "large";
@@ -53,6 +54,7 @@ export function EventCard({ event }: EventCardProps) {
           data-testid={`card-event-${event.id}`}
           onClick={() => setShowDetail(true)}
         >
+          {event.isExample && <ExampleEventBanner />}
           <div className="relative w-full overflow-hidden">
             <div className="relative h-[300px] md:h-[380px] w-full overflow-hidden">
               {event.imageUrl ? (
@@ -117,6 +119,7 @@ export function EventCard({ event }: EventCardProps) {
           data-testid={`card-event-${event.id}`}
           onClick={() => setShowDetail(true)}
         >
+          {event.isExample && <ExampleEventBanner />}
           {badge && (
             <div className="absolute top-3 left-3 z-20">
               <div className={`bg-gradient-to-r ${badge.gradient} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5`}>
@@ -156,11 +159,12 @@ export function EventCard({ event }: EventCardProps) {
         </Card>
       ) : (
         <Card
-          className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 rounded-xl cursor-pointer border border-border/50 hover:border-[#0a4a82]/30 aspect-square max-w-[280px]"
+          className="group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 rounded-xl cursor-pointer border border-border/50 hover:border-[#0a4a82]/30 aspect-square max-w-[280px] relative"
           data-testid={`card-event-${event.id}`}
           onClick={() => setShowDetail(true)}
         >
-          <CardContent className="p-4 flex flex-col justify-between h-full">
+          {event.isExample && <ExampleEventBanner />}
+          <CardContent className={`p-4 flex flex-col justify-between h-full ${event.isExample ? "pt-10" : ""}`}>
             <div>
               <div className="bg-[#0a4a82] text-white rounded-lg px-3 py-2 text-center mb-3 shadow-sm">
                 <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">{format(date, "MMM")}</div>
@@ -199,6 +203,14 @@ export function EventCard({ event }: EventCardProps) {
           )}
 
           <div className="p-6 space-y-5">
+            {event.isExample && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-xl" data-testid="banner-example-event-detail">
+                <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />
+                <p className="text-xs font-semibold text-orange-700">
+                  This is an example event — not a real event. It shows what your event listing could look like!
+                </p>
+              </div>
+            )}
             {!(event.imageUrl && showImage) && (
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold text-slate-900">{event.title}</DialogTitle>

@@ -3747,6 +3747,7 @@ async function seedDatabase() {
         address: biz.address,
         category: biz.category,
         imageUrl: biz.imageUrl,
+        isExample: true,
       });
     }
 
@@ -3768,6 +3769,7 @@ async function seedDatabase() {
       adSize: "large",
       businessId: goldBiz?.id,
       targetZipCodes: ["27958"],
+      isExample: true,
     });
 
     await storage.createEvent({
@@ -3782,6 +3784,7 @@ async function seedDatabase() {
       adSize: "medium",
       businessId: silverBiz?.id,
       targetZipCodes: ["27958"],
+      isExample: true,
     });
 
     await storage.createEvent({
@@ -3796,6 +3799,7 @@ async function seedDatabase() {
       adSize: "small",
       businessId: bronzeBiz?.id,
       targetZipCodes: ["27958"],
+      isExample: true,
     });
 
     console.log("Database seeded with 26 placeholder businesses and 3 events!");
