@@ -378,6 +378,7 @@ export default function Home() {
                                       <Megaphone className="h-2.5 w-2.5" />
                                       {mediumAds.isPlaceholder ? "Medium — $500/mo" : "Sponsored"}
                                     </span>
+                                    {mediumAds.isPlaceholder && <span className="text-white/70 text-[9px]">Example</span>}
                                   </div>
                                   <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>
                                   <h3 className="text-sm md:text-base font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
@@ -413,10 +414,13 @@ export default function Home() {
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-3">
-                                  <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5 mb-1">
-                                    <Megaphone className="h-2 w-2" />
-                                    {smallAds.isPlaceholder ? "Small — $250/mo" : "Ad"}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5">
+                                      <Megaphone className="h-2 w-2" />
+                                      {smallAds.isPlaceholder ? "Small — $250/mo" : "Ad"}
+                                    </span>
+                                    {smallAds.isPlaceholder && <span className="text-white/70 text-[8px]">Example</span>}
+                                  </div>
                                   <p className="text-[#d4a373] text-[10px] font-semibold tracking-wide">{slide.businessName}</p>
                                   <h3 className="text-xs font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
                                 </div>
