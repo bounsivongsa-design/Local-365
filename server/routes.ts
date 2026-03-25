@@ -674,7 +674,7 @@ export async function registerRoutes(
         .where(
           and(
             ilike(businesses.name, input.name),
-            eq(businesses.zipCode, input.zipCode || "27929")
+            eq(businesses.zipCode, input.zipCode || "27958")
           )
         )
         .limit(1);
@@ -2514,7 +2514,7 @@ Respond in this exact JSON format:
 
       const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
-      const businessZip = biz?.zipCode || "27929";
+      const businessZip = biz?.zipCode || "27958";
 
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
@@ -3793,7 +3793,7 @@ async function seedDatabase() {
       { name: "Smith Home Repair", category: "Home Repair", description: "Quality home repair services for Moyock and surrounding areas.", address: "101 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
       { name: "Coastal Plumbing Co", category: "Plumbing", description: "Licensed plumbers serving Moyock and nearby communities.", address: "202 Tulls Creek Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop" },
       { name: "Moyock HVAC Pros", category: "HVAC", description: "Heating and cooling experts for homes and businesses.", address: "303 Princess Anne Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=400&h=300&fit=crop" },
-      { name: "Shore Electric", category: "Electrical", description: "Certified electricians for residential and commercial.", address: "404 Courthouse Rd, Currituck", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
+      { name: "Shore Electric", category: "Electrical", description: "Certified electricians for residential and commercial.", address: "404 Courthouse Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
       { name: "Moyock Roofing Co", category: "Roofing", description: "Storm-resistant roofing for homes and businesses.", address: "505 Shingle Landing Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=400&h=300&fit=crop" },
       { name: "Sandy Shores Landscaping", category: "Landscaping", description: "Native plant specialists and lawn care.", address: "606 Puddin Ridge Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=300&fit=crop" },
       { name: "Crystal Clean Moyock", category: "Cleaning", description: "Residential and commercial cleaning services.", address: "707 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
@@ -3810,7 +3810,7 @@ async function seedDatabase() {
       { name: "Junk Be Gone Moyock", category: "Trash & Junk Removal", description: "Fast and affordable junk removal.", address: "918 Princess Anne Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop" },
       { name: "Moyock Tutoring Center", category: "Tutor & Mentor Counseling", description: "Academic support for all ages.", address: "119 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400&h=300&fit=crop" },
       { name: "Serenity Wellness", category: "Health & Wellness", description: "Yoga, meditation, and holistic health.", address: "220 Wynfield Dr, Moyock", imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop" },
-      { name: "Coastal Tax Services", category: "Tax CPA", description: "Tax preparation and accounting.", address: "321 Courthouse Rd, Currituck", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop" },
+      { name: "Coastal Tax Services", category: "Tax CPA", description: "Tax preparation and accounting.", address: "321 Courthouse Rd, Moyock", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop" },
       { name: "Moyock Law Group", category: "Legal", description: "Real estate and business law.", address: "422 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop" },
       { name: "Moyock Woodworks", category: "Woodworking", description: "Custom furniture and woodworking.", address: "523 Old Hwy 168, Moyock", imageUrl: "https://images.unsplash.com/photo-1611095780322-bbc1f7b9f4ce?w=400&h=300&fit=crop" },
       { name: "Sweet Coastal Bakery", category: "Baking & Cooking", description: "Fresh baked goods and custom cakes.", address: "624 Caratoke Hwy, Moyock", imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop" },
