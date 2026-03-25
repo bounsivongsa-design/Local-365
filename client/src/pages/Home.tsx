@@ -324,7 +324,7 @@ export default function Home() {
           </div>
 
           {/* 3-Column Ad Layout: Large (left) | Medium (middle) | Small (right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr_2fr] gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr_2fr] gap-5 items-stretch">
 
             {/* Large Ad Column — 1 ad visible at a time, crossfade */}
             <div>
@@ -360,17 +360,17 @@ export default function Home() {
             </div>
 
             {/* Medium Ad Column — 2 ads visible at a time, crossfade pages */}
-            <div>
-              <div className="relative rounded-xl shadow-lg shadow-black/20 overflow-hidden">
+            <div className="flex flex-col">
+              <div className="relative rounded-xl shadow-lg shadow-black/20 overflow-hidden flex-1">
                 {Array.from({ length: mediumPageCount }).map((_, pageIdx) => {
                   const pageSlides = mediumAds.slides.slice(pageIdx * 2, pageIdx * 2 + 2);
                   return (
-                    <div key={`med-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === mediumAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-                      <div className="flex flex-col gap-3">
+                    <div key={`med-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === mediumAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                      <div className="flex flex-col gap-3 h-full">
                         {pageSlides.map((slide, idx) => (
-                          <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
-                            <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                              <div className="relative overflow-hidden rounded-xl group" style={{ aspectRatio: '16/7' }}>
+                          <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
+                            <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
+                              <div className="relative overflow-hidden rounded-xl group h-full" style={{ minHeight: '100px' }}>
                                 {mediumAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
@@ -401,17 +401,17 @@ export default function Home() {
             </div>
 
             {/* Small Ad Column — 3 ads visible at a time, crossfade pages */}
-            <div>
-              <div className="relative rounded-lg shadow-md shadow-black/15 overflow-hidden">
+            <div className="flex flex-col">
+              <div className="relative rounded-lg shadow-md shadow-black/15 overflow-hidden flex-1">
                 {Array.from({ length: smallPageCount }).map((_, pageIdx) => {
                   const pageSlides = smallAds.slides.slice(pageIdx * 3, pageIdx * 3 + 3);
                   return (
-                    <div key={`sm-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === smallAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-                      <div className="flex flex-col gap-2">
+                    <div key={`sm-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === smallAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                      <div className="flex flex-col gap-2 h-full">
                         {pageSlides.map((slide, idx) => (
-                          <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} data-testid={`ad-small-${pageIdx * 3 + idx}`}>
-                            <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                              <div className="relative overflow-hidden rounded-lg group" style={{ aspectRatio: '16/5' }}>
+                          <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
+                            <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
+                              <div className="relative overflow-hidden rounded-lg group h-full" style={{ minHeight: '80px' }}>
                                 {smallAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
