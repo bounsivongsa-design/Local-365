@@ -1379,7 +1379,7 @@ export function CreateBusinessForm({
                 e.target.value = "";
               }}
             />
-            <p className="text-xs text-muted-foreground">DD-214 or veteran ID documentation</p>
+            <p className="text-xs text-muted-foreground">Veteran ID card, VA letter, or other proof of service</p>
           </div>
         )}
 

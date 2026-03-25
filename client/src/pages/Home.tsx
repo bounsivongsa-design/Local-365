@@ -411,7 +411,7 @@ export default function Home() {
                         {pageSlides.map((slide, idx) => (
                           <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                             <div onClick={() => handleAdClick(slide)} className="block w-full cursor-pointer">
-                              <div className="relative overflow-hidden rounded-lg group" style={{ aspectRatio: '16/4' }}>
+                              <div className="relative overflow-hidden rounded-lg group" style={{ aspectRatio: '16/5' }}>
                                 {smallAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
                                 <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />

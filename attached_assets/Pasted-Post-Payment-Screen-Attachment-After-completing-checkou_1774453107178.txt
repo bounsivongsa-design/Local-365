@@ -1,0 +1,15 @@
+Post Payment Screen Attachment: After completing checkout, the screen is odd; it does not return to Locallist365. I did receive an email from Link stating my bank account was added to local list 365, but my account did not upgrade to gold. It never asked me for a card number or bank information, somehow it already had my bank info. Maybe I used a a link account previously somewhere else. I think there is a disconnect within the payment process.  I hope my account isn't charged $200 three times in a month. Not sure how to cancel those charge attempts or how a business would cancel? lol
+
+FAQ Typo Attachment:  About adding photos to my listing. It states Bronze allows a cover image.  Bronze receives no images.
+
+Business Details Listing Attachment:  I created an account for Goat Locker Printing. When I click on the business details in the directory the website hyperlink does not work and the social media information I entered does not appear.  It also states my business is partially verified and hasn't provided proof of insurance.  I did not select the insured badge.  Also, to select the veteran badge it asks you to upload a DD-214 or ID.  To my knowledge it's illegal to make a copy of an ID.  I think the badge options shouldn't include a verifying option.  In the terms etc it clearly state that the business is responsible for its badges, and customers must conduct their own research. I do not see an option to edit the category or description for my listing.   Essentially, once I create a business listing I don't have options to change the phone number, operating hours or anything.  It's pretty locked up from initial creation.
+
+Business Details Listing Attachment II: It also states the location as Currituck, NC for my business details.
+
+Membership Attachment:  I have tried upgrading my account to gold 3 times and submitted payment with the code.  however, my dashboard still states I have no membership.
+
+Register and Sign in Attachment:  I like how Sign In has two tabs under it: Customer / Business Owner.  Can we create one tab next to Sign In that says register and then below it there is Customer / Business Owner?
+
+Advertisement Carousel Attachment.  On desktop the large and medium sizes are proportional.  The small ones are too small and don't line up with the height of the two mediums.
+
+Lastly, is it possible to put "Dashboard" next to "For Business" at the top?  I think the Dashboard will be the most used tab, especially for businesses, and it should be easily located.  I noticed you added it to the top in a little gear drop down.

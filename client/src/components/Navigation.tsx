@@ -37,6 +37,11 @@ export function Navigation() {
     { href: "/membership", label: "For Business", icon: Building2 },
   ];
 
+  const authenticatedNavItems = [
+    ...navItems,
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  ];
+
   const isActive = (path: string) => routerLocation.pathname === path;
 
   return (
@@ -53,7 +58,7 @@ export function Navigation() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
+            {(isAuthenticated ? authenticatedNavItems : navItems).map((item) => (
               <Link key={item.href} to={item.href}>
                 <span className={`
                   flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-[background-color,color] duration-200
@@ -131,7 +136,7 @@ export function Navigation() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
               <nav className="flex flex-col gap-4 mt-8">
-                {navItems.map((item) => (
+                {(isAuthenticated ? authenticatedNavItems : navItems).map((item) => (
                   <Link key={item.href} to={item.href} onClick={() => setIsOpen(false)}>
                     <span className={`
                       flex items-center gap-3 px-4 py-3 rounded-xl text-lg font-medium transition-[background-color,color] duration-200

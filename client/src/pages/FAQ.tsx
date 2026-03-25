@@ -172,7 +172,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I add photos to my listing?",
-        answer: "During business setup or from your Dashboard edit screen, you can upload photos of your work, storefront, team, or products. The number of photos you can display depends on your tier: Bronze allows a cover image, Silver allows up to 6 photos, and Gold allows up to 10 photos plus a 30-second promotional video.",
+        answer: "During business setup or from your Dashboard edit screen, you can upload photos of your work, storefront, team, or products. The number of photos you can display depends on your tier: Bronze is a basic text listing with no photos, Silver allows a logo and up to 6 photos, and Gold allows a logo, up to 10 photos, plus a 30-second promotional video.",
       },
       {
         question: "What categories can I choose?",

@@ -155,24 +155,13 @@ export default function AuthPage() {
               <button
                 onClick={() => { setMode("register"); setAccountType("customer"); }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  mode === "register" && accountType === "customer"
+                  mode === "register"
                     ? "bg-white text-[#0a4a82] shadow-sm"
                     : "text-white/80 hover:text-white"
                 }`}
                 data-testid="tab-register"
               >
-                Customer
-              </button>
-              <button
-                onClick={() => { setMode("register"); setAccountType("business"); }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  mode === "register" && accountType === "business"
-                    ? "bg-white text-[#0a4a82] shadow-sm"
-                    : "text-white/80 hover:text-white"
-                }`}
-                data-testid="tab-register-business"
-              >
-                Business
+                Register
               </button>
             </div>
 
@@ -198,6 +187,35 @@ export default function AuthPage() {
                       : "text-white/60 hover:text-white/80"
                   }`}
                   data-testid="tab-login-business"
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  Business Owner
+                </button>
+              </div>
+            )}
+
+            {mode === "register" && (
+              <div className="flex bg-white/10 rounded-lg p-1">
+                <button
+                  onClick={() => setAccountType("customer")}
+                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    accountType === "customer"
+                      ? "bg-white/20 text-white shadow-sm"
+                      : "text-white/60 hover:text-white/80"
+                  }`}
+                  data-testid="tab-register-customer"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Customer
+                </button>
+                <button
+                  onClick={() => setAccountType("business")}
+                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    accountType === "business"
+                      ? "bg-white/20 text-white shadow-sm"
+                      : "text-white/60 hover:text-white/80"
+                  }`}
+                  data-testid="tab-register-business"
                 >
                   <Building2 className="h-3.5 w-3.5" />
                   Business Owner

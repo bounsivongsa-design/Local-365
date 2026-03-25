@@ -1,7 +1,9 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle, Share2 } from "lucide-react";
+import { SiFacebook, SiInstagram, SiLinkedin } from "react-icons/si";
+import { FaXTwitter } from "react-icons/fa6";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { ExampleBanner } from "@/components/ExampleBanner";
@@ -86,7 +88,7 @@ export default function BusinessDetails() {
                <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
                {business.address && (
                  <p className="text-white/90 mt-2 flex items-center gap-1.5 text-sm drop-shadow-sm">
-                   <MapPin className="h-4 w-4" /> {business.address}
+                   <MapPin className="h-4 w-4" /> {business.address}{business.city ? `, ${business.city}` : ""}{business.state ? `, ${business.state}` : ""} {business.zipCode || ""}
                  </p>
                )}
              </div>
@@ -169,7 +171,7 @@ export default function BusinessDetails() {
                    <div>
                      <h4 className="font-semibold mb-1 text-[#1a1a2e]">Website</h4>
                      <a 
-                       href={business.websiteUrl} 
+                       href={business.websiteUrl?.startsWith("http") ? business.websiteUrl : `https://${business.websiteUrl}`} 
                        target="_blank" 
                        rel="noopener noreferrer"
                        className="text-[#0a4a82] hover:underline flex items-center gap-1 font-medium text-sm"
@@ -183,6 +185,45 @@ export default function BusinessDetails() {
                )}
             </div>
             
+            {(() => {
+              let socialUrls = null;
+              try {
+                socialUrls = business.socialMediaUrls ? (typeof business.socialMediaUrls === 'string' ? JSON.parse(business.socialMediaUrls) : business.socialMediaUrls) : null;
+              } catch { socialUrls = null; }
+              const hasSocials = socialUrls && (socialUrls.facebook || socialUrls.instagram || socialUrls.twitter || socialUrls.linkedin);
+              if (!hasSocials) return null;
+              return (
+                <div className="mt-6 pt-6 border-t border-[#0a4a82]/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Share2 className="h-4 w-4 text-[#0a4a82]" />
+                    <h4 className="font-semibold text-[#1a1a2e]">Follow Us</h4>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {socialUrls.facebook && (
+                      <a href={socialUrls.facebook.startsWith("http") ? socialUrls.facebook : `https://${socialUrls.facebook}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-[#1877F2] flex items-center justify-center hover:scale-110 transition-transform shadow-md" data-testid="link-social-facebook" onClick={() => trackEvent(business.id, "social_click")}>
+                        <SiFacebook className="h-5 w-5 text-white" />
+                      </a>
+                    )}
+                    {socialUrls.instagram && (
+                      <a href={socialUrls.instagram.startsWith("http") ? socialUrls.instagram : `https://${socialUrls.instagram}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#f09433] via-[#e6683c] to-[#bc1888] flex items-center justify-center hover:scale-110 transition-transform shadow-md" data-testid="link-social-instagram" onClick={() => trackEvent(business.id, "social_click")}>
+                        <SiInstagram className="h-5 w-5 text-white" />
+                      </a>
+                    )}
+                    {socialUrls.twitter && (
+                      <a href={socialUrls.twitter.startsWith("http") ? socialUrls.twitter : `https://${socialUrls.twitter}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-black flex items-center justify-center hover:scale-110 transition-transform shadow-md" data-testid="link-social-twitter" onClick={() => trackEvent(business.id, "social_click")}>
+                        <FaXTwitter className="h-5 w-5 text-white" />
+                      </a>
+                    )}
+                    {socialUrls.linkedin && (
+                      <a href={socialUrls.linkedin.startsWith("http") ? socialUrls.linkedin : `https://${socialUrls.linkedin}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-[#0A66C2] flex items-center justify-center hover:scale-110 transition-transform shadow-md" data-testid="link-social-linkedin" onClick={() => trackEvent(business.id, "social_click")}>
+                        <SiLinkedin className="h-5 w-5 text-white" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {business.membershipTier && business.membershipTier !== "none" && (
               <div className="mt-6 pt-6 border-t border-[#0a4a82]/10">
                 <MembershipBadge tier={business.membershipTier} variant="full" />
@@ -423,7 +464,7 @@ export default function BusinessDetails() {
                <MapPin className="h-4 w-4 mr-2" /> Get Directions
              </Button>
              {business.websiteUrl && (
-             <Button variant="outline" className="w-full border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" onClick={() => { trackEvent(business.id, "website_click"); window.open(business.websiteUrl!, '_blank'); }} data-testid="button-visit-website">
+             <Button variant="outline" className="w-full border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" onClick={() => { trackEvent(business.id, "website_click"); window.open(business.websiteUrl!.startsWith("http") ? business.websiteUrl! : `https://${business.websiteUrl!}`, '_blank'); }} data-testid="button-visit-website">
                <Globe className="h-4 w-4 mr-2" /> Visit Website
              </Button>
              )}
