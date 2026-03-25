@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useSearchParams } from "react-router-dom";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
@@ -192,16 +193,37 @@ export default function BusinessMembership() {
     enabled: isAuthenticated && user?.accountType === "business",
   });
 
+  const verifiedRef = useRef(false);
+
   useEffect(() => {
-    if (searchParams.get("success") === "true") {
+    const sessionId = searchParams.get("session_id");
+    const isSuccess = searchParams.get("success") === "true";
+
+    if (isSuccess && sessionId && !verifiedRef.current) {
+      verifiedRef.current = true;
+      apiRequest("POST", "/api/stripe/verify-session", { sessionId })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/my-business"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/stripe/subscription-status"] });
+        })
+        .catch((err) => {
+          console.error("Session verification error:", err);
+        });
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true" && business) {
       const currentTier = business?.membershipTier;
       const displayTier = currentTier ? DB_TO_DISPLAY[currentTier] : null;
-      if (displayTier === "gold" && business?.membershipTrialUsed) {
-        const originalPurchased = currentTier === "premium" ? "" : (displayTier || "");
-        setGoldTrialPurchasedTier(originalPurchased);
-        setShowGoldTrialDialog(true);
-      } else {
-        toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+      if (currentTier && currentTier !== "none") {
+        if (displayTier === "gold" && business?.membershipTrialUsed) {
+          const originalPurchased = currentTier === "premium" ? "" : (displayTier || "");
+          setGoldTrialPurchasedTier(originalPurchased);
+          setShowGoldTrialDialog(true);
+        } else {
+          toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+        }
       }
     }
     if (searchParams.get("canceled") === "true") {

@@ -147,9 +147,11 @@ export function registerStripeRoutes(app: Express) {
       const tierName = effectiveTier.charAt(0).toUpperCase() + effectiveTier.slice(1);
       const freqLabel = frequency === "monthly" ? "Monthly" : frequency === "semi_annual" ? "Semi-Annual" : "Annual";
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,
@@ -213,9 +215,11 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "No active subscription found" });
       }
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
       const session = await stripe.billingPortal.sessions.create({
         customer: biz.stripeCustomerId,
@@ -248,6 +252,109 @@ export function registerStripeRoutes(app: Express) {
     } catch (err: any) {
       console.error("Subscription status error:", err);
       res.status(500).json({ message: "Failed to fetch subscription status" });
+    }
+  });
+
+  app.post("/api/stripe/verify-session", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      if (session.payment_status !== "paid" && !session.subscription) {
+        return res.status(400).json({ message: "Payment not completed", status: session.payment_status });
+      }
+
+      if (session.metadata?.type === "job_listing") {
+        const jobId = parseInt(session.metadata?.jobListingId || "0");
+        if (jobId) {
+          const [existing] = await db.select().from(jobListings).where(eq(jobListings.id, jobId));
+          if (existing && !existing.isActive) {
+            const paidThrough = new Date();
+            paidThrough.setDate(paidThrough.getDate() + 7);
+            await db.update(jobListings).set({
+              isActive: true,
+              paidThroughDate: paidThrough,
+              stripeSubscriptionId: session.subscription as string,
+            }).where(eq(jobListings.id, jobId));
+            console.log(`Job listing ${jobId} activated via session verification`);
+          }
+        }
+        return res.json({ success: true, type: "job_listing" });
+      }
+
+      if (session.metadata?.type === "ad_placement") {
+        const adId = parseInt(session.metadata?.adPlacementId || "0");
+        if (adId) {
+          const [existing] = await db.select().from(adPlacements).where(eq(adPlacements.id, adId));
+          if (existing && existing.paymentStatus !== "paid") {
+            const amountPaid = session.amount_total || 0;
+            await db.update(adPlacements).set({
+              paymentStatus: "paid",
+              totalPaid: amountPaid,
+              paymentNotes: `Stripe payment ${session.payment_intent || session.id} (verified)`,
+            }).where(eq(adPlacements.id, adId));
+            console.log(`Ad placement ${adId} paid via session verification (${amountPaid} cents)`);
+          }
+        }
+        return res.json({ success: true, type: "ad_placement" });
+      }
+
+      const businessId = parseInt(session.metadata?.businessId || "0");
+      const tier = session.metadata?.tier;
+      const frequency = session.metadata?.frequency;
+
+      if (businessId && tier) {
+        const [biz] = await db.select().from(businesses).where(eq(businesses.id, businessId));
+        if (biz && (biz.membershipTier === "none" || !biz.membershipTier || biz.membershipTier !== tier)) {
+          const updates: any = {
+            membershipTier: tier,
+            membershipPaymentFrequency: frequency,
+            membershipStartDate: new Date(),
+            stripeSubscriptionId: session.subscription as string,
+          };
+
+          if (session.subscription) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+              if (sub.trial_end) {
+                updates.membershipTrialUsed = true;
+              }
+            } catch (e) {}
+          }
+
+          await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
+          console.log(`Membership activated via session verification: business ${businessId} → ${tier}`);
+
+          const promoCodeIdStr = session.metadata?.promoCodeId;
+          if (promoCodeIdStr) {
+            const promoCodeId = parseInt(promoCodeIdStr);
+            const existingUsage = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+              .where(eq(promoCodeUsages.stripeSessionId, session.id)).limit(1);
+            if (existingUsage.length === 0) {
+              await db.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promoCodeId));
+              await db.insert(promoCodeUsages).values({
+                promoCodeId,
+                businessId,
+                stripeSessionId: session.id,
+              });
+              console.log(`Promo code ${promoCodeId} usage recorded via session verification for business ${businessId}`);
+            }
+          }
+        }
+        return res.json({ success: true, type: "membership", tier: DB_TO_TIER[tier] || tier });
+      }
+
+      return res.json({ success: true, type: "unknown" });
+    } catch (err: any) {
+      console.error("Session verification error:", err);
+      res.status(500).json({ message: err.message || "Failed to verify session" });
     }
   });
 
@@ -290,9 +397,11 @@ export function registerStripeRoutes(app: Express) {
 
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
       const session = await stripe!.checkout.sessions.create({
         customer: customerId,
