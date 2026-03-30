@@ -25,7 +25,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Key-Value Store**: Replit Database
 
 ### Core Features
-- **Business Listings**: Includes credentials (LLC, Insurance, Licensed, Veteran), business hours, social media, search keywords, categories, membership tiers, ratings, logos, gallery photos, and promotional videos.
+- **Business Listings**: Includes credentials (LLC, Insurance, Licensed, Veteran), business hours (specific day-by-day or custom text like "Online 24/7"), social media, search keywords, categories, membership tiers, ratings, logos, gallery photos, and promotional videos.
 - **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier.
 - **Events**: Comprehensive local events calendar.
 - **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk, Basic $20/wk.
@@ -55,6 +55,15 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Gold Auto-Upgrade**: New Bronze/Silver members receive 30 days of Gold-tier features.
 - **Uniqueness Constraints**: Prevents duplicate business registrations by name and zip code.
 - **Downgrade Tracking**: Records membership downgrades for win-back campaigns.
+- **Business Hours Format**: Stored as JSON in `businessHours` column. Two modes: `{ _mode: "specific", Monday: { open, close, closed }, ... }` for day-by-day, or `{ _mode: "text", _note: "..." }` for custom text. Legacy data without `_mode` treated as specific.
+- **Max Quotes**: Quote requests support `maxQuotes` (5, 10, or null/unlimited) and `receivedQuotesCount`. Request auto-closes when limit is reached. One quote per business per request enforced.
+
+### Future: Multi-Zip-Code Expansion
+- Currently single zip code (27958 Moyock). Each business tied to one zip.
+- Expansion approach: "service areas" model where a business profile stays in one place but can select additional zip codes they serve.
+- Key decisions needed before building: membership scope per zip, ad pricing per zip, quote routing across areas, area selector UX.
+- Existing Moyock data will not be affected — expansion is additive.
+- Estimated effort: 2-3 sessions once business rules are decided.
 
 ## External Dependencies
 
