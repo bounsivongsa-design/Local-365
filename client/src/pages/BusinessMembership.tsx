@@ -161,7 +161,7 @@ export default function BusinessMembership() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [promoCode, setPromoCode] = useState("");
-  const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number } | null>(null);
+  const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number; description?: string; expiresAt?: string } | null>(null);
   const [validatingPromo, setValidatingPromo] = useState(false);
   const [checkoutTier, setCheckoutTier] = useState<MembershipTier | null>(null);
   const [showGoldTrialDialog, setShowGoldTrialDialog] = useState(false);
@@ -246,7 +246,7 @@ export default function BusinessMembership() {
       });
       const data = await res.json();
       if (data.valid) {
-        setPromoStatus({ valid: true, message: data.description || "Promo code applied!", discountType: data.discountType, discountValue: data.discountValue });
+        setPromoStatus({ valid: true, message: data.description || "Promo code applied!", discountType: data.discountType, discountValue: data.discountValue, description: data.description, expiresAt: data.expiresAt });
       } else {
         setPromoStatus({ valid: false, message: data.message || "Invalid promo code" });
       }
@@ -729,13 +729,20 @@ export default function BusinessMembership() {
                     )}
 
                     {promoStatus?.valid && checkoutPricing.discount > 0 && (
-                      <div className="flex justify-between items-center text-sm text-emerald-600" data-testid="checkout-promo-discount">
-                        <span className="flex items-center gap-1.5">
-                          <Tag className="h-3.5 w-3.5" />
-                          Promo: {promoCode}
-                          {promoStatus.discountType === "percentage" ? ` (${promoStatus.discountValue}% off)` : ` ($${promoStatus.discountValue} off)`}
-                        </span>
-                        <span className="font-medium">-${checkoutPricing.discount.toFixed(2)}</span>
+                      <div data-testid="checkout-promo-discount">
+                        <div className="flex justify-between items-center text-sm text-emerald-600">
+                          <span className="flex items-center gap-1.5">
+                            <Tag className="h-3.5 w-3.5" />
+                            Promo: {promoCode}
+                            {promoStatus.discountType === "percentage" ? ` (${promoStatus.discountValue}% off)` : ` ($${promoStatus.discountValue} off)`}
+                          </span>
+                          <span className="font-medium">-${checkoutPricing.discount.toFixed(2)}</span>
+                        </div>
+                        {promoStatus.description && (
+                          <p className="text-xs text-emerald-600/80 mt-1 ml-5" data-testid="checkout-promo-description">
+                            {promoStatus.description}
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -788,13 +795,24 @@ export default function BusinessMembership() {
                       </Button>
                     </div>
                     {promoStatus && (
-                      <div className={`mt-2.5 flex items-center gap-2 text-sm ${promoStatus.valid ? "text-emerald-600" : "text-red-500"}`}>
-                        {promoStatus.valid ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                        <span data-testid="text-promo-status">
-                          {promoStatus.valid
-                            ? `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — ${promoStatus.message}`
-                            : promoStatus.message}
-                        </span>
+                      <div className={`mt-2.5 ${promoStatus.valid ? "text-emerald-600" : "text-red-500"}`}>
+                        <div className="flex items-center gap-2 text-sm">
+                          {promoStatus.valid ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <X className="h-4 w-4 shrink-0" />}
+                          <span data-testid="text-promo-status">
+                            {promoStatus.valid
+                              ? `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — Code applied!`
+                              : promoStatus.message}
+                          </span>
+                        </div>
+                        {promoStatus.valid && promoStatus.description && (
+                          <p className="text-xs text-emerald-700 mt-1 ml-6 font-medium" data-testid="text-promo-description">
+                            {promoStatus.description}
+                            {promoStatus.expiresAt && (() => {
+                              const exp = new Date(promoStatus.expiresAt);
+                              return ` (redeem by ${exp.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })})`;
+                            })()}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

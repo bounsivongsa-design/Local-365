@@ -3087,6 +3087,8 @@ Respond in this exact JSON format:
         discountType: promo.discountType,
         discountValue: promo.discountValue,
         description: promo.description,
+        expiresAt: promo.expiresAt ? promo.expiresAt.toISOString() : null,
+        applicableTiers: promo.applicableTiers || [],
       });
     } catch (err) {
       console.error("Error validating promo code:", err);
