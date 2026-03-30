@@ -86,9 +86,12 @@ export function registerStripeRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid tier or frequency" });
       }
 
-      const [biz] = await db.select().from(businesses).where(eq(businesses.id, req.user?.linkedBusinessId || 0));
+      if (!req.user?.linkedBusinessId) {
+        return res.status(404).json({ message: "No business listing found for your account. Please register your business first, then come back to select a membership plan." });
+      }
+      const [biz] = await db.select().from(businesses).where(eq(businesses.id, req.user.linkedBusinessId));
       if (!biz) {
-        return res.status(404).json({ message: "No business found for your account. Please create a business listing first." });
+        return res.status(404).json({ message: "Your business listing could not be found. Please register your business first, then come back to select a membership plan." });
       }
 
       let promoDiscount = 0;
