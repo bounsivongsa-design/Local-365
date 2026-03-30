@@ -2050,9 +2050,18 @@ Respond in this exact JSON format:
         return res.status(403).json({ message: "Business accounts cannot create quote requests" });
       }
       
-      const { title, description, category, budget, timeline, location, address, phone, email, customerName } = req.body;
+      const { title, description, category, budget, timeline, location, address, phone, email, customerName, maxQuotes } = req.body;
       if (!title || !description || !category) {
         return res.status(400).json({ message: "Title, description, and category are required" });
+      }
+      
+      let validMaxQuotes: number | null = null;
+      if (maxQuotes !== null && maxQuotes !== undefined && maxQuotes !== "" && maxQuotes !== "unlimited") {
+        const parsed = Number(maxQuotes);
+        if (![5, 10].includes(parsed) || !Number.isInteger(parsed)) {
+          return res.status(400).json({ message: "Max quotes must be 5, 10, or unlimited" });
+        }
+        validMaxQuotes = parsed;
       }
       
       // Check if this is an emergency category
@@ -2074,6 +2083,8 @@ Respond in this exact JSON format:
         address: address || null,
         status: "open",
         isEmergency,
+        maxQuotes: validMaxQuotes,
+        receivedQuotesCount: 0,
         customerName: customerName || null,
         customerPhone: phone || null,
         customerEmail: email || user[0]?.email || null,
@@ -2182,6 +2193,17 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "This quote request is no longer accepting bids" });
       }
       
+      if (request[0].maxQuotes && (request[0].receivedQuotesCount || 0) >= request[0].maxQuotes) {
+        return res.status(400).json({ message: "This quote request has reached the maximum number of quotes requested by the customer." });
+      }
+      
+      const existingQuote = await pgDb.select({ id: quotes.id }).from(quotes)
+        .where(and(eq(quotes.requestId, requestId), eq(quotes.businessId, effectiveBusinessId)))
+        .limit(1);
+      if (existingQuote.length > 0) {
+        return res.status(400).json({ message: "You have already submitted a quote for this request." });
+      }
+      
       // Enforce tier-based access window
       const business = await pgDb.select({ membershipTier: businesses.membershipTier })
         .from(businesses)
@@ -2253,6 +2275,18 @@ Respond in this exact JSON format:
         responseTimeMinutes,
         wasPriorityResponse
       }).returning();
+      
+      await pgDb.update(quoteRequests)
+        .set({ receivedQuotesCount: sql`COALESCE(${quoteRequests.receivedQuotesCount}, 0) + 1` })
+        .where(eq(quoteRequests.id, requestId));
+      
+      if (request[0].maxQuotes) {
+        const [updated] = await pgDb.select({ receivedQuotesCount: quoteRequests.receivedQuotesCount })
+          .from(quoteRequests).where(eq(quoteRequests.id, requestId));
+        if (updated && (updated.receivedQuotesCount || 0) >= request[0].maxQuotes) {
+          await pgDb.update(quoteRequests).set({ status: "completed" }).where(eq(quoteRequests.id, requestId));
+        }
+      }
       
       res.status(201).json(newQuote);
     } catch (err) {

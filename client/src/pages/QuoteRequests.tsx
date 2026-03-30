@@ -256,6 +256,7 @@ export default function QuoteRequests() {
     address: "",
     phone: "",
     email: "",
+    maxQuotes: "",
   });
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
   const [openMessageThread, setOpenMessageThread] = useState<number | null>(null);
@@ -381,7 +382,12 @@ export default function QuoteRequests() {
       return;
     }
     const title = `${formData.category} Request`;
-    createRequest.mutate({ ...formData, title });
+    const submitData = {
+      ...formData,
+      title,
+      maxQuotes: formData.maxQuotes === "unlimited" || formData.maxQuotes === "" ? null : formData.maxQuotes,
+    };
+    createRequest.mutate(submitData);
   };
 
   const handleQuoteSubmit = (e: React.FormEvent) => {
@@ -595,18 +601,35 @@ export default function QuoteRequests() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="timeline">Timeline <span className="text-slate-400 text-xs">(optional)</span></Label>
-                        <Select value={formData.timeline} onValueChange={(v) => setFormData({ ...formData, timeline: v })}>
-                          <SelectTrigger data-testid="select-timeline">
-                            <SelectValue placeholder="When do you need this done?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TIMELINES.map((t) => (
-                              <SelectItem key={t} value={t}>{t}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="timeline">Timeline <span className="text-slate-400 text-xs">(optional)</span></Label>
+                          <Select value={formData.timeline} onValueChange={(v) => setFormData({ ...formData, timeline: v })}>
+                            <SelectTrigger data-testid="select-timeline">
+                              <SelectValue placeholder="When do you need this done?" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TIMELINES.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="max-quotes">Max Quotes to Receive</Label>
+                          <Select value={formData.maxQuotes} onValueChange={(v) => setFormData({ ...formData, maxQuotes: v })}>
+                            <SelectTrigger data-testid="select-max-quotes">
+                              <SelectValue placeholder="Unlimited (10 business days)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5">5 quotes</SelectItem>
+                              <SelectItem value="10">10 quotes</SelectItem>
+                              <SelectItem value="unlimited">Unlimited (up to 10 business days)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-500">Choose how many quotes you'd like before your request closes automatically.</p>
+                        </div>
                       </div>
 
                       {!isAuthenticated && (
@@ -675,6 +698,11 @@ export default function QuoteRequests() {
                             {getStatusBadge(req.status || "open")}
                           </div>
                           <p className="text-xs text-slate-500">{req.category}</p>
+                          {req.maxQuotes && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {req.receivedQuotesCount || 0}/{req.maxQuotes} quotes received
+                            </p>
+                          )}
                           {req.createdAt && (
                             <p className="text-xs text-slate-500 mt-1">
                               {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
@@ -806,7 +834,12 @@ export default function QuoteRequests() {
                         {req.quoteCount > 0 && (
                           <Badge className="bg-[#0a4a82]/10 text-[#0a4a82] border-[#0a4a82]/20">
                             <Gavel className="h-3 w-3 mr-1" />
-                            {req.quoteCount} {req.quoteCount === 1 ? "quote" : "quotes"}
+                            {req.quoteCount}{(req as any).maxQuotes ? `/${(req as any).maxQuotes}` : ""} {req.quoteCount === 1 ? "quote" : "quotes"}
+                          </Badge>
+                        )}
+                        {(req as any).maxQuotes && (
+                          <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
+                            Max {(req as any).maxQuotes} quotes
                           </Badge>
                         )}
                       </div>

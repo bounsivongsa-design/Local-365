@@ -102,6 +102,8 @@ export const quoteRequests = pgTable("quote_requests", {
   customerEmail: text("customer_email"), // Contact info for premium vendors
   priorityRound: integer("priority_round").default(1), // Current priority round (1 = first 5 premium, 2 = next 5, etc.)
   priorityExpiresAt: timestamp("priority_expires_at"), // When current priority round expires
+  maxQuotes: integer("max_quotes"), // Max number of quotes customer wants (5, 10, or null = unlimited up to 10 business days)
+  receivedQuotesCount: integer("received_quotes_count").default(0), // Current count of quotes received
   customerOptedOut: boolean("customer_opted_out").default(false), // Customer cancelled/opted out of this request
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
