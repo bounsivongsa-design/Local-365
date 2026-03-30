@@ -128,15 +128,52 @@ export default function BusinessDetails() {
                    <p className="text-[#4a4a5a] text-sm">{business.address}</p>
                  </div>
                </div>
-               <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#8a9a5b]/5 to-[#8a9a5b]/10 rounded-xl border border-[#8a9a5b]/10">
-                 <div className="w-10 h-10 rounded-lg bg-[#8a9a5b] flex items-center justify-center flex-shrink-0">
-                   <Clock className="h-5 w-5 text-white" />
-                 </div>
-                 <div>
-                   <h4 className="font-semibold mb-1 text-[#1a1a2e]">Hours</h4>
-                   <p className="text-[#4a4a5a] text-sm">Open today: 9:00 AM - 6:00 PM</p>
-                 </div>
-               </div>
+               {(() => {
+                 let hoursContent = null;
+                 try {
+                   if (business.businessHours) {
+                     const parsed = JSON.parse(business.businessHours as string);
+                     if (parsed._mode === "text" && parsed._note) {
+                       hoursContent = <p className="text-[#4a4a5a] text-sm">{parsed._note}</p>;
+                     } else {
+                       const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                       const formatTime = (t: string) => {
+                         const [h, m] = t.split(":").map(Number);
+                         const ampm = h >= 12 ? "PM" : "AM";
+                         return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
+                       };
+                       hoursContent = (
+                         <div className="space-y-0.5">
+                           {days.map(day => {
+                             const d = parsed[day];
+                             if (!d) return null;
+                             return (
+                               <div key={day} className="flex justify-between text-sm">
+                                 <span className="text-[#4a4a5a] font-medium w-24">{day}</span>
+                                 <span className="text-[#4a4a5a]">
+                                   {d.closed ? "Closed" : `${formatTime(d.open)} - ${formatTime(d.close)}`}
+                                 </span>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       );
+                     }
+                   }
+                 } catch {}
+                 if (!hoursContent) hoursContent = <p className="text-[#4a4a5a] text-sm">Contact for hours</p>;
+                 return (
+                   <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#8a9a5b]/5 to-[#8a9a5b]/10 rounded-xl border border-[#8a9a5b]/10">
+                     <div className="w-10 h-10 rounded-lg bg-[#8a9a5b] flex items-center justify-center flex-shrink-0">
+                       <Clock className="h-5 w-5 text-white" />
+                     </div>
+                     <div className="flex-1">
+                       <h4 className="font-semibold mb-1 text-[#1a1a2e]">Hours</h4>
+                       {hoursContent}
+                     </div>
+                   </div>
+                 );
+               })()}
                {business.phone && (
                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#d4a373]/5 to-[#d4a373]/10 rounded-xl border border-[#d4a373]/15">
                    <div className="w-10 h-10 rounded-lg bg-[#d4a373] flex items-center justify-center flex-shrink-0">

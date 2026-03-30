@@ -343,9 +343,15 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
     servicesCommercial: business.servicesCommercial || false,
     acceptsQuotes: (business as any).acceptsQuotes !== false,
   });
+  const parsedHoursInit = parseHours(business.businessHours);
+  const initHoursMode: "specific" | "text" = parsedHoursInit._mode === "text" ? "text" : "specific";
+  const initHoursNote = parsedHoursInit._note || "";
+
+  const [hoursMode, setHoursMode] = useState<"specific" | "text">(initHoursMode);
+  const [hoursNote, setHoursNote] = useState(initHoursNote);
   const [hours, setHours] = useState<Record<string, { open: string; close: string; closed: boolean }>>(
     (() => {
-      const parsed = parseHours(business.businessHours);
+      const parsed = parsedHoursInit;
       const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
       const result: Record<string, { open: string; close: string; closed: boolean }> = {};
       for (const d of days) {
@@ -367,7 +373,11 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
         credentials: "include",
         body: JSON.stringify({
           ...form,
-          businessHours: JSON.stringify(hours),
+          businessHours: JSON.stringify(
+            hoursMode === "text"
+              ? { _mode: "text", _note: hoursNote }
+              : { ...hours, _mode: "specific" }
+          ),
           socialMediaUrls: JSON.stringify(social),
         }),
       });
@@ -480,41 +490,75 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
           <CardTitle className="text-base text-[#1a1a2e]">Business Hours</CardTitle>
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => setHoursMode("specific")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${hoursMode === "specific" ? "bg-[#0a4a82] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+              data-testid="button-hours-specific"
+            >
+              Set Specific Hours
+            </button>
+            <button
+              type="button"
+              onClick={() => setHoursMode("text")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${hoursMode === "text" ? "bg-[#0a4a82] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+              data-testid="button-hours-text"
+            >
+              Custom Text
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {Object.entries(hours).map(([day, val]) => (
-            <div key={day} className="flex items-center gap-3 py-1.5 border-b border-gray-100 last:border-0">
-              <span className="w-24 text-sm font-medium text-[#1a1a2e]">{day}</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!val.closed}
-                  onChange={(e) => setHours({ ...hours, [day]: { ...val, closed: !e.target.checked } })}
-                  className="h-4 w-4 rounded border-gray-300 text-[#0a4a82]"
-                />
-                <span className="text-xs text-gray-500">{val.closed ? "Closed" : "Open"}</span>
-              </label>
-              {!val.closed && (
-                <div className="flex items-center gap-2 ml-auto">
-                  <input
-                    type="time"
-                    value={val.open}
-                    onChange={(e) => setHours({ ...hours, [day]: { ...val, open: e.target.value } })}
-                    className="h-8 rounded-lg border border-gray-200 px-2 text-xs bg-white"
-                    style={inputStyle}
-                  />
-                  <span className="text-xs text-gray-400">to</span>
-                  <input
-                    type="time"
-                    value={val.close}
-                    onChange={(e) => setHours({ ...hours, [day]: { ...val, close: e.target.value } })}
-                    className="h-8 rounded-lg border border-gray-200 px-2 text-xs bg-white"
-                    style={inputStyle}
-                  />
-                </div>
-              )}
+          {hoursMode === "text" ? (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500">Describe your availability in your own words (e.g., "Online 24/7", "By appointment only", "Flexible hours — call anytime")</p>
+              <textarea
+                value={hoursNote}
+                onChange={(e) => setHoursNote(e.target.value)}
+                placeholder="e.g., Online 24/7, By appointment only, Seasonal hours — call for availability"
+                className="w-full min-h-[80px] rounded-xl border border-gray-200 p-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none resize-y"
+                style={inputStyle}
+                maxLength={200}
+                data-testid="input-hours-text"
+              />
+              <p className="text-xs text-gray-400">{hoursNote.length}/200 characters</p>
             </div>
-          ))}
+          ) : (
+            Object.entries(hours).map(([day, val]) => (
+              <div key={day} className="flex items-center gap-3 py-1.5 border-b border-gray-100 last:border-0">
+                <span className="w-24 text-sm font-medium text-[#1a1a2e]">{day}</span>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!val.closed}
+                    onChange={(e) => setHours({ ...hours, [day]: { ...val, closed: !e.target.checked } })}
+                    className="h-4 w-4 rounded border-gray-300 text-[#0a4a82]"
+                  />
+                  <span className="text-xs text-gray-500">{val.closed ? "Closed" : "Open"}</span>
+                </label>
+                {!val.closed && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <input
+                      type="time"
+                      value={val.open}
+                      onChange={(e) => setHours({ ...hours, [day]: { ...val, open: e.target.value } })}
+                      className="h-8 rounded-lg border border-gray-200 px-2 text-xs bg-white"
+                      style={inputStyle}
+                    />
+                    <span className="text-xs text-gray-400">to</span>
+                    <input
+                      type="time"
+                      value={val.close}
+                      onChange={(e) => setHours({ ...hours, [day]: { ...val, close: e.target.value } })}
+                      className="h-8 rounded-lg border border-gray-200 px-2 text-xs bg-white"
+                      style={inputStyle}
+                    />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 

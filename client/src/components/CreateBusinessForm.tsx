@@ -152,6 +152,8 @@ export function CreateBusinessForm({
   const [step, setStep] = useState(0);
   const [businessHours, setBusinessHours] =
     useState<BusinessHours>(defaultHours);
+  const [hoursMode, setHoursMode] = useState<"specific" | "text">("specific");
+  const [hoursNote, setHoursNote] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [socialMedia, setSocialMedia] = useState({
     facebook: "",
@@ -271,7 +273,11 @@ export function CreateBusinessForm({
             restData.imageUrl ||
             "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop",
           address: restData.address || `${restData.establishedZipCode}`,
-          businessHours: JSON.stringify(businessHours),
+          businessHours: JSON.stringify(
+            hoursMode === "text"
+              ? { _mode: "text", _note: hoursNote }
+              : { ...businessHours, _mode: "specific" }
+          ),
           socialMediaUrls:
             Object.keys(socialMediaUrls).length > 0
               ? JSON.stringify(socialMediaUrls)
@@ -923,51 +929,85 @@ export function CreateBusinessForm({
             Business Hours (Optional)
           </p>
         </div>
-        <div className="space-y-2">
-          {DAYS_OF_WEEK.map((day) => (
-            <div
-              key={day}
-              className="flex items-center gap-3 flex-wrap sm:flex-nowrap"
-            >
-              <div className="w-24 text-sm font-medium text-muted-foreground">
-                {day}
-              </div>
-              <Checkbox
-                checked={!businessHours[day].closed}
-                onCheckedChange={(checked) =>
-                  handleHoursChange(day, "closed", !checked)
-                }
-                data-testid={`checkbox-hours-${day.toLowerCase()}`}
-              />
-              <span className="text-xs text-muted-foreground w-10">
-                {businessHours[day].closed ? "Closed" : "Open"}
-              </span>
-              {!businessHours[day].closed && (
-                <>
-                  <Input
-                    type="time"
-                    value={businessHours[day].open}
-                    onChange={(e) =>
-                      handleHoursChange(day, "open", e.target.value)
-                    }
-                    className="w-28 h-8 text-sm"
-                    data-testid={`input-hours-open-${day.toLowerCase()}`}
-                  />
-                  <span className="text-xs text-muted-foreground">to</span>
-                  <Input
-                    type="time"
-                    value={businessHours[day].close}
-                    onChange={(e) =>
-                      handleHoursChange(day, "close", e.target.value)
-                    }
-                    className="w-28 h-8 text-sm"
-                    data-testid={`input-hours-close-${day.toLowerCase()}`}
-                  />
-                </>
-              )}
-            </div>
-          ))}
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setHoursMode("specific")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${hoursMode === "specific" ? "bg-[#0a4a82] text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}
+            data-testid="button-signup-hours-specific"
+          >
+            Set Specific Hours
+          </button>
+          <button
+            type="button"
+            onClick={() => setHoursMode("text")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${hoursMode === "text" ? "bg-[#0a4a82] text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}
+            data-testid="button-signup-hours-text"
+          >
+            Custom Text
+          </button>
         </div>
+        {hoursMode === "text" ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Describe your availability in your own words (e.g., "Online 24/7", "By appointment only")</p>
+            <textarea
+              value={hoursNote}
+              onChange={(e) => setHoursNote(e.target.value)}
+              placeholder="e.g., Online 24/7, By appointment only, Seasonal hours — call for availability"
+              className="w-full min-h-[80px] rounded-xl border border-gray-200 p-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none resize-y"
+              style={{ color: '#1a1a2e', caretColor: '#1a1a2e' }}
+              maxLength={200}
+              data-testid="input-signup-hours-text"
+            />
+            <p className="text-xs text-gray-400">{hoursNote.length}/200 characters</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {DAYS_OF_WEEK.map((day) => (
+              <div
+                key={day}
+                className="flex items-center gap-3 flex-wrap sm:flex-nowrap"
+              >
+                <div className="w-24 text-sm font-medium text-muted-foreground">
+                  {day}
+                </div>
+                <Checkbox
+                  checked={!businessHours[day].closed}
+                  onCheckedChange={(checked) =>
+                    handleHoursChange(day, "closed", !checked)
+                  }
+                  data-testid={`checkbox-hours-${day.toLowerCase()}`}
+                />
+                <span className="text-xs text-muted-foreground w-10">
+                  {businessHours[day].closed ? "Closed" : "Open"}
+                </span>
+                {!businessHours[day].closed && (
+                  <>
+                    <Input
+                      type="time"
+                      value={businessHours[day].open}
+                      onChange={(e) =>
+                        handleHoursChange(day, "open", e.target.value)
+                      }
+                      className="w-28 h-8 text-sm"
+                      data-testid={`input-hours-open-${day.toLowerCase()}`}
+                    />
+                    <span className="text-xs text-muted-foreground">to</span>
+                    <Input
+                      type="time"
+                      value={businessHours[day].close}
+                      onChange={(e) =>
+                        handleHoursChange(day, "close", e.target.value)
+                      }
+                      className="w-28 h-8 text-sm"
+                      data-testid={`input-hours-close-${day.toLowerCase()}`}
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
