@@ -3254,8 +3254,11 @@ Respond in this exact JSON format:
       const [target] = await pgDb.select({ id: users.id, email: users.email, linkedBusinessId: users.linkedBusinessId }).from(users).where(eq(users.id, targetId));
       if (!target) return res.status(404).json({ message: "User not found" });
 
+      if (target.linkedBusinessId) {
+        await pgDb.delete(businesses).where(eq(businesses.id, target.linkedBusinessId));
+      }
       await pgDb.delete(users).where(eq(users.id, targetId));
-      res.json({ message: `User ${target.email} deleted successfully` });
+      res.json({ message: `User ${target.email} and associated business deleted successfully` });
     } catch (err) {
       console.error("Admin delete user error:", err);
       res.status(500).json({ message: "Failed to delete user" });
