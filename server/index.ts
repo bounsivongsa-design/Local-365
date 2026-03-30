@@ -68,6 +68,7 @@ app.use((req, res, next) => {
     const { users } = await import("@shared/schema");
     const { sql } = await import("drizzle-orm");
     await db.execute(sql`UPDATE users SET is_admin = true, is_validated = true WHERE LOWER(email) IN (${sql.join(adminEmails.map(e => sql`${e}`), sql`, `)})`);
+    await db.execute(sql`UPDATE users SET is_admin = false WHERE is_admin = true AND LOWER(email) NOT IN (${sql.join(adminEmails.map(e => sql`${e}`), sql`, `)})`);
     await db.execute(sql`UPDATE users SET first_name = 'Boun', last_name = 'Sivongsa' WHERE LOWER(email) = 'boun.sivongsa@gmail.com' AND (first_name != 'Boun' OR last_name != 'Sivongsa' OR first_name IS NULL)`);
     await db.execute(sql`UPDATE businesses SET city = 'Moyock', zip_code = '27958' WHERE city = 'Currituck' OR zip_code = '27929'`);
     await db.execute(sql`UPDATE events SET city = 'Moyock', zip_code = '27958' WHERE city = 'Currituck' OR zip_code = '27929'`);
