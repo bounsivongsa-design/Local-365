@@ -1511,7 +1511,6 @@ function BusinessesTab() {
                       insurance_certificate: "Insurance Certificate (COI)",
                       business_license: "Business License",
                       contractor_license: "Contractor License",
-                      veteran_dd214: "Veteran Documentation (DD-214)",
                       other: "Other Document",
                     };
                     const docStatusColor = doc.status === "approved" ? "bg-green-100 text-green-800" :

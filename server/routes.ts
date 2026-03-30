@@ -913,7 +913,7 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "documentType, fileName, and fileUrl are required" });
       }
 
-      const validTypes = ["insurance_certificate", "business_license", "contractor_license", "veteran_dd214", "other"];
+      const validTypes = ["insurance_certificate", "business_license", "contractor_license", "other"];
       if (!validTypes.includes(documentType)) {
         return res.status(400).json({ message: "Invalid document type" });
       }

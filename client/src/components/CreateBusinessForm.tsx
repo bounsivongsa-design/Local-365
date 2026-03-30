@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
+import { MEMBERSHIP_TIERS } from "@shared/config/membership";
 import { useCreateBusiness } from "@/hooks/use-businesses";
 import { useUpload } from "@/hooks/use-upload";
 import { Button } from "@/components/ui/button";
@@ -77,17 +78,16 @@ const defaultHours: BusinessHours = Object.fromEntries(
   ])
 );
 
+const TIER_ID_MAP: Record<string, string> = {
+  basic: "bronze",
+  standard: "silver",
+  premium: "gold",
+};
+
 function getCategoryLimit(tier: string): number {
-  switch (tier) {
-    case "basic":
-      return 3;
-    case "standard":
-      return 5;
-    case "premium":
-      return 7;
-    default:
-      return 3;
-  }
+  const configId = TIER_ID_MAP[tier] ?? tier;
+  const tierConfig = MEMBERSHIP_TIERS.find(t => t.id === configId);
+  return tierConfig?.limits.maxCategories ?? MEMBERSHIP_TIERS[0].limits.maxCategories;
 }
 
 function getTierDisplayName(tier: string): string {
@@ -171,7 +171,6 @@ export function CreateBusinessForm({
   const [verificationDocs, setVerificationDocs] = useState<{type: string; fileName: string; fileUrl: string}[]>([]);
   const insuranceInputRef = useRef<HTMLInputElement>(null);
   const licenseInputRef = useRef<HTMLInputElement>(null);
-  const veteranInputRef = useRef<HTMLInputElement>(null);
 
   const categoryLimit = getCategoryLimit(membershipTier);
 
@@ -1384,46 +1383,8 @@ export function CreateBusinessForm({
           </div>
         )}
 
-        {form.watch("isVeteran") && (
-          <div className="space-y-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-medium">Veteran Documentation</span>
-              </div>
-              {verificationDocs.find(d => d.type === "veteran_dd214") ? (
-                <span className="text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Uploaded
-                </span>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => veteranInputRef.current?.click()}
-                  disabled={isDocUploading}
-                  data-testid="button-upload-veteran"
-                >
-                  <Upload className="h-3 w-3 mr-1" /> Upload
-                </Button>
-              )}
-            </div>
-            <input
-              ref={veteranInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleVerificationDocUpload(file, "veteran_dd214");
-                e.target.value = "";
-              }}
-            />
-            <p className="text-xs text-muted-foreground">Veteran ID card, VA letter, or other proof of service</p>
-          </div>
-        )}
 
-        {!form.watch("hasInsurance") && !form.watch("isLicensed") && !form.watch("isVeteran") && (
+        {!form.watch("hasInsurance") && !form.watch("isLicensed") && (
           <p className="text-xs text-muted-foreground italic text-center py-2">
             Check the credentials above to see upload options
           </p>
