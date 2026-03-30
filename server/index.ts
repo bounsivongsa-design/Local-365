@@ -62,7 +62,7 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  const adminEmails = ["boun.sivongsa@gmail.com"];
+  const adminEmails = ["boun.sivongsa@gmail.com", "locallist365@gmail.com"];
   try {
     const { db } = await import("./db");
     const { users } = await import("@shared/schema");
