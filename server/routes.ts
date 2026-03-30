@@ -2599,13 +2599,18 @@ Respond in this exact JSON format:
         validatedVideoUrl = videoUrl;
       }
 
+      let normalizedImageUrl = imageUrl || null;
+      if (normalizedImageUrl && !normalizedImageUrl.startsWith("http") && !normalizedImageUrl.startsWith("/objects/")) {
+        normalizedImageUrl = `/objects/${normalizedImageUrl}`;
+      }
+
       const [newAd] = await pgDb.insert(adPlacements).values({
         businessId: user.linkedBusinessId,
         placementType,
         adSize: size,
         title,
         description,
-        imageUrl,
+        imageUrl: normalizedImageUrl,
         videoUrl: validatedVideoUrl,
         linkUrl,
         category,
@@ -2658,7 +2663,13 @@ Respond in this exact JSON format:
       const updates: any = { updatedAt: new Date() };
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
-      if (imageUrl !== undefined) updates.imageUrl = imageUrl;
+      if (imageUrl !== undefined) {
+        let normalizedImg = imageUrl || null;
+        if (normalizedImg && !normalizedImg.startsWith("http") && !normalizedImg.startsWith("/objects/")) {
+          normalizedImg = `/objects/${normalizedImg}`;
+        }
+        updates.imageUrl = normalizedImg;
+      }
       if (videoUrl !== undefined) updates.videoUrl = videoUrl;
       if (linkUrl !== undefined) updates.linkUrl = linkUrl;
       if (adSize && ["small", "medium", "large"].includes(adSize)) {
@@ -3797,34 +3808,72 @@ Respond in this exact JSON format:
   // Seed Data
   await seedDatabase();
 
+  setInterval(async () => {
+    try {
+      await checkExpiredGoldTrials();
+    } catch (e) {
+      console.error("Gold trial check error:", e);
+    }
+  }, 60 * 60 * 1000);
+
+  setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
+
   return httpServer;
+}
+
+async function checkExpiredGoldTrials() {
+  const now = new Date();
+  const expired = await pgDb.select({
+    id: businesses.id,
+    name: businesses.name,
+    membershipTier: businesses.membershipTier,
+    originalMembershipTier: businesses.originalMembershipTier,
+    goldTrialEndDate: businesses.goldTrialEndDate,
+  }).from(businesses).where(
+    and(
+      sql`${businesses.goldTrialEndDate} IS NOT NULL`,
+      sql`${businesses.originalMembershipTier} IS NOT NULL`,
+      lte(businesses.goldTrialEndDate, now),
+      eq(businesses.membershipTier, "premium")
+    )
+  );
+
+  for (const biz of expired) {
+    const revertTier = biz.originalMembershipTier || "basic";
+    await pgDb.update(businesses).set({
+      membershipTier: revertTier,
+      goldTrialEndDate: null,
+      originalMembershipTier: null,
+    }).where(eq(businesses.id, biz.id));
+    console.log(`Gold trial safety net: business ${biz.id} (${biz.name}) reverted from premium to ${revertTier}`);
+  }
+
+  if (expired.length > 0) {
+    console.log(`Gold trial check complete: ${expired.length} business(es) reverted`);
+  }
 }
 
 async function seedAdPricing() {
   try {
     const existingPricing = await pgDb.select().from(adPricing);
     
-    const deprecatedTypes = ["homepage_banner", "featured_listing"];
-    const toRemove = existingPricing.filter(p => deprecatedTypes.includes(p.placementType));
-    for (const old of toRemove) {
-      await pgDb.delete(adPricing).where(eq(adPricing.id, old.id));
-      console.log(`Removed deprecated ad type: ${old.displayName}`);
-    }
-
     const desiredPricing = [
       { placementType: "large_banner", displayName: "Large Ad Banner", description: "Full-width premium banner in the ad carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
       { placementType: "medium_banner", displayName: "Medium Ad Banner", description: "50%-width banner in the ad carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
       { placementType: "small_banner", displayName: "Small Ad Banner", description: "Compact banner in the ad carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
-      { placementType: "category_spotlight", displayName: "Category Spotlight", description: "Featured placement within a specific category page. Perfect for targeting your niche.", pricePerWeek: 2900, maxActive: 5 },
-      { placementType: "directory_boost", displayName: "Directory Boost", description: "Increased visibility in directory listings with priority placement.", pricePerWeek: 1900, maxActive: 20 },
     ];
 
-    const refreshed = await pgDb.select().from(adPricing);
-    const existingTypes = refreshed.map(p => p.placementType);
+    const desiredTypes = desiredPricing.map(d => d.placementType);
+    const existingTypes = existingPricing.map(p => p.placementType);
     const toAdd = desiredPricing.filter(d => !existingTypes.includes(d.placementType));
     if (toAdd.length > 0) {
       await pgDb.insert(adPricing).values(toAdd);
       console.log(`Seeded ${toAdd.length} ad pricing tiers`);
+    }
+    const toRemove = existingPricing.filter(p => !desiredTypes.includes(p.placementType));
+    for (const old of toRemove) {
+      await pgDb.delete(adPricing).where(eq(adPricing.id, old.id));
+      console.log(`Removed obsolete ad pricing: ${old.placementType}`);
     }
   } catch (err) {
     console.error("Error seeding ad pricing:", err);

@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, ArrowRight, Star, Sparkles } from "lucide-react";
+import { Megaphone, ArrowRight, Star } from "lucide-react";
 import { useLocation } from "@/context/LocationContext";
 import type { AdPlacement } from "@shared/schema";
 
 interface AdBannerProps {
-  placementType: "homepage_banner" | "large_banner" | "medium_banner" | "small_banner" | "featured_listing" | "category_spotlight" | "directory_boost";
+  placementType: "homepage_banner" | "large_banner" | "medium_banner" | "small_banner" | "featured_listing";
   category?: string;
   className?: string;
   limit?: number;
@@ -52,18 +52,6 @@ const PLACEHOLDER_ADS: Record<string, { title: string; description: string; imag
       linkUrl: "/directory",
     },
   ],
-  category_spotlight: [{
-    title: "Mobile Mechanic — We Come to You",
-    description: "On-site auto repair and diagnostics in Moyock. No tow truck needed — certified mechanics at your door.",
-    imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=100&h=100&fit=crop",
-    linkUrl: "/directory",
-  }],
-  directory_boost: [{
-    title: "Local Pest Control Experts",
-    description: "Termite inspections, mosquito treatments, and wildlife removal. Serving Moyock, NC for 15+ years.",
-    imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=200&h=200&fit=crop",
-    linkUrl: "/directory",
-  }],
 };
 
 export function AdBanner({ placementType, category, className = "", limit = 1 }: AdBannerProps) {
@@ -234,7 +222,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
     );
   }
 
-  if (placementType === "featured_listing" || placementType === "directory_boost") {
+  if (placementType === "featured_listing") {
     const displayAds = hasRealAds ? ads : placeholders.slice(0, limit);
     return (
       <div className={`space-y-4 ${className}`}>
@@ -276,46 +264,6 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
             </Card>
           );
         })}
-      </div>
-    );
-  }
-
-  if (placementType === "category_spotlight") {
-    const ad = hasRealAds ? ads[0] : null;
-    const placeholder = placeholders[0];
-    const title = (ad as any)?.title || placeholder?.title || "";
-    const description = (ad as any)?.description || placeholder?.description || "";
-    const imageUrl = (ad as any)?.imageUrl || placeholder?.imageUrl || "";
-    const isPlaceholder = !ad;
-
-    return (
-      <div 
-        className={`relative bg-gradient-to-r from-[#8a9a5b]/10 via-[#8a9a5b]/5 to-transparent border border-[#8a9a5b]/20 rounded-xl p-4 cursor-pointer group hover:border-[#8a9a5b]/40 hover:shadow-[0_4px_20px_rgba(138,154,91,0.1)] transition-[shadow,border-color] duration-200 ${className}`}
-        onClick={() => isPlaceholder ? (window.location.href = "/directory") : handleClick(ad!)}
-        data-testid={`ad-spotlight-${(ad as any)?.id || "placeholder"}`}
-      >
-        <Badge className="text-xs bg-[#8a9a5b]/10 text-[#8a9a5b] border border-[#8a9a5b]/30 mb-2 hover:bg-[#8a9a5b]/15">
-          {isPlaceholder ? <Sparkles className="h-2.5 w-2.5 mr-1" /> : <Megaphone className="h-2.5 w-2.5 mr-1" />}
-          {isPlaceholder ? "Spotlight Available" : "Category Spotlight"}
-        </Badge>
-        <div className="flex items-center gap-3">
-          {imageUrl && (
-            <div className="w-12 h-12 rounded-lg overflow-hidden shadow-sm flex-shrink-0">
-              <img 
-                src={imageUrl}
-                alt={title}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-            </div>
-          )}
-          <div className="flex-1">
-            <h4 className="font-semibold text-sm group-hover:text-[#8a9a5b] transition-colors">{title}</h4>
-            {description && (
-              <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
-            )}
-          </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-[#8a9a5b] group-hover:translate-x-1 transition-[color,transform] duration-200 flex-shrink-0" />
-        </div>
       </div>
     );
   }

@@ -53,6 +53,8 @@ export const businesses = pgTable("businesses", {
   membershipStartDate: timestamp("membership_start_date"),
   membershipEndDate: timestamp("membership_end_date"),
   membershipTrialUsed: boolean("membership_trial_used").default(false),
+  goldTrialEndDate: timestamp("gold_trial_end_date"),
+  originalMembershipTier: text("original_membership_tier"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   phone: text("phone"),

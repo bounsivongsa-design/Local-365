@@ -36,7 +36,6 @@ import {
   Send,
   Sparkles,
   Crown,
-  LayoutGrid,
   Home,
   Building2,
   ChevronRight,
@@ -48,21 +47,18 @@ import {
   Check,
   Video,
   Pencil,
-  X
+  X,
+  Upload
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import type { AdPricing, AdPlacement } from "@shared/schema";
-
-import { DIRECTORY_CATEGORY_NAMES } from "@shared/config/categories";
-const CATEGORIES = DIRECTORY_CATEGORY_NAMES;
+import { useUpload } from "@/hooks/use-upload";
 
 const placementIcons: Record<string, any> = {
   large_banner: Home,
   medium_banner: Home,
   small_banner: Home,
-  category_spotlight: LayoutGrid,
-  directory_boost: TrendingUp,
 };
 
 const BANNER_PLACEMENTS = ["large_banner", "medium_banner", "small_banner"];
@@ -127,6 +123,12 @@ export default function Advertising() {
     videoUrl: "",
     linkUrl: "",
     category: "",
+  });
+
+  const { uploadFile: uploadAdImage, isUploading: adImageUploading } = useUpload({
+    onError: (error) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
   });
 
   const { data: pricing, isLoading: pricingLoading } = useQuery<AdPricing[]>({
@@ -591,16 +593,51 @@ export default function Advertising() {
                           </div>
                         )}
                         <div className="pt-1">
-                          <p className="text-xs text-[#4a4a5a] mb-1">{businessMedia.length > 0 ? "Or paste an external URL:" : "Paste an image URL:"}</p>
-                          <Input
-                            id="imageUrl"
-                            placeholder="https://example.com/image.jpg"
-                            value={formData.imageUrl}
-                            onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                            style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                            className="bg-white"
-                            data-testid="input-ad-image"
-                          />
+                          <p className="text-xs text-[#4a4a5a] mb-1">{businessMedia.length > 0 ? "Or upload a new image:" : "Upload an image:"}</p>
+                          <div className="flex items-center gap-3">
+                            <label
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a4a82] text-white text-sm font-medium cursor-pointer hover:bg-[#083a6a] transition-colors"
+                              data-testid="button-upload-ad-image"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {adImageUploading ? "Uploading..." : "Choose File"}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={adImageUploading}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const result = await uploadAdImage(file);
+                                    if (result) {
+                                      setFormData({ ...formData, imageUrl: result.objectPath });
+                                    }
+                                  }
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                            {formData.imageUrl && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200">
+                                  <img
+                                    src={formData.imageUrl.startsWith("/objects/") ? formData.imageUrl : `/objects/${formData.imageUrl}`}
+                                    alt="Selected"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                                  className="text-xs text-slate-500 hover:text-red-500 transition-colors"
+                                  data-testid="button-clear-ad-image"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {!businessMedia.length && user?.accountType === "business" && (
                           <p className="text-xs text-[#d4a373]">
@@ -652,29 +689,10 @@ export default function Advertising() {
                         />
                       </div>
 
-                      {formData.placementType === "category_spotlight" && (
-                        <div className="space-y-2">
-                          <Label>Target Category</Label>
-                          <Select 
-                            value={formData.category} 
-                            onValueChange={(v) => setFormData({ ...formData, category: v })}
-                          >
-                            <SelectTrigger data-testid="select-category">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CATEGORIES.map((cat) => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
                       <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
                         <div className="flex justify-between items-center">
                           <span className="font-medium text-slate-700 dark:text-slate-300">
-                            {BANNER_PLACEMENTS.includes(formData.placementType) ? "Monthly Price:" : "Weekly Price:"}
+                            Monthly Price:
                           </span>
                           <span className="text-2xl font-bold text-[#0a4a82]">
                             {BANNER_PLACEMENTS.includes(formData.placementType) ? (

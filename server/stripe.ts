@@ -323,13 +323,25 @@ export function registerStripeRoutes(app: Express) {
             stripeSubscriptionId: session.subscription as string,
           };
 
+          const isAutoUpgrade = session.metadata?.isAutoUpgrade === "true";
+          const originalTier = session.metadata?.originalTier;
+
           if (session.subscription) {
             try {
               const sub = await stripe.subscriptions.retrieve(session.subscription as string);
               if (sub.trial_end) {
                 updates.membershipTrialUsed = true;
+                if (isAutoUpgrade && originalTier) {
+                  updates.goldTrialEndDate = new Date(sub.trial_end * 1000);
+                  updates.originalMembershipTier = originalTier;
+                }
               }
             } catch (e) {}
+          }
+
+          if (tier === "premium" && !isAutoUpgrade) {
+            updates.goldTrialEndDate = null;
+            updates.originalMembershipTier = null;
           }
 
           await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
@@ -593,11 +605,23 @@ export function registerStripeRoutes(app: Express) {
               stripeSubscriptionId: session.subscription as string,
             };
 
+            const isAutoUpgrade = session.metadata?.isAutoUpgrade === "true";
+            const originalTier = session.metadata?.originalTier;
+
             if (session.subscription) {
               const sub = await stripe.subscriptions.retrieve(session.subscription as string);
               if (sub.trial_end) {
                 updates.membershipTrialUsed = true;
+                if (isAutoUpgrade && originalTier) {
+                  updates.goldTrialEndDate = new Date(sub.trial_end * 1000);
+                  updates.originalMembershipTier = originalTier;
+                }
               }
+            }
+
+            if (tier === "premium" && !isAutoUpgrade) {
+              updates.goldTrialEndDate = null;
+              updates.originalMembershipTier = null;
             }
 
             await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
@@ -667,10 +691,15 @@ export function registerStripeRoutes(app: Express) {
                   }
                 }
 
-                await db.update(businesses).set({
+                const updateFields: any = {
                   membershipTier: newTier,
                   stripeSubscriptionId: subscription.id,
-                }).where(eq(businesses.id, businessId));
+                };
+                if (isTrialReversion || (newTier === "premium" && !isAutoUpgrade)) {
+                  updateFields.goldTrialEndDate = null;
+                  updateFields.originalMembershipTier = null;
+                }
+                await db.update(businesses).set(updateFields).where(eq(businesses.id, businessId));
               }
             } else if (status === "past_due" || status === "unpaid") {
               console.warn(`Subscription ${subscription.id} status: ${status} for business ${businessId}`);
