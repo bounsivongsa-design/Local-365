@@ -314,14 +314,315 @@ function MembershipExpirationBanner() {
   );
 }
 
+function EditBusinessForm({ business, onClose }: { business: Business; onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+
+  const parseHours = (h: string | null | undefined) => {
+    try { return h ? JSON.parse(h) : {}; } catch { return {}; }
+  };
+  const parseSocial = (s: string | null | undefined) => {
+    try { return s ? JSON.parse(s) : {}; } catch { return {}; }
+  };
+
+  const [form, setForm] = useState({
+    description: business.description || "",
+    phone: business.phone || "",
+    email: (business as any).email || "",
+    websiteUrl: business.websiteUrl || "",
+    address: business.address || "",
+    ownerName: business.ownerName || "",
+    category: business.category || "",
+    searchKeywords: business.searchKeywords || "",
+    hasLLC: business.hasLLC || false,
+    hasInsurance: business.hasInsurance || false,
+    isLicensed: business.isLicensed || false,
+    isVeteran: business.isVeteran || false,
+    servicesResidential: business.servicesResidential || false,
+    servicesCommercial: business.servicesCommercial || false,
+    acceptsQuotes: (business as any).acceptsQuotes !== false,
+  });
+  const [hours, setHours] = useState<Record<string, { open: string; close: string; closed: boolean }>>(
+    (() => {
+      const parsed = parseHours(business.businessHours);
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const result: Record<string, { open: string; close: string; closed: boolean }> = {};
+      for (const d of days) {
+        result[d] = parsed[d] || { open: "09:00", close: "17:00", closed: false };
+      }
+      return result;
+    })()
+  );
+  const [social, setSocial] = useState<Record<string, string>>(parseSocial(business.socialMediaUrls));
+
+  const inputStyle = { color: '#1a1a2e', caretColor: '#1a1a2e' };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...form,
+          businessHours: JSON.stringify(hours),
+          socialMediaUrls: JSON.stringify(social),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ variant: "destructive", title: "Error", description: err.message });
+        return;
+      }
+      toast({ title: "Business updated", description: "Your changes have been saved." });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      onClose();
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Could not save changes" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-[#1a1a2e] flex items-center gap-2">
+          <Settings className="h-5 w-5 text-[#0a4a82]" />
+          Edit Business Profile
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500">
+          <XCircle className="h-4 w-4 mr-1" /> Cancel
+        </Button>
+      </div>
+
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardContent className="p-6 space-y-5">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#1a1a2e]">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full min-h-[100px] rounded-xl border border-gray-200 p-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none resize-y"
+              style={inputStyle}
+              data-testid="input-edit-description"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#1a1a2e]">Phone</label>
+              <input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+                style={inputStyle}
+                placeholder="(252) 555-0123"
+                data-testid="input-edit-phone"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#1a1a2e]">Email</label>
+              <input
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+                style={inputStyle}
+                placeholder="contact@yourbusiness.com"
+                data-testid="input-edit-email"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#1a1a2e]">Website URL</label>
+              <input
+                value={form.websiteUrl}
+                onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
+                className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+                style={inputStyle}
+                placeholder="https://yourbusiness.com"
+                data-testid="input-edit-website"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#1a1a2e]">Address</label>
+              <input
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+                style={inputStyle}
+                data-testid="input-edit-address"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#1a1a2e]">Search Keywords</label>
+            <input
+              value={form.searchKeywords}
+              onChange={(e) => setForm({ ...form, searchKeywords: e.target.value })}
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+              style={inputStyle}
+              placeholder="keyword1, keyword2, keyword3"
+              maxLength={250}
+              data-testid="input-edit-keywords"
+            />
+            <p className="text-xs text-gray-400">{form.searchKeywords.length}/250 characters</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardHeader>
+          <CardTitle className="text-base text-[#1a1a2e]">Business Hours</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {Object.entries(hours).map(([day, val]) => (
+            <div key={day} className="flex items-center gap-3 py-1.5 border-b border-gray-100 last:border-0">
+              <span className="w-24 text-sm font-medium text-[#1a1a2e]">{day}</span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!val.closed}
+                  onChange={(e) => setHours({ ...hours, [day]: { ...val, closed: !e.target.checked } })}
+                  className="h-4 w-4 rounded border-gray-300 text-[#0a4a82]"
+                />
+                <span className="text-xs text-gray-500">{val.closed ? "Closed" : "Open"}</span>
+              </label>
+              {!val.closed && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <input
+                    type="time"
+                    value={val.open}
+                    onChange={(e) => setHours({ ...hours, [day]: { ...val, open: e.target.value } })}
+                    className="h-8 rounded-lg border border-gray-200 px-2 text-xs bg-white"
+                    style={inputStyle}
+                  />
+                  <span className="text-xs text-gray-400">to</span>
+                  <input
+                    type="time"
+                    value={val.close}
+                    onChange={(e) => setHours({ ...hours, [day]: { ...val, close: e.target.value } })}
+                    className="h-8 rounded-lg border border-gray-200 px-2 text-xs bg-white"
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardHeader>
+          <CardTitle className="text-base text-[#1a1a2e]">Social Media</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            { key: "facebook", label: "Facebook" },
+            { key: "instagram", label: "Instagram" },
+            { key: "twitter", label: "X (Twitter)" },
+            { key: "linkedin", label: "LinkedIn" },
+          ].map(({ key, label }) => (
+            <div key={key} className="space-y-1">
+              <label className="text-xs font-medium text-gray-500">{label}</label>
+              <input
+                value={social[key] || ""}
+                onChange={(e) => setSocial({ ...social, [key]: e.target.value })}
+                className="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+                style={inputStyle}
+                placeholder={`${label} URL`}
+              />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardHeader>
+          <CardTitle className="text-base text-[#1a1a2e]">Credentials & Preferences</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { key: "hasLLC" as const, label: "LLC" },
+              { key: "hasInsurance" as const, label: "Insured" },
+              { key: "isLicensed" as const, label: "Licensed" },
+              { key: "isVeteran" as const, label: "Veteran Owned" },
+            ].map(({ key, label }) => (
+              <label key={key} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${form[key] ? 'bg-[#0a4a82]/5 border-[#0a4a82]/30' : 'bg-gray-50 border-gray-200'}`}>
+                <input
+                  type="checkbox"
+                  checked={form[key]}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300 text-[#0a4a82]"
+                />
+                <span className="text-sm font-medium text-[#1a1a2e]">{label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { key: "servicesResidential" as const, label: "Residential Services" },
+              { key: "servicesCommercial" as const, label: "Commercial Services" },
+            ].map(({ key, label }) => (
+              <label key={key} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${form[key] ? 'bg-[#8a9a5b]/5 border-[#8a9a5b]/30' : 'bg-gray-50 border-gray-200'}`}>
+                <input
+                  type="checkbox"
+                  checked={form[key]}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300 text-[#8a9a5b]"
+                />
+                <span className="text-sm font-medium text-[#1a1a2e]">{label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <div>
+              <span className="text-sm font-medium text-[#1a1a2e]">Accept Quote Requests</span>
+              <p className="text-xs text-gray-500">Allow customers to request quotes from your business</p>
+            </div>
+            <Switch
+              checked={form.acceptsQuotes}
+              onCheckedChange={(v) => setForm({ ...form, acceptsQuotes: v })}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-3 justify-end">
+        <Button variant="outline" onClick={onClose} className="rounded-xl">Cancel</Button>
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white px-8"
+          data-testid="button-save-business"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function BusinessDashboard({ user, business }: { user: any; business: Business | null }) {
   const hasBusiness = !!business;
   const tier = business?.membershipTier;
   const tierName = getTierDisplayName(tier);
+  const [isEditing, setIsEditing] = useState(false);
 
   return (
     <div className="container py-8 space-y-6">
       <MembershipExpirationBanner />
+      {isEditing && business && (
+        <EditBusinessForm business={business} onClose={() => setIsEditing(false)} />
+      )}
       {!hasBusiness && !user?.isAdmin ? (
         <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-[#d4a373]/30 rounded-2xl">
           <CardContent className="py-12 text-center">
@@ -476,13 +777,23 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
             </Card>
 
             <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg text-[#1a1a2e]">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4a373] to-[#d4a373]/70 flex items-center justify-center">
                     <Building2 className="h-4 w-4 text-white" />
                   </div>
                   Business Details
                 </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-lg text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5"
+                  data-testid="button-edit-business"
+                >
+                  <Settings className="h-3.5 w-3.5 mr-1.5" />
+                  Edit Profile
+                </Button>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between py-2 border-b border-[#0a4a82]/10">

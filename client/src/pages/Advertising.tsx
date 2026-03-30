@@ -47,7 +47,8 @@ import {
   Gift,
   Check,
   Video,
-  Pencil
+  Pencil,
+  X
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
@@ -733,12 +734,12 @@ export default function Advertising() {
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Homepage Banners</h3>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Monthly Ad Banners</h3>
                   <div className="grid md:grid-cols-3 gap-5 mb-10">
                     {pricing?.filter(p => BANNER_PLACEMENTS.includes(p.placementType)).map((p) => {
                       const Icon = placementIcons[p.placementType] || Megaphone;
                       const sizeLabel = p.placementType === "large_banner" ? "Large" : p.placementType === "medium_banner" ? "Medium" : "Small";
-                      const sizeDesc = p.placementType === "large_banner" ? "Full-width" : p.placementType === "medium_banner" ? "75% width" : "Compact";
+                      const sizeDesc = p.placementType === "large_banner" ? "Full-width" : p.placementType === "medium_banner" ? "50% width" : "Compact";
                       const gradients: Record<string, string> = {
                         large_banner: "from-[#0a4a82] to-[#083a6a]",
                         medium_banner: "from-[#8a9a5b] to-[#6b7a4a]",
@@ -895,6 +896,32 @@ export default function Advertising() {
                               >
                                 <Pencil className="h-3 w-3 mr-1" />
                                 Edit Ad
+                              </Button>
+                            )}
+                            {ad.status === "pending" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 flex-1"
+                                onClick={async () => {
+                                  if (!confirm("Cancel this ad request? This cannot be undone.")) return;
+                                  try {
+                                    const res = await fetch(`/api/ads/${ad.id}`, { method: "DELETE", credentials: "include" });
+                                    if (res.ok) {
+                                      toast({ title: "Ad cancelled", description: "Your ad request has been removed." });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+                                    } else {
+                                      const err = await res.json();
+                                      toast({ variant: "destructive", title: "Error", description: err.message });
+                                    }
+                                  } catch {
+                                    toast({ variant: "destructive", title: "Error", description: "Could not cancel ad" });
+                                  }
+                                }}
+                                data-testid={`button-cancel-ad-${ad.id}`}
+                              >
+                                <X className="h-3 w-3 mr-1" />
+                                Cancel
                               </Button>
                             )}
                           </div>

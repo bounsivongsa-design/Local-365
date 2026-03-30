@@ -20,7 +20,7 @@ import {
   type InsertJobListing,
   type JobListingWithBusiness,
 } from "@shared/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
 import { authStorage } from "./replit_integrations/auth/storage";
 
 export interface IStorage {
@@ -92,14 +92,24 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(reviews, eq(businesses.id, reviews.businessId))
     .groupBy(businesses.id);
 
+    const conditions = [];
     if (category) {
-      query.where(eq(businesses.category, category));
+      conditions.push(eq(businesses.category, category));
     }
-    
-    // Simple search implementation
     if (search) {
-       // In a real app, use ilike or full text search
-       // query.where(ilike(businesses.name, `%${search}%`));
+      const searchPattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(businesses.name, searchPattern),
+          ilike(businesses.description, searchPattern),
+          ilike(businesses.category, searchPattern),
+          sql`${businesses.searchKeywords}::text ILIKE ${searchPattern}`,
+          sql`${businesses.additionalCategories}::text ILIKE ${searchPattern}`
+        )!
+      );
+    }
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
     }
 
     query.orderBy(

@@ -1049,6 +1049,41 @@ Respond in this exact JSON format:
     }
   });
 
+  app.patch("/api/businesses/:id", isAuthenticated, async (req, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      const userId = (req as any).user?.id;
+      const user = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user.length || (user[0].linkedBusinessId !== businessId && !user[0].isAdmin)) {
+        return res.status(403).json({ message: "Not authorized to edit this business" });
+      }
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId));
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      const allowedFields = [
+        "description", "phone", "email", "websiteUrl", "businessHours",
+        "socialMediaUrls", "searchKeywords", "category", "additionalCategories",
+        "hasLLC", "hasInsurance", "isLicensed", "isVeteran",
+        "servicesResidential", "servicesCommercial", "acceptsQuotes",
+        "address", "ownerName", "localOperationDescription"
+      ];
+      const updates: any = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      const [updated] = await pgDb.update(businesses).set(updates).where(eq(businesses.id, businessId)).returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating business:", err);
+      res.status(500).json({ message: "Failed to update business" });
+    }
+  });
+
   app.post("/api/businesses/:id/quote-preference", isAuthenticated, async (req, res) => {
     try {
       const businessId = parseInt(req.params.id);
@@ -2618,6 +2653,28 @@ Respond in this exact JSON format:
     }
   });
 
+  app.delete("/api/ads/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (user.accountType !== "business" || !user.linkedBusinessId) {
+        return res.status(403).json({ message: "Business account required" });
+      }
+      const adId = parseInt(req.params.id);
+      const [ad] = await pgDb.select().from(adPlacements).where(
+        and(eq(adPlacements.id, adId), eq(adPlacements.businessId, user.linkedBusinessId))
+      );
+      if (!ad) return res.status(404).json({ message: "Ad not found" });
+      if (ad.status !== "pending") {
+        return res.status(400).json({ message: "Only pending ads can be cancelled." });
+      }
+      await pgDb.delete(adPlacements).where(eq(adPlacements.id, adId));
+      res.json({ message: "Ad cancelled successfully" });
+    } catch (err) {
+      console.error("Error deleting ad:", err);
+      res.status(500).json({ message: "Failed to cancel ad" });
+    }
+  });
+
   app.post("/api/ads/:id/add-zip-codes", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
@@ -3716,9 +3773,9 @@ async function seedAdPricing() {
     }
 
     const desiredPricing = [
-      { placementType: "large_banner", displayName: "Large Homepage Banner", description: "Full-width premium banner at the top of the homepage carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
-      { placementType: "medium_banner", displayName: "Medium Homepage Banner", description: "75%-width banner in the homepage carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
-      { placementType: "small_banner", displayName: "Small Homepage Banner", description: "Compact banner in the homepage carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
+      { placementType: "large_banner", displayName: "Large Ad Banner", description: "Full-width premium banner in the ad carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
+      { placementType: "medium_banner", displayName: "Medium Ad Banner", description: "50%-width banner in the ad carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
+      { placementType: "small_banner", displayName: "Small Ad Banner", description: "Compact banner in the ad carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
       { placementType: "category_spotlight", displayName: "Category Spotlight", description: "Featured placement within a specific category page. Perfect for targeting your niche.", pricePerWeek: 2900, maxActive: 5 },
       { placementType: "directory_boost", displayName: "Directory Boost", description: "Increased visibility in directory listings with priority placement.", pricePerWeek: 1900, maxActive: 20 },
     ];

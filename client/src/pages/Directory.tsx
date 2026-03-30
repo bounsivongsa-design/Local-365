@@ -26,6 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
+import { AdCarousel } from "@/components/AdCarousel";
 
 export default function Directory() {
   const [searchParams] = useSearchParams();
@@ -188,6 +189,8 @@ export default function Directory() {
           </div>
         </div>
       </div>
+
+      <AdCarousel zipCode={selectedLocation?.zipCode || "27958"} />
 
       <div className="bg-[#f5f0eb] min-h-screen">
       <div className="container py-8">
