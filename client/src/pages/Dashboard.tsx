@@ -314,6 +314,47 @@ function MembershipExpirationBanner() {
   );
 }
 
+function MembershipCancellationBanner() {
+  const { data } = useQuery<{
+    active: boolean;
+    cancelAtPeriodEnd?: boolean;
+    cancelAt?: string;
+    tierDisplay?: string;
+  }>({
+    queryKey: ["/api/stripe/subscription-status"],
+  });
+
+  if (!data?.cancelAtPeriodEnd || !data?.cancelAt) return null;
+
+  const cancelDate = new Date(data.cancelAt);
+  const firstOfNextMonth = new Date(cancelDate.getFullYear(), cancelDate.getMonth() + 1, 1);
+
+  const tierMap: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold" };
+  const tierLabel = tierMap[data.tierDisplay || ""] || data.tierDisplay || "your";
+
+  return (
+    <div className="bg-gradient-to-r from-red-500 to-red-700 rounded-2xl p-5 text-white shadow-lg" data-testid="banner-membership-cancelling">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <AlertTriangle className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg">Your {tierLabel} Membership Is Ending</h3>
+          <p className="text-white/80 text-sm mt-0.5">
+            Your subscription will cancel on {cancelDate.toLocaleDateString()}. Your business will be removed from the directory on {firstOfNextMonth.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.
+          </p>
+        </div>
+        <Link to="/membership">
+          <Button className="bg-white text-red-700 hover:bg-white/90 font-semibold" data-testid="button-resubscribe">
+            <Crown className="h-4 w-4 mr-2" />
+            Keep My Listing
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function EditBusinessForm({ business, onClose }: { business: Business; onClose: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -664,6 +705,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
   return (
     <div className="container py-8 space-y-6">
       <MembershipExpirationBanner />
+      <MembershipCancellationBanner />
       {isEditing && business && (
         <EditBusinessForm business={business} onClose={() => setIsEditing(false)} />
       )}

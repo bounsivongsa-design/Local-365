@@ -262,14 +262,6 @@ export default function BusinessMembership() {
       window.location.href = "/auth?mode=register&type=business";
       return;
     }
-    if (user?.accountType !== "business") {
-      window.location.href = "/create-business";
-      return;
-    }
-    if (!business?.id) {
-      window.location.href = "/create-business";
-      return;
-    }
     setPromoCode("");
     setPromoStatus(null);
     setCheckoutTier(tier);

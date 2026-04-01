@@ -93,6 +93,12 @@ export class DatabaseStorage implements IStorage {
     .groupBy(businesses.id);
 
     const conditions = [];
+    conditions.push(
+      or(
+        sql`${businesses.membershipTier} != 'none'`,
+        eq(businesses.isExample, true)
+      )!
+    );
     if (category) {
       conditions.push(eq(businesses.category, category));
     }

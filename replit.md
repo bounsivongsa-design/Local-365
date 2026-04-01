@@ -29,7 +29,9 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier.
 - **Events**: Comprehensive local events calendar.
 - **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk, Basic $20/wk.
-- **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions.
+- **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions. New signup flow: Register → Choose plan & pay on /membership (CC required) → Create business listing on /create-business → Dashboard. Pending membership stored on user record until business is created, then transferred.
+- **Directory Visibility**: Only businesses with active membership (tier != "none") appear in the public directory. Example/seed businesses always visible. Cancellation removes from directory when tier resets to "none".
+- **Cancellation Handling**: Dashboard shows cancellation warning banner with removal date. Stripe webhook handles tier reset on subscription cancellation.
 - **Advertising**: Tiered advertising models for website and event ads, with member discounts.
 - **Business Analytics**: Tracks listing engagement (page views, clicks) for businesses.
 - **Quote Messaging**: Customers and businesses can message back and forth within quote threads (`quote_messages` table) with read tracking (`readAt`). Navigation badge shows unread quote message count. No direct messaging between users outside of quotes (spam prevention). Dashboard inbox shows quote message threads only.

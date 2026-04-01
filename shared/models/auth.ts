@@ -53,7 +53,11 @@ export const users = pgTable("users", {
   customerRating: decimal("customer_rating", { precision: 2, scale: 1 }).default("5.0"), // 1.0-5.0 rating from businesses
   projectsCompleted: integer("projects_completed").default(0), // Track completed projects
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"), // Total amount spent on projects
-  isAdmin: boolean("is_admin").default(false), // Admin access for managing ads, users, etc.
+  isAdmin: boolean("is_admin").default(false),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  pendingMembershipTier: varchar("pending_membership_tier"),
+  pendingStripeSubscriptionId: varchar("pending_stripe_subscription_id"),
+  pendingPaymentFrequency: varchar("pending_payment_frequency"),
   
   // Community Engagement Badges (like Facebook Groups)
   // Badges: top_contributor, conversation_starter, rising_star, founding_member, helpful_neighbor

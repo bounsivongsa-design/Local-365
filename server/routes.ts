@@ -683,11 +683,50 @@ export async function registerRoutes(
         return res.status(409).json({ message: "A business with this name already exists in this zip code" });
       }
 
+      const userId = (req as any).user?.id;
+
+      delete input.membershipTier;
+      delete input.membershipPaymentFrequency;
+      delete input.membershipStartDate;
+      delete input.membershipEndDate;
+      delete input.stripeSubscriptionId;
+      delete input.stripeCustomerId;
+      delete input.membershipTrialUsed;
+      delete input.isExample;
+      delete input.verified;
+
+      const [currentUser] = userId ? await pgDb.select().from(users).where(eq(users.id, userId)) : [];
+      if (currentUser?.pendingMembershipTier) {
+        input.membershipTier = currentUser.pendingMembershipTier;
+        input.membershipPaymentFrequency = currentUser.pendingPaymentFrequency;
+        input.membershipStartDate = new Date();
+        input.stripeSubscriptionId = currentUser.pendingStripeSubscriptionId;
+        input.stripeCustomerId = currentUser.stripeCustomerId;
+        input.membershipTrialUsed = true;
+      }
+
       const business = await storage.createBusiness(input);
 
-      const userId = (req as any).user?.id;
       if (userId) {
-        await pgDb.update(users).set({ linkedBusinessId: business.id }).where(eq(users.id, userId));
+        const updateFields: any = { linkedBusinessId: business.id };
+        if (currentUser?.pendingMembershipTier) {
+          updateFields.pendingMembershipTier = null;
+          updateFields.pendingStripeSubscriptionId = null;
+          updateFields.pendingPaymentFrequency = null;
+        }
+        await pgDb.update(users).set(updateFields).where(eq(users.id, userId));
+
+        if (currentUser?.pendingStripeSubscriptionId) {
+          try {
+            const stripe = (await import("stripe")).default;
+            const stripeClient = new stripe(process.env.Stripeintegration || "");
+            await stripeClient.subscriptions.update(currentUser.pendingStripeSubscriptionId, {
+              metadata: { businessId: String(business.id) },
+            });
+          } catch (e) {
+            console.error("Failed to update Stripe subscription metadata:", e);
+          }
+        }
       }
       
       if (business.hasLLC) {

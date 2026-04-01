@@ -86,12 +86,10 @@ export function registerStripeRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid tier or frequency" });
       }
 
-      if (!req.user?.linkedBusinessId) {
-        return res.status(404).json({ message: "No business listing found for your account. Please register your business first, then come back to select a membership plan." });
-      }
-      const [biz] = await db.select().from(businesses).where(eq(businesses.id, req.user.linkedBusinessId));
-      if (!biz) {
-        return res.status(404).json({ message: "Your business listing could not be found. Please register your business first, then come back to select a membership plan." });
+      let biz: any = null;
+      if (req.user?.linkedBusinessId) {
+        const [found] = await db.select().from(businesses).where(eq(businesses.id, req.user.linkedBusinessId));
+        biz = found || null;
       }
 
       let promoDiscount = 0;
@@ -117,10 +115,12 @@ export function registerStripeRoutes(app: Express) {
         if (promo.applicableTiers?.length && !promo.applicableTiers.includes(tier)) {
           return res.status(400).json({ message: `This promo code is not applicable to the ${tier} tier` });
         }
-        const existingUsage = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
-          .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, biz.id))).limit(1);
-        if (existingUsage.length > 0) {
-          return res.status(400).json({ message: "This promo code has already been used by your business" });
+        if (biz) {
+          const existingUsage = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+            .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, biz.id))).limit(1);
+          if (existingUsage.length > 0) {
+            return res.status(400).json({ message: "This promo code has already been used by your business" });
+          }
         }
         promoId = promo.id;
         if (promo.discountType === "percentage") {
@@ -130,7 +130,24 @@ export function registerStripeRoutes(app: Express) {
         }
       }
 
-      const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email, biz.name);
+      let customerId: string;
+      if (biz) {
+        customerId = await getOrCreateStripeCustomer(biz.id, req.user.email, biz.name);
+      } else {
+        const [currentUser] = await db.select().from(users).where(eq(users.id, userId));
+        if (currentUser?.stripeCustomerId) {
+          customerId = currentUser.stripeCustomerId;
+        } else {
+          const customer = await stripe.customers.create({
+            email: req.user.email,
+            name: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.email,
+            metadata: { userId },
+          });
+          customerId = customer.id;
+          await db.update(users).set({ stripeCustomerId: customer.id }).where(eq(users.id, userId));
+        }
+      }
+
       let priceAmount = TIER_PRICES[tier][frequency];
 
       if (promoDiscount > 0 && promoId) {
@@ -141,7 +158,7 @@ export function registerStripeRoutes(app: Express) {
         }
       }
 
-      const isNewMember = !biz.membershipTrialUsed;
+      const isNewMember = biz ? !biz.membershipTrialUsed : true;
       const effectiveTier = (tier === "bronze" || tier === "silver") && isNewMember ? "gold" : tier;
       const effectiveDbTier = TIER_TO_DB[effectiveTier];
       const isAutoUpgrade = effectiveTier !== tier;
@@ -156,9 +173,14 @@ export function registerStripeRoutes(app: Express) {
           ? `https://${process.env.REPLIT_DEV_DOMAIN}`
           : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
+      const successUrl = biz
+        ? `${baseUrl}/membership?session_id={CHECKOUT_SESSION_ID}&success=true`
+        : `${baseUrl}/create-business?session_id={CHECKOUT_SESSION_ID}&success=true`;
+
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,
         mode: "subscription",
+        payment_method_collection: "always",
         line_items: [
           {
             price_data: {
@@ -167,7 +189,7 @@ export function registerStripeRoutes(app: Express) {
                 name: `Local List 365 — ${tierName} Membership (${freqLabel})${isAutoUpgrade ? ' — Gold Trial' : ''}`,
                 description: isAutoUpgrade
                   ? `Gold tier trial for first 30 days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
-                  : `${tierName} tier membership for ${biz.name}`,
+                  : `${tierName} tier membership`,
               },
               unit_amount: priceAmount,
               recurring: intervalConfig,
@@ -175,10 +197,10 @@ export function registerStripeRoutes(app: Express) {
             quantity: 1,
           },
         ],
-        success_url: `${baseUrl}/membership?session_id={CHECKOUT_SESSION_ID}&success=true`,
+        success_url: successUrl,
         cancel_url: `${baseUrl}/membership?canceled=true`,
         metadata: {
-          businessId: String(biz.id),
+          businessId: biz ? String(biz.id) : "",
           tier: effectiveDbTier,
           originalTier: TIER_TO_DB[tier],
           isAutoUpgrade: isAutoUpgrade ? "true" : "false",
@@ -190,7 +212,7 @@ export function registerStripeRoutes(app: Express) {
 
       sessionParams.subscription_data = {
         metadata: {
-          businessId: String(biz.id),
+          businessId: biz ? String(biz.id) : "",
           tier: effectiveDbTier,
           originalTier: TIER_TO_DB[tier],
           isAutoUpgrade: isAutoUpgrade ? "true" : "false",
@@ -240,7 +262,34 @@ export function registerStripeRoutes(app: Express) {
     try {
       const [biz] = await db.select().from(businesses).where(eq(businesses.id, req.user?.linkedBusinessId || 0));
       if (!biz) {
+        const [currentUser] = await db.select().from(users).where(eq(users.id, req.user?.id));
+        if (currentUser?.pendingMembershipTier) {
+          return res.json({
+            active: true,
+            tier: currentUser.pendingMembershipTier,
+            tierDisplay: DB_TO_TIER[currentUser.pendingMembershipTier || ""] || currentUser.pendingMembershipTier || "none",
+            frequency: currentUser.pendingPaymentFrequency,
+            pendingBusinessCreation: true,
+            hasStripeSubscription: !!currentUser.pendingStripeSubscriptionId,
+          });
+        }
         return res.json({ active: false, tier: "none" });
+      }
+
+      let cancelAtPeriodEnd = false;
+      let cancelAt: string | null = null;
+      if (biz.stripeSubscriptionId) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(biz.stripeSubscriptionId);
+          cancelAtPeriodEnd = sub.cancel_at_period_end;
+          if (sub.cancel_at) {
+            cancelAt = new Date(sub.cancel_at * 1000).toISOString();
+          } else if (sub.cancel_at_period_end && sub.current_period_end) {
+            cancelAt = new Date(sub.current_period_end * 1000).toISOString();
+          }
+        } catch (e) {
+          console.error("Failed to check Stripe subscription status:", e);
+        }
       }
 
       res.json({
@@ -251,6 +300,8 @@ export function registerStripeRoutes(app: Express) {
         startDate: biz.membershipStartDate,
         endDate: biz.membershipEndDate,
         hasStripeSubscription: !!biz.stripeSubscriptionId,
+        cancelAtPeriodEnd,
+        cancelAt,
       });
     } catch (err: any) {
       console.error("Subscription status error:", err);
@@ -596,6 +647,7 @@ export function registerStripeRoutes(app: Express) {
           const businessId = parseInt(session.metadata?.businessId || "0");
           const tier = session.metadata?.tier;
           const frequency = session.metadata?.frequency;
+          const checkoutUserId = session.metadata?.userId;
 
           if (businessId && tier) {
             const updates: any = {
@@ -641,6 +693,53 @@ export function registerStripeRoutes(app: Express) {
                 });
                 console.log(`Promo code ${promoCodeId} usage recorded for business ${businessId}`);
               }
+            }
+          } else if (!businessId && checkoutUserId && tier) {
+            const [checkoutUser] = await db.select().from(users).where(eq(users.id, checkoutUserId));
+            if (checkoutUser?.linkedBusinessId) {
+              const updates: any = {
+                membershipTier: tier,
+                membershipPaymentFrequency: frequency,
+                membershipStartDate: new Date(),
+                stripeSubscriptionId: session.subscription as string,
+                stripeCustomerId: session.customer as string,
+                membershipTrialUsed: true,
+              };
+              await db.update(businesses).set(updates).where(eq(businesses.id, checkoutUser.linkedBusinessId));
+              console.log(`Membership applied directly to business ${checkoutUser.linkedBusinessId} → ${tier} (user already had business)`);
+
+              if (session.subscription) {
+                try {
+                  await stripe.subscriptions.update(session.subscription as string, {
+                    metadata: { businessId: String(checkoutUser.linkedBusinessId) },
+                  });
+                } catch (e) {
+                  console.error("Failed to update subscription metadata:", e);
+                }
+              }
+
+              const promoCodeIdStr = session.metadata?.promoCodeId;
+              if (promoCodeIdStr) {
+                const promoCodeId = parseInt(promoCodeIdStr);
+                const existingUsage = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+                  .where(eq(promoCodeUsages.stripeSessionId, session.id)).limit(1);
+                if (existingUsage.length === 0) {
+                  await db.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promoCodeId));
+                  await db.insert(promoCodeUsages).values({
+                    promoCodeId,
+                    businessId: checkoutUser.linkedBusinessId,
+                    stripeSessionId: session.id,
+                  });
+                }
+              }
+            } else {
+              await db.update(users).set({
+                pendingMembershipTier: tier,
+                pendingStripeSubscriptionId: session.subscription as string,
+                pendingPaymentFrequency: frequency || null,
+                stripeCustomerId: session.customer as string,
+              }).where(eq(users.id, checkoutUserId));
+              console.log(`Pending membership stored for user ${checkoutUserId} → ${tier} (business not yet created)`);
             }
           }
           break;
