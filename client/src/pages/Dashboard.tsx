@@ -778,12 +778,20 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                     ? `You're on the ${tierName} plan`
                     : "Upgrade to get more visibility"}
                 </p>
-                <Link to="/membership">
-                  <Button size="sm" className="w-full bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm" data-testid="button-manage-membership">
-                    <Crown className="h-4 w-4 mr-2" />
-                    {tier && tier !== "none" ? "Manage Plan" : "View Plans"}
-                  </Button>
-                </Link>
+                <div className="flex flex-col gap-2">
+                  <Link to="/membership">
+                    <Button size="sm" className="w-full bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm" data-testid="button-manage-membership">
+                      <Crown className="h-4 w-4 mr-2" />
+                      {tier && tier !== "none" ? "Manage Plan" : "View Plans"}
+                    </Button>
+                  </Link>
+                  {subscriptionStatus?.hasStripeSubscription && (
+                    <Button size="sm" variant="ghost" className="w-full text-white/70 hover:text-white hover:bg-white/10 text-xs" onClick={handleManageBilling} data-testid="button-manage-billing">
+                      <Settings className="h-3 w-3 mr-1.5" />
+                      Manage Billing & Cancel
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -1324,6 +1332,32 @@ export default function Dashboard() {
       setIsUploading(false);
     },
   });
+
+  const { data: subscriptionStatus } = useQuery<{
+    active: boolean;
+    hasStripeSubscription?: boolean;
+    cancelAtPeriodEnd?: boolean;
+    cancelAt?: string;
+    tierDisplay?: string;
+  }>({
+    queryKey: ["/api/stripe/subscription-status"],
+    enabled: isAuthenticated && isBusinessAccount && !!user?.linkedBusinessId,
+  });
+
+  const handleManageBilling = async () => {
+    try {
+      const res = await fetch("/api/stripe/create-portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to open billing portal", variant: "destructive" });
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
