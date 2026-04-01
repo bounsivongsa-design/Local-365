@@ -114,7 +114,7 @@ export default function Directory() {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       {/* Stunning Header with Coastal Gradient */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#0a4a82] via-[#1a6aa8] to-[#2d8bc9]">
         {/* Decorative Wave Pattern */}
@@ -131,17 +131,17 @@ export default function Directory() {
                 <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
                   <Waves className="h-8 w-8 text-white" />
                 </div>
-                <h1 className="font-display text-4xl font-bold tracking-tight text-white drop-shadow-lg">
+                <h1 className="font-display text-2xl sm:text-4xl font-bold tracking-tight text-white drop-shadow-lg">
                   Local Directory
                 </h1>
               </div>
-              <p className="text-white/90 text-lg max-w-md">
+              <p className="text-white/90 text-base sm:text-lg max-w-md">
                 Discover trusted businesses and services across Moyock's beautiful coastal community.
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
-              <div className="relative w-72">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82]" />
                 <Input
                   placeholder="Search businesses..."
@@ -151,40 +151,42 @@ export default function Directory() {
                   data-testid="input-search-businesses"
                 />
               </div>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#0a4a82]" />
-                <select
-                  value={radiusMiles}
-                  onChange={(e) => setRadiusMiles(Number(e.target.value))}
-                  disabled={!hasCoords}
-                  className={`h-12 pl-9 pr-4 rounded-xl bg-white/95 border-0 shadow-xl text-sm font-medium text-[#0a4a82] appearance-none cursor-pointer focus:ring-2 focus:ring-white/50 ${!hasCoords ? "opacity-50 cursor-not-allowed" : ""}`}
-                  data-testid="select-radius"
-                >
-                  {RADIUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 sm:flex-none">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#0a4a82]" />
+                  <select
+                    value={radiusMiles}
+                    onChange={(e) => setRadiusMiles(Number(e.target.value))}
+                    disabled={!hasCoords}
+                    className={`w-full sm:w-auto h-12 pl-9 pr-4 rounded-xl bg-white/95 border-0 shadow-xl text-sm font-medium text-[#0a4a82] appearance-none cursor-pointer focus:ring-2 focus:ring-white/50 ${!hasCoords ? "opacity-50 cursor-not-allowed" : ""}`}
+                    data-testid="select-radius"
+                  >
+                    {RADIUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {isAuthenticated && (
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="lg" className="h-12 px-6 bg-[#d4a373] hover:bg-[#c4936d] text-white shadow-xl border-0 rounded-xl whitespace-nowrap" data-testid="button-add-business">
+                        <Plus className="mr-2 h-5 w-5" />
+                        Add Business
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>Add a New Business</DialogTitle>
+                        <DialogDescription>
+                          Share a local gem with the community. Please provide accurate details.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <CreateBusinessForm onSuccess={() => setIsDialogOpen(false)} />
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
-              
-              {isAuthenticated && (
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="lg" className="h-12 px-6 bg-[#d4a373] hover:bg-[#c4936d] text-white shadow-xl border-0 rounded-xl" data-testid="button-add-business">
-                      <Plus className="mr-2 h-5 w-5" />
-                      Add Business
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>Add a New Business</DialogTitle>
-                      <DialogDescription>
-                        Share a local gem with the community. Please provide accurate details.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <CreateBusinessForm onSuccess={() => setIsDialogOpen(false)} />
-                  </DialogContent>
-                </Dialog>
-              )}
             </div>
           </div>
         </div>
@@ -193,7 +195,7 @@ export default function Directory() {
       <AdCarousel zipCode={selectedLocation?.zipCode || "27958"} />
 
       <div className="bg-[#f5f0eb] min-h-screen">
-      <div className="container py-8">
+      <div className="container px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex gap-8">
           <aside className="hidden md:block w-72 flex-shrink-0">
             <div className="sticky top-20 rounded-2xl overflow-hidden bg-white dark:bg-card shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#0a4a82]/10">
@@ -363,7 +365,7 @@ export default function Directory() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {filteredBusinesses?.map((business) => (
                   <BusinessCard key={business.id} business={business} />
                 ))}

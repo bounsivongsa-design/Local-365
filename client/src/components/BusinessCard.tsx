@@ -47,7 +47,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
         data-testid={`card-business-${business.id}`}
       >
         {business.isExample && <ExampleBanner variant="ribbon" />}
-        <div className={`relative h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10 ${business.isExample ? "opacity-75" : ""}`}>
+        <div className={`relative h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10 ${business.isExample ? "opacity-75" : ""}`}>
           {business.imageUrl ? (
             <img 
               src={business.imageUrl} 
@@ -62,7 +62,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
           
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
             {business.category && (
-              <Badge className="bg-white/95 text-[#0a4a82] border-0 shadow-sm">
+              <Badge className="bg-white/95 text-[#0a4a82] border-0 shadow-sm text-xs sm:text-xs">
                 {business.category}
               </Badge>
             )}
@@ -75,21 +75,21 @@ export function BusinessCard({ business }: BusinessCardProps) {
           </div>
           
           {rating > 0 && (
-            <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/95 backdrop-blur-sm text-slate-800 px-2.5 py-1 rounded-full text-sm font-bold shadow-sm border border-white/50">
-              <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+            <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/95 backdrop-blur-sm text-slate-800 px-2.5 py-1.5 rounded-full text-sm font-bold shadow-sm border border-white/50">
+              <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
               {rating.toFixed(1)}
             </div>
           )}
           {rating === 0 && (
-            <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1 rounded-full text-sm font-bold shadow-sm">
-              <Star className="h-3.5 w-3.5 fill-current" />
+            <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#d4a373] text-white px-2.5 py-1.5 rounded-full text-sm font-bold shadow-sm">
+              <Star className="h-4 w-4 fill-current" />
               New
             </div>
           )}
         </div>
         
-        <div className="p-5">
-          <h3 className="text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
+        <div className="p-4 sm:p-5">
+          <h3 className="text-base sm:text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
             {business.name}
           </h3>
 
@@ -102,13 +102,13 @@ export function BusinessCard({ business }: BusinessCardProps) {
             <span className="truncate">{business.address.split(',')[0] || 'Moyock, NC'}</span>
           </div>
           
-          <p className="text-sm text-slate-600 mt-3 line-clamp-2 leading-relaxed">
+          <p className="text-sm text-slate-600 mt-2 sm:mt-3 line-clamp-2 leading-relaxed">
             {business.description}
           </p>
           
-          <div className="mt-4 pt-4 border-t border-[#0a4a82]/10">
+          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[#0a4a82]/10">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <TrustBadges 
                   hasLLC={business.hasLLC ?? false} 
                   hasInsurance={business.hasInsurance ?? false}
@@ -117,7 +117,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
                 />
                 <MembershipBadge tier={business.membershipTier} variant="compact" />
               </div>
-              <span className="text-xs text-[#0a4a82] font-medium group-hover:underline flex items-center gap-1">
+              <span className="text-xs text-[#0a4a82] font-semibold group-hover:underline flex items-center gap-1">
                 View Details
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>

@@ -12,8 +12,8 @@ export function DevModePanel() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <Card className="w-72 shadow-lg border-2 border-orange-400">
+    <div className="fixed bottom-4 right-4 z-50 max-w-[calc(100vw-2rem)]">
+      <Card className="w-72 max-w-full shadow-lg border-2 border-orange-400">
         <CardHeader className="py-3 bg-orange-100 dark:bg-orange-900/30">
           <CardTitle className="text-sm flex items-center gap-2">
             <Wrench className="h-4 w-4" />
