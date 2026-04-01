@@ -840,13 +840,13 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                   {tier && tier !== "none" ? (
                     <MembershipBadge tier={tier} variant="compact" />
                   ) : (
-                    <Badge className="bg-white/20 text-white border-0">No Membership</Badge>
+                    <Badge className="bg-white/20 text-white border-0">Basic</Badge>
                   )}
                 </div>
                 <p className="text-sm text-white/80 mb-4">
                   {tier && tier !== "none"
                     ? `You're on the ${tierName} plan`
-                    : "Upgrade to get more visibility"}
+                    : "You're on the Basic plan. Upgrade to get more visibility"}
                 </p>
                 <div className="flex flex-col gap-2">
                   {subscriptionStatus?.hasStripeSubscription ? (
@@ -990,7 +990,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                     {business.hasLLC && <Badge className="text-xs bg-[#0a4a82]/10 text-[#0a4a82] border-0">LLC</Badge>}
                     {business.hasInsurance && <Badge className="text-xs bg-[#8a9a5b]/10 text-[#8a9a5b] border-0">Insured</Badge>}
                     {business.isLicensed && <Badge className="text-xs bg-[#d4a373]/10 text-[#d4a373] border-0">Licensed</Badge>}
-                    {!business.hasLLC && !business.hasInsurance && !business.isLicensed && (
+                    {business.isVeteran && <Badge className="text-xs bg-[#1a1a2e]/10 text-[#1a1a2e] border-0">Veteran Owned</Badge>}
+                    {!business.hasLLC && !business.hasInsurance && !business.isLicensed && !business.isVeteran && (
                       <span className="text-gray-400">None added</span>
                     )}
                   </div>

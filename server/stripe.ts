@@ -41,7 +41,18 @@ async function getOrCreateStripeCustomer(businessId: number, email: string, busi
   if (!stripe) throw new Error("Stripe not configured");
 
   const [biz] = await db.select().from(businesses).where(eq(businesses.id, businessId));
-  if (biz?.stripeCustomerId) return biz.stripeCustomerId;
+  if (biz?.stripeCustomerId) {
+    try {
+      await stripe.customers.retrieve(biz.stripeCustomerId);
+      return biz.stripeCustomerId;
+    } catch (err: any) {
+      if (err?.statusCode === 404 || err?.code === 'resource_missing') {
+        console.log(`Stale Stripe customer ${biz.stripeCustomerId} for business ${businessId}, creating new one`);
+      } else {
+        throw err;
+      }
+    }
+  }
 
   const customer = await stripe.customers.create({
     email,
@@ -135,9 +146,21 @@ export function registerStripeRoutes(app: Express) {
         customerId = await getOrCreateStripeCustomer(biz.id, req.user.email, biz.name);
       } else {
         const [currentUser] = await db.select().from(users).where(eq(users.id, userId));
+        let existingValid = false;
         if (currentUser?.stripeCustomerId) {
-          customerId = currentUser.stripeCustomerId;
-        } else {
+          try {
+            await stripe.customers.retrieve(currentUser.stripeCustomerId);
+            customerId = currentUser.stripeCustomerId;
+            existingValid = true;
+          } catch (err: any) {
+            if (err?.statusCode === 404 || err?.code === 'resource_missing') {
+              console.log(`Stale Stripe customer ${currentUser.stripeCustomerId} for user ${userId}, creating new one`);
+            } else {
+              throw err;
+            }
+          }
+        }
+        if (!existingValid) {
           const customer = await stripe.customers.create({
             email: req.user.email,
             name: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.email,

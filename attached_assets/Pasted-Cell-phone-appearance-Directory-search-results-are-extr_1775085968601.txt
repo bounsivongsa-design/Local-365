@@ -1,0 +1,20 @@
+Cell phone appearance: Directory search results are extremely small when the list populates (Major issue).
+
+Business Advertising Placement: The text still says "Homepage Carousel," but we added the carousel to the directory page as well. The verbiage needs to be more general since it's in two locations, not just the homepage.  Also, when a business actually selects to start an ad, the dropdown options are "Small Homepage Banner," "Medium Homepage Banner," etc. Perhaps we should change the verbiage to "Size: Carousel Banner."Also, in the ad submission form it is still asking for a URL for a video; it should be drag-and-drop, like the image option.
+
+FAQ Advertising: How does advertising work?  Mentions placements on the Home Page and Events page.  It should be the Home Page and the Directory Page.
+
+Membership Payments: As mentioned in the text, my Goat Locker account shows a 30-day free trial for Gold membership, followed by a $0.00/mo charge for monthly payment option.  If I select Semi-annual or Annual payment it shows the cost after the 30-day trial.   Also, when I proceed to payment for any option the error code matches the one I sent in the text.  So my Goat Locker account remains in a no membership status and does not appear in the directory.  So the issue of free accounts showing up in search has been fixed but I can't upgrade for some reason.
+
+Community Feed: The link at the bottom of each webpage under "Discover" still shows "Community Feed." I think it's a dead link because it directs back to the home page.  I think we removed the community feed a while ago.
+
+Help Wanted / Now Hiring: I tried to post a job from my Goat Locker account.  It let me submit a post and when redirecting to payment I received the error: "Payment Error No Such Customer."
+
+Business Dashboard:  Same issue as when you were in my shop.  Veteran Badge still does not show up on my profile.
+
+Membership: No Membership and Basic are the same thing right?  My Goat Locker account I havent paid anything, my business dashboard shows "No Membership" however I have access to create ads and post jobs at the basic price.  Maybe the verbiage in the dashboard verbiage should state "Basic" instead of "No Membership"? 
+
+
+Just forward thinking on this one!!!
+
+Zip Codes:  Is the business dashboard / website already set up in the background for when we add multiple zip code options?  In a business dashboard, we need options, drop-downs or tabs to view analytics per zip code, copy the business profile for another zip code, manage ad placements per zip code, post help wanted ads and set up payments for another zip code. Would the system give them a free month for adding another zip code?  It shouldn't, but how would the website classify adding another zip code?  Something we haven't discussed: Are review statistics per zip code or per business listing? Per business listing makes sense to me and is probably alot easier. I just want to ensure the foundation is solid so it's not hectic when we push outside of Moyock.

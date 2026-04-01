@@ -79,7 +79,7 @@ function AppRouter() {
               <li><Link to="/directory" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-directory">Local Businesses</Link></li>
               <li><Link to="/events" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-events">Events Calendar</Link></li>
               <li><Link to="/jobs" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-jobs">Help Wanted</Link></li>
-              <li><Link to="/" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-community">Community Feed</Link></li>
+              <li><Link to="/quotes" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-quotes">Request Quotes</Link></li>
               <li><Link to="/membership" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-membership">Business Membership</Link></li>
               <li><Link to="/advertising" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-advertising">Advertising</Link></li>
             </ul>

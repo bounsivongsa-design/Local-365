@@ -774,7 +774,7 @@ export default function Advertising() {
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Monthly Ad Banners</h3>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Carousel Banner Ads</h3>
                   <div className="grid md:grid-cols-3 gap-5 mb-10">
                     {pricing?.filter(p => BANNER_PLACEMENTS.includes(p.placementType)).map((p) => {
                       const Icon = placementIcons[p.placementType] || Megaphone;
@@ -806,7 +806,7 @@ export default function Advertising() {
                           </div>
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{sizeLabel} Banner</h3>
+                              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{sizeLabel} Carousel Banner</h3>
                               <Badge variant="outline" className="text-xs">{sizeDesc}</Badge>
                             </div>
                             <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{p.description}</p>

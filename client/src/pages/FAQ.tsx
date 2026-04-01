@@ -203,7 +203,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How does advertising work?",
-        answer: "Local List 365 offers banner ad placements on the Home page and Events page in three sizes: Large (carousel hero banner), Medium (mid-page spotlight), and Small (compact card). Ads rotate in carousels so multiple businesses get visibility. Members receive discounts on ad pricing: Gold gets 50% off, Silver gets 25% off, and Bronze gets 10% off.",
+        answer: "Local List 365 offers carousel banner ad placements on the Home page and Directory page in three sizes: Large (full-width hero banner), Medium (mid-page spotlight), and Small (compact card). Ads rotate in carousels so multiple businesses get visibility. Members receive discounts on ad pricing: Gold gets 50% off, Silver gets 25% off, and Bronze gets 10% off.",
         links: [{ label: "Learn about advertising", to: "/advertising" }],
       },
       {

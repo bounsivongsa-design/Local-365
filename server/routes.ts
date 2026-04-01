@@ -4069,9 +4069,9 @@ async function seedAdPricing() {
     const existingPricing = await pgDb.select().from(adPricing);
     
     const desiredPricing = [
-      { placementType: "large_banner", displayName: "Large Ad Banner", description: "Full-width premium banner in the ad carousel. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
-      { placementType: "medium_banner", displayName: "Medium Ad Banner", description: "50%-width banner in the ad carousel. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
-      { placementType: "small_banner", displayName: "Small Ad Banner", description: "Compact banner in the ad carousel. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
+      { placementType: "large_banner", displayName: "Large Carousel Banner", description: "Full-width premium banner in the ad carousel on Home and Directory pages. Maximum visibility and impact.", pricePerWeek: 25000, maxActive: 5 },
+      { placementType: "medium_banner", displayName: "Medium Carousel Banner", description: "50%-width banner in the ad carousel on Home and Directory pages. Great visibility at a mid-range price.", pricePerWeek: 12500, maxActive: 5 },
+      { placementType: "small_banner", displayName: "Small Carousel Banner", description: "Compact banner in the ad carousel on Home and Directory pages. Affordable visibility for your business.", pricePerWeek: 6250, maxActive: 5 },
     ];
 
     const desiredTypes = desiredPricing.map(d => d.placementType);
@@ -4080,6 +4080,13 @@ async function seedAdPricing() {
     if (toAdd.length > 0) {
       await pgDb.insert(adPricing).values(toAdd);
       console.log(`Seeded ${toAdd.length} ad pricing tiers`);
+    }
+    for (const desired of desiredPricing) {
+      const existing = existingPricing.find(e => e.placementType === desired.placementType);
+      if (existing && (existing.displayName !== desired.displayName || existing.description !== desired.description)) {
+        await pgDb.update(adPricing).set({ displayName: desired.displayName, description: desired.description }).where(eq(adPricing.placementType, desired.placementType));
+        console.log(`Updated ad pricing display for ${desired.placementType}`);
+      }
     }
     const toRemove = existingPricing.filter(p => !desiredTypes.includes(p.placementType));
     for (const old of toRemove) {

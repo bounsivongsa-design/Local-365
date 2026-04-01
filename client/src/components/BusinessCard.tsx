@@ -47,7 +47,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
         data-testid={`card-business-${business.id}`}
       >
         {business.isExample && <ExampleBanner variant="ribbon" />}
-        <div className={`relative h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10 ${business.isExample ? "opacity-75" : ""}`}>
+        <div className={`relative h-48 sm:h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10 ${business.isExample ? "opacity-75" : ""}`}>
           {business.imageUrl ? (
             <img 
               src={business.imageUrl} 
@@ -88,27 +88,27 @@ export function BusinessCard({ business }: BusinessCardProps) {
           )}
         </div>
         
-        <div className="p-4 sm:p-5">
-          <h3 className="text-base sm:text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
+        <div className="p-5">
+          <h3 className="text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
             {business.name}
           </h3>
 
-          <div className="mt-1.5">
+          <div className="mt-2">
             <StarRating rating={rating} reviewCount={reviewCount} />
           </div>
           
-          <div className="flex items-center gap-1.5 text-sm text-slate-600 mt-2">
+          <div className="flex items-center gap-2 text-sm sm:text-base text-slate-600 mt-2">
             <MapPin className="h-4 w-4 text-[#d4a373] flex-shrink-0" />
             <span className="truncate">{business.address.split(',')[0] || 'Moyock, NC'}</span>
           </div>
           
-          <p className="text-sm text-slate-600 mt-2 sm:mt-3 line-clamp-2 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 mt-3 line-clamp-2 leading-relaxed">
             {business.description}
           </p>
           
-          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[#0a4a82]/10">
+          <div className="mt-4 pt-4 border-t border-[#0a4a82]/10">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <TrustBadges 
                   hasLLC={business.hasLLC ?? false} 
                   hasInsurance={business.hasInsurance ?? false}
@@ -117,9 +117,9 @@ export function BusinessCard({ business }: BusinessCardProps) {
                 />
                 <MembershipBadge tier={business.membershipTier} variant="compact" />
               </div>
-              <span className="text-xs text-[#0a4a82] font-semibold group-hover:underline flex items-center gap-1">
+              <span className="text-sm text-[#0a4a82] font-semibold group-hover:underline flex items-center gap-1">
                 View Details
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-4 w-4" />
               </span>
             </div>
           </div>
