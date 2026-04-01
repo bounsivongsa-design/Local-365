@@ -478,6 +478,25 @@ export default function BusinessDetails() {
                       </div>
                     </div>
                     <p className="text-[#4a4a5a] leading-relaxed">{review.comment}</p>
+                    
+                    {review.ownerResponse && (
+                      <div className="mt-4 ml-4 pl-4 border-l-2 border-[#d4a373]/40 bg-[#d4a373]/5 rounded-r-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="h-4 w-4 text-[#0a4a82]" />
+                          <span className="font-semibold text-sm text-[#0a4a82]">Owner Response</span>
+                          {review.ownerResponseDate && (
+                            <span className="text-xs text-[#4a4a5a]/50">
+                              {formatDistanceToNow(new Date(review.ownerResponseDate), { addSuffix: true })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[#4a4a5a] text-sm leading-relaxed">{review.ownerResponse}</p>
+                      </div>
+                    )}
+
+                    {!review.ownerResponse && user?.linkedBusinessId === business.id && (
+                      <OwnerReplyForm reviewId={review.id} businessId={business.id} />
+                    )}
                   </div>
                 ))}
               </div>
@@ -756,6 +775,78 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OwnerReplyForm({ reviewId, businessId }: { reviewId: number; businessId: number }) {
+  const [isReplying, setIsReplying] = useState(false);
+  const [response, setResponse] = useState("");
+  const { toast } = useToast();
+
+  const replyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/reviews/${reviewId}/owner-response`, { response: response.trim() });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Response posted", description: "Your reply is now visible to everyone." });
+      setIsReplying(false);
+      setResponse("");
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to post response", variant: "destructive" });
+    },
+  });
+
+  if (!isReplying) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mt-3 text-[#0a4a82] hover:text-[#0a4a82]/80 hover:bg-[#0a4a82]/5 text-xs"
+        onClick={() => setIsReplying(true)}
+        data-testid={`button-reply-review-${reviewId}`}
+      >
+        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+        Reply to this review
+      </Button>
+    );
+  }
+
+  return (
+    <div className="mt-4 ml-4 pl-4 border-l-2 border-[#0a4a82]/20 space-y-3">
+      <div className="flex items-center gap-2">
+        <Building2 className="h-4 w-4 text-[#0a4a82]" />
+        <span className="font-semibold text-sm text-[#0a4a82]">Your Response</span>
+      </div>
+      <Textarea
+        value={response}
+        onChange={(e) => setResponse(e.target.value)}
+        placeholder="Write a professional response to this review..."
+        className="bg-white border-[#0a4a82]/20 text-sm min-h-[80px]"
+        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+        maxLength={1000}
+        data-testid={`input-owner-response-${reviewId}`}
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-slate-400">{response.length}/1000</span>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => { setIsReplying(false); setResponse(""); }}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className="bg-[#0a4a82] hover:bg-[#083a6a] text-white"
+            disabled={!response.trim() || replyMutation.isPending}
+            onClick={() => replyMutation.mutate()}
+            data-testid={`button-submit-response-${reviewId}`}
+          >
+            {replyMutation.isPending ? "Posting..." : "Post Response"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

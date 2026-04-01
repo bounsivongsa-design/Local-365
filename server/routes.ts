@@ -9,7 +9,7 @@ import { registerStripeRoutes } from "./stripe";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews } from "@shared/schema";
 import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
@@ -1872,6 +1872,42 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: err.message });
       }
       throw err;
+    }
+  });
+
+  app.post("/api/reviews/:reviewId/owner-response", isAuthenticated, async (req: any, res) => {
+    try {
+      const reviewId = Number(req.params.reviewId);
+      const { response } = req.body;
+      if (!response || typeof response !== "string" || response.trim().length === 0) {
+        return res.status(400).json({ message: "Response text is required" });
+      }
+      if (response.length > 1000) {
+        return res.status(400).json({ message: "Response must be under 1000 characters" });
+      }
+      const [review] = await pgDb.select().from(reviews).where(eq(reviews.id, reviewId));
+      if (!review) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      const userId = req.user?.id;
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      if (user.linkedBusinessId !== review.businessId && !user.isAdmin) {
+        return res.status(403).json({ message: "You can only respond to reviews for your own business" });
+      }
+      if (review.ownerResponse) {
+        return res.status(400).json({ message: "A response has already been submitted for this review" });
+      }
+      const [updated] = await pgDb.update(reviews)
+        .set({ ownerResponse: response.trim(), ownerResponseDate: new Date() })
+        .where(eq(reviews.id, reviewId))
+        .returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Owner response error:", err);
+      res.status(500).json({ message: "Failed to submit response" });
     }
   });
 

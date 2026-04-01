@@ -156,6 +156,8 @@ export const reviews = pgTable("reviews", {
   receiptUrl: text("receipt_url"),
   userId: varchar("user_id").notNull().references(() => users.id),
   businessId: integer("business_id").notNull().references(() => businesses.id),
+  ownerResponse: text("owner_response"),
+  ownerResponseDate: timestamp("owner_response_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

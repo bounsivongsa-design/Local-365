@@ -34,6 +34,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Cancellation Handling**: Dashboard shows cancellation warning banner with removal date. Stripe webhook handles tier reset on subscription cancellation.
 - **Advertising**: Tiered advertising models for website and event ads, with member discounts.
 - **Business Analytics**: Tracks listing engagement (page views, clicks) for businesses.
+- **Review Owner Responses**: Business owners can post a single reply to each customer review on their listing. Responses are shown below the review with "Owner Response" label, timestamp, and business icon. One response per review, max 1000 characters, stored in `ownerResponse` and `ownerResponseDate` columns on the reviews table.
 - **Quote Messaging**: Customers and businesses can message back and forth within quote threads (`quote_messages` table) with read tracking (`readAt`). Navigation badge shows unread quote message count. No direct messaging between users outside of quotes (spam prevention). Dashboard inbox shows quote message threads only.
 - **Contact Admin**: Users can submit messages to admin anytime via "Contact Admin" button in the dashboard inbox. Submissions stored in `admin_submissions` table with status tracking (pending/resolved). Admin can view and respond via `/api/admin/submissions`.
 - **Membership Expiration Alerts**: Dashboard banner warns business owners 7 days before free/promo membership expires, with link to subscribe.
