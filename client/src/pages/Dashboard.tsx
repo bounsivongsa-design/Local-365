@@ -697,10 +697,37 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 }
 
 function BusinessDashboard({ user, business }: { user: any; business: Business | null }) {
+  const { toast } = useToast();
   const hasBusiness = !!business;
   const tier = business?.membershipTier;
   const tierName = getTierDisplayName(tier);
   const [isEditing, setIsEditing] = useState(false);
+
+  const { data: subscriptionStatus } = useQuery<{
+    active: boolean;
+    hasStripeSubscription?: boolean;
+    cancelAtPeriodEnd?: boolean;
+    cancelAt?: string;
+    tierDisplay?: string;
+  }>({
+    queryKey: ["/api/stripe/subscription-status"],
+    enabled: !!business,
+  });
+
+  const handleManageBilling = async () => {
+    try {
+      const res = await fetch("/api/stripe/create-portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to open billing portal", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="container py-8 space-y-6">
@@ -1332,32 +1359,6 @@ export default function Dashboard() {
       setIsUploading(false);
     },
   });
-
-  const { data: subscriptionStatus } = useQuery<{
-    active: boolean;
-    hasStripeSubscription?: boolean;
-    cancelAtPeriodEnd?: boolean;
-    cancelAt?: string;
-    tierDisplay?: string;
-  }>({
-    queryKey: ["/api/stripe/subscription-status"],
-    enabled: isAuthenticated && isBusinessAccount && !!user?.linkedBusinessId,
-  });
-
-  const handleManageBilling = async () => {
-    try {
-      const res = await fetch("/api/stripe/create-portal", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to open billing portal", variant: "destructive" });
-    }
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
