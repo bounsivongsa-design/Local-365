@@ -20,10 +20,16 @@ export function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { data: messageCounts } = useQuery<{ count: number }>({
+  const { data: messageCounts } = useQuery<{ count: number } | null>({
     queryKey: ["/api/user/message-counts"],
-    enabled: isAuthenticated,
-    refetchInterval: 30000,
+    enabled: !!user,
+    refetchInterval: !!user ? 30000 : false,
+    queryFn: async () => {
+      const res = await fetch("/api/user/message-counts", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) return null;
+      return res.json();
+    },
   });
 
   const unreadCount = messageCounts?.count || 0;
