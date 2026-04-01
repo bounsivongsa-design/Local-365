@@ -50,7 +50,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Badges**: Visual badges for business credentials and membership tiers.
 
 ### Deployment Rule
-- **Any schema or code changes made in dev MUST be republished to production to stay in sync.** Always republish after making changes — never assume production has the latest schema or code. Verify prod schema matches dev before considering work complete.
+- **Any schema or code changes made in dev MUST be republished to production to stay in sync, unless the user explicitly says not to.** Always republish after making changes — never assume production has the latest schema or code. Verify prod schema matches dev before considering work complete.
 
 ### Technical Implementations
 - **Distance Filtering**: Uses Haversine formula with zip code coordinates.
