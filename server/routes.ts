@@ -3052,12 +3052,15 @@ Respond in this exact JSON format:
       if (!user[0]?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
-      const { code, description, discountType, discountValue, applicableTiers, maxUses, startsAt, expiresAt } = req.body;
-      if (!code || !discountValue) {
+      const { code, description, discountType, discountValue, applicableTiers, maxUses, startsAt, expiresAt, durationDays } = req.body;
+      if (!code || (discountType !== "gold_trial" && !discountValue)) {
         return res.status(400).json({ message: "Code and discount value are required" });
       }
       if (discountType === "percentage" && (discountValue < 1 || discountValue > 100)) {
         return res.status(400).json({ message: "Percentage discount must be between 1 and 100" });
+      }
+      if (discountType === "gold_trial" && durationDays && ![30, 60].includes(Number(durationDays))) {
+        return res.status(400).json({ message: "Gold trial duration must be 30 or 60 days" });
       }
       const existing = await pgDb.select({ id: promoCodes.id }).from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
       if (existing.length > 0) {
@@ -3067,11 +3070,12 @@ Respond in this exact JSON format:
         code: code.toUpperCase(),
         description,
         discountType: discountType || "percentage",
-        discountValue,
+        discountValue: discountValue || 0,
         applicableTiers: applicableTiers || [],
         maxUses: maxUses || null,
         startsAt: startsAt ? new Date(startsAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        durationDays: durationDays || null,
       }).returning();
       res.status(201).json(newCode);
     } catch (err) {
@@ -3175,10 +3179,122 @@ Respond in this exact JSON format:
         description: promo.description,
         expiresAt: promo.expiresAt ? promo.expiresAt.toISOString() : null,
         applicableTiers: promo.applicableTiers || [],
+        durationDays: promo.durationDays || null,
       });
     } catch (err) {
       console.error("Error validating promo code:", err);
       res.status(500).json({ valid: false, message: "Unable to validate promo code. Please try again later." });
+    }
+  });
+
+  app.post("/api/promo-codes/redeem", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ message: "Promo code is required" });
+
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length || !user[0].linkedBusinessId) {
+        return res.status(400).json({ message: "You need a business listing to redeem a promo code" });
+      }
+
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, user[0].linkedBusinessId)).limit(1);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      const [promo] = await pgDb.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase().trim())).limit(1);
+      if (!promo) return res.status(404).json({ message: "Invalid promo code" });
+      if (!promo.isActive) return res.status(400).json({ message: "This promo code is no longer active" });
+      if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "This promo code has expired" });
+      }
+      if (promo.startsAt && new Date(promo.startsAt) > new Date()) {
+        return res.status(400).json({ message: "This promo code is not yet active" });
+      }
+      if (promo.maxUses && (promo.currentUses || 0) >= promo.maxUses) {
+        return res.status(400).json({ message: "This promo code has reached its usage limit" });
+      }
+
+      const existingUsage = await pgDb.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+        .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, biz.id))).limit(1);
+      if (existingUsage.length > 0) {
+        return res.status(400).json({ message: "This promo code has already been used by your business" });
+      }
+
+      if (promo.discountType === "gold_trial") {
+        const durationDays = promo.durationDays || 30;
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + durationDays);
+
+        if (biz.membershipTier === "premium" && !biz.originalMembershipTier) {
+          return res.status(400).json({ message: "You already have Gold membership" });
+        }
+
+        const originalTier = biz.originalMembershipTier || biz.membershipTier || "none";
+
+        await pgDb.update(businesses).set({
+          membershipTier: "premium",
+          originalMembershipTier: originalTier,
+          goldTrialEndDate: trialEnd,
+        }).where(eq(businesses.id, biz.id));
+
+        await pgDb.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promo.id));
+        await pgDb.insert(promoCodeUsages).values({
+          promoCodeId: promo.id,
+          businessId: biz.id,
+        });
+
+        const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", premium: "Gold", none: "None" };
+        console.log(`Gold trial promo redeemed: business ${biz.id} (${biz.name}) upgraded to Gold for ${durationDays} days, reverts to ${tierMap[originalTier] || originalTier}`);
+
+        return res.json({
+          success: true,
+          message: `Gold access activated for ${durationDays} days!`,
+          goldTrialEndDate: trialEnd.toISOString(),
+          durationDays,
+          originalTier,
+        });
+      }
+
+      return res.status(400).json({ message: "This promo code can only be used during checkout on the membership page" });
+    } catch (err) {
+      console.error("Error redeeming promo code:", err);
+      res.status(500).json({ message: "Failed to redeem promo code" });
+    }
+  });
+
+  app.get("/api/user/gold-trial-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length || !user[0].linkedBusinessId) {
+        return res.json({ active: false });
+      }
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, user[0].linkedBusinessId)).limit(1);
+      if (!biz || !biz.goldTrialEndDate || !biz.originalMembershipTier) {
+        return res.json({ active: false });
+      }
+
+      const now = new Date();
+      const endDate = new Date(biz.goldTrialEndDate);
+      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysLeft <= 0) {
+        return res.json({ active: false, expired: true });
+      }
+
+      const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", premium: "Gold", none: "None" };
+      res.json({
+        active: true,
+        daysLeft,
+        endDate: endDate.toISOString(),
+        revertTier: biz.originalMembershipTier,
+        revertTierLabel: tierMap[biz.originalMembershipTier] || biz.originalMembershipTier,
+      });
+    } catch (err) {
+      console.error("Error checking gold trial status:", err);
+      res.json({ active: false });
     }
   });
 

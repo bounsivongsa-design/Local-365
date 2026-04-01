@@ -37,6 +37,7 @@ import {
   RefreshCw,
   Gift,
   Megaphone,
+  Crown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -106,6 +107,12 @@ export default function AdminPromoCodes() {
     description: "",
     membershipTier: "bronze",
     expiresPeriod: "1month",
+  });
+  const [goldTrialDialogOpen, setGoldTrialDialogOpen] = useState(false);
+  const [newGoldTrialCode, setNewGoldTrialCode] = useState({
+    code: generateCode("GOLD"),
+    description: "",
+    durationDays: "30",
   });
 
   const { data: promoCodes = [], isLoading } = useQuery<PromoCode[]>({
@@ -249,6 +256,31 @@ export default function AdminPromoCodes() {
     });
   };
 
+  const handleCreateGoldTrial = () => {
+    if (!newGoldTrialCode.code) {
+      toast({ title: "Error", description: "Code is required", variant: "destructive" });
+      return;
+    }
+    const days = parseInt(newGoldTrialCode.durationDays);
+    const autoDesc = newGoldTrialCode.description || `Gold trial - ${days} days`;
+    createMutation.mutate({
+      code: newGoldTrialCode.code,
+      description: autoDesc,
+      discountType: "gold_trial",
+      discountValue: 0,
+      applicableTiers: ["gold"],
+      maxUses: 1,
+      durationDays: days,
+      expiresAt: getExpirationDate("2months"),
+    });
+    setGoldTrialDialogOpen(false);
+    setNewGoldTrialCode({
+      code: generateCode("GOLD"),
+      description: "",
+      durationDays: "30",
+    });
+  };
+
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast({ title: "Copied!", description: `Code "${code}" copied to clipboard` });
@@ -279,6 +311,99 @@ export default function AdminPromoCodes() {
               <p className="text-white/70 mt-1">Create single-use free membership codes to send to customers</p>
             </div>
             <div className="flex gap-3">
+            <Dialog open={goldTrialDialogOpen} onOpenChange={(open) => {
+              setGoldTrialDialogOpen(open);
+              if (open) setNewGoldTrialCode({ code: generateCode("GOLD"), description: "", durationDays: "30" });
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-yellow-500 hover:bg-yellow-600 text-white" data-testid="button-create-gold-trial">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Gold Trial Code
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Create Gold Trial Code</DialogTitle>
+                  <DialogDescription>Give a business temporary Gold-tier access. They can redeem this from their dashboard.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Code</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newGoldTrialCode.code}
+                        readOnly
+                        className="font-mono font-bold tracking-wider bg-slate-50"
+                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                        data-testid="input-gold-trial-code"
+                      />
+                      <Button type="button" variant="outline" size="icon" onClick={() => copyCode(newGoldTrialCode.code)} title="Copy code" data-testid="button-copy-gold-trial-code">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => setNewGoldTrialCode({ ...newGoldTrialCode, code: generateCode("GOLD") })} title="Generate new code" data-testid="button-regenerate-gold-trial-code">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description (optional)</label>
+                    <Input
+                      placeholder="e.g. VIP welcome gift for Jane"
+                      value={newGoldTrialCode.description}
+                      onChange={(e) => setNewGoldTrialCode({ ...newGoldTrialCode, description: e.target.value })}
+                      style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                      className="bg-white"
+                      data-testid="input-gold-trial-description"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Gold Access Duration</label>
+                    <Select value={newGoldTrialCode.durationDays} onValueChange={(v) => setNewGoldTrialCode({ ...newGoldTrialCode, durationDays: v })}>
+                      <SelectTrigger data-testid="select-gold-trial-duration">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 Days</SelectItem>
+                        <SelectItem value="60">60 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Crown className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">Gold Trial Summary</span>
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                      <div className="flex justify-between">
+                        <span>Access Level:</span>
+                        <span className="font-medium text-yellow-700">Full Gold Membership</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Duration:</span>
+                        <span className="font-medium">{newGoldTrialCode.durationDays} days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>After Expiry:</span>
+                        <span className="font-medium">Reverts to previous plan</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Redeemed from:</span>
+                        <span className="font-medium">Business Dashboard</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleCreateGoldTrial}
+                    disabled={createMutation.isPending}
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                    data-testid="button-submit-gold-trial"
+                  >
+                    {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Crown className="h-4 w-4 mr-2" />}
+                    Create Gold Trial Code
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Dialog open={mktDialogOpen} onOpenChange={(open) => {
               setMktDialogOpen(open);
               if (open) setNewMktCode({ code: generateCode("MKT365"), description: "", membershipTier: "bronze", expiresPeriod: "1month" });
@@ -526,6 +651,7 @@ export default function AdminPromoCodes() {
               const isUsed = (promo.currentUses || 0) >= (promo.maxUses || 1);
               const tierName = getTierFromPromo(promo);
               const isMarketing = promo.code.startsWith("MKT365");
+              const isGoldTrial = promo.discountType === "gold_trial";
               return (
                 <div
                   key={promo.id}
@@ -538,8 +664,8 @@ export default function AdminPromoCodes() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`rounded-xl p-3 ${isMarketing ? "bg-[#8a9a5b]/10" : "bg-[#0a4a82]/10"}`}>
-                        {isMarketing ? <Megaphone className="h-6 w-6 text-[#8a9a5b]" /> : <Ticket className="h-6 w-6 text-[#0a4a82]" />}
+                      <div className={`rounded-xl p-3 ${isGoldTrial ? "bg-yellow-100" : isMarketing ? "bg-[#8a9a5b]/10" : "bg-[#0a4a82]/10"}`}>
+                        {isGoldTrial ? <Crown className="h-6 w-6 text-yellow-600" /> : isMarketing ? <Megaphone className="h-6 w-6 text-[#8a9a5b]" /> : <Ticket className="h-6 w-6 text-[#0a4a82]" />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -556,7 +682,10 @@ export default function AdminPromoCodes() {
                           >
                             <Copy className="h-3.5 w-3.5 text-slate-400" />
                           </Button>
-                          {isMarketing && (
+                          {isGoldTrial && (
+                            <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-300">Gold Trial</Badge>
+                          )}
+                          {isMarketing && !isGoldTrial && (
                             <Badge className="bg-[#8a9a5b]/20 text-[#8a9a5b] border border-[#8a9a5b]/30">Marketing</Badge>
                           )}
                           <Badge className={TIER_LABELS[tierName]?.color || "bg-slate-400 text-white"}>
@@ -580,7 +709,7 @@ export default function AdminPromoCodes() {
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          Free Membership
+                          {isGoldTrial ? "Gold Trial" : "Free Membership"}
                         </p>
                         <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                           <span className="flex items-center gap-1">

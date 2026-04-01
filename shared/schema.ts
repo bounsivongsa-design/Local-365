@@ -286,6 +286,7 @@ export const promoCodes = pgTable("promo_codes", {
   startsAt: timestamp("starts_at"),
   expiresAt: timestamp("expires_at"),
   isActive: boolean("is_active").default(true),
+  durationDays: integer("duration_days"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

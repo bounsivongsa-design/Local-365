@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -307,6 +308,47 @@ function MembershipExpirationBanner() {
           <Button className="bg-white text-amber-700 hover:bg-white/90 font-semibold" data-testid="button-choose-plan">
             <Crown className="h-4 w-4 mr-2" />
             Choose a Plan
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function GoldTrialBanner() {
+  const { data } = useQuery<{
+    active: boolean;
+    daysLeft?: number;
+    endDate?: string;
+    revertTier?: string;
+    revertTierLabel?: string;
+    expired?: boolean;
+  }>({
+    queryKey: ["/api/user/gold-trial-status"],
+  });
+
+  if (!data?.active) return null;
+
+  const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", none: "Free" };
+  const revertLabel = data.revertTierLabel || tierMap[data.revertTier || ""] || "your previous plan";
+
+  return (
+    <div className="bg-gradient-to-r from-yellow-500 to-amber-500 rounded-2xl p-5 text-white shadow-lg" data-testid="banner-gold-trial">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <Crown className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg">Gold Trial Active — {data.daysLeft} {data.daysLeft === 1 ? "Day" : "Days"} Remaining</h3>
+          <p className="text-white/80 text-sm mt-0.5">
+            You're enjoying Gold-tier features until {new Date(data.endDate!).toLocaleDateString()}.
+            After that, your listing will revert to {revertLabel}.
+          </p>
+        </div>
+        <Link to="/membership">
+          <Button className="bg-white text-amber-700 hover:bg-white/90 font-semibold" data-testid="button-keep-gold">
+            <Crown className="h-4 w-4 mr-2" />
+            Keep Gold
           </Button>
         </Link>
       </div>
@@ -731,6 +773,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
 
   return (
     <div className="container py-8 space-y-6">
+      <GoldTrialBanner />
       <MembershipExpirationBanner />
       <MembershipCancellationBanner />
       {isEditing && business && (
@@ -895,6 +938,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                 {tier && tier !== "none" && (
                   <QuotePreferenceToggle businessId={business.id} initialValue={(business as any).acceptsQuotes !== false} />
                 )}
+                <PromoCodeRedeemer businessId={business.id} />
               </CardContent>
             </Card>
 
@@ -962,6 +1006,89 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
           <AnalyticsDashboard businessId={business.id} />
         </>
       )}
+    </div>
+  );
+}
+
+function PromoCodeRedeemer({ businessId }: { businessId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [code, setCode] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const redeemMutation = useMutation({
+    mutationFn: async (promoCode: string) => {
+      const res = await apiRequest("POST", "/api/promo-codes/redeem", { code: promoCode });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to redeem code");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Code Redeemed!", description: data.message });
+      setCode("");
+      setIsOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/user/gold-trial-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stripe/subscription-status"] });
+      window.location.reload();
+    },
+    onError: (err: any) => {
+      toast({ title: "Invalid Code", description: err.message, variant: "destructive" });
+    },
+  });
+
+  if (!isOpen) {
+    return (
+      <Button
+        variant="outline"
+        className="w-full justify-between h-12 rounded-xl border-yellow-200/50 hover:bg-yellow-50/50 hover:border-yellow-300/50"
+        onClick={() => setIsOpen(true)}
+        data-testid="button-redeem-promo"
+      >
+        <span className="flex items-center gap-2 text-[#1a1a2e]">
+          <Tag className="h-4 w-4 text-yellow-600" />
+          Redeem Promo Code
+        </span>
+        <ArrowRight className="h-4 w-4 text-yellow-600" />
+      </Button>
+    );
+  }
+
+  return (
+    <div className="border border-yellow-200/50 rounded-xl p-3 bg-yellow-50/30 space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium text-yellow-700">
+        <Tag className="h-3.5 w-3.5" />
+        Enter Promo Code
+      </div>
+      <div className="flex gap-2">
+        <Input
+          placeholder="e.g. GOLD-ABC123"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          className="bg-white font-mono tracking-wider"
+          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+          data-testid="input-redeem-code"
+        />
+        <Button
+          size="sm"
+          className="bg-yellow-500 hover:bg-yellow-600 text-white px-4"
+          disabled={!code.trim() || redeemMutation.isPending}
+          onClick={() => redeemMutation.mutate(code.trim())}
+          data-testid="button-submit-redeem"
+        >
+          {redeemMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Redeem"}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => { setIsOpen(false); setCode(""); }}
+          data-testid="button-cancel-redeem"
+        >
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1209,7 +1336,32 @@ function DashboardPromoVideoUploader({ business }: { business: Business }) {
   const tier = business.membershipTier;
   const isGold = tier === "premium";
 
-  if (!isGold) return null;
+  if (!isGold) {
+    return (
+      <Card className="rounded-2xl border-slate-200/50 bg-slate-50/50 opacity-60">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Crown className="h-4 w-4 text-slate-400" />
+            Promo Video
+            <Badge className="bg-yellow-100 text-yellow-800 border-0 text-xs ml-auto">Gold Exclusive</Badge>
+          </CardTitle>
+          <CardDescription>Upgrade to Gold to upload a 30-second promotional video</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center">
+            <Upload className="h-6 w-6 mx-auto text-slate-300 mb-2" />
+            <p className="text-sm text-slate-400">Gold membership required</p>
+          </div>
+          <Link to="/membership" className="block mt-3">
+            <Button variant="outline" size="sm" className="w-full text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5" data-testid="button-upgrade-for-video">
+              <Crown className="h-3.5 w-3.5 mr-1.5" />
+              Upgrade to Gold
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const saveMutation = useMutation({
     mutationFn: async (videoUrl: string) => {
