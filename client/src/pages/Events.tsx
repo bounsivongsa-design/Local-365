@@ -504,7 +504,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const { uploadFile, isUploading, progress } = useUpload();
 
   const [eventDates, setEventDates] = useState<string[]>([]);
-  const [dateInput, setDateInput] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -544,19 +545,36 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const basePrice = adSize ? (basePricing as any)[adSize] || 0 : 0;
   const finalPrice = isAdmin ? 0 : Math.round(basePrice * (1 - discount));
 
+  const generateDateRange = (start: string, end: string): string[] => {
+    const dates: string[] = [];
+    const startTime = start.includes("T") ? start.split("T")[1] : "09:00";
+    const current = new Date(start.split("T")[0] + "T00:00:00");
+    const last = new Date(end.split("T")[0] + "T00:00:00");
+    while (current <= last) {
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, "0");
+      const d = String(current.getDate()).padStart(2, "0");
+      dates.push(`${y}-${m}-${d}T${startTime}`);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    if (eventDates.length === 0) {
-      toast({ title: "Missing Dates", description: "Please add at least one event date.", variant: "destructive" });
+    if (!startDate) {
+      toast({ title: "Missing Start Date", description: "Please select a start date for your event.", variant: "destructive" });
       return;
     }
+
+    const computedDates = endDate ? generateDateRange(startDate, endDate) : [startDate];
 
     const selectedAdSize = isAdmin ? "large" : (data.adSize || "small");
 
     const eventData: any = {
       title: data.title,
       location: data.location,
-      date: eventDates[0],
-      eventDates: eventDates,
+      date: computedDates[0],
+      eventDates: computedDates,
       adSize: selectedAdSize,
       description: data.description || "",
       imageUrl: data.imageUrl || undefined,
@@ -627,57 +645,65 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
         />
 
         <div>
-          <label className="text-sm font-medium leading-none mb-2 block">Event Dates & Times</label>
-          <p className="text-xs text-muted-foreground mb-2">Add one or more dates for your event. Multi-day or recurring events can have multiple dates.</p>
-          <div className="flex gap-2 mb-3">
-            <Input
-              type="datetime-local"
-              className="bg-white text-[#1a1a2e] flex-1"
-              value={dateInput}
-              onChange={(e) => setDateInput(e.target.value)}
-              data-testid="input-event-date"
-              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82]/5 h-10 px-4"
-              onClick={() => {
-                if (!dateInput) return;
-                if (eventDates.includes(dateInput)) {
-                  toast({ title: "Duplicate date", description: "This date/time has already been added.", variant: "destructive" });
-                  return;
-                }
-                setEventDates(prev => [...prev, dateInput].sort());
-                setDateInput("");
-              }}
-              data-testid="button-add-event-date"
-            >
-              <Plus className="h-4 w-4 mr-1" /> Add
-            </Button>
-          </div>
-          {eventDates.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {eventDates.map((d, i) => (
-                <div key={i} className="inline-flex items-center gap-1.5 bg-[#0a4a82]/10 text-[#0a4a82] px-3 py-1.5 rounded-lg text-sm font-medium" data-testid={`tag-event-date-${i}`}>
-                  <Calendar className="h-3.5 w-3.5" />
-                  {new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                  {" "}
-                  {new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                  <button
-                    type="button"
-                    onClick={() => setEventDates(prev => prev.filter((_, idx) => idx !== i))}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-[#0a4a82]/20 transition-colors"
-                    data-testid={`button-remove-date-${i}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+          <label className="text-sm font-medium leading-none mb-2 block">Event Dates & Time</label>
+          <p className="text-xs text-muted-foreground mb-2">Select a start and end date. Multi-day events will appear on the calendar for every day in the range.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Start Date & Time</label>
+              <Input
+                type="datetime-local"
+                className="bg-white text-[#1a1a2e]"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (endDate && e.target.value > endDate) {
+                    setEndDate(e.target.value);
+                  }
+                }}
+                data-testid="input-event-start-date"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              />
             </div>
-          ) : (
-            <p className="text-xs text-amber-600 font-medium">No dates added yet — add at least one date above</p>
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">End Date (optional for single-day events)</label>
+              <Input
+                type="datetime-local"
+                className="bg-white text-[#1a1a2e]"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                data-testid="input-event-end-date"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              />
+            </div>
+          </div>
+          {startDate && (
+            <div className="mt-3 p-3 rounded-xl bg-[#0a4a82]/5 border border-[#0a4a82]/15">
+              <div className="flex items-center gap-2 text-sm text-[#0a4a82] font-medium">
+                <Calendar className="h-4 w-4" />
+                {endDate && endDate.split("T")[0] !== startDate.split("T")[0] ? (
+                  <span>
+                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {" — "}
+                    {new Date(endDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {" "}
+                    <span className="text-slate-500 font-normal">
+                      ({Math.ceil((new Date(endDate.split("T")[0] + "T00:00:00").getTime() - new Date(startDate.split("T")[0] + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)) + 1} days on calendar)
+                    </span>
+                  </span>
+                ) : (
+                  <span>
+                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {" at "}
+                    {new Date(startDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    <span className="text-slate-500 font-normal ml-1">(single day)</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          {!startDate && (
+            <p className="text-xs text-amber-600 font-medium mt-2">Please select a start date above</p>
           )}
         </div>
 
@@ -701,8 +727,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="2week">2-Week Event</SelectItem>
-                      <SelectItem value="monthly">Monthly Event</SelectItem>
+                      <SelectItem value="2week">2-Week Ad</SelectItem>
+                      <SelectItem value="monthly">Monthly Ad</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
