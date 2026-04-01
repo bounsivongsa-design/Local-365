@@ -17,7 +17,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 ### Backend
 - **Runtime**: Node.js with Express.js (TypeScript, ESM modules)
 - **API Pattern**: RESTful JSON APIs (`/api` prefix)
-- **Authentication**: Custom email/password + Google OAuth (passport-local, passport-google-oauth20, bcrypt)
+- **Authentication**: Custom email/password + Google OAuth (passport-local, passport-google-oauth20, bcrypt). Three account types: `customer`, `business`, `admin`. Admin accounts are seeded on startup for designated emails; admin creation is NOT available through any UI — only via direct database or code changes.
 - **File Uploads**: Uppy with AWS S3-compatible presigned URLs
 
 ### Data Storage
@@ -41,6 +41,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Promo Codes**: Admin-managed promotional codes. Types: (1) percentage/fixed discount codes for Stripe checkout, (2) `gold_trial` codes that directly grant Gold-tier access for 30 or 60 days. Gold trial codes are redeemed from the business Dashboard (not at checkout). When a gold trial expires, the business reverts to their previous tier via `checkExpiredGoldTrials()` background job. Schema: `promoCodes.durationDays` stores trial length; `businesses.goldTrialEndDate` and `businesses.originalMembershipTier` track active trials.
 - **Tier-Locked Feature Greying**: Dashboard shows tier-locked features (promo video upload, photo gallery) as greyed-out cards with upgrade prompts instead of hiding them. Promo video = Gold exclusive; gallery = Silver+.
 - **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.
+- **Admin Account System**: Dedicated "admin" account type (alongside "customer" and "business"). Admin accounts skip business/membership flows and go straight to admin dashboard. Admin accounts are seeded on startup for `boun.sivongsa@gmail.com` and `locallist365@gmail.com`. Admins CANNOT be created or promoted via any UI — only through code/database. The old `isAdmin` boolean flag is deprecated; all checks use `accountType === "admin"`. Navigation shows "Admin" link for admin accounts.
 - **Admin Dashboard**: Full admin command center at `/admin` with platform-wide stats (users, businesses, memberships, ads, quotes, jobs, posts, promos), pending approvals alerts, membership breakdown charts, recent activity feeds, and quick-action links.
 - **Event Moderation**: Admin event moderation queue at `/admin/events`. Business-submitted events default to "pending" status and require admin approval before appearing on the public calendar. Admins can approve, deny (with optional reason), unpublish, or delete events. Admin-created events auto-approve.
 - **Business Verification System**: AI-powered NC Secretary of State registry check during business signup (auto-triggered when LLC is claimed). Document upload for insurance certificates, professional licenses, and veteran documentation. Admin verification review panel with AI check results, uploaded doc review (approve/reject with notes), and direct link to sosnc.gov for manual verification. Tables: `business_verification_checks`, `verification_documents`.

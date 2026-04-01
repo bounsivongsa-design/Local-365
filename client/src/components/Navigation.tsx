@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, Shield } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -43,9 +43,12 @@ export function Navigation() {
     { href: "/membership", label: "For Business", icon: Building2 },
   ];
 
+  const isAdminAccount = user?.accountType === "admin";
+
   const authenticatedNavItems = [
     ...navItems,
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ...(isAdminAccount ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
   const isActive = (path: string) => routerLocation.pathname === path;

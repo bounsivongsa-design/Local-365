@@ -142,7 +142,7 @@ export default function AdminAds() {
     return ad.status === statusFilter;
   });
 
-  if (!isAuthenticated || !user?.isAdmin) {
+  if (!isAuthenticated || user?.accountType !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
         <Card className="max-w-md text-center p-8">

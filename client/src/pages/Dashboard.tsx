@@ -779,7 +779,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
       {isEditing && business && (
         <EditBusinessForm business={business} onClose={() => setIsEditing(false)} />
       )}
-      {!hasBusiness && !user?.isAdmin ? (
+      {!hasBusiness && user?.accountType !== "admin" ? (
         <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-[#d4a373]/30 rounded-2xl">
           <CardContent className="py-12 text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#0a4a82] to-[#0a4a82]/70 flex items-center justify-center mx-auto mb-6">
@@ -799,7 +799,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
             </Link>
           </CardContent>
         </Card>
-      ) : !hasBusiness && user?.isAdmin ? (
+      ) : !hasBusiness && user?.accountType === "admin" ? (
         null
       ) : (
         <>
@@ -1550,7 +1550,7 @@ export default function Dashboard() {
     );
   }
 
-  const isValidated = validationData?.isValidated || user?.isAdmin || false;
+  const isValidated = validationData?.isValidated || user?.accountType === "admin" || false;
   const receipts = validationData?.receipts || [];
   const pendingReceipts = receipts.filter(r => r.status === "pending");
 
@@ -1600,22 +1600,16 @@ export default function Dashboard() {
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-white/70">{user?.email}</p>
-                <Badge className={isBusinessAccount ? "bg-[#d4a373] text-white border-0" : "bg-[#8a9a5b] text-white border-0"} data-testid="badge-account-type">
-                  {isBusinessAccount ? "Business Account" : "Customer Account"}
+                <Badge className={user?.accountType === "admin" ? "bg-red-500/90 text-white border-0" : isBusinessAccount ? "bg-[#d4a373] text-white border-0" : "bg-[#8a9a5b] text-white border-0"} data-testid="badge-account-type">
+                  {user?.accountType === "admin" ? "Admin Account" : isBusinessAccount ? "Business Account" : "Customer Account"}
                 </Badge>
-                {user?.isAdmin && (
-                  <Badge className="bg-red-500/90 text-white border-0" data-testid="badge-admin">
-                    <Shield className="h-3 w-3 mr-1" />
-                    Admin
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {user?.isAdmin && (
+      {user?.accountType === "admin" && (
         <div className="container py-6">
           <Card className="bg-gradient-to-br from-[#1a1a2e] to-[#0a0a1a] border-0 shadow-[0_8px_30px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden">
             <CardHeader className="pb-4">
@@ -1724,7 +1718,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {!user?.isAdmin && (
+          {user?.accountType !== "admin" && (
           <Card className="lg:col-span-2 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
@@ -1776,7 +1770,7 @@ export default function Dashboard() {
           </Card>
           )}
 
-          {!user?.isAdmin && (
+          {user?.accountType !== "admin" && (
           <Card className="lg:col-span-3 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">

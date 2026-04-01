@@ -46,8 +46,6 @@ import {
   Search,
   KeyRound,
   Trash2,
-  ShieldCheck,
-  ShieldOff,
   UserCog,
   ChevronLeft,
   ChevronRight,
@@ -123,7 +121,7 @@ type AdminUser = {
   firstName: string | null;
   lastName: string | null;
   accountType: string | null;
-  isAdmin: boolean | null;
+  
   isValidated: boolean | null;
   linkedBusinessId: number | null;
   googleId: string | null;
@@ -174,7 +172,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
-  if (!isAuthenticated || !user?.isAdmin) {
+  if (!isAuthenticated || user?.accountType !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="bg-white/95 backdrop-blur-sm p-8 text-center max-w-md">
@@ -694,17 +692,6 @@ function UsersTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const toggleAdminMutation = useMutation({
-    mutationFn: async ({ userId, isAdmin }: { userId: string; isAdmin: boolean }) => {
-      await apiRequest("PATCH", `/api/admin/users/${userId}`, { isAdmin });
-    },
-    onSuccess: () => {
-      toast({ title: "Updated", description: "Admin status changed." });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-    },
-    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
   const toggleValidatedMutation = useMutation({
     mutationFn: async ({ userId, isValidated }: { userId: string; isValidated: boolean }) => {
       await apiRequest("PATCH", `/api/admin/users/${userId}`, { isValidated });
@@ -806,7 +793,7 @@ function UsersTab() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
-                        {u.isAdmin && <Badge className="bg-red-100 text-red-800 text-xs">Admin</Badge>}
+                        {u.accountType === "admin" && <Badge className="bg-red-100 text-red-800 text-xs">Admin</Badge>}
                         {u.isValidated ? (
                           <Badge className="bg-green-100 text-green-800 text-xs">Verified</Badge>
                         ) : (
@@ -848,16 +835,6 @@ function UsersTab() {
                           data-testid={`button-verify-${u.id}`}
                         >
                           <BadgeCheck className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`h-8 w-8 p-0 ${u.isAdmin ? "text-red-500 hover:text-red-700 hover:bg-red-50" : "text-gray-400 hover:text-amber-600 hover:bg-amber-50"}`}
-                          title={u.isAdmin ? "Remove Admin" : "Make Admin"}
-                          onClick={() => toggleAdminMutation.mutate({ userId: u.id, isAdmin: !u.isAdmin })}
-                          data-testid={`button-toggle-admin-${u.id}`}
-                        >
-                          {u.isAdmin ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
                         </Button>
                         <Button
                           variant="ghost"
@@ -1014,7 +991,7 @@ function UserDetailsDialog({ userId, onClose }: { userId: string | null; onClose
                   <Badge className={`text-xs ${u.accountType === "business" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
                     {u.accountType || "customer"}
                   </Badge>
-                  {u.isAdmin && <Badge className="bg-red-100 text-red-800 text-xs">Admin</Badge>}
+                  {u.accountType === "admin" && <Badge className="bg-red-100 text-red-800 text-xs">Admin</Badge>}
                   {u.isValidated ? (
                     <Badge className="bg-green-100 text-green-800 text-xs">Verified</Badge>
                   ) : (

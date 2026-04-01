@@ -88,7 +88,7 @@ export default function AdminEvents() {
 
   const { data: events, isLoading } = useQuery<AdminEvent[]>({
     queryKey: ["/api/admin/events"],
-    enabled: !!user?.isAdmin,
+    enabled: user?.accountType === "admin",
   });
 
   const updateMutation = useMutation({
@@ -122,7 +122,7 @@ export default function AdminEvents() {
     },
   });
 
-  if (!user?.isAdmin) {
+  if (user?.accountType !== "admin") {
     return (
       <div className="container mx-auto py-20 text-center">
         <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />

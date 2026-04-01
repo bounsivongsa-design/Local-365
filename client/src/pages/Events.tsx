@@ -221,20 +221,20 @@ export default function Events() {
                 </Button>
               </div>
 
-              {isBusinessAccount || user?.isAdmin ? (
+              {isBusinessAccount || user?.accountType === "admin" ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-[shadow,transform] duration-200 border-0" data-testid="button-create-event">
                       <Plus className="mr-2 h-4 w-4" />
-                      {user?.isAdmin ? "Create Event" : "Advertise Your Event"}
+                      {user?.accountType === "admin" ? "Create Event" : "Advertise Your Event"}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>{user?.isAdmin ? "Create Community Event" : "Create & Advertise Your Event"}</DialogTitle>
-                      <DialogDescription>{user?.isAdmin ? "Create an event for the community. All fields are available." : "Fill in your event details below. Fields available depend on your membership tier."}</DialogDescription>
+                      <DialogTitle>{user?.accountType === "admin" ? "Create Community Event" : "Create & Advertise Your Event"}</DialogTitle>
+                      <DialogDescription>{user?.accountType === "admin" ? "Create an event for the community. All fields are available." : "Fill in your event details below. Fields available depend on your membership tier."}</DialogDescription>
                     </DialogHeader>
-                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} linkedBusinessId={user?.linkedBusinessId} isAdmin={user?.isAdmin} />
+                    <CreateEventForm onSuccess={() => setIsDialogOpen(false)} linkedBusinessId={user?.linkedBusinessId} isAdmin={user?.accountType === "admin"} />
                   </DialogContent>
                 </Dialog>
               ) : (

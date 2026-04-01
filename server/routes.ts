@@ -13,6 +13,22 @@ import { locations, businesses, events, adPlacements, adPricing, comments as com
 import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
 
+async function isAdminUser(userId: string): Promise<boolean> {
+  const [u] = await pgDb.select({ accountType: users.accountType }).from(users).where(eq(users.id, userId));
+  return u?.accountType === "admin";
+}
+
+const ADMIN_EMAILS = ["boun.sivongsa@gmail.com", "locallist365@gmail.com"];
+
+async function seedAdminAccounts() {
+  for (const email of ADMIN_EMAILS) {
+    await pgDb.update(users)
+      .set({ accountType: "admin" })
+      .where(eq(users.email, email));
+  }
+  console.log("Admin accounts seeded for:", ADMIN_EMAILS.join(", "));
+}
+
 // Tier-Based Quote Access Timing (hours after request creation)
 const GOLD_ACCESS_WINDOW_HOURS = 24;    // Gold: 1st round, 0-24 hours exclusive
 const SILVER_ACCESS_START_HOURS = 24;   // Silver: 2nd round, starts at 24 hours
@@ -803,7 +819,7 @@ Respond in this exact JSON format:
       if (!biz) return res.status(404).json({ message: "Business not found" });
 
       const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (!user || (user.linkedBusinessId !== businessId && !user.isAdmin)) {
+      if (!user || (user.linkedBusinessId !== businessId && user.accountType !== "admin")) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -918,7 +934,7 @@ Respond in this exact JSON format:
       const [biz] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
       if (!biz) return res.status(404).json({ message: "Business not found" });
 
-      if (user.linkedBusinessId !== businessId && !user.isAdmin) {
+      if (user.linkedBusinessId !== businessId && user.accountType !== "admin") {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -943,7 +959,7 @@ Respond in this exact JSON format:
       const userId = req.user?.id;
 
       const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (!user || (user.linkedBusinessId !== businessId && !user.isAdmin)) {
+      if (!user || (user.linkedBusinessId !== businessId && user.accountType !== "admin")) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -979,8 +995,8 @@ Respond in this exact JSON format:
   app.get("/api/admin/businesses/:id/verification", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const businessId = parseInt(req.params.id);
       const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
@@ -1004,8 +1020,8 @@ Respond in this exact JSON format:
   app.patch("/api/admin/verification-documents/:id", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const docId = parseInt(req.params.id);
       const { status, adminNote } = req.body;
@@ -1093,7 +1109,7 @@ Respond in this exact JSON format:
       const businessId = parseInt(req.params.id);
       const userId = (req as any).user?.id;
       const user = await pgDb.select().from(users).where(eq(users.id, userId));
-      if (!user.length || (user[0].linkedBusinessId !== businessId && !user[0].isAdmin)) {
+      if (!user.length || (user[0].linkedBusinessId !== businessId && user[0].accountType !== "admin")) {
         return res.status(403).json({ message: "Not authorized to edit this business" });
       }
       const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId));
@@ -1133,7 +1149,7 @@ Respond in this exact JSON format:
       if (!business.length) return res.status(404).json({ message: "Business not found" });
 
       const user = await pgDb.select().from(users).where(eq(users.id, userId));
-      if (!user.length || (user[0].linkedBusinessId !== businessId && !user[0].isAdmin)) {
+      if (!user.length || (user[0].linkedBusinessId !== businessId && user[0].accountType !== "admin")) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -1406,8 +1422,8 @@ Respond in this exact JSON format:
   app.get("/api/admin/submissions", isAuthenticated, async (req, res) => {
     try {
       const adminId = (req as any).user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const results = await pgDb
         .select()
@@ -1423,8 +1439,8 @@ Respond in this exact JSON format:
   app.patch("/api/admin/submissions/:id", isAuthenticated, async (req, res) => {
     try {
       const adminId = (req as any).user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const id = parseInt(req.params.id);
       const { status, adminNote } = req.body;
@@ -1658,7 +1674,7 @@ Respond in this exact JSON format:
         return res.status(403).json({ message: "User not found." });
       }
 
-      const isAdmin = user[0].isAdmin;
+      const isAdmin = user[0].accountType === "admin";
 
       if (!isAdmin && user[0].accountType !== "business") {
         return res.status(403).json({ message: "Only business accounts can create events." });
@@ -1733,7 +1749,7 @@ Respond in this exact JSON format:
       const userId = (req as any).user?.id;
       
       const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (user.length === 0 || (!user[0].isValidated && !user[0].isAdmin)) {
+      if (user.length === 0 || (!user[0].isValidated && user[0].accountType !== "admin")) {
         return res.status(403).json({ 
           message: "You must verify your account by uploading a receipt before posting. Visit your dashboard to verify." 
         });
@@ -1857,8 +1873,8 @@ Respond in this exact JSON format:
       const businessId = Number(req.params.id);
       const input = api.reviews.create.input.parse(req.body);
       const reviewUserId = (req as any).user?.id;
-      const [reviewUser] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, reviewUserId));
-      if (!input.receiptUrl && !reviewUser?.isAdmin) {
+      const [reviewUser] = await pgDb.select({ accountType: users.accountType }).from(users).where(eq(users.id, reviewUserId));
+      if (!input.receiptUrl && reviewUser?.accountType !== "admin") {
         return res.status(400).json({ message: "A receipt or proof of purchase is required to submit a review." });
       }
       const review = await storage.createReview({
@@ -1894,7 +1910,7 @@ Respond in this exact JSON format:
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      if (user.linkedBusinessId !== review.businessId && !user.isAdmin) {
+      if (user.linkedBusinessId !== review.businessId && user.accountType !== "admin") {
         return res.status(403).json({ message: "You can only respond to reviews for your own business" });
       }
       if (review.ownerResponse) {
@@ -2192,7 +2208,7 @@ Respond in this exact JSON format:
 
       const userRecord = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
       const isRequestOwner = request[0].userId === userId;
-      const isAdmin = userRecord[0]?.isAdmin;
+      const isAdmin = userRecord[0]?.accountType === "admin";
       const isBusiness = userRecord[0]?.accountType === "business";
 
       if (!isRequestOwner && !isAdmin && !isBusiness) {
@@ -2839,7 +2855,7 @@ Respond in this exact JSON format:
       const [event] = await pgDb.select().from(events).where(eq(events.id, eventId));
       if (!event) return res.status(404).json({ message: "Event not found" });
       const [dbUser] = await pgDb.select().from(users).where(eq(users.id, user.id)).limit(1);
-      const isAdmin = dbUser?.isAdmin;
+      const isAdmin = dbUser?.accountType === "admin";
       if (!isAdmin && (!event.businessId || event.businessId !== user.linkedBusinessId)) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -2862,7 +2878,7 @@ Respond in this exact JSON format:
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
       const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (!user?.isAdmin) return res.status(403).json({ message: "Admin access required" });
+      if (user?.accountType !== "admin") return res.status(403).json({ message: "Admin access required" });
 
       const allEvents = await pgDb.select().from(events).orderBy(desc(events.createdAt));
       const eventsWithBiz = await Promise.all(
@@ -2892,7 +2908,7 @@ Respond in this exact JSON format:
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
       const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (!user?.isAdmin) return res.status(403).json({ message: "Admin access required" });
+      if (user?.accountType !== "admin") return res.status(403).json({ message: "Admin access required" });
 
       const eventId = Number(req.params.id);
       if (isNaN(eventId) || eventId <= 0) {
@@ -2922,7 +2938,7 @@ Respond in this exact JSON format:
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
       const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (!user?.isAdmin) return res.status(403).json({ message: "Admin access required" });
+      if (user?.accountType !== "admin") return res.status(403).json({ message: "Admin access required" });
 
       const eventId = Number(req.params.id);
       if (isNaN(eventId) || eventId <= 0) {
@@ -2945,11 +2961,11 @@ Respond in this exact JSON format:
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const [dbUser] = await pgDb.select({ isAdmin: users.isAdmin })
+      const [dbUser] = await pgDb.select({ accountType: users.accountType })
         .from(users)
         .where(eq(users.id, userId));
       
-      if (!dbUser?.isAdmin) {
+      if (dbUser?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -2993,11 +3009,11 @@ Respond in this exact JSON format:
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const [dbUser] = await pgDb.select({ isAdmin: users.isAdmin })
+      const [dbUser] = await pgDb.select({ accountType: users.accountType })
         .from(users)
         .where(eq(users.id, userId));
       
-      if (!dbUser?.isAdmin) {
+      if (dbUser?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -3040,7 +3056,7 @@ Respond in this exact JSON format:
   app.get("/api/promo-codes", isAuthenticated, async (req: any, res) => {
     try {
       const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
-      if (!user[0]?.isAdmin) {
+      if (user[0]?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
       const codes = await pgDb.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
@@ -3054,7 +3070,7 @@ Respond in this exact JSON format:
   app.post("/api/promo-codes", isAuthenticated, async (req: any, res) => {
     try {
       const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
-      if (!user[0]?.isAdmin) {
+      if (user[0]?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
       const { code, description, discountType, discountValue, applicableTiers, maxUses, startsAt, expiresAt, durationDays } = req.body;
@@ -3092,7 +3108,7 @@ Respond in this exact JSON format:
   app.patch("/api/promo-codes/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
-      if (!user[0]?.isAdmin) {
+      if (user[0]?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
       const id = parseInt(req.params.id);
@@ -3117,7 +3133,7 @@ Respond in this exact JSON format:
   app.delete("/api/promo-codes/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
-      if (!user[0]?.isAdmin) {
+      if (user[0]?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
       const id = parseInt(req.params.id);
@@ -3306,7 +3322,7 @@ Respond in this exact JSON format:
   app.get("/api/membership-downgrades", isAuthenticated, async (req: any, res) => {
     try {
       const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);
-      if (!user[0]?.isAdmin) {
+      if (user[0]?.accountType !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
       const downgrades = await pgDb.select().from(membershipDowngrades).orderBy(desc(membershipDowngrades.downgradedAt));
@@ -3352,8 +3368,8 @@ Respond in this exact JSON format:
   app.get("/api/admin/users/:userId/details", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const targetId = req.params.userId;
       const [user] = await pgDb.select({
@@ -3364,7 +3380,6 @@ Respond in this exact JSON format:
         profileImageUrl: users.profileImageUrl,
         accountType: users.accountType,
         isValidated: users.isValidated,
-        isAdmin: users.isAdmin,
         linkedBusinessId: users.linkedBusinessId,
         googleId: users.googleId,
         loyaltyTier: users.loyaltyTier,
@@ -3405,8 +3420,8 @@ Respond in this exact JSON format:
   app.get("/api/admin/users", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const search = (req.query.search || "").toString().trim();
       const parsed = parseInt(req.query.page || "1");
@@ -3420,7 +3435,6 @@ Respond in this exact JSON format:
         firstName: users.firstName,
         lastName: users.lastName,
         accountType: users.accountType,
-        isAdmin: users.isAdmin,
         isValidated: users.isValidated,
         linkedBusinessId: users.linkedBusinessId,
         googleId: users.googleId,
@@ -3454,8 +3468,8 @@ Respond in this exact JSON format:
   app.delete("/api/admin/users/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const targetId = req.params.userId;
       if (targetId === adminId) return res.status(400).json({ message: "Cannot delete your own account" });
@@ -3477,8 +3491,8 @@ Respond in this exact JSON format:
   app.post("/api/admin/users/:userId/reset-password", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const targetId = req.params.userId;
       const { newPassword } = req.body;
@@ -3500,18 +3514,17 @@ Respond in this exact JSON format:
   app.patch("/api/admin/users/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const targetId = req.params.userId;
       const [target] = await pgDb.select({ id: users.id }).from(users).where(eq(users.id, targetId));
       if (!target) return res.status(404).json({ message: "User not found" });
 
-      const { isAdmin: makeAdmin, isValidated, accountType } = req.body;
+      const { isValidated, accountType } = req.body;
       const updates: any = {};
-      if (typeof makeAdmin === "boolean") updates.isAdmin = makeAdmin;
       if (typeof isValidated === "boolean") updates.isValidated = isValidated;
-      if (accountType) updates.accountType = accountType;
+      if (accountType && accountType !== "admin") updates.accountType = accountType;
 
       if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No updates provided" });
 
@@ -3526,8 +3539,8 @@ Respond in this exact JSON format:
   app.get("/api/admin/businesses", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const search = (req.query.search || "").toString().trim();
       const parsed = parseInt(req.query.page || "1");
@@ -3599,8 +3612,8 @@ Respond in this exact JSON format:
   app.patch("/api/admin/businesses/:id", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
-      const [admin] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, adminId));
-      if (!admin?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const bizId = parseInt(req.params.id);
       if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
@@ -3626,8 +3639,8 @@ Respond in this exact JSON format:
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;
-      const [user] = await pgDb.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId));
-      if (!user?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+      const adminCheck = await isAdminUser(userId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const safeCount = async (query: Promise<any[]>) => {
         try { const r = await query; return r?.[0]?.count ?? 0; } catch { return 0; }
@@ -3950,7 +3963,7 @@ Respond in this exact JSON format:
       }
 
       const [biz] = await pgDb.select({ userId: businesses.userId }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
-      const isAdmin = req.user?.isAdmin;
+      const isAdmin = req.user?.accountType === "admin";
       const isOwner = biz && biz.userId === req.user?.id;
       if (!isAdmin && !isOwner) {
         return res.status(403).json({ message: "You can only view analytics for your own business" });
@@ -4013,6 +4026,8 @@ Respond in this exact JSON format:
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
+
+  setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
   return httpServer;
 }

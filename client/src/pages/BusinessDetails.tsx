@@ -667,7 +667,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptUploaded && !user?.isAdmin) {
+    if (!receiptUploaded && user?.accountType !== "admin") {
       toast({ title: "Receipt required", description: "Please upload a receipt or proof of purchase from this business.", variant: "destructive" });
       return;
     }
@@ -732,7 +732,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
               data-testid="input-review-comment"
             />
           </div>
-          {!user?.isAdmin && (
+          {user?.accountType !== "admin" && (
           <div className="space-y-2">
             <Label className="font-semibold">
               Upload Receipt / Proof of Purchase <span className="text-red-500">*</span>

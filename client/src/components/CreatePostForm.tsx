@@ -31,7 +31,7 @@ export function CreatePostForm() {
     enabled: isAuthenticated,
   });
 
-  const isValidated = validationData?.isValidated || user?.isAdmin || false;
+  const isValidated = validationData?.isValidated || user?.accountType === "admin" || false;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
