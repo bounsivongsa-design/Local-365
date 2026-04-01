@@ -117,6 +117,7 @@ export default function Advertising() {
   const [formData, setFormData] = useState({
     placementType: "",
     adSize: "small" as "small" | "medium" | "large",
+    adDuration: "30" as "14" | "30",
     title: "",
     description: "",
     imageUrl: "",
@@ -544,6 +545,27 @@ export default function Advertising() {
                       )}
 
                       <div className="space-y-2">
+                        <Label>Ad Duration *</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {([
+                            { value: "14", label: "2 Weeks", desc: "14 days from start" },
+                            { value: "30", label: "30 Days", desc: "30 days from start" },
+                          ] as const).map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, adDuration: opt.value })}
+                              className={`rounded-xl p-3 text-center border-2 transition-all ${formData.adDuration === opt.value ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
+                              data-testid={`ad-duration-${opt.value}`}
+                            >
+                              <p className={`text-base font-bold ${formData.adDuration === opt.value ? "text-[#0a4a82]" : "text-slate-700"}`}>{opt.label}</p>
+                              <p className="text-xs text-slate-500">{opt.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="title">Ad Title *</Label>
                         <Input
                           id="title"
@@ -692,7 +714,7 @@ export default function Advertising() {
                       <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
                         <div className="flex justify-between items-center">
                           <span className="font-medium text-slate-700 dark:text-slate-300">
-                            Monthly Price:
+                            {formData.adDuration === "14" ? "2-Week" : "30-Day"} Price:
                           </span>
                           <span className="text-2xl font-bold text-[#0a4a82]">
                             {BANNER_PLACEMENTS.includes(formData.placementType) ? (

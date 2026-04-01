@@ -90,7 +90,7 @@ function EventAdPricingGrid() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">2-Week Event</h4>
+                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">2-Week (14 Days)</h4>
                 </div>
                 <div className="space-y-2">
                   {(["small", "medium", "large"] as const).map((size) => (
@@ -107,7 +107,7 @@ function EventAdPricingGrid() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Monthly Event</h4>
+                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">30-Day Event</h4>
                 </div>
                 <div className="space-y-2">
                   {(["small", "medium", "large"] as const).map((size) => (
@@ -727,8 +727,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="2week">2-Week Ad</SelectItem>
-                      <SelectItem value="monthly">Monthly Ad</SelectItem>
+                      <SelectItem value="2week">2-Week Ad (14 days)</SelectItem>
+                      <SelectItem value="monthly">30-Day Ad</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -764,7 +764,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {adDuration === "2week" ? "2-Week" : "Monthly"} · {adSize.charAt(0).toUpperCase() + adSize.slice(1)} Ad
+                    {adDuration === "2week" ? "2-Week (14 days)" : "30-Day"} · {adSize.charAt(0).toUpperCase() + adSize.slice(1)} Ad
                   </p>
                   {discount > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-0.5">

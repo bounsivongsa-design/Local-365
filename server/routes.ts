@@ -2635,11 +2635,16 @@ Respond in this exact JSON format:
         return res.status(403).json({ message: "Business account required" });
       }
 
-      const { placementType, title, description, imageUrl, videoUrl, linkUrl, category, startDate, endDate, adSize } = req.body;
+      const { placementType, title, description, imageUrl, videoUrl, linkUrl, category, startDate, adSize, adDuration } = req.body;
 
       if (!placementType || !title) {
         return res.status(400).json({ message: "Placement type and title are required" });
       }
+
+      const durationDays = adDuration === "14" ? 14 : 30;
+      const adStartDate = startDate ? new Date(startDate) : new Date();
+      const adEndDate = new Date(adStartDate);
+      adEndDate.setDate(adEndDate.getDate() + durationDays);
 
       const validSizes = ["small", "medium", "large"];
       const size = validSizes.includes(adSize) ? adSize : "small";
@@ -2689,8 +2694,8 @@ Respond in this exact JSON format:
         videoUrl: validatedVideoUrl,
         linkUrl,
         category,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: adStartDate,
+        endDate: adEndDate,
         pricePerWeek: pricing.pricePerWeek,
         priceMonthly: discountedMonthly,
         status: "pending",
@@ -3059,8 +3064,8 @@ Respond in this exact JSON format:
       if (discountType === "percentage" && (discountValue < 1 || discountValue > 100)) {
         return res.status(400).json({ message: "Percentage discount must be between 1 and 100" });
       }
-      if (discountType === "gold_trial" && durationDays && ![30, 60].includes(Number(durationDays))) {
-        return res.status(400).json({ message: "Gold trial duration must be 30 or 60 days" });
+      if (discountType === "gold_trial" && durationDays && Number(durationDays) !== 60) {
+        return res.status(400).json({ message: "Gold trial duration must be 60 days" });
       }
       const existing = await pgDb.select({ id: promoCodes.id }).from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
       if (existing.length > 0) {
