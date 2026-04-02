@@ -195,11 +195,42 @@ export default function Directory() {
       <AdCarousel zipCode={selectedLocation?.zipCode || "27958"} />
 
       <div className="bg-[#f5f0eb] min-h-screen">
-      <div className="container px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex gap-8">
-          <aside className="hidden md:block w-72 flex-shrink-0">
+      <div className="container py-6 sm:py-8">
+        {/* Mobile Category & Radius Selectors - outside flex for proper stacking */}
+        <div className="md:hidden mb-6 space-y-3">
+          <div className="relative">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full p-4 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20"
+              data-testid="select-category-mobile"
+            >
+              {categories.map((cat) => (
+                <option key={cat.name} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
+            <Building2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82] pointer-events-none" />
+          </div>
+          <div className="relative">
+            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82] pointer-events-none" />
+            <select
+              value={radiusMiles}
+              onChange={(e) => setRadiusMiles(Number(e.target.value))}
+              className="w-full p-4 pl-12 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20"
+              data-testid="select-radius-mobile"
+            >
+              {RADIUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.value === 0 ? "Any Distance" : `Within ${opt.value} miles of ${selectedLocation.city}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="md:flex md:flex-row md:gap-8">
+          <aside className="hidden md:block w-72 md:flex-shrink-0">
             <div className="sticky top-20 rounded-2xl overflow-hidden bg-white dark:bg-card shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#0a4a82]/10">
-              {/* Header with Coastal Gradient */}
               <div className="p-5 bg-gradient-to-r from-[#0a4a82] to-[#1a6aa8] relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20">
                   <svg className="absolute -bottom-1 w-full h-8" viewBox="0 0 400 40" preserveAspectRatio="none">
@@ -217,7 +248,6 @@ export default function Directory() {
                 </div>
               </div>
               
-              {/* Distance Filter */}
               <div className="px-4 py-3 border-b border-[#0a4a82]/10">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Distance from {selectedLocation.city}</label>
                 <div className="relative">
@@ -239,7 +269,6 @@ export default function Directory() {
                 )}
               </div>
 
-              {/* Category List */}
               <div className="max-h-[calc(100vh-340px)] overflow-y-auto p-3 space-y-1.5">
                   {categories.map((cat) => {
                     const IconComponent = cat.icon;
@@ -279,39 +308,7 @@ export default function Directory() {
             </div>
           </aside>
 
-          {/* Mobile Category & Radius Selectors */}
-          <div className="md:hidden mb-6 space-y-3">
-            <div className="relative">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-4 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20"
-                data-testid="select-category-mobile"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.name} value={cat.name}>{cat.name}</option>
-                ))}
-              </select>
-              <Building2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82] pointer-events-none" />
-            </div>
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0a4a82] pointer-events-none" />
-              <select
-                value={radiusMiles}
-                onChange={(e) => setRadiusMiles(Number(e.target.value))}
-                className="w-full p-4 pl-12 rounded-xl border-2 border-[#0a4a82]/20 bg-white dark:bg-card appearance-none font-medium text-[#0a4a82] shadow-lg focus:border-[#0a4a82] focus:ring-2 focus:ring-[#0a4a82]/20"
-                data-testid="select-radius-mobile"
-              >
-                {RADIUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.value === 0 ? "Any Distance" : `Within ${opt.value} miles of ${selectedLocation.city}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <main className="flex-1 min-w-0">
+          <main className="w-full md:flex-1 md:min-w-0">
             {/* Results Header */}
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">

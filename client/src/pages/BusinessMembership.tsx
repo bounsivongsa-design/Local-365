@@ -739,23 +739,45 @@ export default function BusinessMembership() {
                     )}
 
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
-                      <div className="flex justify-between items-center" data-testid="checkout-total">
-                        <span className="font-bold text-lg text-slate-900 dark:text-white">
-                          {checkoutPricing.hasFreeTrial ? "Due Today" : "Total Due"}
-                        </span>
-                        <span className="font-bold text-2xl text-[#0a4a82] dark:text-blue-400">
-                          {checkoutPricing.hasFreeTrial ? "$0.00" : `$${checkoutPricing.finalTotal.toFixed(2)}`}
-                        </span>
-                      </div>
                       {checkoutPricing.hasFreeTrial ? (
-                        <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                          <Gift className="h-3 w-3" />
-                          30-day free trial — then ${checkoutPricing.finalTotal.toFixed(2)}/{selectedFrequency === "monthly" ? "mo" : selectedFrequency === "semi_annual" ? "6 mo" : "yr"}
-                        </p>
+                        <>
+                          <div className="flex justify-between items-center" data-testid="checkout-total">
+                            <span className="font-bold text-lg text-slate-900 dark:text-white">
+                              Due Today
+                            </span>
+                            <span className="font-bold text-2xl text-emerald-600">
+                              FREE
+                            </span>
+                          </div>
+                          <div className="mt-2 bg-[#0a4a82]/5 rounded-lg p-3 border border-[#0a4a82]/10">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                After 30-day trial
+                              </span>
+                              <span className="text-lg font-bold text-[#0a4a82] dark:text-blue-400">
+                                ${checkoutTier ? checkoutTier.monthlyPrice.toFixed(2) : checkoutPricing.perMonth.toFixed(2)}/{selectedFrequency === "monthly" ? "mo" : selectedFrequency === "semi_annual" ? "6 mo" : "yr"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                              <Gift className="h-3 w-3 text-emerald-500" />
+                              30-day free Gold trial included with all new memberships
+                            </p>
+                          </div>
+                        </>
                       ) : (
-                        <p className="text-xs text-slate-500 mt-1">
-                          {selectedFrequency === "monthly" ? "Billed monthly" : selectedFrequency === "semi_annual" ? "Billed every 6 months" : "Billed annually"}
-                        </p>
+                        <>
+                          <div className="flex justify-between items-center" data-testid="checkout-total">
+                            <span className="font-bold text-lg text-slate-900 dark:text-white">
+                              Total Due
+                            </span>
+                            <span className="font-bold text-2xl text-[#0a4a82] dark:text-blue-400">
+                              ${checkoutPricing.finalTotal.toFixed(2)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {selectedFrequency === "monthly" ? "Billed monthly" : selectedFrequency === "semi_annual" ? "Billed every 6 months" : "Billed annually"}
+                          </p>
+                        </>
                       )}
                     </div>
                   </div>
@@ -820,7 +842,7 @@ export default function BusinessMembership() {
                     ) : (
                       <>
                         <CreditCard className="mr-2 h-5 w-5" />
-                        Proceed to Payment — {checkoutPricing.hasFreeTrial ? "$0.00" : `$${checkoutPricing.finalTotal.toFixed(2)}`}
+                        {checkoutPricing.hasFreeTrial ? "Start Free Trial" : `Proceed to Payment — $${checkoutPricing.finalTotal.toFixed(2)}`}
                       </>
                     )}
                   </Button>
