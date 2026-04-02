@@ -755,9 +755,17 @@ export default function BusinessMembership() {
                                 After 30-day trial
                               </span>
                               <span className="text-lg font-bold text-[#0a4a82] dark:text-blue-400">
-                                ${checkoutTier ? checkoutTier.monthlyPrice.toFixed(2) : checkoutPricing.perMonth.toFixed(2)}/{selectedFrequency === "monthly" ? "mo" : selectedFrequency === "semi_annual" ? "6 mo" : "yr"}
+                                {selectedFrequency === "monthly" 
+                                  ? `$${checkoutTier.monthlyPrice.toFixed(2)}/mo`
+                                  : `$${checkoutPricing.total.toFixed(2)} / ${selectedFrequency === "semi_annual" ? "6 months" : "year"}`
+                                }
                               </span>
                             </div>
+                            {selectedFrequency !== "monthly" && (
+                              <p className="text-xs text-[#8a9a5b] font-medium mt-0.5">
+                                That's ${checkoutPricing.perMonth.toFixed(0)}/mo — save ${checkoutPricing.savings.toFixed(0)}!
+                              </p>
+                            )}
                             <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                               <Gift className="h-3 w-3 text-emerald-500" />
                               30-day free Gold trial included with all new memberships
