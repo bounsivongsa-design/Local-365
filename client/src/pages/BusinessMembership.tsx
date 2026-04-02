@@ -690,104 +690,105 @@ export default function BusinessMembership() {
                   )}
 
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm" data-testid="checkout-subtotal">
-                      <span className="text-slate-600 dark:text-slate-400">
-                        {checkoutTier.name} — {freqLabel}
-                        {checkoutPricing.months > 1 && ` (${checkoutPricing.months} months)`}
-                      </span>
-                      <span className="font-semibold text-slate-900 dark:text-white">
-                        ${checkoutPricing.total.toFixed(2)}
-                      </span>
-                    </div>
+                    {(() => {
+                      const fullPrice = checkoutTier.monthlyPrice * checkoutPricing.months;
+                      const frequencyDiscount = PAYMENT_DISCOUNTS[selectedFrequency].discount;
+                      const frequencySavings = fullPrice * frequencyDiscount;
+                      const afterFreqPrice = fullPrice - frequencySavings;
 
-                    {checkoutPricing.savings > 0 && (
-                      <div className="flex justify-between items-center text-sm text-[#8a9a5b]" data-testid="checkout-frequency-savings">
-                        <span className="flex items-center gap-1.5">
-                          <Percent className="h-3.5 w-3.5" />
-                          {freqLabel} discount
-                        </span>
-                        <span className="font-medium">-${checkoutPricing.savings.toFixed(2)}</span>
-                      </div>
-                    )}
-
-                    {checkoutPricing.freeMonths > 0 && (
-                      <div className="flex justify-between items-center text-sm text-emerald-600" data-testid="checkout-free-trial">
-                        <span className="flex items-center gap-1.5">
-                          <Gift className="h-3.5 w-3.5" />
-                          First month free trial
-                        </span>
-                        <span className="font-medium">Included</span>
-                      </div>
-                    )}
-
-                    {promoStatus?.valid && checkoutPricing.discount > 0 && (
-                      <div data-testid="checkout-promo-discount">
-                        <div className="flex justify-between items-center text-sm text-emerald-600">
-                          <span className="flex items-center gap-1.5">
-                            <Tag className="h-3.5 w-3.5" />
-                            Promo: {promoCode}
-                            {promoStatus.discountType === "percentage" ? ` (${promoStatus.discountValue}% off)` : ` ($${promoStatus.discountValue} off)`}
-                          </span>
-                          <span className="font-medium">-${checkoutPricing.discount.toFixed(2)}</span>
-                        </div>
-                        {promoStatus.description && (
-                          <p className="text-xs text-emerald-600/80 mt-1 ml-5" data-testid="checkout-promo-description">
-                            {promoStatus.description}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
-                      {checkoutPricing.hasFreeTrial ? (
+                      return (
                         <>
-                          <div className="flex justify-between items-center" data-testid="checkout-total">
-                            <span className="font-bold text-lg text-slate-900 dark:text-white">
-                              Due Today
+                          <div className="flex justify-between items-center text-sm" data-testid="checkout-subtotal">
+                            <span className="text-slate-600 dark:text-slate-400">
+                              {checkoutTier.name} — {freqLabel}
+                              {checkoutPricing.months > 1 && ` (${checkoutPricing.months} months)`}
                             </span>
-                            <span className="font-bold text-2xl text-emerald-600">
-                              FREE
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              ${fullPrice.toFixed(2)}
                             </span>
                           </div>
-                          <div className="mt-2 bg-[#0a4a82]/5 rounded-lg p-3 border border-[#0a4a82]/10">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                After 30-day trial
+
+                          {frequencySavings > 0 && (
+                            <div className="flex justify-between items-center text-sm text-[#8a9a5b]" data-testid="checkout-frequency-savings">
+                              <span className="flex items-center gap-1.5">
+                                <Percent className="h-3.5 w-3.5" />
+                                {freqLabel} discount ({(frequencyDiscount * 100).toFixed(0)}% off)
                               </span>
-                              <span className="text-lg font-bold text-[#0a4a82] dark:text-blue-400">
-                                {selectedFrequency === "monthly" 
-                                  ? `$${checkoutTier.monthlyPrice.toFixed(2)}/mo`
-                                  : `$${checkoutPricing.total.toFixed(2)} / ${selectedFrequency === "semi_annual" ? "6 months" : "year"}`
-                                }
-                              </span>
+                              <span className="font-medium">-${frequencySavings.toFixed(2)}</span>
                             </div>
-                            {selectedFrequency !== "monthly" && (
-                              <p className="text-xs text-[#8a9a5b] font-medium mt-0.5">
-                                That's ${checkoutPricing.perMonth.toFixed(0)}/mo — save ${checkoutPricing.savings.toFixed(0)}!
-                              </p>
+                          )}
+
+                          {promoStatus?.valid && checkoutPricing.discount > 0 && (
+                            <div data-testid="checkout-promo-discount">
+                              <div className="flex justify-between items-center text-sm text-emerald-600">
+                                <span className="flex items-center gap-1.5">
+                                  <Tag className="h-3.5 w-3.5" />
+                                  Promo: {promoCode}
+                                  {promoStatus.discountType === "percentage" ? ` (${promoStatus.discountValue}% off)` : ` ($${promoStatus.discountValue} off)`}
+                                </span>
+                                <span className="font-medium">-${checkoutPricing.discount.toFixed(2)}</span>
+                              </div>
+                              {promoStatus.description && (
+                                <p className="text-xs text-emerald-600/80 mt-1 ml-5" data-testid="checkout-promo-description">
+                                  {promoStatus.description}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+                            {checkoutPricing.hasFreeTrial ? (
+                              <>
+                                <div className="flex justify-between items-center" data-testid="checkout-total">
+                                  <span className="font-bold text-lg text-slate-900 dark:text-white">
+                                    Due Today
+                                  </span>
+                                  <span className="font-bold text-2xl text-emerald-600">
+                                    FREE
+                                  </span>
+                                </div>
+                                <div className="mt-2 bg-[#0a4a82]/5 rounded-lg p-3 border border-[#0a4a82]/10">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                      After 30-day trial
+                                    </span>
+                                    <span className="text-lg font-bold text-[#0a4a82] dark:text-blue-400">
+                                      {selectedFrequency === "monthly"
+                                        ? `$${checkoutTier.monthlyPrice.toFixed(2)}/mo`
+                                        : `$${afterFreqPrice.toFixed(2)} / ${selectedFrequency === "semi_annual" ? "6 months" : "year"}`
+                                      }
+                                    </span>
+                                  </div>
+                                  {selectedFrequency !== "monthly" && (
+                                    <p className="text-xs text-[#8a9a5b] font-medium mt-0.5">
+                                      That's ${checkoutPricing.perMonth.toFixed(0)}/mo — save ${frequencySavings.toFixed(0)} vs monthly!
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                    <Gift className="h-3 w-3 text-emerald-500" />
+                                    30-day free trial included — no charge until trial ends
+                                  </p>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-center" data-testid="checkout-total">
+                                  <span className="font-bold text-lg text-slate-900 dark:text-white">
+                                    Total Due
+                                  </span>
+                                  <span className="font-bold text-2xl text-[#0a4a82] dark:text-blue-400">
+                                    ${(afterFreqPrice - checkoutPricing.discount).toFixed(2)}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1">
+                                  {selectedFrequency === "monthly" ? "Billed monthly" : selectedFrequency === "semi_annual" ? "Billed every 6 months" : "Billed annually"}
+                                </p>
+                              </>
                             )}
-                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                              <Gift className="h-3 w-3 text-emerald-500" />
-                              30-day free Gold trial included with all new memberships
-                            </p>
                           </div>
                         </>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-center" data-testid="checkout-total">
-                            <span className="font-bold text-lg text-slate-900 dark:text-white">
-                              Total Due
-                            </span>
-                            <span className="font-bold text-2xl text-[#0a4a82] dark:text-blue-400">
-                              ${checkoutPricing.finalTotal.toFixed(2)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {selectedFrequency === "monthly" ? "Billed monthly" : selectedFrequency === "semi_annual" ? "Billed every 6 months" : "Billed annually"}
-                          </p>
-                        </>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
