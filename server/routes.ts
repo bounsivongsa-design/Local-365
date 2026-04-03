@@ -3478,9 +3478,74 @@ Respond in this exact JSON format:
       if (!target) return res.status(404).json({ message: "User not found" });
 
       if (target.linkedBusinessId) {
-        await pgDb.delete(businesses).where(eq(businesses.id, target.linkedBusinessId));
+        const [biz] = await pgDb.select({ stripeCustomerId: businesses.stripeCustomerId, stripeSubscriptionId: businesses.stripeSubscriptionId }).from(businesses).where(eq(businesses.id, target.linkedBusinessId));
+        if (biz?.stripeSubscriptionId) {
+          try {
+            const stripe = (await import("stripe")).default;
+            const stripeClient = new stripe(process.env.Stripeintegration || "");
+            await stripeClient.subscriptions.cancel(biz.stripeSubscriptionId);
+          } catch (e: any) {
+            console.log("Could not cancel subscription during delete:", e?.message);
+          }
+        }
       }
-      await pgDb.delete(users).where(eq(users.id, targetId));
+
+      await pgDb.transaction(async (tx) => {
+        if (target.linkedBusinessId) {
+          const bizId = target.linkedBusinessId;
+          await tx.delete(businessVerificationChecks).where(eq(businessVerificationChecks.businessId, bizId));
+          await tx.delete(verificationDocuments).where(eq(verificationDocuments.businessId, bizId));
+          await tx.delete(reviews).where(eq(reviews.businessId, bizId));
+          await tx.delete(jobListings).where(eq(jobListings.businessId, bizId));
+          await tx.delete(adPlacements).where(eq(adPlacements.businessId, bizId));
+          await tx.delete(promoCodeUsages).where(eq(promoCodeUsages.businessId, bizId));
+          await tx.delete(membershipDowngrades).where(eq(membershipDowngrades.businessId, bizId));
+          await tx.delete(businessAnalytics).where(eq(businessAnalytics.businessId, bizId));
+          await tx.delete(events).where(eq(events.businessId, bizId));
+
+          const bizQuotes = await tx.select({ id: quotes.id }).from(quotes).where(eq(quotes.businessId, bizId));
+          for (const q of bizQuotes) {
+            await tx.delete(quoteMessages).where(eq(quoteMessages.quoteId, q.id));
+          }
+          await tx.delete(quotes).where(eq(quotes.businessId, bizId));
+          await tx.delete(quotePriorityAssignments).where(eq(quotePriorityAssignments.businessId, bizId));
+
+          await tx.delete(businesses).where(eq(businesses.id, bizId));
+        }
+
+        await tx.delete(quoteMessages).where(eq(quoteMessages.senderId, targetId));
+
+        const userQuotes = await tx.select({ id: quotes.id }).from(quotes).where(eq(quotes.userId, targetId));
+        for (const q of userQuotes) {
+          await tx.delete(quoteMessages).where(eq(quoteMessages.quoteId, q.id));
+        }
+        await tx.delete(quotes).where(eq(quotes.userId, targetId));
+
+        const userQuoteRequests = await tx.select({ id: quoteRequests.id }).from(quoteRequests).where(eq(quoteRequests.userId, targetId));
+        for (const qr of userQuoteRequests) {
+          const reqQuotes = await tx.select({ id: quotes.id }).from(quotes).where(eq(quotes.requestId, qr.id));
+          for (const q of reqQuotes) {
+            await tx.delete(quoteMessages).where(eq(quoteMessages.quoteId, q.id));
+          }
+          await tx.delete(quotes).where(eq(quotes.requestId, qr.id));
+          await tx.delete(quotePriorityAssignments).where(eq(quotePriorityAssignments.requestId, qr.id));
+        }
+        await tx.delete(quoteRequests).where(eq(quoteRequests.userId, targetId));
+
+        await tx.delete(reviews).where(eq(reviews.userId, targetId));
+
+        const userPosts = await tx.select({ id: postsTable.id }).from(postsTable).where(eq(postsTable.authorId, targetId));
+        for (const p of userPosts) {
+          await tx.delete(commentsTable).where(eq(commentsTable.postId, p.id));
+        }
+        await tx.delete(commentsTable).where(eq(commentsTable.authorId, targetId));
+        await tx.delete(postsTable).where(eq(postsTable.authorId, targetId));
+
+        await tx.delete(adminSubmissions).where(eq(adminSubmissions.userId, targetId));
+        await tx.delete(receipts).where(eq(receipts.userId, targetId));
+        await tx.delete(users).where(eq(users.id, targetId));
+      });
+
       res.json({ message: `User ${target.email} and associated business deleted successfully` });
     } catch (err) {
       console.error("Admin delete user error:", err);

@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, AlertTriangle, FileCheck } from "lucide-react";
+import { Shield, ShieldCheck, AlertTriangle, FileCheck, Medal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -10,11 +10,12 @@ interface TrustBadgesProps {
   hasLLC: boolean | null;
   hasInsurance: boolean | null;
   isLicensed?: boolean | null;
+  isVeteran?: boolean | null;
   variant?: "compact" | "full";
   className?: string;
 }
 
-export function TrustBadges({ hasLLC, hasInsurance, isLicensed, variant = "compact", className = "" }: TrustBadgesProps) {
+export function TrustBadges({ hasLLC, hasInsurance, isLicensed, isVeteran, variant = "compact", className = "" }: TrustBadgesProps) {
   const isVerifiedBusiness = hasLLC && hasInsurance;
   const isPartiallyVerified = hasLLC || hasInsurance || isLicensed;
   
@@ -89,6 +90,22 @@ export function TrustBadges({ hasLLC, hasInsurance, isLicensed, variant = "compa
             </TooltipContent>
           </Tooltip>
         )}
+        {isVeteran && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                className="bg-red-700 text-white border-0 shadow-sm cursor-help"
+                data-testid="badge-veteran"
+              >
+                <Medal className="h-3 w-3 mr-1" />
+                Veteran
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Veteran-Owned Business</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }
@@ -104,7 +121,7 @@ export function TrustBadges({ hasLLC, hasInsurance, isLicensed, variant = "compa
         </div>
       )}
       
-      {!hasLLC && !hasInsurance && !isLicensed ? (
+      {!hasLLC && !hasInsurance && !isLicensed && !isVeteran ? (
         <div className="p-4 rounded-xl border-2 bg-gray-50 border-gray-200">
           <p className="text-sm text-gray-500 text-center">No credentials provided yet</p>
         </div>
@@ -163,6 +180,25 @@ export function TrustBadges({ hasLLC, hasInsurance, isLicensed, variant = "compa
               </div>
               <p className="text-xs ml-10 text-indigo-600">
                 State licensed professional
+              </p>
+            </div>
+          )}
+
+          {isVeteran && (
+            <div 
+              className="p-4 rounded-xl border-2 transition-colors bg-gradient-to-br from-red-50 to-red-100 border-red-200"
+              data-testid="credential-veteran"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-700">
+                  <Medal className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-bold text-red-700">
+                  Veteran Owned
+                </span>
+              </div>
+              <p className="text-xs ml-10 text-red-600">
+                Veteran-owned business
               </p>
             </div>
           )}

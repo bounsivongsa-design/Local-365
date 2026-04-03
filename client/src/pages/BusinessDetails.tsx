@@ -313,6 +313,7 @@ export default function BusinessDetails() {
               hasLLC={business.hasLLC ?? false} 
               hasInsurance={business.hasInsurance ?? false}
               isLicensed={business.isLicensed ?? false}
+              isVeteran={business.isVeteran ?? false}
               variant="full"
             />
 

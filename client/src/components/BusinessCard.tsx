@@ -113,6 +113,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
                   hasLLC={business.hasLLC ?? false} 
                   hasInsurance={business.hasInsurance ?? false}
                   isLicensed={business.isLicensed ?? false}
+                  isVeteran={business.isVeteran ?? false}
                   variant="compact"
                 />
                 <MembershipBadge tier={business.membershipTier} variant="compact" />
