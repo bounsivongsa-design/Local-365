@@ -1,15 +1,28 @@
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function CreateBusiness() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromCheckout = searchParams.get("success") === "true";
+  const sessionId = searchParams.get("session_id");
+  const verifiedRef = useRef(false);
+
+  useEffect(() => {
+    if (sessionId && fromCheckout && isAuthenticated && !verifiedRef.current) {
+      verifiedRef.current = true;
+      apiRequest("POST", "/api/stripe/verify-session", { sessionId })
+        .then(() => console.log("Session verified for create-business"))
+        .catch((err: any) => console.error("Session verification failed:", err));
+    }
+  }, [sessionId, fromCheckout, isAuthenticated]);
 
   if (isLoading) {
     return (

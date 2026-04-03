@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -1079,6 +1080,7 @@ function BusinessesTab() {
   const [editVerified, setEditVerified] = useState(false);
   const [verifyDialog, setVerifyDialog] = useState<AdminBusiness | null>(null);
   const [docReviewNote, setDocReviewNote] = useState("");
+  const [deleteBizDialog, setDeleteBizDialog] = useState<AdminBusiness | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<{ businesses: AdminBusiness[]; total: number; page: number; pages: number }>({
     queryKey: ["/api/admin/businesses", search, page],
@@ -1142,6 +1144,19 @@ function BusinessesTab() {
       toast({ title: "Updated", description: "Document status updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses", verifyDialog?.id, "verification"] });
       setDocReviewNote("");
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteBizMutation = useMutation({
+    mutationFn: async (businessId: number) => {
+      await apiRequest("DELETE", `/api/admin/businesses/${businessId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Business Deleted", description: "The business listing has been removed." });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setDeleteBizDialog(null);
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -1283,6 +1298,16 @@ function BusinessesTab() {
                           <UserCog className="h-4 w-4" />
                           Edit
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-red-600 hover:bg-red-50 rounded-lg gap-1"
+                          onClick={() => setDeleteBizDialog(b)}
+                          title="Delete Business"
+                          data-testid={`button-delete-biz-${b.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -1351,6 +1376,31 @@ function BusinessesTab() {
               data-testid="button-save-business"
             >
               {updateBizMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteBizDialog} onOpenChange={(open) => !open && setDeleteBizDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Trash2 className="h-5 w-5" />
+              Delete Business
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{deleteBizDialog?.name}</strong>? This will remove the business listing, all related data (reviews, quotes, jobs, ads, events), and cancel any active Stripe subscription. The owner's user account will remain but be unlinked. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteBizDialog(null)} className="rounded-xl" data-testid="button-cancel-delete-biz">Cancel</Button>
+            <Button
+              onClick={() => deleteBizDialog && deleteBizMutation.mutate(deleteBizDialog.id)}
+              disabled={deleteBizMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
+              data-testid="button-confirm-delete-biz"
+            >
+              {deleteBizMutation.isPending ? "Deleting..." : "Delete Business"}
             </Button>
           </DialogFooter>
         </DialogContent>

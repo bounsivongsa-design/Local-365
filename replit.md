@@ -60,7 +60,9 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Category Management**: Hierarchical categories with community suggestion feature.
 - **Stripe Integration**: Handles subscription checkout, webhooks for lifecycle management, and billing portal.
 - **Authentication**: Passwords hashed with bcrypt; sessions stored in PostgreSQL. Google OAuth integration, gracefully disabled if not configured.
-- **Gold Auto-Upgrade**: New Bronze/Silver members receive 30 days of Gold-tier features.
+- **Gold Auto-Upgrade**: New Bronze/Silver members receive 30 days of Gold-tier features. Gold trial metadata (goldTrialEndDate, originalMembershipTier) is retrieved from Stripe subscription during business creation when transferring pending membership. Stripe product name shows the original tier (e.g., "Bronze Membership") with " — Gold Trial" suffix, not "Gold Membership".
+- **Admin Delete Business**: Dedicated `DELETE /api/admin/businesses/:businessId` route with full cascading cleanup and Stripe subscription cancellation. Available via trash icon in admin Businesses tab.
+- **Session Verification**: Both `/membership` and `/create-business` pages call `POST /api/stripe/verify-session` on redirect from Stripe checkout. The verify-session endpoint handles new users (no business yet) by storing pending membership tier on the user record, with auth check ensuring session userId matches authenticated user.
 - **Uniqueness Constraints**: Prevents duplicate business registrations by name and zip code.
 - **Downgrade Tracking**: Records membership downgrades for win-back campaigns.
 - **Business Hours Format**: Stored as JSON in `businessHours` column. Two modes: `{ _mode: "specific", Monday: { open, close, closed }, ... }` for day-by-day, or `{ _mode: "text", _note: "..." }` for custom text. Legacy data without `_mode` treated as specific.

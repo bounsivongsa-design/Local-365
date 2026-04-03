@@ -719,6 +719,22 @@ export async function registerRoutes(
         input.stripeSubscriptionId = currentUser.pendingStripeSubscriptionId;
         input.stripeCustomerId = currentUser.stripeCustomerId;
         input.membershipTrialUsed = true;
+
+        if (currentUser.pendingStripeSubscriptionId) {
+          try {
+            const stripe = (await import("stripe")).default;
+            const stripeClient = new stripe(process.env.Stripeintegration || "");
+            const sub = await stripeClient.subscriptions.retrieve(currentUser.pendingStripeSubscriptionId);
+            const isAutoUpgrade = sub.metadata?.isAutoUpgrade === "true";
+            const originalTier = sub.metadata?.originalTier;
+            if (sub.trial_end && isAutoUpgrade && originalTier) {
+              input.goldTrialEndDate = new Date(sub.trial_end * 1000);
+              input.originalMembershipTier = originalTier;
+            }
+          } catch (e: any) {
+            console.error("Failed to retrieve subscription for gold trial info:", e?.message);
+          }
+        }
       }
 
       const business = await storage.createBusiness(input);
@@ -3550,6 +3566,57 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Admin delete user error:", err);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  app.delete("/api/admin/businesses/:businessId", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.businessId);
+      if (!bizId) return res.status(400).json({ message: "Invalid business ID" });
+
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, bizId));
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      if (biz.stripeSubscriptionId) {
+        try {
+          const stripe = (await import("stripe")).default;
+          const stripeClient = new stripe(process.env.Stripeintegration || "");
+          await stripeClient.subscriptions.cancel(biz.stripeSubscriptionId);
+        } catch (e: any) {
+          console.log("Could not cancel subscription during business delete:", e?.message);
+        }
+      }
+
+      await pgDb.transaction(async (tx) => {
+        await tx.delete(businessVerificationChecks).where(eq(businessVerificationChecks.businessId, bizId));
+        await tx.delete(verificationDocuments).where(eq(verificationDocuments.businessId, bizId));
+        await tx.delete(reviews).where(eq(reviews.businessId, bizId));
+        await tx.delete(jobListings).where(eq(jobListings.businessId, bizId));
+        await tx.delete(adPlacements).where(eq(adPlacements.businessId, bizId));
+        await tx.delete(promoCodeUsages).where(eq(promoCodeUsages.businessId, bizId));
+        await tx.delete(membershipDowngrades).where(eq(membershipDowngrades.businessId, bizId));
+        await tx.delete(businessAnalytics).where(eq(businessAnalytics.businessId, bizId));
+        await tx.delete(events).where(eq(events.businessId, bizId));
+
+        const bizQuotes = await tx.select({ id: quotes.id }).from(quotes).where(eq(quotes.businessId, bizId));
+        for (const q of bizQuotes) {
+          await tx.delete(quoteMessages).where(eq(quoteMessages.quoteId, q.id));
+        }
+        await tx.delete(quotes).where(eq(quotes.businessId, bizId));
+        await tx.delete(quotePriorityAssignments).where(eq(quotePriorityAssignments.businessId, bizId));
+
+        await tx.update(users).set({ linkedBusinessId: null }).where(eq(users.linkedBusinessId, bizId));
+        await tx.delete(businesses).where(eq(businesses.id, bizId));
+      });
+
+      res.json({ message: `Business "${biz.name}" deleted successfully` });
+    } catch (err) {
+      console.error("Admin delete business error:", err);
+      res.status(500).json({ message: "Failed to delete business" });
     }
   });
 

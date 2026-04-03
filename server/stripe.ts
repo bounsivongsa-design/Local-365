@@ -187,7 +187,7 @@ export function registerStripeRoutes(app: Express) {
       const isAutoUpgrade = effectiveTier !== tier;
 
       const intervalConfig = FREQUENCY_INTERVAL[frequency];
-      const tierName = effectiveTier.charAt(0).toUpperCase() + effectiveTier.slice(1);
+      const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
       const freqLabel = frequency === "monthly" ? "Monthly" : frequency === "semi_annual" ? "Semi-Annual" : "Annual";
 
       const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
@@ -438,6 +438,56 @@ export function registerStripeRoutes(app: Express) {
           }
         }
         return res.json({ success: true, type: "membership", tier: DB_TO_TIER[tier] || tier });
+      }
+
+      const checkoutUserId = session.metadata?.userId;
+      const authenticatedUserId = (req as any).user?.id;
+      if (!businessId && checkoutUserId && tier && checkoutUserId === authenticatedUserId) {
+        const [checkoutUser] = await db.select().from(users).where(eq(users.id, checkoutUserId));
+        if (checkoutUser?.linkedBusinessId) {
+          const updates: any = {
+            membershipTier: tier,
+            membershipPaymentFrequency: frequency,
+            membershipStartDate: new Date(),
+            stripeSubscriptionId: session.subscription as string,
+            stripeCustomerId: session.customer as string,
+            membershipTrialUsed: true,
+          };
+
+          const isAutoUpgrade = session.metadata?.isAutoUpgrade === "true";
+          const originalTier = session.metadata?.originalTier;
+          if (session.subscription) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+              if (sub.trial_end && isAutoUpgrade && originalTier) {
+                updates.goldTrialEndDate = new Date(sub.trial_end * 1000);
+                updates.originalMembershipTier = originalTier;
+              }
+            } catch (e) {}
+          }
+
+          await db.update(businesses).set(updates).where(eq(businesses.id, checkoutUser.linkedBusinessId));
+          console.log(`Membership applied directly via verify-session: business ${checkoutUser.linkedBusinessId} → ${tier}`);
+
+          try {
+            if (session.subscription) {
+              await stripe.subscriptions.update(session.subscription as string, {
+                metadata: { businessId: String(checkoutUser.linkedBusinessId) },
+              });
+            }
+          } catch (e) {}
+
+          return res.json({ success: true, type: "membership", tier: DB_TO_TIER[tier] || tier });
+        } else {
+          await db.update(users).set({
+            pendingMembershipTier: tier,
+            pendingStripeSubscriptionId: session.subscription as string,
+            pendingPaymentFrequency: frequency || null,
+            stripeCustomerId: session.customer as string,
+          }).where(eq(users.id, checkoutUserId));
+          console.log(`Pending membership stored via verify-session for user ${checkoutUserId} → ${tier}`);
+          return res.json({ success: true, type: "pending_membership", tier: DB_TO_TIER[tier] || tier });
+        }
       }
 
       return res.json({ success: true, type: "unknown" });
