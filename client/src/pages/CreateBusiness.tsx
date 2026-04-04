@@ -91,6 +91,7 @@ export default function CreateBusiness() {
             onSuccess={() => {
               navigate(fromCheckout ? "/dashboard" : "/membership");
             }}
+            stripeSessionId={fromCheckout ? sessionId || undefined : undefined}
           />
         </div>
       </div>

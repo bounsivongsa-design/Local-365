@@ -737,6 +737,50 @@ export async function registerRoutes(
         }
       }
 
+      const stripeSessionId = req.body.stripeSessionId;
+      if (!input.membershipTier && stripeSessionId && userId) {
+        try {
+          const stripe = (await import("stripe")).default;
+          const stripeClient = new stripe(process.env.Stripeintegration || "");
+          const session = await stripeClient.checkout.sessions.retrieve(stripeSessionId);
+
+          if (session && session.metadata?.userId === userId) {
+            const tier = session.metadata?.tier;
+            const frequency = session.metadata?.frequency;
+            const subscriptionId = session.subscription as string;
+
+            if (tier && (session.payment_status === "paid" || subscriptionId)) {
+              input.membershipTier = tier;
+              input.membershipPaymentFrequency = frequency;
+              input.membershipStartDate = new Date();
+              input.stripeSubscriptionId = subscriptionId;
+              input.stripeCustomerId = session.customer as string;
+              input.membershipTrialUsed = true;
+
+              if (subscriptionId) {
+                try {
+                  const sub = await stripeClient.subscriptions.retrieve(subscriptionId);
+                  const isAutoUpgrade = session.metadata?.isAutoUpgrade === "true";
+                  const originalTier = session.metadata?.originalTier;
+                  if (sub.trial_end && isAutoUpgrade && originalTier) {
+                    input.goldTrialEndDate = new Date(sub.trial_end * 1000);
+                    input.originalMembershipTier = originalTier;
+                  }
+                } catch (e: any) {
+                  console.error("Failed to retrieve subscription for gold trial:", e?.message);
+                }
+              }
+
+              console.log(`Membership applied directly from Stripe session during business creation: tier=${tier}, userId=${userId}`);
+            }
+          } else {
+            console.warn(`Stripe session userId mismatch: session=${session.metadata?.userId}, auth=${userId}`);
+          }
+        } catch (e: any) {
+          console.error("Failed to verify Stripe session during business creation:", e?.message);
+        }
+      }
+
       const business = await storage.createBusiness(input);
 
       if (userId) {
@@ -748,11 +792,12 @@ export async function registerRoutes(
         }
         await pgDb.update(users).set(updateFields).where(eq(users.id, userId));
 
-        if (currentUser?.pendingStripeSubscriptionId) {
+        const subIdToUpdate = currentUser?.pendingStripeSubscriptionId || input.stripeSubscriptionId;
+        if (subIdToUpdate) {
           try {
             const stripe = (await import("stripe")).default;
             const stripeClient = new stripe(process.env.Stripeintegration || "");
-            await stripeClient.subscriptions.update(currentUser.pendingStripeSubscriptionId, {
+            await stripeClient.subscriptions.update(subIdToUpdate, {
               metadata: { businessId: String(business.id) },
             });
           } catch (e) {

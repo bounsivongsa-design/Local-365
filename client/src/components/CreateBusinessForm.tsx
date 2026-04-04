@@ -51,6 +51,7 @@ import {
 interface Props {
   onSuccess: () => void;
   membershipTier?: string;
+  stripeSessionId?: string;
 }
 
 const DAYS_OF_WEEK = [
@@ -146,6 +147,7 @@ const STEPS = [
 export function CreateBusinessForm({
   onSuccess,
   membershipTier = "basic",
+  stripeSessionId,
 }: Props) {
   const createBusiness = useCreateBusiness();
   const { toast } = useToast();
@@ -265,7 +267,7 @@ export function CreateBusinessForm({
         const establishedYearNum = typeof restData.establishedYear === "string"
           ? parseInt(restData.establishedYear, 10)
           : restData.establishedYear;
-        const submitData = {
+        const submitData: any = {
           ...restData,
           establishedYear: establishedYearNum,
           imageUrl:
@@ -283,6 +285,10 @@ export function CreateBusinessForm({
               : undefined,
           additionalCategories: selectedCategories,
         };
+
+        if (stripeSessionId) {
+          submitData.stripeSessionId = stripeSessionId;
+        }
 
         createBusiness.mutate(submitData, {
           onSuccess: async (createdBusiness: any) => {
