@@ -442,8 +442,10 @@ export function registerStripeRoutes(app: Express) {
 
       const checkoutUserId = session.metadata?.userId;
       const authenticatedUserId = (req as any).user?.id;
+      console.log(`[VERIFY-SESSION] No businessId. checkoutUserId=${checkoutUserId}, authUserId=${authenticatedUserId}, tier=${tier}, paymentStatus=${session.payment_status}, subscription=${session.subscription}`);
       if (!businessId && checkoutUserId && tier && checkoutUserId === authenticatedUserId) {
         const [checkoutUser] = await db.select().from(users).where(eq(users.id, checkoutUserId));
+        console.log(`[VERIFY-SESSION] User found: linkedBusinessId=${checkoutUser?.linkedBusinessId}, pendingTier=${checkoutUser?.pendingMembershipTier}`);
         if (checkoutUser?.linkedBusinessId) {
           const updates: any = {
             membershipTier: tier,
@@ -768,7 +770,9 @@ export function registerStripeRoutes(app: Express) {
               }
             }
           } else if (!businessId && checkoutUserId && tier) {
+            console.log(`[WEBHOOK] New user checkout: userId=${checkoutUserId}, tier=${tier}, subscription=${session.subscription}`);
             const [checkoutUser] = await db.select().from(users).where(eq(users.id, checkoutUserId));
+            console.log(`[WEBHOOK] User state: linkedBusinessId=${checkoutUser?.linkedBusinessId}, pendingTier=${checkoutUser?.pendingMembershipTier}`);
             if (checkoutUser?.linkedBusinessId) {
               const updates: any = {
                 membershipTier: tier,

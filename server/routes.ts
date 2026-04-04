@@ -712,6 +712,8 @@ export async function registerRoutes(
       delete input.verified;
 
       const [currentUser] = userId ? await pgDb.select().from(users).where(eq(users.id, userId)) : [];
+      console.log(`[CREATE-BIZ] userId=${userId}, pendingTier=${currentUser?.pendingMembershipTier}, pendingSub=${currentUser?.pendingStripeSubscriptionId}, stripeSessionId=${req.body.stripeSessionId || 'none'}`);
+
       if (currentUser?.pendingMembershipTier) {
         input.membershipTier = currentUser.pendingMembershipTier;
         input.membershipPaymentFrequency = currentUser.pendingPaymentFrequency;
@@ -719,6 +721,7 @@ export async function registerRoutes(
         input.stripeSubscriptionId = currentUser.pendingStripeSubscriptionId;
         input.stripeCustomerId = currentUser.stripeCustomerId;
         input.membershipTrialUsed = true;
+        console.log(`[CREATE-BIZ] Applied pending membership: tier=${input.membershipTier}`);
 
         if (currentUser.pendingStripeSubscriptionId) {
           try {
@@ -730,6 +733,7 @@ export async function registerRoutes(
             if (sub.trial_end && isAutoUpgrade && originalTier) {
               input.goldTrialEndDate = new Date(sub.trial_end * 1000);
               input.originalMembershipTier = originalTier;
+              console.log(`[CREATE-BIZ] Gold trial applied: ends=${input.goldTrialEndDate}, originalTier=${originalTier}`);
             }
           } catch (e: any) {
             console.error("Failed to retrieve subscription for gold trial info:", e?.message);
@@ -781,7 +785,9 @@ export async function registerRoutes(
         }
       }
 
+      console.log(`[CREATE-BIZ] Final tier being saved: membershipTier=${input.membershipTier || 'NOT SET'}, goldTrialEndDate=${input.goldTrialEndDate || 'none'}, originalTier=${input.originalMembershipTier || 'none'}`);
       const business = await storage.createBusiness(input);
+      console.log(`[CREATE-BIZ] Business created: id=${business.id}, name="${business.name}", membershipTier=${business.membershipTier}`);
 
       if (userId) {
         const updateFields: any = { linkedBusinessId: business.id };

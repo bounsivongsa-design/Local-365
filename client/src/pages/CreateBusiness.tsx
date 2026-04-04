@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,21 @@ export default function CreateBusiness() {
   const fromCheckout = searchParams.get("success") === "true";
   const sessionId = searchParams.get("session_id");
   const verifiedRef = useRef(false);
+  const [sessionVerified, setSessionVerified] = useState(!fromCheckout || !sessionId);
 
   useEffect(() => {
     if (sessionId && fromCheckout && isAuthenticated && !verifiedRef.current) {
       verifiedRef.current = true;
+      setSessionVerified(false);
       apiRequest("POST", "/api/stripe/verify-session", { sessionId })
-        .then(() => console.log("Session verified for create-business"))
-        .catch((err: any) => console.error("Session verification failed:", err));
+        .then(() => {
+          console.log("Session verified for create-business");
+          setSessionVerified(true);
+        })
+        .catch((err: any) => {
+          console.error("Session verification failed:", err);
+          setSessionVerified(true);
+        });
     }
   }, [sessionId, fromCheckout, isAuthenticated]);
 
@@ -47,6 +55,18 @@ export default function CreateBusiness() {
             </Link>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (!sessionVerified) {
+    return (
+      <div className="min-h-screen bg-[#f5f0eb] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-[#0a4a82] mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-[#1a1a2e]">Processing your payment...</h2>
+          <p className="text-gray-500 mt-2">Setting up your membership. This will only take a moment.</p>
+        </div>
       </div>
     );
   }
