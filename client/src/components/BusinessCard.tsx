@@ -97,12 +97,12 @@ export function BusinessCard({ business }: BusinessCardProps) {
             <StarRating rating={rating} reviewCount={reviewCount} />
           </div>
           
-          <div className="flex items-center gap-2 text-sm sm:text-base text-slate-700 mt-2">
+          <div className="flex items-center gap-2 text-sm sm:text-base text-[#1a1a2e]/80 mt-2">
             <MapPin className="h-4 w-4 text-[#d4a373] flex-shrink-0" />
             <span className="truncate">{business.address.split(',')[0] || 'Moyock, NC'}</span>
           </div>
           
-          <p className="text-sm sm:text-base text-slate-700 mt-3 line-clamp-2 leading-relaxed">
+          <p className="text-sm sm:text-base text-[#1a1a2e]/80 mt-3 line-clamp-2 leading-relaxed">
             {business.description}
           </p>
           
