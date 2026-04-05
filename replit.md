@@ -28,7 +28,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Business Listings**: Includes credentials (LLC, Insurance, Licensed, Veteran), business hours (specific day-by-day or custom text like "Online 24/7"), social media, search keywords, categories, membership tiers, ratings, logos, gallery photos, and promotional videos.
 - **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier.
 - **Events**: Comprehensive local events calendar.
-- **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk, Basic $20/wk.
+- **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Membership required. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk.
 - **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions. New signup flow: Register → Choose plan & pay on /membership (CC required) → Create business listing on /create-business → Dashboard. Pending membership stored on user record until business is created, then transferred.
 - **Directory Visibility**: Only businesses with active membership (tier != "none") appear in the public directory. Example/seed businesses always visible. Cancellation removes from directory when tier resets to "none".
 - **Cancellation Handling**: Dashboard shows cancellation warning banner with removal date. Stripe webhook handles tier reset on subscription cancellation.

@@ -70,7 +70,7 @@ const AD_BASE_PRICING = {
 };
 
 const TIER_DISCOUNTS = [
-  { id: null, name: "Basic", discount: 0, icon: Users, color: "slate", gradient: "from-slate-600 to-slate-800", badgeText: null },
+  { id: null, name: "Non-Member", discount: 0, icon: Users, color: "slate", gradient: "from-slate-600 to-slate-800", badgeText: null },
   { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, color: "amber", gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
   { id: "silver", name: "Silver", discount: 0.25, icon: Crown, color: "gray", gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, color: "yellow", gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },

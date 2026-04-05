@@ -120,7 +120,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I post a job as a business owner?",
-        answer: "From your Dashboard, look for the Help Wanted or Job Posting section. You can create a job listing with a title, description, pay range, and application instructions. Job posting pricing is based on your membership tier: Gold members pay $10/week, Silver $15/week, Bronze $18/week, and Basic $20/week. Higher-tier postings also appear higher in search results.",
+        answer: "From your Dashboard, look for the Help Wanted or Job Posting section. You can create a job listing with a title, description, pay range, and application instructions. A membership is required to post jobs. Pricing is based on your tier: Gold members pay $10/week, Silver $15/week, and Bronze $18/week. Higher-tier postings also appear higher in search results.",
         links: [{ label: "Go to dashboard", to: "/dashboard" }],
       },
     ],

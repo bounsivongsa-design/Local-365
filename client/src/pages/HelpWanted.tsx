@@ -331,7 +331,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
           {priceDisplay}/week — billed weekly until you remove the listing
         </div>
         <p className="text-blue-700 text-xs">
-          {pricing?.tierLabel && pricing.tierLabel !== "Basic"
+          {pricing?.tierLabel && pricing.tierLabel !== "No Membership"
             ? `Your ${pricing.tierLabel} membership rate. `
             : ""}
           Listing stays live until you take it down. Gold members appear first, then Silver, then Bronze.
@@ -547,9 +547,6 @@ export default function HelpWanted() {
           <span className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-amber-700" /> Bronze — $18/wk
           </span>
-          <span className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-white/40" /> Basic — $20/wk
-          </span>
         </div>
 
         {isLoading ? (
@@ -598,10 +595,10 @@ export default function HelpWanted() {
                   <h3 className="text-xl font-bold">Get More Visibility for Your Listing</h3>
                 </div>
                 <p className="text-white/80 mb-6 max-w-xl">
-                  Members get priority placement. Gold members always appear first, followed by Silver, then Bronze. 
-                  Basic (non-paying) users can post too, but appear after all member listings.
+                  Members get priority placement. Gold members always appear first, followed by Silver, then Bronze.
+                  A membership is required to post help wanted listings.
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-white/10 rounded-xl p-4 text-center">
                     <div className="text-yellow-400 font-bold text-lg mb-1">Gold</div>
                     <p className="text-white font-semibold">$10/wk</p>
@@ -616,11 +613,6 @@ export default function HelpWanted() {
                     <div className="text-amber-600 font-bold text-lg mb-1">Bronze</div>
                     <p className="text-white font-semibold">$18/wk</p>
                     <p className="text-xs text-white/70">3rd tier placement</p>
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-4 text-center">
-                    <div className="text-white/80 font-bold text-lg mb-1">Basic</div>
-                    <p className="text-white font-semibold">$20/wk</p>
-                    <p className="text-xs text-white/70">Standard placement</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">

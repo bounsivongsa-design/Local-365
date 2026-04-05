@@ -534,7 +534,7 @@ export function registerStripeRoutes(app: Express) {
       };
       const tierKey = biz.membershipTier || "none";
       const unitAmount = JOB_PRICES_BY_TIER[tierKey] ?? 2000;
-      const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "Basic";
+      const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "Non-Member";
 
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 

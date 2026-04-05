@@ -44,7 +44,7 @@ const EVENT_BASE_PRICING = {
 };
 
 const EVENT_TIER_DISCOUNTS = [
-  { id: null, name: "Basic", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null, testId: "basic" },
+  { id: null, name: "Non-Member", discount: 0, icon: Users, gradient: "from-slate-600 to-slate-800", badgeText: null, testId: "non-member" },
   { id: "bronze", name: "Bronze", discount: 0.10, icon: Crown, gradient: "from-amber-700 to-amber-600", badgeText: "10% OFF" },
   { id: "silver", name: "Silver", discount: 0.25, icon: Crown, gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
@@ -486,7 +486,7 @@ function getTierLevel(membershipTier: string | undefined | null): "none" | "bron
 }
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
-  none: { label: "Basic", color: "bg-slate-500" },
+  none: { label: "Non-Member", color: "bg-slate-500" },
   bronze: { label: "Bronze", color: "bg-gradient-to-r from-amber-700 to-amber-600" },
   silver: { label: "Silver", color: "bg-gradient-to-r from-gray-500 to-gray-400" },
   gold: { label: "Gold", color: "bg-gradient-to-r from-yellow-600 to-amber-500" },

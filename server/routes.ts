@@ -4008,13 +4008,14 @@ Respond in this exact JSON format:
       const userId = req.user?.id;
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       if (!user?.linkedBusinessId) {
-        return res.json({ tier: "none", tierLabel: "Basic", pricePerWeek: 2000 });
+        return res.json({ tier: "none", tierLabel: "No Membership", pricePerWeek: 0, eligible: false });
       }
       const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
-      const JOB_PRICES: Record<string, number> = { premium: 1000, standard: 1500, basic: 1800, none: 2000 };
       const tierKey = biz?.membershipTier || "none";
-      const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "Basic";
-      res.json({ tier: tierKey, tierLabel, pricePerWeek: JOB_PRICES[tierKey] ?? 2000 });
+      const JOB_PRICES: Record<string, number> = { premium: 1000, standard: 1500, basic: 1800 };
+      const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "No Membership";
+      const eligible = tierKey !== "none" && JOB_PRICES[tierKey] !== undefined;
+      res.json({ tier: tierKey, tierLabel, pricePerWeek: JOB_PRICES[tierKey] ?? 0, eligible });
     } catch (err) {
       console.error("Error fetching job pricing:", err);
       res.status(500).json({ message: "Failed to fetch pricing" });
