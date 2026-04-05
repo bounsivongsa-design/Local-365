@@ -1873,8 +1873,8 @@ function PromosTab() {
             )}
             {newType === "gold_trial" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800 font-medium">Gold Trial: 60 Days</p>
-                <p className="text-xs text-blue-600 mt-1">New businesses already get 30 days of Gold free. This promo adds an extra 60-day Gold trial on top of that.</p>
+                <p className="text-sm text-blue-800 font-medium">Gold Trial: 60 Days Total</p>
+                <p className="text-xs text-blue-600 mt-1">New businesses already get 30 days of Gold free. This promo adds 30 more days, giving them 60 days total.</p>
               </div>
             )}
             <div>
