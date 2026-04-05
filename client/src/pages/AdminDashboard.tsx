@@ -1800,7 +1800,7 @@ function PromosTab() {
   const [newDesc, setNewDesc] = useState("");
   const [newType, setNewType] = useState("percentage");
   const [newValue, setNewValue] = useState("");
-  const [newDuration, setNewDuration] = useState("30");
+  const [newDuration, setNewDuration] = useState("60");
   const [newMaxUses, setNewMaxUses] = useState("");
   const [newExpires, setNewExpires] = useState("");
 
@@ -1815,7 +1815,7 @@ function PromosTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
       toast({ title: "Promo code created" });
       setShowCreate(false);
-      setNewCode(""); setNewDesc(""); setNewType("percentage"); setNewValue(""); setNewDuration("30"); setNewMaxUses(""); setNewExpires("");
+      setNewCode(""); setNewDesc(""); setNewType("percentage"); setNewValue(""); setNewDuration("60"); setNewMaxUses(""); setNewExpires("");
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -1872,15 +1872,9 @@ function PromosTab() {
               </div>
             )}
             {newType === "gold_trial" && (
-              <div>
-                <Label>Trial Duration (days)</Label>
-                <Select value={newDuration} onValueChange={setNewDuration}>
-                  <SelectTrigger data-testid="select-promo-duration"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30 Days</SelectItem>
-                    <SelectItem value="60">60 Days</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800 font-medium">Gold Trial: 60 Days</p>
+                <p className="text-xs text-blue-600 mt-1">New businesses already get 30 days of Gold free. This promo adds an extra 60-day Gold trial on top of that.</p>
               </div>
             )}
             <div>
