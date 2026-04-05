@@ -143,7 +143,7 @@ type AdminBusiness = {
   createdAt: string | null;
 };
 
-type Tab = "overview" | "users" | "businesses";
+type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads";
 
 function tierLabel(t: string | null | undefined) {
   if (!t || t === "none") return "Free";
@@ -192,6 +192,9 @@ export default function AdminDashboard() {
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "users", label: "Users", icon: Users },
     { id: "businesses", label: "Businesses", icon: Building2 },
+    { id: "events", label: "Events", icon: Calendar },
+    { id: "promos", label: "Promos", icon: Tag },
+    { id: "ads", label: "Ads", icon: Megaphone },
   ];
 
   return (
@@ -233,6 +236,9 @@ export default function AdminDashboard() {
         {activeTab === "overview" && <OverviewTab onSwitchTab={setActiveTab} />}
         {activeTab === "users" && <UsersTab />}
         {activeTab === "businesses" && <BusinessesTab />}
+        {activeTab === "events" && <EventsTab />}
+        {activeTab === "promos" && <PromosTab />}
+        {activeTab === "ads" && <AdsTab />}
       </div>
     </div>
   );
@@ -1688,5 +1694,348 @@ function QuickActionCard({ icon: Icon, label, sub, color, iconColor }: { icon: a
         <p className="text-xs text-slate-400 mt-1">{sub}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function EventsTab() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: events, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/events"] });
+
+  const updateEvent = useMutation({
+    mutationFn: async ({ id, status, adminNote }: { id: number; status: string; adminNote?: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/events/${id}`, { status, adminNote });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/events"] });
+      toast({ title: "Event updated" });
+    },
+  });
+
+  const deleteEvent = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/admin/events/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/events"] });
+      toast({ title: "Event deleted" });
+    },
+  });
+
+  if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>;
+
+  const pending = (events || []).filter((e: any) => e.status === "pending");
+  const approved = (events || []).filter((e: any) => e.status === "approved");
+  const denied = (events || []).filter((e: any) => e.status === "denied");
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-[#1a1a2e]">Event Moderation</h2>
+
+      {pending.length > 0 && (
+        <Card className="bg-amber-50 border-amber-200 rounded-2xl">
+          <CardHeader><CardTitle className="text-amber-800 flex items-center gap-2"><AlertCircle className="h-5 w-5" /> {pending.length} Pending Event{pending.length > 1 ? "s" : ""}</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {pending.map((event: any) => (
+              <div key={event.id} className="bg-white p-4 rounded-xl border flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold text-[#1a1a2e]">{event.title}</p>
+                  <p className="text-sm text-slate-500">{event.businessName || "Unknown"} &middot; {event.date ? format(new Date(event.date), "MMM d, yyyy") : "No date"}</p>
+                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{event.description}</p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white rounded-lg" onClick={() => updateEvent.mutate({ id: event.id, status: "approved" })} data-testid={`btn-approve-event-${event.id}`}>
+                    <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" className="rounded-lg" onClick={() => updateEvent.mutate({ id: event.id, status: "denied", adminNote: "Denied by admin" })} data-testid={`btn-deny-event-${event.id}`}>
+                    <XCircle className="h-4 w-4 mr-1" /> Deny
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 rounded-lg" onClick={() => { if (confirm("Delete this event?")) deleteEvent.mutate(event.id); }} data-testid={`btn-delete-event-${event.id}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="bg-white/95 backdrop-blur-sm rounded-2xl border-0 shadow-sm">
+        <CardHeader><CardTitle className="text-[#1a1a2e]">All Events ({(events || []).length})</CardTitle></CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b text-left text-slate-500"><th className="pb-3 pr-4">Title</th><th className="pb-3 pr-4">Business</th><th className="pb-3 pr-4">Date</th><th className="pb-3 pr-4">Status</th><th className="pb-3">Actions</th></tr></thead>
+              <tbody>
+                {(events || []).map((event: any) => (
+                  <tr key={event.id} className="border-b border-slate-100">
+                    <td className="py-3 pr-4 font-medium text-[#1a1a2e]">{event.title}</td>
+                    <td className="py-3 pr-4 text-slate-500">{event.businessName || "—"}</td>
+                    <td className="py-3 pr-4 text-slate-500">{event.date ? format(new Date(event.date), "MMM d, yyyy") : "—"}</td>
+                    <td className="py-3 pr-4">{statusBadge(event.status)}</td>
+                    <td className="py-3">
+                      <div className="flex gap-1">
+                        {event.status !== "approved" && <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600" onClick={() => updateEvent.mutate({ id: event.id, status: "approved" })}><CheckCircle2 className="h-3.5 w-3.5" /></Button>}
+                        {event.status !== "denied" && <Button size="sm" variant="ghost" className="h-7 px-2 text-red-500" onClick={() => updateEvent.mutate({ id: event.id, status: "denied" })}><XCircle className="h-3.5 w-3.5" /></Button>}
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-red-500" onClick={() => { if (confirm("Delete?")) deleteEvent.mutate(event.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PromosTab() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState("percentage");
+  const [newValue, setNewValue] = useState("");
+  const [newDuration, setNewDuration] = useState("30");
+  const [newMaxUses, setNewMaxUses] = useState("");
+  const [newExpires, setNewExpires] = useState("");
+
+  const { data: promos, isLoading } = useQuery<any[]>({ queryKey: ["/api/promo-codes"] });
+
+  const createPromo = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/promo-codes", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+      toast({ title: "Promo code created" });
+      setShowCreate(false);
+      setNewCode(""); setNewDesc(""); setNewType("percentage"); setNewValue(""); setNewDuration("30"); setNewMaxUses(""); setNewExpires("");
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deletePromo = useMutation({
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/promo-codes/${id}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+      toast({ title: "Promo code deleted" });
+    },
+  });
+
+  if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-16 rounded-2xl" />)}</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-[#1a1a2e]">Promo Codes</h2>
+        <Button className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-xl" onClick={() => setShowCreate(true)} data-testid="btn-create-promo">
+          <Tag className="h-4 w-4 mr-2" /> Create Promo Code
+        </Button>
+      </div>
+
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Promo Code</DialogTitle>
+            <DialogDescription>Create a discount or gold trial code for businesses.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Code</Label>
+              <Input placeholder="e.g. GOLD30" value={newCode} onChange={e => setNewCode(e.target.value)} data-testid="input-promo-code" style={{ color: "#1a1a2e" }} />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Input placeholder="Optional description" value={newDesc} onChange={e => setNewDesc(e.target.value)} data-testid="input-promo-desc" style={{ color: "#1a1a2e" }} />
+            </div>
+            <div>
+              <Label>Type</Label>
+              <Select value={newType} onValueChange={setNewType}>
+                <SelectTrigger data-testid="select-promo-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage Discount</SelectItem>
+                  <SelectItem value="fixed">Fixed Amount Discount</SelectItem>
+                  <SelectItem value="gold_trial">Gold Trial (Free Gold Access)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {newType !== "gold_trial" && (
+              <div>
+                <Label>{newType === "percentage" ? "Discount %" : "Discount Amount (cents)"}</Label>
+                <Input type="number" placeholder={newType === "percentage" ? "e.g. 25" : "e.g. 2500"} value={newValue} onChange={e => setNewValue(e.target.value)} data-testid="input-promo-value" style={{ color: "#1a1a2e" }} />
+              </div>
+            )}
+            {newType === "gold_trial" && (
+              <div>
+                <Label>Trial Duration (days)</Label>
+                <Select value={newDuration} onValueChange={setNewDuration}>
+                  <SelectTrigger data-testid="select-promo-duration"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="60">60 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <Label>Max Uses (optional)</Label>
+              <Input type="number" placeholder="Unlimited if empty" value={newMaxUses} onChange={e => setNewMaxUses(e.target.value)} data-testid="input-promo-max-uses" style={{ color: "#1a1a2e" }} />
+            </div>
+            <div>
+              <Label>Expires (optional)</Label>
+              <Input type="date" value={newExpires} onChange={e => setNewExpires(e.target.value)} data-testid="input-promo-expires" style={{ color: "#1a1a2e" }} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button
+              className="bg-[#0a4a82] hover:bg-[#083a6a] text-white"
+              disabled={!newCode || createPromo.isPending}
+              data-testid="btn-submit-promo"
+              onClick={() => {
+                createPromo.mutate({
+                  code: newCode,
+                  description: newDesc || undefined,
+                  discountType: newType,
+                  discountValue: newType === "gold_trial" ? 0 : Number(newValue),
+                  durationDays: newType === "gold_trial" ? Number(newDuration) : undefined,
+                  maxUses: newMaxUses ? Number(newMaxUses) : undefined,
+                  expiresAt: newExpires || undefined,
+                });
+              }}
+            >
+              {createPromo.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Card className="bg-white/95 backdrop-blur-sm rounded-2xl border-0 shadow-sm">
+        <CardContent className="pt-6">
+          {(promos || []).length === 0 ? (
+            <p className="text-center text-slate-400 py-8">No promo codes yet. Create one above.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b text-left text-slate-500"><th className="pb-3 pr-4">Code</th><th className="pb-3 pr-4">Type</th><th className="pb-3 pr-4">Value</th><th className="pb-3 pr-4">Uses</th><th className="pb-3 pr-4">Status</th><th className="pb-3">Actions</th></tr></thead>
+                <tbody>
+                  {(promos || []).map((p: any) => (
+                    <tr key={p.id} className="border-b border-slate-100">
+                      <td className="py-3 pr-4 font-mono font-bold text-[#0a4a82]">{p.code}</td>
+                      <td className="py-3 pr-4">
+                        {p.discountType === "gold_trial" ? (
+                          <Badge className="bg-amber-100 text-amber-800">Gold Trial {p.durationDays ? `(${p.durationDays}d)` : ""}</Badge>
+                        ) : p.discountType === "percentage" ? (
+                          <Badge className="bg-blue-100 text-blue-800">{p.discountValue}% Off</Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-800">${(p.discountValue / 100).toFixed(2)} Off</Badge>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 text-slate-500">{p.description || "—"}</td>
+                      <td className="py-3 pr-4 text-slate-500">{p.currentUses || 0}{p.maxUses ? `/${p.maxUses}` : ""}</td>
+                      <td className="py-3 pr-4">{p.isActive ? <Badge className="bg-green-100 text-green-800">Active</Badge> : <Badge className="bg-gray-100 text-gray-500">Inactive</Badge>}</td>
+                      <td className="py-3">
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-red-500 hover:text-red-700" onClick={() => { if (confirm(`Delete promo "${p.code}"?`)) deletePromo.mutate(p.id); }} data-testid={`btn-delete-promo-${p.id}`}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdsTab() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: ads, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/ads"] });
+
+  const updateAd = useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; status?: string; paymentStatus?: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/ads/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ads"] });
+      toast({ title: "Ad updated" });
+    },
+  });
+
+  if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-16 rounded-2xl" />)}</div>;
+
+  const pending = (ads || []).filter((a: any) => a.status === "pending");
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-[#1a1a2e]">Ad Placements</h2>
+
+      {pending.length > 0 && (
+        <Card className="bg-amber-50 border-amber-200 rounded-2xl">
+          <CardHeader><CardTitle className="text-amber-800 flex items-center gap-2"><AlertCircle className="h-5 w-5" /> {pending.length} Pending Ad{pending.length > 1 ? "s" : ""}</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {pending.map((ad: any) => (
+              <div key={ad.id} className="bg-white p-4 rounded-xl border flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold text-[#1a1a2e]">{ad.title || "Untitled Ad"}</p>
+                  <p className="text-sm text-slate-500">{ad.businessName || "Unknown"} &middot; {ad.placementType || "—"} &middot; Payment: {ad.paymentStatus || "unpaid"}</p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white rounded-lg" onClick={() => updateAd.mutate({ id: ad.id, status: "active" })} data-testid={`btn-approve-ad-${ad.id}`}>
+                    <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" className="rounded-lg" onClick={() => updateAd.mutate({ id: ad.id, status: "rejected" })} data-testid={`btn-reject-ad-${ad.id}`}>
+                    <XCircle className="h-4 w-4 mr-1" /> Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="bg-white/95 backdrop-blur-sm rounded-2xl border-0 shadow-sm">
+        <CardHeader><CardTitle className="text-[#1a1a2e]">All Ads ({(ads || []).length})</CardTitle></CardHeader>
+        <CardContent>
+          {(ads || []).length === 0 ? (
+            <p className="text-center text-slate-400 py-8">No ad placements yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b text-left text-slate-500"><th className="pb-3 pr-4">Title</th><th className="pb-3 pr-4">Business</th><th className="pb-3 pr-4">Size</th><th className="pb-3 pr-4">Payment</th><th className="pb-3 pr-4">Status</th><th className="pb-3">Actions</th></tr></thead>
+                <tbody>
+                  {(ads || []).map((ad: any) => (
+                    <tr key={ad.id} className="border-b border-slate-100">
+                      <td className="py-3 pr-4 font-medium text-[#1a1a2e]">{ad.title || "Untitled"}</td>
+                      <td className="py-3 pr-4 text-slate-500">{ad.businessName || "—"}</td>
+                      <td className="py-3 pr-4"><Badge className="bg-blue-50 text-blue-700">{ad.placementType || "—"}</Badge></td>
+                      <td className="py-3 pr-4">{ad.paymentStatus === "paid" ? <Badge className="bg-green-100 text-green-800">Paid</Badge> : <Badge className="bg-amber-100 text-amber-800">{ad.paymentStatus || "Unpaid"}</Badge>}</td>
+                      <td className="py-3 pr-4">{statusBadge(ad.status)}</td>
+                      <td className="py-3">
+                        <div className="flex gap-1">
+                          {ad.status !== "active" && <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600" onClick={() => updateAd.mutate({ id: ad.id, status: "active" })}><CheckCircle2 className="h-3.5 w-3.5" /></Button>}
+                          {ad.status === "active" && <Button size="sm" variant="ghost" className="h-7 px-2 text-amber-600" onClick={() => updateAd.mutate({ id: ad.id, status: "paused" })}><Eye className="h-3.5 w-3.5" /></Button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

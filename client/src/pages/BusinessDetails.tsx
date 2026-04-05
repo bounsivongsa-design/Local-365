@@ -631,6 +631,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
   const [receiptPath, setReceiptPath] = useState("");
   const createReview = useCreateReview();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { uploadFile, isUploading } = useUpload({
     onSuccess: async (response) => {
       setReceiptPath(response.objectPath);
