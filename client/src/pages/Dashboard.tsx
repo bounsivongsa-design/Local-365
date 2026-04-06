@@ -840,13 +840,13 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                   {tier && tier !== "none" ? (
                     <MembershipBadge tier={tier} variant="compact" />
                   ) : (
-                    <Badge className="bg-white/20 text-white border-0">Basic</Badge>
+                    <Badge className="bg-white/20 text-white border-0">No Plan</Badge>
                   )}
                 </div>
                 <p className="text-sm text-white/80 mb-4">
                   {tier && tier !== "none"
                     ? `You're on the ${tierName} plan`
-                    : "You're on the Basic plan. Upgrade to get more visibility"}
+                    : "No active membership. Subscribe to get listed in the directory"}
                 </p>
                 <div className="flex flex-col gap-2">
                   {subscriptionStatus?.hasStripeSubscription ? (
