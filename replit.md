@@ -83,6 +83,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Replit Object Storage**: For file uploads.
 - **Open-Meteo**: For local weather data.
 - **Stripe**: Payment processing for subscriptions and one-time purchases.
+- **Resend**: Email notifications to admin for new businesses, events, and ads.
 
 ### Key NPM Packages
 - **UI Components**: Radix UI primitives, FullCalendar.
@@ -100,3 +101,4 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - `GOOGLE_CLIENT_SECRET` (optional, for Google OAuth)
 - `Stripeintegration` (Stripe Secret Key)
 - `Stripepublishable` (Stripe Publishable Key)
+- `RESEND_API_KEY` (Resend email service — admin notification emails)

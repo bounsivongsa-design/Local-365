@@ -24,7 +24,7 @@ async function sendAdminEmail(subject: string, html: string) {
 
   try {
     await resend.emails.send({
-      from: "Local List 365 <notifications@locallist365.com>",
+      from: "Local List 365 <onboarding@resend.dev>",
       to: ADMIN_EMAILS,
       subject,
       html,
