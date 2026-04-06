@@ -4168,11 +4168,11 @@ Respond in this exact JSON format:
   app.get("/api/jobs/pricing", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;
-      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
       if (!user?.linkedBusinessId) {
         return res.json({ tier: "none", tierLabel: "No Membership", pricePerWeek: 0, eligible: false });
       }
-      const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
       const tierKey = biz ? getEffectiveTier(biz) : "none";
       const JOB_PRICES: Record<string, number> = { premium: 1000, standard: 1500, basic: 1800 };
       const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "No Membership";
