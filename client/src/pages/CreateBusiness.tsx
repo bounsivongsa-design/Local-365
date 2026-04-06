@@ -7,40 +7,66 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
+const STRIPE_SESSION_KEY = "ll365_stripe_session_id";
+
+function saveStripeSession(sessionId: string) {
+  try {
+    localStorage.setItem(STRIPE_SESSION_KEY, sessionId);
+  } catch {}
+}
+
+function getStoredStripeSession(): string | null {
+  try {
+    return localStorage.getItem(STRIPE_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredStripeSession() {
+  try {
+    localStorage.removeItem(STRIPE_SESSION_KEY);
+  } catch {}
+}
+
 export default function CreateBusiness() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromCheckout = searchParams.get("success") === "true";
-  const sessionId = searchParams.get("session_id");
+  const fromCheckoutParam = searchParams.get("success") === "true";
+  const urlSessionId = searchParams.get("session_id");
   const verifiedRef = useRef(false);
-  const [sessionVerified, setSessionVerified] = useState(!fromCheckout || !sessionId);
+
+  if (urlSessionId && fromCheckoutParam) {
+    saveStripeSession(urlSessionId);
+  }
+
+  const effectiveSessionId = urlSessionId || getStoredStripeSession();
+  const fromCheckout = fromCheckoutParam || !!getStoredStripeSession();
 
   useEffect(() => {
-    if (sessionId && fromCheckout && isAuthenticated && !verifiedRef.current) {
+    if (effectiveSessionId && isAuthenticated && !verifiedRef.current) {
       verifiedRef.current = true;
-      setSessionVerified(false);
 
-      const verifyWithRetries = async (retries = 3) => {
-        for (let attempt = 1; attempt <= retries; attempt++) {
+      const verifyInBackground = async () => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
           try {
-            await apiRequest("POST", "/api/stripe/verify-session", { sessionId });
-            console.log("Session verified for create-business");
-            setSessionVerified(true);
+            await apiRequest("POST", "/api/stripe/verify-session", { sessionId: effectiveSessionId });
+            console.log("Session verified for create-business (background)");
             return;
           } catch (err) {
-            console.error(`Session verification attempt ${attempt} failed:`, err);
-            if (attempt < retries) {
+            console.error(`Background session verification attempt ${attempt} failed:`, err);
+            if (attempt < 3) {
               await new Promise(r => setTimeout(r, 1500 * attempt));
             }
           }
         }
-        setSessionVerified(true);
+        console.warn("Background session verification failed after 3 attempts - business creation will use stripeSessionId fallback");
       };
 
-      verifyWithRetries();
+      verifyInBackground();
     }
-  }, [sessionId, fromCheckout, isAuthenticated]);
+  }, [effectiveSessionId, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -65,18 +91,6 @@ export default function CreateBusiness() {
             </Link>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  if (!sessionVerified) {
-    return (
-      <div className="min-h-screen bg-[#f5f0eb] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-[#0a4a82] mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-[#1a1a2e]">Processing your payment...</h2>
-          <p className="text-gray-500 mt-2">Setting up your membership. This will only take a moment.</p>
-        </div>
       </div>
     );
   }
@@ -119,9 +133,10 @@ export default function CreateBusiness() {
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10">
           <CreateBusinessForm
             onSuccess={() => {
+              clearStoredStripeSession();
               navigate(fromCheckout ? "/dashboard" : "/membership");
             }}
-            stripeSessionId={fromCheckout ? sessionId || undefined : undefined}
+            stripeSessionId={effectiveSessionId || undefined}
             initialBusinessName={(user as any)?.pendingBusinessName || ""}
           />
         </div>
