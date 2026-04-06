@@ -122,6 +122,7 @@ export default function CreateBusiness() {
               navigate(fromCheckout ? "/dashboard" : "/membership");
             }}
             stripeSessionId={fromCheckout ? sessionId || undefined : undefined}
+            initialBusinessName={(user as any)?.pendingBusinessName || ""}
           />
         </div>
       </div>

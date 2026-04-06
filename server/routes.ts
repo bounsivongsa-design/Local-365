@@ -796,6 +796,7 @@ export async function registerRoutes(
           updateFields.pendingStripeSubscriptionId = null;
           updateFields.pendingPaymentFrequency = null;
         }
+        updateFields.pendingBusinessName = null;
         await pgDb.update(users).set(updateFields).where(eq(users.id, userId));
 
         const subIdToUpdate = currentUser?.pendingStripeSubscriptionId || input.stripeSubscriptionId;

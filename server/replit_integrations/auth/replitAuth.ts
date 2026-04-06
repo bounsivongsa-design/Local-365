@@ -102,6 +102,7 @@ export async function setupAuth(app: Express) {
         firstName: firstName || null,
         lastName: lastName || null,
         accountType: accountType === "business" ? "business" : "customer",
+        pendingBusinessName: accountType === "business" ? (businessName?.trim() || null) : null,
       });
 
       req.login(user, (err) => {

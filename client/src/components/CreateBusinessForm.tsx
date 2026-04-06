@@ -52,6 +52,7 @@ interface Props {
   onSuccess: () => void;
   membershipTier?: string;
   stripeSessionId?: string;
+  initialBusinessName?: string;
 }
 
 const DAYS_OF_WEEK = [
@@ -148,6 +149,7 @@ export function CreateBusinessForm({
   onSuccess,
   membershipTier = "basic",
   stripeSessionId,
+  initialBusinessName = "",
 }: Props) {
   const createBusiness = useCreateBusiness();
   const { toast } = useToast();
@@ -181,7 +183,7 @@ export function CreateBusinessForm({
     mode: "onTouched",
     shouldUnregister: false,
     defaultValues: {
-      name: "",
+      name: initialBusinessName || "",
       description: "",
       address: "",
       category: "",

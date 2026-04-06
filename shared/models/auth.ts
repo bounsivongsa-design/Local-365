@@ -58,6 +58,7 @@ export const users = pgTable("users", {
   pendingMembershipTier: varchar("pending_membership_tier"),
   pendingStripeSubscriptionId: varchar("pending_stripe_subscription_id"),
   pendingPaymentFrequency: varchar("pending_payment_frequency"),
+  pendingBusinessName: varchar("pending_business_name"),
   
   // Community Engagement Badges (like Facebook Groups)
   // Badges: top_contributor, conversation_starter, rising_star, founding_member, helpful_neighbor
