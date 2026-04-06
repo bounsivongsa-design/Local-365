@@ -21,6 +21,13 @@ async function isAdminUser(userId: string): Promise<boolean> {
 
 const ADMIN_EMAILS = ["boun.sivongsa@gmail.com", "locallist365@gmail.com"];
 
+function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null }): string {
+  if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) {
+    return "premium";
+  }
+  return biz.membershipTier || "none";
+}
+
 async function seedAdminAccounts() {
   for (const email of ADMIN_EMAILS) {
     await pgDb.update(users)
@@ -1141,7 +1148,7 @@ Respond in this exact JSON format:
         return res.status(404).json({ message: "Business not found" });
       }
 
-      if (business.membershipTier !== "premium" && business.membershipTier !== "gold") {
+      if (getEffectiveTier(business) !== "premium") {
         return res.status(403).json({ message: "Promo video uploads are exclusive to Gold tier members" });
       }
 
@@ -1664,7 +1671,7 @@ Respond in this exact JSON format:
         return res.status(404).json({ message: "Business not found" });
       }
 
-      const tier = business.membershipTier;
+      const tier = getEffectiveTier(business);
       if (tier === "none" || tier === "basic") {
         return res.status(403).json({ message: "Gallery photos require Silver or Gold membership" });
       }
@@ -1822,9 +1829,9 @@ Respond in this exact JSON format:
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       let bizTier = "none";
       if (serverBusinessId) {
-        const [bizData] = await pgDb.select({ membershipTier: businesses.membershipTier })
+        const [bizData] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
           .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
-        bizTier = bizData?.membershipTier || "none";
+        bizTier = bizData ? getEffectiveTier(bizData) : "none";
       }
       const discount = tierDiscounts[bizTier] || 0;
       const finalPriceCents = Math.round(basePriceCents * (1 - discount));
@@ -2136,10 +2143,10 @@ Respond in this exact JSON format:
         let accessRound: string | null = null;
         
         if (isBusinessUser && linkedBusinessId) {
-          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier })
+          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
             .from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
           
-          const bizTier = linkedBusiness?.membershipTier || "none";
+          const bizTier = linkedBusiness ? getEffectiveTier(linkedBusiness) : "none";
           const tierAccess = getTierAccessForRequest(request.createdAt || new Date());
           
           if (bizTier === "premium" && tierAccess.gold) {
@@ -2598,7 +2605,7 @@ Respond in this exact JSON format:
       if (!biz) {
         return res.json(null);
       }
-      res.json(biz);
+      res.json({ ...biz, effectiveTier: getEffectiveTier(biz) });
     } catch (err) {
       console.error("Error fetching my business:", err);
       res.status(500).json({ message: "Failed to fetch business" });
@@ -2782,9 +2789,10 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
-      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
+      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
       const businessZip = biz?.zipCode || "27958";
+      const effectiveTier = biz ? getEffectiveTier(biz) : "none";
 
       const tierAllowedSizes: Record<string, string[]> = {
         none: ["small"],
@@ -2792,7 +2800,7 @@ Respond in this exact JSON format:
         standard: ["small", "medium"],
         premium: ["small", "medium", "large"],
       };
-      const allowed = tierAllowedSizes[biz?.membershipTier || "none"] || ["small"];
+      const allowed = tierAllowedSizes[effectiveTier] || ["small"];
       if (!allowed.includes(size)) {
         const tierNames: Record<string, string> = { medium: "Silver", large: "Gold" };
         return res.status(403).json({ message: `${tierNames[size] || "Higher"} membership required for ${size} ads` });
@@ -2802,13 +2810,13 @@ Respond in this exact JSON format:
       const chargedPrice = AD_MONTHLY_PRICING[size] || 25000;
 
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
-      const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
+      const discount = tierDiscounts[effectiveTier] || 0;
       const discountedPrice = Math.round(chargedPrice * (1 - discount));
 
       let validatedVideoUrl: string | null = null;
       if (videoUrl) {
         const tierVideoLimits: Record<string, number> = { basic: 10, standard: 20, premium: 30 };
-        const videoLimit = tierVideoLimits[biz?.membershipTier || "none"] || 0;
+        const videoLimit = tierVideoLimits[effectiveTier] || 0;
         if (videoLimit === 0) {
           return res.status(403).json({ message: "Video ads require a membership (Bronze, Silver, or Gold)" });
         }
@@ -2891,10 +2899,11 @@ Respond in this exact JSON format:
       if (adSize && ["small", "medium", "large"].includes(adSize)) {
         updates.adSize = adSize;
         const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-        const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier })
+        const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
           .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
+        const adEffectiveTier = biz ? getEffectiveTier(biz) : "none";
         const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
-        const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
+        const discount = tierDiscounts[adEffectiveTier] || 0;
         updates.priceMonthly = Math.round(AD_MONTHLY_PRICING[adSize] * (1 - discount));
         if (ad.adSize !== adSize && ad.paymentStatus === "paid") {
           updates.paymentStatus = "unpaid";
@@ -4086,7 +4095,7 @@ Respond in this exact JSON format:
         return res.json({ tier: "none", tierLabel: "No Membership", pricePerWeek: 0, eligible: false });
       }
       const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
-      const tierKey = biz?.membershipTier || "none";
+      const tierKey = biz ? getEffectiveTier(biz) : "none";
       const JOB_PRICES: Record<string, number> = { premium: 1000, standard: 1500, basic: 1800 };
       const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "No Membership";
       const eligible = tierKey !== "none" && JOB_PRICES[tierKey] !== undefined;

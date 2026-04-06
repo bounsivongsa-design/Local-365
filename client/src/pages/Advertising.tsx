@@ -182,7 +182,7 @@ export default function Advertising() {
   if (linkedBusiness?.logoUrl) businessMedia.push(linkedBusiness.logoUrl);
   if (linkedBusiness?.galleryPhotos?.length) businessMedia.push(...linkedBusiness.galleryPhotos);
 
-  const membershipTier = linkedBusiness?.membershipTier || "none";
+  const membershipTier = (linkedBusiness as any)?.effectiveTier || linkedBusiness?.membershipTier || "none";
   const allowedSizes = TIER_ALLOWED_SIZES[membershipTier] || ["small"];
   const tierVideoLimits: Record<string, number> = { basic: 10, standard: 20, premium: 30 };
   const videoLimit = tierVideoLimits[membershipTier] || 0;

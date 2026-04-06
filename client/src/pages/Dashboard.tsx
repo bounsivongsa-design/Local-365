@@ -741,7 +741,7 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 function BusinessDashboard({ user, business }: { user: any; business: Business | null }) {
   const { toast } = useToast();
   const hasBusiness = !!business;
-  const tier = business?.membershipTier;
+  const tier = (business as any)?.effectiveTier || business?.membershipTier;
   const tierName = getTierDisplayName(tier);
   const [isEditing, setIsEditing] = useState(false);
 

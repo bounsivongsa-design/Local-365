@@ -513,7 +513,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const createEvent = useCreateEvent();
   const { toast } = useToast();
   const { data: business } = useBusiness(linkedBusinessId || 0);
-  const tier = isAdmin ? "gold" : getTierLevel(business?.membershipTier);
+  const tier = isAdmin ? "gold" : getTierLevel((business as any)?.effectiveTier || business?.membershipTier);
   const tierInfo = isAdmin ? { label: "Admin", color: "bg-red-500" } : TIER_LABELS[tier];
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);

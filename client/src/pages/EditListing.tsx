@@ -49,6 +49,7 @@ interface Business {
   logoUrl: string | null;
   galleryPhotos: string[] | null;
   promoVideoUrl: string | null;
+  effectiveTier?: string | null;
   hasLLC: boolean;
   hasInsurance: boolean;
   isLicensed: boolean;
@@ -110,7 +111,7 @@ function LogoUploader({ business }: { business: Business }) {
     e.target.value = "";
   };
 
-  const tier = business.membershipTier;
+  const tier = business.effectiveTier || business.membershipTier;
   const isBronze = tier === "basic" || tier === "bronze";
 
   if (isBronze) {
@@ -281,7 +282,7 @@ function GalleryManager({ business }: { business: Business }) {
   const { uploadFile, isUploading, progress } = useUpload();
   const queryClient = useQueryClient();
 
-  const tier = business.membershipTier;
+  const tier = business.effectiveTier || business.membershipTier;
   const canUpload = tier === "standard" || tier === "premium" || tier === "silver" || tier === "gold";
   const maxPhotos = (tier === "premium" || tier === "gold") ? 10 : (tier === "standard" || tier === "silver") ? 6 : 0;
   const currentPhotos: string[] = business.galleryPhotos || [];
@@ -401,7 +402,7 @@ function PromoVideoUploader({ business }: { business: Business }) {
   const { uploadFile, isUploading, progress } = useUpload();
   const queryClient = useQueryClient();
 
-  const tier = business.membershipTier;
+  const tier = business.effectiveTier || business.membershipTier;
   const isGold = tier === "premium" || tier === "gold";
 
   const saveMutation = useMutation({
@@ -924,7 +925,8 @@ export default function EditListing() {
     );
   }
 
-  const tierName = business.membershipTier === "premium" ? "Gold" : business.membershipTier === "standard" ? "Silver" : business.membershipTier === "basic" ? "Bronze" : business.membershipTier || "No Plan";
+  const effectiveTier = business.effectiveTier || business.membershipTier;
+  const tierName = effectiveTier === "premium" ? "Gold" : effectiveTier === "standard" ? "Silver" : effectiveTier === "basic" ? "Bronze" : effectiveTier || "No Plan";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a4a82] via-[#0a4a82]/95 to-[#f5f0eb] pb-20">
