@@ -53,6 +53,8 @@ interface Props {
   membershipTier?: string;
   stripeSessionId?: string;
   initialBusinessName?: string;
+  initialOwnerName?: string;
+  initialEmail?: string;
 }
 
 const DAYS_OF_WEEK = [
@@ -150,6 +152,8 @@ export function CreateBusinessForm({
   membershipTier = "basic",
   stripeSessionId,
   initialBusinessName = "",
+  initialOwnerName = "",
+  initialEmail = "",
 }: Props) {
   const createBusiness = useCreateBusiness();
   const { toast } = useToast();
@@ -192,8 +196,8 @@ export function CreateBusinessForm({
       hasLLC: false,
       isLicensed: false,
       isVeteran: false,
-      ownerName: "",
-      email: "",
+      ownerName: initialOwnerName || "",
+      email: initialEmail || "",
       phone: "",
       websiteUrl: "",
       establishedYear: "",

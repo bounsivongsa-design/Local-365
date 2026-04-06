@@ -152,6 +152,8 @@ export default function CreateBusiness() {
             }}
             stripeSessionId={effectiveSessionId || undefined}
             initialBusinessName={(user as any)?.pendingBusinessName || ""}
+            initialOwnerName={[user?.firstName, user?.lastName].filter(Boolean).join(" ")}
+            initialEmail={user?.email || ""}
           />
         </div>
       </div>
