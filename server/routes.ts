@@ -2765,7 +2765,7 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Placement type and title are required" });
       }
 
-      const durationDays = adDuration === "14" ? 14 : 30;
+      const durationDays = 30;
       const adStartDate = startDate ? new Date(startDate) : new Date();
       const adEndDate = new Date(adStartDate);
       adEndDate.setDate(adEndDate.getDate() + durationDays);
@@ -2799,10 +2799,7 @@ Respond in this exact JSON format:
       }
 
       const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-      const AD_BIWEEKLY_PRICING: Record<string, number> = { small: 2500, medium: 3500, large: 5000 };
-      const chargedPrice = durationDays === 14
-        ? (AD_BIWEEKLY_PRICING[size] || 2500)
-        : (AD_MONTHLY_PRICING[size] || 25000);
+      const chargedPrice = AD_MONTHLY_PRICING[size] || 25000;
 
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;

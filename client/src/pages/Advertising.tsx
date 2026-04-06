@@ -52,7 +52,6 @@ const BANNER_PLACEMENTS = ["large_banner", "medium_banner", "small_banner"];
 
 const AD_BASE_PRICING = {
   monthly: { small: 250, medium: 500, large: 1000 },
-  biweekly: { small: 25, medium: 35, large: 50 },
 };
 
 const TIER_DISCOUNTS = [
@@ -139,7 +138,7 @@ export default function Advertising() {
   const [formData, setFormData] = useState({
     placementType: "",
     adSize: "small" as "small" | "medium" | "large",
-    adDuration: "30" as "14" | "30",
+    adDuration: "30",
     title: "",
     description: "",
     imageUrl: "",
@@ -294,10 +293,6 @@ export default function Advertising() {
 
   function getDisplayPrice(): string {
     const size = formData.adSize;
-    const duration = formData.adDuration;
-    if (duration === "14") {
-      return `$${getTierPrice(AD_BASE_PRICING.biweekly[size], discount)}`;
-    }
     return `$${getTierPrice(AD_BASE_PRICING.monthly[size], discount)}`;
   }
 
@@ -532,30 +527,13 @@ export default function Advertising() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Ad Duration *</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {([
-                          { value: "14" as const, label: "2 Weeks", price: AD_BASE_PRICING.biweekly[formData.adSize] },
-                          { value: "30" as const, label: "30 Days", price: AD_BASE_PRICING.monthly[formData.adSize] },
-                        ]).map((opt) => {
-                          const finalPrice = getTierPrice(opt.price, discount);
-                          const isSelected = formData.adDuration === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setFormData({ ...formData, adDuration: opt.value })}
-                              className={`rounded-xl p-3 text-center border-2 transition-all ${isSelected ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
-                              data-testid={`ad-duration-${opt.value}`}
-                            >
-                              <p className={`text-lg font-bold ${isSelected ? "text-[#0a4a82]" : "text-slate-700"}`}>${finalPrice}</p>
-                              <p className="text-xs text-slate-500">{opt.label}</p>
-                              {discount > 0 && (
-                                <p className="text-[10px] text-green-600 font-medium mt-0.5">{(discount * 100)}% member discount</p>
-                              )}
-                            </button>
-                          );
-                        })}
+                      <Label>Ad Duration</Label>
+                      <div className="rounded-xl p-3 text-center border-2 border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" data-testid="ad-duration-30">
+                        <p className="text-lg font-bold text-[#0a4a82]">${getTierPrice(AD_BASE_PRICING.monthly[formData.adSize], discount)}</p>
+                        <p className="text-xs text-slate-500">30 Days</p>
+                        {discount > 0 && (
+                          <p className="text-[10px] text-green-600 font-medium mt-0.5">{(discount * 100)}% member discount</p>
+                        )}
                       </div>
                     </div>
 
@@ -759,7 +737,7 @@ export default function Advertising() {
                     <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-slate-700 dark:text-slate-300">
-                          {formData.adDuration === "14" ? "2-Week" : "30-Day"} Price:
+                          Monthly Price:
                         </span>
                         <span className="text-2xl font-bold text-[#0a4a82]">
                           {getDisplayPrice()}
@@ -803,7 +781,6 @@ export default function Advertising() {
                   {(["small", "medium", "large"] as const).map((size) => {
                     const isAllowed = allowedSizes.includes(size);
                     const monthlyPrice = getTierPrice(AD_BASE_PRICING.monthly[size], discount);
-                    const biweeklyPrice = getTierPrice(AD_BASE_PRICING.biweekly[size], discount);
                     const placementType = size === "large" ? "large_banner" : size === "medium" ? "medium_banner" : "small_banner";
                     const sizeDesc = size === "large" ? "Full-width hero banner" : size === "medium" ? "Half-width featured spot" : "Compact sidebar placement";
                     const gradients: Record<string, string> = {
@@ -838,10 +815,7 @@ export default function Advertising() {
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-bold text-lg text-slate-900 dark:text-white capitalize">{size} Banner</h3>
                           </div>
-                          <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">{sizeDesc}</p>
-                          <p className="text-xs text-slate-500 mb-5">
-                            2-week option: <span className="font-semibold">${biweeklyPrice}</span>
-                          </p>
+                          <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{sizeDesc}</p>
                           {isAllowed ? (
                             <Button
                               className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
