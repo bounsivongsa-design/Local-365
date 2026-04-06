@@ -191,11 +191,7 @@ export function registerStripeRoutes(app: Express) {
       const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
       const freqLabel = frequency === "monthly" ? "Monthly" : frequency === "semi_annual" ? "Semi-Annual" : "Annual";
 
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = `https://${req.get("host")}`;
 
       const successUrl = biz
         ? `${baseUrl}/membership?session_id={CHECKOUT_SESSION_ID}&success=true`
@@ -264,11 +260,7 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "No active subscription found" });
       }
 
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = `https://${req.get("host")}`;
 
       const session = await stripe.billingPortal.sessions.create({
         customer: biz.stripeCustomerId,
@@ -555,11 +547,7 @@ export function registerStripeRoutes(app: Express) {
 
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = `https://${req.get("host")}`;
 
       const session = await stripe!.checkout.sessions.create({
         customer: customerId,
@@ -635,11 +623,7 @@ export function registerStripeRoutes(app: Express) {
       const priceInCents = ad.priceMonthly || 25000;
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = `https://${req.get("host")}`;
 
       const sizeLabel = (ad.adSize || "small").charAt(0).toUpperCase() + (ad.adSize || "small").slice(1);
       const session = await stripe!.checkout.sessions.create({
@@ -708,11 +692,7 @@ export function registerStripeRoutes(app: Express) {
       const priceInCents = (evt.priceCharged || 5000);
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = `https://${req.get("host")}`;
 
       const sizeLabel = (evt.adSize || "small").charAt(0).toUpperCase() + (evt.adSize || "small").slice(1);
       const session = await stripe!.checkout.sessions.create({
