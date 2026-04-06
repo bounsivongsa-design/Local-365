@@ -786,6 +786,11 @@ export async function registerRoutes(
       }
 
       console.log(`[CREATE-BIZ] Final tier being saved: membershipTier=${input.membershipTier || 'NOT SET'}, goldTrialEndDate=${input.goldTrialEndDate || 'none'}, originalTier=${input.originalMembershipTier || 'none'}`);
+
+      if (!input.membershipTier || input.membershipTier === "none") {
+        return res.status(400).json({ message: "A membership plan is required. Please choose a plan before creating your business listing." });
+      }
+
       const business = await storage.createBusiness(input);
       console.log(`[CREATE-BIZ] Business created: id=${business.id}, name="${business.name}", membershipTier=${business.membershipTier}`);
 

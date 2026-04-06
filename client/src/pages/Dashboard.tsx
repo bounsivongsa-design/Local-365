@@ -786,15 +786,15 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
               <Building2 className="h-10 w-10 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-[#1a1a2e] mb-3" data-testid="text-no-business">
-              Create Your Business Listing
+              Get Started with a Membership
             </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Get your business listed in the Local List 365 directory and start connecting with customers in your community.
+              Choose a membership plan to get your business listed in the Local List 365 directory and start connecting with customers.
             </p>
-            <Link to="/create-business">
-              <Button size="lg" className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] hover:from-[#083a6a] hover:to-[#062d54] h-14 px-8 rounded-xl text-lg font-semibold shadow-lg" data-testid="button-create-business">
+            <Link to="/membership">
+              <Button size="lg" className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] hover:from-[#083a6a] hover:to-[#062d54] h-14 px-8 rounded-xl text-lg font-semibold shadow-lg" data-testid="button-choose-plan">
                 <Plus className="h-5 w-5 mr-2" />
-                Create Business Listing
+                Choose a Plan
               </Button>
             </Link>
           </CardContent>

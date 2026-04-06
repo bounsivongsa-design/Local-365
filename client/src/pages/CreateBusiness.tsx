@@ -4,7 +4,7 @@ import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2, CheckCircle, CreditCard } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const STRIPE_SESSION_KEY = "ll365_stripe_session_id";
@@ -43,6 +43,9 @@ export default function CreateBusiness() {
 
   const effectiveSessionId = urlSessionId || getStoredStripeSession();
   const fromCheckout = fromCheckoutParam || !!getStoredStripeSession();
+
+  const hasPendingTier = !!(user as any)?.pendingMembershipTier;
+  const hasPaymentProof = !!effectiveSessionId || hasPendingTier;
 
   useEffect(() => {
     if (effectiveSessionId && isAuthenticated && !verifiedRef.current) {
@@ -95,46 +98,57 @@ export default function CreateBusiness() {
     );
   }
 
+  if (!hasPaymentProof) {
+    return (
+      <div className="min-h-screen bg-[#f5f0eb] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full shadow-lg rounded-2xl">
+          <CardContent className="pt-8 pb-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0a4a82] to-[#0a4a82]/70 flex items-center justify-center mx-auto mb-5">
+              <CreditCard className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1a1a2e] mb-3">Membership Required</h2>
+            <p className="text-gray-600 mb-6">
+              Choose a membership plan to get your business listed in the Local List 365 directory.
+            </p>
+            <Link to="/membership">
+              <Button size="lg" className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] hover:from-[#083a6a] hover:to-[#062d54] h-12 px-8 rounded-xl font-semibold" data-testid="button-choose-plan">
+                Choose a Plan
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#f5f0eb] pb-20">
       <div className="bg-gradient-to-r from-[#0a4a82] to-[#0d5a9e] text-white">
         <div className="container py-8">
-          {!fromCheckout && (
-            <Link to="/membership">
-              <Button variant="ghost" size="sm" className="mb-4 text-white/80 hover:text-white hover:bg-white/10" data-testid="button-back-membership">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Membership Plans
-              </Button>
-            </Link>
-          )}
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight" data-testid="heading-create-business">
-            {fromCheckout ? "Complete Your Business Listing" : "Create Your Business Listing"}
+            Complete Your Business Listing
           </h1>
           <p className="text-white/80 mt-2 max-w-2xl">
-            {fromCheckout
-              ? "Payment received! Now fill in your business details to get listed in the directory."
-              : "Get listed in the Local List 365 directory and start connecting with customers in Moyock, NC."}
+            Payment received! Now fill in your business details to get listed in the directory.
           </p>
         </div>
       </div>
 
-      {fromCheckout && (
-        <div className="container pt-6 max-w-4xl">
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-            <p className="text-green-800 text-sm font-medium">
-              Your membership is active! Complete the form below to finish setting up your business listing.
-            </p>
-          </div>
+      <div className="container pt-6 max-w-4xl">
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+          <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+          <p className="text-green-800 text-sm font-medium">
+            Your membership is active! Complete the form below to finish setting up your business listing.
+          </p>
         </div>
-      )}
+      </div>
 
       <div className="container py-8 max-w-4xl">
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10">
           <CreateBusinessForm
             onSuccess={() => {
               clearStoredStripeSession();
-              navigate(fromCheckout ? "/dashboard" : "/membership");
+              navigate("/dashboard");
             }}
             stripeSessionId={effectiveSessionId || undefined}
             initialBusinessName={(user as any)?.pendingBusinessName || ""}
