@@ -15,15 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   Megaphone, 
   Star, 
@@ -48,25 +40,19 @@ import {
   Video,
   Pencil,
   X,
-  Upload
+  Upload,
+  Lock
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import type { AdPricing, AdPlacement } from "@shared/schema";
 import { useUpload } from "@/hooks/use-upload";
 
-const placementIcons: Record<string, any> = {
-  large_banner: Home,
-  medium_banner: Home,
-  small_banner: Home,
-};
-
 const BANNER_PLACEMENTS = ["large_banner", "medium_banner", "small_banner"];
 
 const AD_BASE_PRICING = {
   monthly: { small: 250, medium: 500, large: 1000 },
-  event2Week: { small: 25, medium: 35, large: 50 },
-  eventMonthly: { small: 50, medium: 75, large: 100 },
+  biweekly: { small: 25, medium: 35, large: 50 },
 };
 
 const TIER_DISCOUNTS = [
@@ -76,8 +62,25 @@ const TIER_DISCOUNTS = [
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, color: "yellow", gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
 ] as const;
 
+const TIER_ALLOWED_SIZES: Record<string, ("small" | "medium" | "large")[]> = {
+  none: ["small"],
+  basic: ["small"],
+  standard: ["small", "medium"],
+  premium: ["small", "medium", "large"],
+};
+
 function getTierPrice(basePrice: number, discount: number): number {
   return Math.round(basePrice * (1 - discount));
+}
+
+function getTierDiscount(membershipTier: string): number {
+  const tierDiscount = TIER_DISCOUNTS.find(t => {
+    if (membershipTier === "basic") return t.id === "bronze";
+    if (membershipTier === "standard") return t.id === "silver";
+    if (membershipTier === "premium") return t.id === "gold";
+    return t.id === null;
+  });
+  return tierDiscount?.discount || 0;
 }
 
 function getStatusBadge(status: string) {
@@ -131,6 +134,7 @@ export default function Advertising() {
       window.history.replaceState({}, "", "/advertising");
     }
   }, []);
+
   const [editingAd, setEditingAd] = useState<AdPlacement | null>(null);
   const [formData, setFormData] = useState({
     placementType: "",
@@ -140,13 +144,18 @@ export default function Advertising() {
     description: "",
     imageUrl: "",
     videoUrl: "",
-    linkUrl: "",
     category: "",
   });
 
   const { uploadFile: uploadAdImage, isUploading: adImageUploading } = useUpload({
     onError: (error) => {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { uploadFile: uploadAdVideo, isUploading: adVideoUploading, progress: videoProgress } = useUpload({
+    onError: (error) => {
+      toast({ title: "Video upload failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -175,8 +184,10 @@ export default function Advertising() {
   if (linkedBusiness?.galleryPhotos?.length) businessMedia.push(...linkedBusiness.galleryPhotos);
 
   const membershipTier = linkedBusiness?.membershipTier || "none";
+  const allowedSizes = TIER_ALLOWED_SIZES[membershipTier] || ["small"];
   const tierVideoLimits: Record<string, number> = { basic: 10, standard: 20, premium: 30 };
   const videoLimit = tierVideoLimits[membershipTier] || 0;
+  const discount = getTierDiscount(membershipTier);
 
   const createAdRequest = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -262,7 +273,7 @@ export default function Advertising() {
   });
 
   function resetForm() {
-    setFormData({ placementType: "", adSize: "small", title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", category: "" });
+    setFormData({ placementType: "", adSize: "small", adDuration: "30", title: "", description: "", imageUrl: "", videoUrl: "", category: "" });
     setEditingAd(null);
   }
 
@@ -271,14 +282,23 @@ export default function Advertising() {
     setFormData({
       placementType: ad.placementType,
       adSize: (ad.adSize as "small" | "medium" | "large") || "small",
+      adDuration: "30",
       title: ad.title,
       description: ad.description || "",
       imageUrl: ad.imageUrl || "",
       videoUrl: ad.videoUrl || "",
-      linkUrl: ad.linkUrl || "",
       category: ad.category || "",
     });
     setIsCreateOpen(true);
+  }
+
+  function getDisplayPrice(): string {
+    const size = formData.adSize;
+    const duration = formData.adDuration;
+    if (duration === "14") {
+      return `$${getTierPrice(AD_BASE_PRICING.biweekly[size], discount)}`;
+    }
+    return `$${getTierPrice(AD_BASE_PRICING.monthly[size], discount)}`;
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -287,7 +307,7 @@ export default function Advertising() {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please select a placement type and enter a title.",
+        description: "Please fill in the required fields.",
       });
       return;
     }
@@ -298,11 +318,14 @@ export default function Advertising() {
     }
   };
 
-  const selectedPricing = pricing?.find(p => p.placementType === formData.placementType);
+  function openCreateForSize(placementType: string, size: "small" | "medium" | "large") {
+    setFormData({ ...formData, placementType, adSize: size });
+    setEditingAd(null);
+    setIsCreateOpen(true);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
-      {/* Premium Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0a4a82] via-[#0a4a82]/95 to-[#083a6a]" />
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&h=600&fit=crop')] bg-cover bg-center opacity-15" />
@@ -341,7 +364,6 @@ export default function Advertising() {
       </div>
 
       <div className="container py-16">
-        {/* Member Savings Banner */}
         <div className="relative mb-16 bg-gradient-to-r from-[#8a9a5b] to-[#6b7a4a] rounded-3xl overflow-hidden">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920')] bg-cover bg-center opacity-10" />
           <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
@@ -354,7 +376,7 @@ export default function Advertising() {
               <div className="text-white">
                 <h3 className="text-2xl font-bold">Members Save Up to 50% on All Advertising</h3>
                 <p className="text-white/80 mt-1">
-                  Bronze 10% off, Silver 25% off, Gold 50% off — plus 1 month free when you prepay 6 months
+                  Bronze 10% off · Silver 25% off · Gold 50% off
                 </p>
               </div>
             </div>
@@ -368,7 +390,6 @@ export default function Advertising() {
           </div>
         </div>
 
-        {/* Web Advertising Pricing Section */}
         <div className="mb-20" id="web-advertising">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4" data-testid="heading-web-advertising">
@@ -484,304 +505,291 @@ export default function Advertising() {
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Ad Placement Options</h2>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">Choose where your ad appears</p>
-                </div>
-                <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
-                  <DialogTrigger asChild>
-                    <Button size="lg" className="bg-[#0a4a82] hover:bg-[#083a6a] h-12 px-6 rounded-xl font-semibold" data-testid="button-create-ad">
-                      <Megaphone className="mr-2 h-5 w-5" />
-                      Request Ad Space
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Megaphone className="h-5 w-5 text-[#0a4a82]" />
-                        {editingAd ? "Edit Ad" : "Request Ad Space"}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Placement Type *</Label>
-                        <Select 
-                          value={formData.placementType} 
-                          onValueChange={(v) => setFormData({ ...formData, placementType: v })}
-                          disabled={!!editingAd}
-                        >
-                          <SelectTrigger data-testid="select-placement-type">
-                            <SelectValue placeholder="Select ad placement" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {pricing?.map((p) => (
-                              <SelectItem key={p.placementType} value={p.placementType}>
-                                {p.displayName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {selectedPricing && (
-                          <p className="text-sm text-muted-foreground">{selectedPricing.description}</p>
-                        )}
-                      </div>
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Choose Your Ad Size</h2>
+                <p className="text-slate-600 dark:text-slate-400 mt-1">
+                  Select a size below to get started. 
+                  {membershipTier !== "premium" && (
+                    <span className="text-[#d4a373]"> Upgrade your membership to unlock larger ad sizes.</span>
+                  )}
+                </p>
+              </div>
 
-                      {BANNER_PLACEMENTS.includes(formData.placementType) && (
+              <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Megaphone className="h-5 w-5 text-[#0a4a82]" />
+                      {editingAd ? "Edit Ad" : "Create Your Ad"}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="bg-[#0a4a82]/5 p-3 rounded-xl border border-[#0a4a82]/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-600">Ad Size</span>
+                        <Badge className="bg-[#0a4a82] text-white capitalize">{formData.adSize}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Ad Duration *</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {([
+                          { value: "14" as const, label: "2 Weeks", price: AD_BASE_PRICING.biweekly[formData.adSize] },
+                          { value: "30" as const, label: "30 Days", price: AD_BASE_PRICING.monthly[formData.adSize] },
+                        ]).map((opt) => {
+                          const finalPrice = getTierPrice(opt.price, discount);
+                          const isSelected = formData.adDuration === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, adDuration: opt.value })}
+                              className={`rounded-xl p-3 text-center border-2 transition-all ${isSelected ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
+                              data-testid={`ad-duration-${opt.value}`}
+                            >
+                              <p className={`text-lg font-bold ${isSelected ? "text-[#0a4a82]" : "text-slate-700"}`}>${finalPrice}</p>
+                              <p className="text-xs text-slate-500">{opt.label}</p>
+                              {discount > 0 && (
+                                <p className="text-[10px] text-green-600 font-medium mt-0.5">{(discount * 100)}% member discount</p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Ad Title *</Label>
+                      <Input
+                        id="title"
+                        placeholder="e.g., Spring Special - 20% Off"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                        className="bg-white"
+                        data-testid="input-ad-title"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Brief description of your ad..."
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                        className="bg-white"
+                        data-testid="input-ad-description"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Ad Image</Label>
+                      {businessMedia.length > 0 && (
                         <div className="space-y-2">
-                          <Label>Ad Size *</Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {(["small", "medium", "large"] as const).map((size) => {
-                              const sizePricing = AD_BASE_PRICING.monthly[size];
-                              const tierDiscount = TIER_DISCOUNTS.find(t => {
-                                if (membershipTier === "basic") return t.id === "bronze";
-                                if (membershipTier === "standard") return t.id === "silver";
-                                if (membershipTier === "premium") return t.id === "gold";
-                                return t.id === null;
-                              });
-                              const discount = tierDiscount?.discount || 0;
-                              const finalPrice = getTierPrice(sizePricing, discount);
-                              const isSelected = formData.adSize === size;
+                          <p className="text-xs text-[#4a4a5a]">Choose from your uploaded media:</p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {businessMedia.map((url, i) => {
+                              const src = url.startsWith("/objects/") ? url : `/objects/${url}`;
+                              const isSelected = formData.imageUrl === url;
                               return (
-                                <button
-                                  key={size}
-                                  type="button"
-                                  onClick={() => setFormData({ ...formData, adSize: size })}
-                                  className={`rounded-xl p-3 text-center border-2 transition-all ${isSelected ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
-                                  data-testid={`ad-size-${size}`}
+                                <div
+                                  key={i}
+                                  onClick={() => setFormData({ ...formData, imageUrl: url })}
+                                  className={`aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-[#0a4a82] ring-2 ring-[#0a4a82]/30 scale-95" : "border-transparent hover:border-[#d4a373]/50"}`}
+                                  data-testid={`media-option-${i}`}
                                 >
-                                  <p className={`text-lg font-bold ${isSelected ? "text-[#0a4a82]" : "text-slate-700"}`}>${finalPrice}</p>
-                                  <p className="text-xs text-slate-500 capitalize">{size}/mo</p>
-                                  {discount > 0 && (
-                                    <p className="text-[10px] text-green-600 font-medium mt-0.5">{discount * 100}% off</p>
-                                  )}
-                                </button>
+                                  <img src={src} alt={`Media ${i + 1}`} className="w-full h-full object-cover" />
+                                </div>
                               );
                             })}
                           </div>
                         </div>
                       )}
-
-                      <div className="space-y-2">
-                        <Label>Ad Duration *</Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {([
-                            { value: "14", label: "2 Weeks", desc: "14 days from start" },
-                            { value: "30", label: "30 Days", desc: "30 days from start" },
-                          ] as const).map((opt) => (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setFormData({ ...formData, adDuration: opt.value })}
-                              className={`rounded-xl p-3 text-center border-2 transition-all ${formData.adDuration === opt.value ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20" : "border-slate-200 hover:border-[#d4a373]/50"}`}
-                              data-testid={`ad-duration-${opt.value}`}
-                            >
-                              <p className={`text-base font-bold ${formData.adDuration === opt.value ? "text-[#0a4a82]" : "text-slate-700"}`}>{opt.label}</p>
-                              <p className="text-xs text-slate-500">{opt.desc}</p>
-                            </button>
-                          ))}
+                      <div className="pt-1">
+                        <p className="text-xs text-[#4a4a5a] mb-1">{businessMedia.length > 0 ? "Or upload a new image:" : "Upload an image:"}</p>
+                        <div className="flex items-center gap-3">
+                          <label
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a4a82] text-white text-sm font-medium cursor-pointer hover:bg-[#083a6a] transition-colors"
+                            data-testid="button-upload-ad-image"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {adImageUploading ? "Uploading..." : "Choose File"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={adImageUploading}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const result = await uploadAdImage(file);
+                                  if (result) {
+                                    setFormData({ ...formData, imageUrl: result.objectPath });
+                                  }
+                                }
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          {formData.imageUrl && (
+                            <div className="flex items-center gap-2">
+                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200">
+                                <img
+                                  src={formData.imageUrl.startsWith("/objects/") ? formData.imageUrl : `/objects/${formData.imageUrl}`}
+                                  alt="Selected"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                                className="text-xs text-slate-500 hover:text-red-500 transition-colors"
+                                data-testid="button-clear-ad-image"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
+                      {!businessMedia.length && user?.accountType === "business" && (
+                        <p className="text-xs text-[#d4a373]">
+                          Tip: Upload a logo and gallery photos on your listing page to easily use them here.
+                        </p>
+                      )}
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Ad Title *</Label>
-                        <Input
-                          id="title"
-                          placeholder="e.g., Spring Special - 20% Off"
-                          value={formData.title}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                          className="bg-white"
-                          data-testid="input-ad-title"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          placeholder="Brief description of your ad..."
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                          className="bg-white"
-                          data-testid="input-ad-description"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Ad Image</Label>
-                        {businessMedia.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-xs text-[#4a4a5a]">Choose from your uploaded media:</p>
-                            <div className="grid grid-cols-4 gap-2">
-                              {businessMedia.map((url, i) => {
-                                const src = url.startsWith("/objects/") ? url : `/objects/${url}`;
-                                const isSelected = formData.imageUrl === url;
-                                return (
-                                  <div
-                                    key={i}
-                                    onClick={() => setFormData({ ...formData, imageUrl: url })}
-                                    className={`aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-[#0a4a82] ring-2 ring-[#0a4a82]/30 scale-95" : "border-transparent hover:border-[#d4a373]/50"}`}
-                                    data-testid={`media-option-${i}`}
-                                  >
-                                    <img src={src} alt={`Media ${i + 1}`} className="w-full h-full object-cover" />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Video className="h-4 w-4" />
+                        Video Ad (optional)
+                        {videoLimit > 0 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">max {videoLimit}s</Badge>
                         )}
-                        <div className="pt-1">
-                          <p className="text-xs text-[#4a4a5a] mb-1">{businessMedia.length > 0 ? "Or upload a new image:" : "Upload an image:"}</p>
-                          <div className="flex items-center gap-3">
-                            <label
-                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a4a82] text-white text-sm font-medium cursor-pointer hover:bg-[#083a6a] transition-colors"
-                              data-testid="button-upload-ad-image"
-                            >
-                              <Upload className="h-4 w-4" />
-                              {adImageUploading ? "Uploading..." : "Choose File"}
+                      </Label>
+                      {videoLimit > 0 ? (
+                        <div>
+                          {formData.videoUrl ? (
+                            <div className="space-y-2">
+                              <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-black">
+                                <video src={formData.videoUrl.startsWith("/objects/") ? formData.videoUrl : `/objects/${formData.videoUrl}`} controls className="w-full max-h-40" />
+                              </div>
+                              <div className="flex gap-2">
+                                <label className="cursor-pointer flex-1">
+                                  <input
+                                    type="file"
+                                    accept="video/*"
+                                    className="hidden"
+                                    disabled={adVideoUploading}
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      if (file.size > 50 * 1024 * 1024) {
+                                        toast({ title: "File too large", description: "Video must be under 50MB.", variant: "destructive" });
+                                        return;
+                                      }
+                                      const result = await uploadAdVideo(file);
+                                      if (result) {
+                                        setFormData({ ...formData, videoUrl: result.objectPath });
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                  <Button type="button" variant="outline" size="sm" className="w-full" asChild>
+                                    <span><Upload className="h-3.5 w-3.5 mr-1" /> Replace Video</span>
+                                  </Button>
+                                </label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-600"
+                                  onClick={() => setFormData({ ...formData, videoUrl: "" })}
+                                  data-testid="button-remove-ad-video"
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer block">
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept="video/*"
                                 className="hidden"
-                                disabled={adImageUploading}
+                                disabled={adVideoUploading}
                                 onChange={async (e) => {
                                   const file = e.target.files?.[0];
-                                  if (file) {
-                                    const result = await uploadAdImage(file);
-                                    if (result) {
-                                      setFormData({ ...formData, imageUrl: result.objectPath });
-                                    }
+                                  if (!file) return;
+                                  if (file.size > 50 * 1024 * 1024) {
+                                    toast({ title: "File too large", description: "Video must be under 50MB.", variant: "destructive" });
+                                    return;
+                                  }
+                                  const result = await uploadAdVideo(file);
+                                  if (result) {
+                                    setFormData({ ...formData, videoUrl: result.objectPath });
                                   }
                                   e.target.value = "";
                                 }}
                               />
-                            </label>
-                            {formData.imageUrl && (
-                              <div className="flex items-center gap-2">
-                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200">
-                                  <img
-                                    src={formData.imageUrl.startsWith("/objects/") ? formData.imageUrl : `/objects/${formData.imageUrl}`}
-                                    alt="Selected"
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setFormData({ ...formData, imageUrl: "" })}
-                                  className="text-xs text-slate-500 hover:text-red-500 transition-colors"
-                                  data-testid="button-clear-ad-image"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
+                              <div className="border-2 border-dashed border-[#0a4a82]/20 rounded-xl p-4 text-center hover:border-[#0a4a82]/40 transition-colors">
+                                <Upload className="h-6 w-6 mx-auto text-[#0a4a82]/50 mb-2" />
+                                <p className="text-sm text-muted-foreground">Upload video (MP4, max 50MB, {videoLimit}s limit)</p>
                               </div>
-                            )}
-                          </div>
-                        </div>
-                        {!businessMedia.length && user?.accountType === "business" && (
-                          <p className="text-xs text-[#d4a373]">
-                            Tip: Upload a logo and gallery photos on your listing page to easily use them here.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2">
-                          <Video className="h-4 w-4" />
-                          Video Ad URL (optional)
-                          {videoLimit > 0 && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">max {videoLimit}s</Badge>
+                            </label>
                           )}
-                        </Label>
-                        {videoLimit > 0 ? (
-                          <>
-                            <Input
-                              placeholder="https://example.com/promo-video.mp4"
-                              value={formData.videoUrl}
-                              onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                              className="bg-white"
-                              data-testid="input-ad-video"
-                            />
-                            <p className="text-xs text-slate-500">
-                              {membershipTier === "premium" ? "Gold" : membershipTier === "standard" ? "Silver" : "Bronze"}: up to {videoLimit}-second video ad
-                            </p>
-                          </>
-                        ) : (
-                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                            <p className="text-xs text-slate-500">Video ads require a membership</p>
-                            <p className="text-[10px] text-slate-400 mt-1">Bronze: 10s | Silver: 20s | Gold: 30s</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="linkUrl">Link URL (optional)</Label>
-                        <Input
-                          id="linkUrl"
-                          placeholder="https://yourbusiness.com"
-                          value={formData.linkUrl}
-                          onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
-                          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-                          className="bg-white"
-                          data-testid="input-ad-link"
-                        />
-                      </div>
-
-                      <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-slate-700 dark:text-slate-300">
-                            {formData.adDuration === "14" ? "2-Week" : "30-Day"} Price:
-                          </span>
-                          <span className="text-2xl font-bold text-[#0a4a82]">
-                            {BANNER_PLACEMENTS.includes(formData.placementType) ? (
-                              <>
-                                ${getTierPrice(AD_BASE_PRICING.monthly[formData.adSize], TIER_DISCOUNTS.find(t => {
-                                  if (membershipTier === "basic") return t.id === "bronze";
-                                  if (membershipTier === "standard") return t.id === "silver";
-                                  if (membershipTier === "premium") return t.id === "gold";
-                                  return t.id === null;
-                                })?.discount || 0)}/mo
-                              </>
-                            ) : selectedPricing ? (
-                              <>
-                                ${getTierPrice(selectedPricing.pricePerWeek / 100, TIER_DISCOUNTS.find(t => {
-                                  if (membershipTier === "basic") return t.id === "bronze";
-                                  if (membershipTier === "standard") return t.id === "silver";
-                                  if (membershipTier === "premium") return t.id === "gold";
-                                  return t.id === null;
-                                })?.discount || 0)}/wk
-                              </>
-                            ) : "$0"}
-                          </span>
+                          {adVideoUploading && (
+                            <div className="mt-2 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-[#0a4a82] rounded-full transition-all" style={{ width: `${videoProgress}%` }} />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                          You'll be redirected to secure checkout after submitting. Your ad will be reviewed and activated once payment is confirmed.
-                        </p>
-                      </div>
+                      ) : (
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                          <Lock className="h-5 w-5 mx-auto text-slate-400 mb-1" />
+                          <p className="text-xs text-slate-500">Video ads require a membership</p>
+                          <p className="text-[10px] text-slate-400 mt-1">Bronze: 10s · Silver: 20s · Gold: 30s</p>
+                        </div>
+                      )}
+                    </div>
 
-                      <Button 
-                        type="submit" 
-                        className="w-full h-12 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] font-semibold"
-                        disabled={createAdRequest.isPending || updateAdRequest.isPending}
-                        data-testid="button-submit-ad"
-                      >
-                        {(createAdRequest.isPending || updateAdRequest.isPending) ? "Submitting..." : (
-                          <>
-                            <Send className="mr-2 h-4 w-4" />
-                            {editingAd ? "Save Changes" : "Submit & Pay Now"}
-                          </>
-                        )}
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
+                    <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {formData.adDuration === "14" ? "2-Week" : "30-Day"} Price:
+                        </span>
+                        <span className="text-2xl font-bold text-[#0a4a82]">
+                          {getDisplayPrice()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        You'll be redirected to secure checkout after submitting. Your ad will be reviewed and activated once payment is confirmed.
+                      </p>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] font-semibold"
+                      disabled={createAdRequest.isPending || updateAdRequest.isPending}
+                      data-testid="button-submit-ad"
+                    >
+                      {(createAdRequest.isPending || updateAdRequest.isPending) ? "Submitting..." : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          {editingAd ? "Save Changes" : "Submit & Pay Now"}
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
 
               {pricingLoading ? (
-                <div className="grid md:grid-cols-2 gap-6">
-                  {[1, 2, 3, 4].map((i) => (
+                <div className="grid md:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
                       <Skeleton className="h-12 w-12 rounded-xl mb-4" />
                       <Skeleton className="h-6 w-3/4 mb-2" />
@@ -791,66 +799,80 @@ export default function Advertising() {
                   ))}
                 </div>
               ) : (
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Carousel Banner Ads</h3>
-                  <div className="grid md:grid-cols-3 gap-5 mb-10">
-                    {pricing?.filter(p => BANNER_PLACEMENTS.includes(p.placementType)).map((p) => {
-                      const Icon = placementIcons[p.placementType] || Megaphone;
-                      const sizeLabel = p.placementType === "large_banner" ? "Large" : p.placementType === "medium_banner" ? "Medium" : "Small";
-                      const sizeDesc = p.placementType === "large_banner" ? "Full-width" : p.placementType === "medium_banner" ? "50% width" : "Compact";
-                      const gradients: Record<string, string> = {
-                        large_banner: "from-[#0a4a82] to-[#083a6a]",
-                        medium_banner: "from-[#8a9a5b] to-[#6b7a4a]",
-                        small_banner: "from-[#d4a373] to-[#c49363]",
-                      };
-                      return (
-                        <div 
-                          key={p.id} 
-                          className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl hover:-translate-y-1 transition-[shadow,transform] duration-200 border border-slate-100 dark:border-slate-700"
-                          data-testid={`card-pricing-${p.placementType}`}
-                        >
-                          <div className={`bg-gradient-to-br ${gradients[p.placementType] || "from-slate-600 to-slate-800"} p-5`}>
-                            <div className="flex items-center justify-between">
-                              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                                <Icon className="h-6 w-6 text-white" />
-                              </div>
-                              <div className="text-right">
-                                <span className="text-3xl font-bold text-white">
-                                  ${(p.pricePerWeek * 4 / 100).toFixed(0)}
-                                </span>
-                                <span className="text-white/70 text-sm">/mo</span>
-                              </div>
+                <div className="grid md:grid-cols-3 gap-5">
+                  {(["small", "medium", "large"] as const).map((size) => {
+                    const isAllowed = allowedSizes.includes(size);
+                    const monthlyPrice = getTierPrice(AD_BASE_PRICING.monthly[size], discount);
+                    const biweeklyPrice = getTierPrice(AD_BASE_PRICING.biweekly[size], discount);
+                    const placementType = size === "large" ? "large_banner" : size === "medium" ? "medium_banner" : "small_banner";
+                    const sizeDesc = size === "large" ? "Full-width hero banner" : size === "medium" ? "Half-width featured spot" : "Compact sidebar placement";
+                    const gradients: Record<string, string> = {
+                      large: "from-[#0a4a82] to-[#083a6a]",
+                      medium: "from-[#8a9a5b] to-[#6b7a4a]",
+                      small: "from-[#d4a373] to-[#c49363]",
+                    };
+                    const requiredTier = size === "large" ? "Gold" : size === "medium" ? "Silver" : null;
+
+                    return (
+                      <div
+                        key={size}
+                        className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg border transition-all duration-200 ${
+                          isAllowed
+                            ? "border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1"
+                            : "border-slate-200/50 opacity-60"
+                        }`}
+                        data-testid={`card-ad-size-${size}`}
+                      >
+                        <div className={`bg-gradient-to-br ${gradients[size]} p-5 ${!isAllowed ? "grayscale" : ""}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                              <Home className="h-6 w-6 text-white" />
                             </div>
-                          </div>
-                          <div className="p-5">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{sizeLabel} Carousel Banner</h3>
-                              <Badge variant="outline" className="text-xs">{sizeDesc}</Badge>
+                            <div className="text-right">
+                              <span className="text-3xl font-bold text-white">${monthlyPrice}</span>
+                              <span className="text-white/70 text-sm">/mo</span>
                             </div>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm mb-5">{p.description}</p>
-                            <Button 
-                              className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
-                              onClick={() => {
-                                const size = p.placementType === "large_banner" ? "large" : p.placementType === "medium_banner" ? "medium" : "small";
-                                setFormData({ ...formData, placementType: p.placementType, adSize: size as any });
-                                setIsCreateOpen(true);
-                              }}
-                              data-testid={`button-select-${p.placementType}`}
-                            >
-                              Select This Placement
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-
+                        <div className="p-5">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-lg text-slate-900 dark:text-white capitalize">{size} Banner</h3>
+                          </div>
+                          <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">{sizeDesc}</p>
+                          <p className="text-xs text-slate-500 mb-5">
+                            2-week option: <span className="font-semibold">${biweeklyPrice}</span>
+                          </p>
+                          {isAllowed ? (
+                            <Button
+                              className="w-full h-11 rounded-xl bg-[#8a9a5b] hover:bg-[#7a8a4b] font-semibold"
+                              onClick={() => openCreateForSize(placementType, size)}
+                              data-testid={`button-select-${size}`}
+                            >
+                              Select This Size
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-center gap-2 h-11 rounded-xl bg-slate-100 text-slate-400 text-sm font-medium">
+                                <Lock className="h-4 w-4" />
+                                {requiredTier}+ Required
+                              </div>
+                              <Link to="/membership" className="block">
+                                <Button variant="outline" size="sm" className="w-full text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5 text-xs" data-testid={`button-upgrade-for-${size}`}>
+                                  <Crown className="h-3.5 w-3.5 mr-1.5" />
+                                  Upgrade to {requiredTier}
+                                </Button>
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* My Ads Sidebar */}
             <div>
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 sticky top-28 overflow-hidden">
                 <div className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] p-5">
@@ -876,7 +898,7 @@ export default function Advertising() {
                         <Megaphone className="h-8 w-8 opacity-50" />
                       </div>
                       <p className="font-medium">No ads yet</p>
-                      <p className="text-sm mt-1">Request your first ad placement above!</p>
+                      <p className="text-sm mt-1">Select an ad size above to get started!</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -993,7 +1015,6 @@ export default function Advertising() {
           </div>
         )}
 
-        {/* Benefits Section */}
         <div className="mt-20">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">

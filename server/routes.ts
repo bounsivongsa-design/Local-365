@@ -2776,16 +2776,31 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
-      const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-      const monthlyPrice = AD_MONTHLY_PRICING[size] || 25000;
-
       const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
       const businessZip = biz?.zipCode || "27958";
 
+      const tierAllowedSizes: Record<string, string[]> = {
+        none: ["small"],
+        basic: ["small"],
+        standard: ["small", "medium"],
+        premium: ["small", "medium", "large"],
+      };
+      const allowed = tierAllowedSizes[biz?.membershipTier || "none"] || ["small"];
+      if (!allowed.includes(size)) {
+        const tierNames: Record<string, string> = { medium: "Silver", large: "Gold" };
+        return res.status(403).json({ message: `${tierNames[size] || "Higher"} membership required for ${size} ads` });
+      }
+
+      const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
+      const AD_BIWEEKLY_PRICING: Record<string, number> = { small: 2500, medium: 3500, large: 5000 };
+      const chargedPrice = durationDays === 14
+        ? (AD_BIWEEKLY_PRICING[size] || 2500)
+        : (AD_MONTHLY_PRICING[size] || 25000);
+
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       const discount = tierDiscounts[biz?.membershipTier || "none"] || 0;
-      const discountedMonthly = Math.round(monthlyPrice * (1 - discount));
+      const discountedPrice = Math.round(chargedPrice * (1 - discount));
 
       let validatedVideoUrl: string | null = null;
       if (videoUrl) {
@@ -2815,7 +2830,7 @@ Respond in this exact JSON format:
         startDate: adStartDate,
         endDate: adEndDate,
         pricePerWeek: pricing.pricePerWeek,
-        priceMonthly: discountedMonthly,
+        priceMonthly: discountedPrice,
         status: "pending",
         paymentStatus: "unpaid",
         targetZipCodes: [businessZip],
