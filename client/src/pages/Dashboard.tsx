@@ -262,9 +262,9 @@ function MembershipExpirationBanner() {
   if (!data?.expiring) return null;
 
   const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", premium: "Gold", bronze: "Bronze", silver: "Silver", gold: "Gold" };
-  const tierLabel = tierMap[data.currentTier || ""] || "Free";
+  const tierLabel = tierMap[data.currentTier || ""] || "No Plan";
 
-  if (tierLabel === "Free" || data.currentTier === "none") return null;
+  if (tierLabel === "No Plan" || data.currentTier === "none") return null;
 
   if (data.expired) {
     return (
@@ -329,7 +329,7 @@ function GoldTrialBanner() {
 
   if (!data?.active) return null;
 
-  const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", none: "Free" };
+  const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", none: "No Plan" };
   const revertLabel = data.revertTierLabel || tierMap[data.revertTier || ""] || "your previous plan";
 
   return (

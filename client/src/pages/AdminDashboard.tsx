@@ -146,7 +146,7 @@ type AdminBusiness = {
 type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads";
 
 function tierLabel(t: string | null | undefined) {
-  if (!t || t === "none") return "Free";
+  if (!t || t === "none") return "No Plan";
   if (t === "premium") return "Gold";
   if (t === "standard") return "Silver";
   if (t === "basic") return "Bronze";
@@ -530,7 +530,7 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
             <MembershipRow label="Gold" count={mb["premium"] || 0} total={o?.totalBusinesses || 1} icon={Crown} barColor="bg-yellow-500" />
             <MembershipRow label="Silver" count={mb["standard"] || 0} total={o?.totalBusinesses || 1} icon={Star} barColor="bg-slate-400" />
             <MembershipRow label="Bronze" count={mb["basic"] || 0} total={o?.totalBusinesses || 1} icon={Medal} barColor="bg-amber-700" />
-            <MembershipRow label="Free / None" count={mb["none"] || 0} total={o?.totalBusinesses || 1} icon={Users} barColor="bg-gray-300" />
+            <MembershipRow label="No Plan" count={mb["none"] || 0} total={o?.totalBusinesses || 1} icon={Users} barColor="bg-gray-300" />
             {(o?.downgradesCount || 0) > 0 && (
               <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-sm text-red-500">
                 <ArrowDown className="h-4 w-4" />
@@ -1355,7 +1355,7 @@ function BusinessesTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Free / None</SelectItem>
+                  <SelectItem value="none">No Plan</SelectItem>
                   <SelectItem value="basic">Bronze</SelectItem>
                   <SelectItem value="standard">Silver</SelectItem>
                   <SelectItem value="premium">Gold</SelectItem>
