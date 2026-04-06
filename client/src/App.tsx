@@ -26,6 +26,7 @@ import Legal from "@/pages/Legal";
 import FAQ from "@/pages/FAQ";
 import HelpWanted from "@/pages/HelpWanted";
 import CreateBusiness from "@/pages/CreateBusiness";
+import EditListing from "@/pages/EditListing";
 import NotFound from "@/pages/not-found";
 import { DevModePanel } from "@/components/DevModePanel";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -59,6 +60,7 @@ function AppRouter() {
           <Route path="/membership" element={<BusinessMembership />} />
           <Route path="/jobs" element={<HelpWanted />} />
           <Route path="/create-business" element={<CreateBusiness />} />
+          <Route path="/edit-listing" element={<EditListing />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="/faq" element={<FAQ />} />

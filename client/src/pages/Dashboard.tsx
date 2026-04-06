@@ -899,15 +899,15 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <a href="#listing-media" className="block">
+                <Link to="/edit-listing" className="block">
                   <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#0a4a82]/15 hover:bg-[#0a4a82]/5 hover:border-[#0a4a82]/30" data-testid="button-edit-listing">
                     <span className="flex items-center gap-2 text-[#1a1a2e]">
                       <Building2 className="h-4 w-4 text-[#0a4a82]" />
-                      Manage Listing Media
+                      Edit My Listing
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
                   </Button>
-                </a>
+                </Link>
                 <Link to="/jobs" className="block">
                   <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#8a9a5b]/15 hover:bg-[#8a9a5b]/5 hover:border-[#8a9a5b]/30" data-testid="button-post-job">
                     <span className="flex items-center gap-2 text-[#1a1a2e]">
