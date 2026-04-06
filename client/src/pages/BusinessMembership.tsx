@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -156,6 +156,7 @@ const DB_TO_DISPLAY: Record<string, string> = {
 
 export default function BusinessMembership() {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [selectedFrequency, setSelectedFrequency] = useState<PaymentFrequency>("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -211,6 +212,7 @@ export default function BusinessMembership() {
             await apiRequest("POST", "/api/stripe/verify-session", { sessionId });
             await queryClient.invalidateQueries({ queryKey: ["/api/my-business"] });
             await queryClient.invalidateQueries({ queryKey: ["/api/stripe/subscription-status"] });
+            await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
             setVerifying(false);
             return;
           } catch (err) {
@@ -229,24 +231,32 @@ export default function BusinessMembership() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("success") === "true" && business && !verifying && !successNotifiedRef.current) {
-      const currentTier = business?.membershipTier;
-      const displayTier = currentTier ? DB_TO_DISPLAY[currentTier] : null;
-      if (currentTier && currentTier !== "none") {
+    if (searchParams.get("success") === "true" && !verifying && !successNotifiedRef.current) {
+      if (!user?.linkedBusinessId && (user as any)?.pendingMembershipTier) {
         successNotifiedRef.current = true;
-        if (displayTier === "gold" && business?.membershipTrialUsed) {
-          const originalPurchased = currentTier === "premium" ? "" : (displayTier || "");
-          setGoldTrialPurchasedTier(originalPurchased);
-          setShowGoldTrialDialog(true);
-        } else {
-          toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+        toast({ title: "Payment received!", description: "Now let's set up your business listing." });
+        navigate("/create-business");
+        return;
+      }
+      if (business) {
+        const currentTier = business?.membershipTier;
+        const displayTier = currentTier ? DB_TO_DISPLAY[currentTier] : null;
+        if (currentTier && currentTier !== "none") {
+          successNotifiedRef.current = true;
+          if (displayTier === "gold" && business?.membershipTrialUsed) {
+            const originalPurchased = currentTier === "premium" ? "" : (displayTier || "");
+            setGoldTrialPurchasedTier(originalPurchased);
+            setShowGoldTrialDialog(true);
+          } else {
+            toast({ title: "Welcome aboard!", description: "Your membership is now active. Thank you for joining Local List 365!" });
+          }
         }
       }
     }
     if (searchParams.get("canceled") === "true") {
       toast({ title: "Checkout canceled", description: "No worries — you can subscribe anytime.", variant: "destructive" });
     }
-  }, [business, verifying]);
+  }, [business, verifying, user]);
 
   const currentTierDb = business?.membershipTier || "none";
   const currentTierDisplay = DB_TO_DISPLAY[currentTierDb] || currentTierDb;
