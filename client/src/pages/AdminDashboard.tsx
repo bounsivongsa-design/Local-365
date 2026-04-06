@@ -1169,7 +1169,7 @@ function BusinessesTab() {
 
   const openEdit = (b: AdminBusiness) => {
     setEditDialog(b);
-    setEditTier(b.membershipTier || "none");
+    setEditTier(b.membershipTier && b.membershipTier !== "none" ? b.membershipTier : "basic");
     setEditVerified(b.verified ?? false);
   };
 
@@ -1355,7 +1355,6 @@ function BusinessesTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Plan</SelectItem>
                   <SelectItem value="basic">Bronze</SelectItem>
                   <SelectItem value="standard">Silver</SelectItem>
                   <SelectItem value="premium">Gold</SelectItem>
