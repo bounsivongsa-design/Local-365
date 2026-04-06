@@ -6,6 +6,13 @@ import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
+function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null }): string {
+  if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) {
+    return "premium";
+  }
+  return biz.membershipTier || "none";
+}
+
 if (!process.env.Stripeintegration) {
   console.warn("Stripe secret key not configured — payment features disabled");
 }
@@ -541,7 +548,7 @@ export function registerStripeRoutes(app: Express) {
         basic: 1800,
         none: 2000,
       };
-      const tierKey = biz.membershipTier || "none";
+      const tierKey = getEffectiveTier(biz);
       const unitAmount = JOB_PRICES_BY_TIER[tierKey] ?? 2000;
       const tierLabel = tierKey === "premium" ? "Gold" : tierKey === "standard" ? "Silver" : tierKey === "basic" ? "Bronze" : "Non-Member";
 
