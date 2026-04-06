@@ -6,6 +6,7 @@ import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { registerStripeRoutes } from "./stripe";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
@@ -793,6 +794,8 @@ export async function registerRoutes(
 
       const business = await storage.createBusiness(input);
       console.log(`[CREATE-BIZ] Business created: id=${business.id}, name="${business.name}", membershipTier=${business.membershipTier}`);
+
+      notifyAdminNewBusiness(business.name, currentUser?.email || "", business.membershipTier || "").catch(() => {});
 
       if (userId) {
         const updateFields: any = { linkedBusinessId: business.id };
@@ -1821,6 +1824,12 @@ Respond in this exact JSON format:
       const finalPriceCents = Math.round(basePriceCents * (1 - discount));
 
       await pgDb.update(events).set({ priceCharged: finalPriceCents }).where(eq(events.id, event.id));
+
+      if (serverBusinessId) {
+        const [bizInfo] = await pgDb.select({ name: businesses.name })
+          .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
+        notifyAdminNewEvent(event.title, bizInfo?.name || "Unknown", finalPriceCents).catch(() => {});
+      }
 
       res.status(201).json({ ...event, priceCharged: finalPriceCents });
     } catch (err) {
@@ -3842,6 +3851,28 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Admin update business error:", err);
       res.status(500).json({ message: "Failed to update business" });
+    }
+  });
+
+  app.get("/api/admin/pending-counts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const adminCheck = await isAdminUser(userId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const safeCount = async (query: Promise<any[]>) => {
+        try { const r = await query; return r?.[0]?.count ?? 0; } catch { return 0; }
+      };
+
+      const pendingAds = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(adPlacements).where(eq(adPlacements.status, "pending")));
+      const pendingEvents = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(events).where(eq(events.status, "pending")));
+      const pendingCategories = await safeCount(pgDb.select({ count: sql<number>`count(*)::int` }).from(categoryRequests).where(eq(categoryRequests.status, "pending")));
+
+      const total = pendingAds + pendingEvents + pendingCategories;
+      res.json({ total, pendingAds, pendingEvents, pendingCategories });
+    } catch (err) {
+      console.error("Error fetching pending counts:", err);
+      res.status(500).json({ message: "Failed to fetch pending counts" });
     }
   });
 

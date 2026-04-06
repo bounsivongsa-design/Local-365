@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, Shield } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, Shield, Bell } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -34,6 +34,21 @@ export function Navigation() {
 
   const unreadCount = messageCounts?.count || 0;
 
+  const isAdminAccount = user?.accountType === "admin";
+
+  const { data: adminPending } = useQuery<{ total: number; pendingAds: number; pendingEvents: number; pendingCategories: number } | null>({
+    queryKey: ["/api/admin/pending-counts"],
+    enabled: isAdminAccount,
+    refetchInterval: isAdminAccount ? 30000 : false,
+    queryFn: async () => {
+      const res = await fetch("/api/admin/pending-counts", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const adminPendingTotal = adminPending?.total || 0;
+
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/directory", label: "Directory", icon: Store },
@@ -42,8 +57,6 @@ export function Navigation() {
     { href: "/jobs", label: "Help Wanted", icon: Briefcase },
     { href: "/membership", label: "For Business", icon: Building2 },
   ];
-
-  const isAdminAccount = user?.accountType === "admin";
 
   const authenticatedNavItems = [
     ...navItems,
@@ -70,13 +83,18 @@ export function Navigation() {
             {(isAuthenticated ? authenticatedNavItems : navItems).map((item) => (
               <Link key={item.href} to={item.href}>
                 <span className={`
-                  flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-[background-color,color] duration-200
+                  relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-[background-color,color] duration-200
                   ${isActive(item.href) 
                     ? "bg-white/25 text-white font-semibold" 
                     : "text-white/90 hover:text-white hover:bg-white/10"}
                 `}>
                   <item.icon className="h-4 w-4" />
                   {item.label}
+                  {item.href === "/admin" && adminPendingTotal > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-[#0a4a82] animate-pulse" data-testid="badge-admin-pending">
+                      {adminPendingTotal > 99 ? "99+" : adminPendingTotal}
+                    </span>
+                  )}
                 </span>
               </Link>
             ))}
@@ -148,13 +166,18 @@ export function Navigation() {
                 {(isAuthenticated ? authenticatedNavItems : navItems).map((item) => (
                   <Link key={item.href} to={item.href} onClick={() => setIsOpen(false)}>
                     <span className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl text-lg font-medium transition-[background-color,color] duration-200
+                      relative flex items-center gap-3 px-4 py-3 rounded-xl text-lg font-medium transition-[background-color,color] duration-200
                       ${isActive(item.href)
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted"}
                     `}>
                       <item.icon className="h-5 w-5" />
                       {item.label}
+                      {item.href === "/admin" && adminPendingTotal > 0 && (
+                        <span className="ml-auto h-6 min-w-6 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                          {adminPendingTotal > 99 ? "99+" : adminPendingTotal}
+                        </span>
+                      )}
                     </span>
                   </Link>
                 ))}

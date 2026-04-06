@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
 import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users, adPlacements, events } from "@shared/schema";
+import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
@@ -802,6 +803,12 @@ export function registerStripeRoutes(app: Express) {
                 paymentNotes: `Stripe payment ${session.payment_intent || session.id}`,
               }).where(eq(adPlacements.id, adId));
               console.log(`Ad placement ${adId} paid via Stripe (${amountPaid} cents)`);
+
+              const [paidAd] = await db.select().from(adPlacements).where(eq(adPlacements.id, adId));
+              if (paidAd?.businessId) {
+                const [biz] = await db.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, paidAd.businessId));
+                notifyAdminNewAd(paidAd.title || "Untitled", biz?.name || "Unknown", paidAd.adSize || "small", amountPaid).catch(() => {});
+              }
             }
             break;
           }
