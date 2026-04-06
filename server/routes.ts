@@ -1196,12 +1196,18 @@ Respond in this exact JSON format:
         "socialMediaUrls", "searchKeywords", "category", "additionalCategories",
         "hasLLC", "hasInsurance", "isLicensed", "isVeteran",
         "servicesResidential", "servicesCommercial", "acceptsQuotes",
-        "address", "ownerName", "localOperationDescription"
+        "address", "ownerName", "localOperationDescription", "imageUrl"
       ];
       const updates: any = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
           updates[field] = req.body[field];
+        }
+      }
+      if (updates.imageUrl !== undefined) {
+        const url = updates.imageUrl;
+        if (url !== null && url !== "" && !url.startsWith("/objects/") && !url.startsWith("https://images.unsplash.com/")) {
+          return res.status(400).json({ message: "Invalid image URL" });
         }
       }
       if (Object.keys(updates).length === 0) {

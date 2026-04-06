@@ -45,6 +45,7 @@ interface Business {
   membershipTier: string | null;
   businessHours: string | null;
   socialMediaUrls: string | null;
+  imageUrl: string | null;
   logoUrl: string | null;
   galleryPhotos: string[] | null;
   promoVideoUrl: string | null;
@@ -168,6 +169,99 @@ function LogoUploader({ business }: { business: Business }) {
             <div className="border-2 border-dashed border-[#0a4a82]/20 rounded-xl p-6 text-center hover:border-[#0a4a82]/40 transition-colors">
               <Camera className="h-8 w-8 mx-auto text-[#0a4a82]/40 mb-2" />
               <p className="text-sm font-medium text-[#1a1a2e]">Upload Logo</p>
+              <p className="text-xs text-muted-foreground mt-1">JPG, PNG, or WebP — max 5MB</p>
+            </div>
+          </label>
+        )}
+        {isUploading && (
+          <div className="mt-3 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-[#0a4a82] rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ListingImageUploader({ business }: { business: Business }) {
+  const { toast } = useToast();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const queryClient = useQueryClient();
+
+  const saveMutation = useMutation({
+    mutationFn: async (imageUrl: string) => {
+      const res = await fetch(`/api/businesses/${business.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ imageUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to update listing photo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-business"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses"] });
+      toast({ title: "Listing photo updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update listing photo", variant: "destructive" });
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const result = await uploadFile(file);
+    if (result) saveMutation.mutate(result.objectPath);
+    e.target.value = "";
+  };
+
+  const currentImage = business.imageUrl;
+  const isUnsplash = currentImage?.includes("unsplash.com");
+  const imgSrc = currentImage
+    ? (currentImage.startsWith("http") ? currentImage : currentImage.startsWith("/objects/") ? currentImage : `/objects/${currentImage}`)
+    : null;
+
+  return (
+    <Card className="rounded-2xl border-[#0a4a82]/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Image className="h-4 w-4 text-[#0a4a82]" />
+          Directory Listing Photo
+        </CardTitle>
+        <CardDescription>This photo appears on your listing card in the directory</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {imgSrc ? (
+          <div className="space-y-3">
+            <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/15 shadow-sm">
+              <img
+                src={imgSrc}
+                alt="Listing"
+                className="w-full h-40 object-cover"
+                data-testid="img-listing-photo"
+              />
+              {isUnsplash && (
+                <div className="absolute top-2 left-2">
+                  <Badge className="bg-amber-500/90 text-white text-[10px]">Default Photo</Badge>
+                </div>
+              )}
+            </div>
+            <label className="cursor-pointer block">
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} data-testid="input-listing-photo-replace" />
+              <Button type="button" variant="outline" size="sm" className="rounded-lg w-full" asChild>
+                <span><Upload className="h-3.5 w-3.5 mr-1" /> {isUnsplash ? "Upload Your Own Photo" : "Replace Photo"}</span>
+              </Button>
+            </label>
+          </div>
+        ) : (
+          <label className="cursor-pointer block">
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} data-testid="input-listing-photo-upload" />
+            <div className="border-2 border-dashed border-[#0a4a82]/20 rounded-xl p-6 text-center hover:border-[#0a4a82]/40 transition-colors">
+              <Image className="h-8 w-8 mx-auto text-[#0a4a82]/40 mb-2" />
+              <p className="text-sm font-medium text-[#1a1a2e]">Upload Listing Photo</p>
               <p className="text-xs text-muted-foreground mt-1">JPG, PNG, or WebP — max 5MB</p>
             </div>
           </label>
@@ -867,6 +961,9 @@ export default function EditListing() {
             <Image className="h-5 w-5 text-[#0a4a82]" />
             Photos & Media
           </h2>
+          <div className="mb-5">
+            <ListingImageUploader business={business} />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <LogoUploader business={business} />
             <GalleryManager business={business} />
