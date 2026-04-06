@@ -635,9 +635,11 @@ export function registerStripeRoutes(app: Express) {
       const priceInCents = ad.priceMonthly || 25000;
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
       const sizeLabel = (ad.adSize || "small").charAt(0).toUpperCase() + (ad.adSize || "small").slice(1);
       const session = await stripe!.checkout.sessions.create({
@@ -706,9 +708,11 @@ export function registerStripeRoutes(app: Express) {
       const priceInCents = (evt.priceCharged || 5000);
       const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 
       const sizeLabel = (evt.adSize || "small").charAt(0).toUpperCase() + (evt.adSize || "small").slice(1);
       const session = await stripe!.checkout.sessions.create({
