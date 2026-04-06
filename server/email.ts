@@ -1,45 +1,31 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const ADMIN_EMAILS = ["boun.sivongsa@gmail.com", "locallist365@gmail.com"];
 
-const FROM_EMAIL = "locallist365@gmail.com";
-const FROM_NAME = "Local List 365";
+let resendClient: Resend | null = null;
 
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransporter() {
-  if (transporter) return transporter;
-
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
-
-  if (!gmailUser || !gmailAppPassword) {
-    console.warn("Email not configured: GMAIL_USER and GMAIL_APP_PASSWORD required");
+function getResend() {
+  if (resendClient) return resendClient;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("Email not configured: RESEND_API_KEY required");
     return null;
   }
-
-  transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: gmailUser,
-      pass: gmailAppPassword,
-    },
-  });
-
-  return transporter;
+  resendClient = new Resend(apiKey);
+  return resendClient;
 }
 
 async function sendAdminEmail(subject: string, html: string) {
-  const t = getTransporter();
-  if (!t) {
-    console.log(`[EMAIL SKIPPED] ${subject} — email not configured`);
+  const resend = getResend();
+  if (!resend) {
+    console.log(`[EMAIL SKIPPED] ${subject} — Resend not configured`);
     return;
   }
 
   try {
-    await t.sendMail({
-      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
-      to: ADMIN_EMAILS.join(", "),
+    await resend.emails.send({
+      from: "Local List 365 <notifications@locallist365.com>",
+      to: ADMIN_EMAILS,
       subject,
       html,
     });
@@ -51,7 +37,7 @@ async function sendAdminEmail(subject: string, html: string) {
 
 export async function notifyAdminNewEvent(eventTitle: string, businessName: string, price: number) {
   const priceFormatted = `$${(price / 100).toFixed(2)}`;
-  const subject = `🗓️ New Event Submitted — ${eventTitle}`;
+  const subject = `New Event Submitted — ${eventTitle}`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #0a4a82, #0d5a9e); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
@@ -89,7 +75,7 @@ export async function notifyAdminNewEvent(eventTitle: string, businessName: stri
 export async function notifyAdminNewAd(adTitle: string, businessName: string, adSize: string, price: number) {
   const priceFormatted = `$${(price / 100).toFixed(2)}`;
   const sizeLabel = adSize.charAt(0).toUpperCase() + adSize.slice(1);
-  const subject = `📢 New Ad Submitted — ${adTitle}`;
+  const subject = `New Ad Submitted — ${adTitle}`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #0a4a82, #0d5a9e); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
@@ -130,7 +116,7 @@ export async function notifyAdminNewAd(adTitle: string, businessName: string, ad
 
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
-  const subject = `🏢 New Business Registered — ${businessName}`;
+  const subject = `New Business Registered — ${businessName}`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #0a4a82, #0d5a9e); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
