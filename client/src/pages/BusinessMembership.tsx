@@ -194,6 +194,8 @@ export default function BusinessMembership() {
   });
 
   const verifiedRef = useRef(false);
+  const [verifying, setVerifying] = useState(false);
+  const successNotifiedRef = useRef(false);
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
@@ -201,22 +203,37 @@ export default function BusinessMembership() {
 
     if (isSuccess && sessionId && !verifiedRef.current) {
       verifiedRef.current = true;
-      apiRequest("POST", "/api/stripe/verify-session", { sessionId })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/my-business"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/stripe/subscription-status"] });
-        })
-        .catch((err) => {
-          console.error("Session verification error:", err);
-        });
+      setVerifying(true);
+
+      const verifySession = async (retries = 3): Promise<void> => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            await apiRequest("POST", "/api/stripe/verify-session", { sessionId });
+            await queryClient.invalidateQueries({ queryKey: ["/api/my-business"] });
+            await queryClient.invalidateQueries({ queryKey: ["/api/stripe/subscription-status"] });
+            setVerifying(false);
+            return;
+          } catch (err) {
+            console.error(`Session verification attempt ${attempt} failed:`, err);
+            if (attempt < retries) {
+              await new Promise(r => setTimeout(r, 1500 * attempt));
+            }
+          }
+        }
+        setVerifying(false);
+        toast({ title: "Verification issue", description: "Your payment was received but activation is pending. Please refresh the page or contact support if your plan doesn't update shortly.", variant: "destructive" });
+      };
+
+      verifySession();
     }
   }, [searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("success") === "true" && business) {
+    if (searchParams.get("success") === "true" && business && !verifying && !successNotifiedRef.current) {
       const currentTier = business?.membershipTier;
       const displayTier = currentTier ? DB_TO_DISPLAY[currentTier] : null;
       if (currentTier && currentTier !== "none") {
+        successNotifiedRef.current = true;
         if (displayTier === "gold" && business?.membershipTrialUsed) {
           const originalPurchased = currentTier === "premium" ? "" : (displayTier || "");
           setGoldTrialPurchasedTier(originalPurchased);
@@ -229,7 +246,7 @@ export default function BusinessMembership() {
     if (searchParams.get("canceled") === "true") {
       toast({ title: "Checkout canceled", description: "No worries — you can subscribe anytime.", variant: "destructive" });
     }
-  }, [business]);
+  }, [business, verifying]);
 
   const currentTierDb = business?.membershipTier || "none";
   const currentTierDisplay = DB_TO_DISPLAY[currentTierDb] || currentTierDb;
@@ -286,9 +303,6 @@ export default function BusinessMembership() {
         toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
         return;
       }
-      if (data.autoUpgrade) {
-        toast({ title: "Gold Trial Activated!", description: "You'll enjoy Gold features for the first 30 days." });
-      }
       if (data.url) {
         window.location.href = data.url;
       }
@@ -329,6 +343,22 @@ export default function BusinessMembership() {
       toast({ title: "Error", description: "Failed to open billing portal", variant: "destructive" });
     }
   };
+
+  if (verifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0a4a82] to-[#062d54]">
+        <div className="text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto animate-pulse">
+            <Loader2 className="h-10 w-10 text-white animate-spin" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">Activating Your Membership</h2>
+            <p className="text-white/70">Please wait while we confirm your payment...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">

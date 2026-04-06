@@ -20,15 +20,25 @@ export default function CreateBusiness() {
     if (sessionId && fromCheckout && isAuthenticated && !verifiedRef.current) {
       verifiedRef.current = true;
       setSessionVerified(false);
-      apiRequest("POST", "/api/stripe/verify-session", { sessionId })
-        .then(() => {
-          console.log("Session verified for create-business");
-          setSessionVerified(true);
-        })
-        .catch((err: any) => {
-          console.error("Session verification failed:", err);
-          setSessionVerified(true);
-        });
+
+      const verifyWithRetries = async (retries = 3) => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            await apiRequest("POST", "/api/stripe/verify-session", { sessionId });
+            console.log("Session verified for create-business");
+            setSessionVerified(true);
+            return;
+          } catch (err) {
+            console.error(`Session verification attempt ${attempt} failed:`, err);
+            if (attempt < retries) {
+              await new Promise(r => setTimeout(r, 1500 * attempt));
+            }
+          }
+        }
+        setSessionVerified(true);
+      };
+
+      verifyWithRetries();
     }
   }, [sessionId, fromCheckout, isAuthenticated]);
 
