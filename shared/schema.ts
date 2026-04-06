@@ -126,6 +126,8 @@ export const events = pgTable("events", {
   status: text("status").default("pending"),
   adminNote: text("admin_note"),
   isExample: boolean("is_example").default(false),
+  paymentStatus: text("payment_status").default("unpaid"),
+  priceCharged: integer("price_charged"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -319,7 +321,7 @@ export const businessAnalytics = pgTable("business_analytics", {
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });
-export const insertEventSchema = createInsertSchema(events).omit({ id: true, status: true, adminNote: true, createdAt: true }).refine(
+export const insertEventSchema = createInsertSchema(events).omit({ id: true, status: true, adminNote: true, paymentStatus: true, priceCharged: true, createdAt: true }).refine(
   (data) => {
     if (data.flyerUrl && !/^https?:\/\//i.test(data.flyerUrl)) {
       return false;

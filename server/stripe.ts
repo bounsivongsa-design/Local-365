@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users, adPlacements } from "@shared/schema";
+import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, users, adPlacements, events } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
@@ -383,6 +383,22 @@ export function registerStripeRoutes(app: Express) {
         return res.json({ success: true, type: "ad_placement" });
       }
 
+      if (session.metadata?.type === "event_ad") {
+        const eventId = parseInt(session.metadata?.eventId || "0");
+        if (eventId) {
+          const [existing] = await db.select().from(events).where(eq(events.id, eventId));
+          if (existing && existing.paymentStatus !== "paid") {
+            const amountPaid = session.amount_total || 0;
+            await db.update(events).set({
+              paymentStatus: "paid",
+              priceCharged: amountPaid,
+            }).where(eq(events.id, eventId));
+            console.log(`Event ${eventId} paid via session verification (${amountPaid} cents)`);
+          }
+        }
+        return res.json({ success: true, type: "event_ad" });
+      }
+
       const businessId = parseInt(session.metadata?.businessId || "0");
       const tier = session.metadata?.tier;
       const frequency = session.metadata?.frequency;
@@ -656,6 +672,77 @@ export function registerStripeRoutes(app: Express) {
     }
   });
 
+  app.post("/api/stripe/event-checkout", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { eventId } = req.body;
+
+      if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user?.linkedBusinessId) {
+        return res.status(403).json({ message: "Only business accounts can purchase event ads" });
+      }
+
+      const [evt] = await db.select().from(events).where(eq(events.id, eventId));
+      if (!evt) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      if (evt.businessId !== user.linkedBusinessId) {
+        return res.status(403).json({ message: "You can only pay for your own events" });
+      }
+      if (evt.paymentStatus === "paid") {
+        return res.status(400).json({ message: "This event has already been paid for" });
+      }
+
+      const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
+      if (!biz) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+
+      const priceInCents = (evt.priceCharged || 5000);
+      const customerId = await getOrCreateStripeCustomer(biz.id, req.user.email || user.email || "", biz.name);
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+
+      const sizeLabel = (evt.adSize || "small").charAt(0).toUpperCase() + (evt.adSize || "small").slice(1);
+      const session = await stripe!.checkout.sessions.create({
+        customer: customerId,
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Event Ad — ${evt.title}`,
+                description: `${sizeLabel} event advertisement on Local List 365`,
+              },
+              unit_amount: priceInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/events?session_id={CHECKOUT_SESSION_ID}&event_success=true`,
+        cancel_url: `${baseUrl}/events?canceled=true`,
+        metadata: {
+          type: "event_ad",
+          eventId: String(evt.id),
+          businessId: String(biz.id),
+          userId,
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (err: any) {
+      console.error("Event checkout error:", err);
+      res.status(500).json({ message: err.message || "Failed to create checkout session" });
+    }
+  });
+
   app.post("/api/stripe/webhook", async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -715,6 +802,28 @@ export function registerStripeRoutes(app: Express) {
                 paymentNotes: `Stripe payment ${session.payment_intent || session.id}`,
               }).where(eq(adPlacements.id, adId));
               console.log(`Ad placement ${adId} paid via Stripe (${amountPaid} cents)`);
+            }
+            break;
+          }
+
+          if (session.metadata?.type === "event_ad") {
+            if (session.payment_status !== "paid") {
+              console.log(`Event ad checkout not yet paid (status: ${session.payment_status}), skipping`);
+              break;
+            }
+            const eventId = parseInt(session.metadata?.eventId || "0");
+            if (eventId) {
+              const [existing] = await db.select().from(events).where(eq(events.id, eventId));
+              if (existing && existing.paymentStatus === "paid") {
+                console.log(`Event ${eventId} already marked paid, skipping duplicate webhook`);
+                break;
+              }
+              const amountPaid = session.amount_total || 0;
+              await db.update(events).set({
+                paymentStatus: "paid",
+                priceCharged: amountPaid,
+              }).where(eq(events.id, eventId));
+              console.log(`Event ${eventId} paid via Stripe (${amountPaid} cents)`);
             }
             break;
           }

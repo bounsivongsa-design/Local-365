@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -113,6 +113,24 @@ export default function Advertising() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const adSuccess = params.get("ad_success");
+    const sessionId = params.get("session_id");
+    if (adSuccess === "true" && sessionId) {
+      toast({ title: "Payment Successful!", description: "Your ad payment has been received. It will go live after admin approval." });
+      fetch("/api/stripe/verify-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sessionId }),
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+      }).catch(() => {});
+      window.history.replaceState({}, "", "/advertising");
+    }
+  }, []);
   const [editingAd, setEditingAd] = useState<AdPlacement | null>(null);
   const [formData, setFormData] = useState({
     placementType: "",

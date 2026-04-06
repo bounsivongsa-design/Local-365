@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useEvents, useCreateEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -146,6 +146,23 @@ export default function Events() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<any>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const eventSuccess = params.get("event_success");
+    const sessionId = params.get("session_id");
+    if (eventSuccess === "true" && sessionId) {
+      toast({ title: "Payment Successful!", description: "Your event ad has been paid. It will appear on the calendar after admin approval." });
+      fetch("/api/stripe/verify-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => {});
+      window.history.replaceState({}, "", "/events");
+    }
+  }, []);
 
   const calendarEvents = events?.flatMap(event => {
     const dates = event.eventDates?.length ? event.eventDates : [event.date];
@@ -576,6 +593,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
       date: computedDates[0],
       eventDates: computedDates,
       adSize: selectedAdSize,
+      adDuration: data.adDuration || "monthly",
       description: data.description || "",
       imageUrl: data.imageUrl || undefined,
       zipCode: "27958",
@@ -586,9 +604,39 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
     if (data.promoVideoUrl) eventData.promoVideoUrl = data.promoVideoUrl;
     
     createEvent.mutate(eventData, {
-      onSuccess: () => {
-        toast({ title: "Event Created", description: isAdmin ? "Your community event has been published." : "Your event has been submitted. It will appear on the calendar once payment is confirmed." });
-        onSuccess();
+      onSuccess: async (newEvent: any) => {
+        if (isAdmin) {
+          toast({ title: "Event Created", description: "Your community event has been published." });
+          onSuccess();
+          return;
+        }
+
+        try {
+          const checkoutRes = await fetch("/api/stripe/event-checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ eventId: newEvent.id }),
+          });
+          if (checkoutRes.ok) {
+            const { url } = await checkoutRes.json();
+            if (url) {
+              window.location.href = url;
+              return;
+            }
+          }
+          toast({
+            title: "Event Submitted",
+            description: "Your event was created but payment could not be initiated. Please contact admin.",
+          });
+          onSuccess();
+        } catch {
+          toast({
+            title: "Event Submitted",
+            description: "Your event was created but payment could not be initiated. Please contact admin.",
+          });
+          onSuccess();
+        }
       },
       onError: (err) => {
         toast({ title: "Error", description: err.message, variant: "destructive" });

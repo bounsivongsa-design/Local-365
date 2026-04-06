@@ -1715,7 +1715,7 @@ Respond in this exact JSON format:
   app.get(api.events.list.path, async (req, res) => {
     const { zipCode } = req.query;
     const allEvents = await storage.getEvents();
-    const approvedEvents = allEvents.filter(e => e.status === "approved");
+    const approvedEvents = allEvents.filter(e => e.status === "approved" && (e.paymentStatus === "paid" || e.isExample));
     const eventsWithTier = await Promise.all(
       approvedEvents.map(async (event) => {
         let businessMembershipTier: string | null = null;
@@ -1796,13 +1796,33 @@ Respond in this exact JSON format:
           targetZipCodes: [eventZipCode],
       });
       const event = await storage.createEvent(input);
-      
+
       if (isAdmin) {
-        await pgDb.update(events).set({ status: "approved" }).where(eq(events.id, event.id));
-        return res.status(201).json({ ...event, status: "approved" });
+        await pgDb.update(events).set({ status: "approved", paymentStatus: "paid" }).where(eq(events.id, event.id));
+        return res.status(201).json({ ...event, status: "approved", paymentStatus: "paid" });
       }
-      
-      res.status(201).json(event);
+
+      const adDurationVal = _adDuration || "monthly";
+      const eventAdSize = clientAdSize || "small";
+      const EVENT_PRICING_2WEEK: Record<string, number> = { small: 2500, medium: 3500, large: 5000 };
+      const EVENT_PRICING_MONTHLY: Record<string, number> = { small: 5000, medium: 7500, large: 10000 };
+      const basePriceCents = adDurationVal === "2week"
+        ? (EVENT_PRICING_2WEEK[eventAdSize] || 2500)
+        : (EVENT_PRICING_MONTHLY[eventAdSize] || 5000);
+
+      const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
+      let bizTier = "none";
+      if (serverBusinessId) {
+        const [bizData] = await pgDb.select({ membershipTier: businesses.membershipTier })
+          .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
+        bizTier = bizData?.membershipTier || "none";
+      }
+      const discount = tierDiscounts[bizTier] || 0;
+      const finalPriceCents = Math.round(basePriceCents * (1 - discount));
+
+      await pgDb.update(events).set({ priceCharged: finalPriceCents }).where(eq(events.id, event.id));
+
+      res.status(201).json({ ...event, priceCharged: finalPriceCents });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.message });
