@@ -3001,6 +3001,84 @@ Respond in this exact JSON format:
     }
   });
 
+  app.get("/api/events/my-events", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.linkedBusinessId) {
+        return res.json([]);
+      }
+      const myEvents = await pgDb.select().from(events)
+        .where(eq(events.businessId, user.linkedBusinessId))
+        .orderBy(desc(events.createdAt));
+      res.json(myEvents);
+    } catch (err) {
+      console.error("Error fetching my events:", err);
+      res.status(500).json({ message: "Failed to fetch your events" });
+    }
+  });
+
+  app.patch("/api/events/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const eventId = parseInt(req.params.id);
+      const [event] = await pgDb.select().from(events).where(eq(events.id, eventId));
+      if (!event) return res.status(404).json({ message: "Event not found" });
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.linkedBusinessId || user.linkedBusinessId !== event.businessId) {
+        return res.status(403).json({ message: "You can only edit your own events" });
+      }
+
+      if (event.status === "denied") {
+        return res.status(400).json({ message: "Cannot edit a denied event" });
+      }
+
+      const allowedFields = ["title", "description", "location", "imageUrl", "flyerUrl", "promoVideoUrl"];
+      const updates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      if (event.status === "approved") {
+        updates.status = "pending";
+        updates.adminNote = null;
+      }
+
+      const [updated] = await pgDb.update(events).set(updates).where(eq(events.id, eventId)).returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating event:", err);
+      res.status(500).json({ message: "Failed to update event" });
+    }
+  });
+
+  app.delete("/api/events/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const eventId = parseInt(req.params.id);
+      const [event] = await pgDb.select().from(events).where(eq(events.id, eventId));
+      if (!event) return res.status(404).json({ message: "Event not found" });
+
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.linkedBusinessId || user.linkedBusinessId !== event.businessId) {
+        return res.status(403).json({ message: "You can only delete your own events" });
+      }
+
+      await pgDb.delete(events).where(eq(events.id, eventId));
+      res.status(204).send();
+    } catch (err) {
+      console.error("Error deleting event:", err);
+      res.status(500).json({ message: "Failed to delete event" });
+    }
+  });
+
   // Get all events for admin moderation
   app.get("/api/admin/events", isAuthenticated, async (req: any, res) => {
     try {

@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { useEvents, useCreateEvent } from "@/hooks/use-events";
+import { useEvents, useMyEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
 import { useBusiness } from "@/hooks/use-businesses";
 import { useUpload } from "@/hooks/use-upload";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X, AlertTriangle } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X, AlertTriangle, Pencil, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -49,6 +51,146 @@ const EVENT_TIER_DISCOUNTS = [
   { id: "silver", name: "Silver", discount: 0.25, icon: Crown, gradient: "from-gray-500 to-gray-400", badgeText: "25% OFF" },
   { id: "gold", name: "Gold", discount: 0.50, icon: Crown, gradient: "from-yellow-600 to-amber-500", badgeText: "50% OFF" },
 ] as const;
+
+function EditEventForm({ event, onSuccess }: { event: import("@shared/schema").Event; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const updateMutation = useUpdateEvent();
+  const [formData, setFormData] = useState({
+    title: event.title,
+    description: event.description || "",
+    location: event.location,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title.trim() || !formData.location.trim()) {
+      toast({ title: "Missing fields", description: "Title and location are required.", variant: "destructive" });
+      return;
+    }
+    updateMutation.mutate(
+      { id: event.id, data: formData },
+      {
+        onSuccess: () => {
+          toast({ title: "Event Updated", description: "Your event has been updated." });
+          onSuccess();
+        },
+        onError: (err: Error) => {
+          toast({ title: "Error", description: err.message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="edit-event-title">Event Title *</Label>
+        <Input id="edit-event-title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required data-testid="input-edit-event-title" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-event-location">Location *</Label>
+        <Input id="edit-event-location" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} required data-testid="input-edit-event-location" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-event-description">Description</Label>
+        <Textarea id="edit-event-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} data-testid="input-edit-event-description" />
+      </div>
+      <Button type="submit" disabled={updateMutation.isPending} className="w-full h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold" data-testid="button-save-edit-event">
+        {updateMutation.isPending ? "Saving..." : "Save Changes"}
+      </Button>
+    </form>
+  );
+}
+
+function MyEventsSection({ events: myEvents }: { events: import("@shared/schema").Event[] }) {
+  const { toast } = useToast();
+  const deleteMutation = useDeleteEvent();
+  const [editingEvent, setEditingEvent] = useState<import("@shared/schema").Event | null>(null);
+
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        toast({ title: "Event Removed", description: "Your event has been deleted." });
+      },
+      onError: (err: Error) => {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+      },
+    });
+  };
+
+  const statusBadge = (status: string | null) => {
+    if (status === "approved") return <Badge className="bg-green-100 text-green-800 text-xs">Approved</Badge>;
+    if (status === "denied") return <Badge className="bg-red-100 text-red-800 text-xs">Denied</Badge>;
+    return <Badge className="bg-amber-100 text-amber-800 text-xs">Pending</Badge>;
+  };
+
+  const paymentBadge = (paymentStatus: string | null) => {
+    if (paymentStatus === "paid") return <Badge className="bg-blue-100 text-blue-800 text-xs">Paid</Badge>;
+    return <Badge className="bg-slate-100 text-slate-600 text-xs">Unpaid</Badge>;
+  };
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-xl font-bold text-[#1a1a2e] mb-4 flex items-center gap-2" data-testid="heading-my-events">
+        <Building2 className="h-5 w-5 text-[#0a4a82]" />
+        Your Events
+      </h2>
+      <div className="space-y-3">
+        {myEvents.map((event) => (
+          <Card key={event.id} className="bg-white/95 backdrop-blur-sm p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-[#1a1a2e]" data-testid={`text-my-event-${event.id}`}>{event.title}</h3>
+                  {statusBadge(event.status)}
+                  {paymentBadge(event.paymentStatus)}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {event.location} · {event.date ? new Date(event.date).toLocaleDateString() : "No date"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 ml-3">
+                {event.status !== "denied" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-[#0a4a82] hover:text-[#083a6a] hover:bg-blue-50"
+                    onClick={() => setEditingEvent(event)}
+                    data-testid={`button-edit-event-${event.id}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleDelete(event.id)}
+                  disabled={deleteMutation.isPending}
+                  data-testid={`button-delete-event-${event.id}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={!!editingEvent} onOpenChange={(open) => { if (!open) setEditingEvent(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-[#0a4a82]" />
+              Edit Event
+            </DialogTitle>
+          </DialogHeader>
+          {editingEvent && <EditEventForm event={editingEvent} onSuccess={() => setEditingEvent(null)} />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 function EventAdPricingGrid() {
   const getPrice = (base: number, discount: number) => Math.round(base * (1 - discount));
@@ -143,6 +285,7 @@ export default function Events() {
   const { data: events, isLoading } = useEvents(selectedLocation?.zipCode);
   const { user, isAuthenticated } = useAuth();
   const isBusinessAccount = isAuthenticated && user?.accountType === "business";
+  const { data: myEvents } = useMyEvents(isBusinessAccount);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<any>(null);
@@ -268,6 +411,10 @@ export default function Events() {
       </div>
 
       <div className="container py-12 -mt-8 relative z-10">
+        {isBusinessAccount && myEvents && myEvents.length > 0 && (
+          <MyEventsSection events={myEvents} />
+        )}
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (

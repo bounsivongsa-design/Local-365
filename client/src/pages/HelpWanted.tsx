@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useJobListings, useMyJobListings, useCreateJobListing, useJobCheckout, useDeleteJobListing, useJobPricing } from "@/hooks/use-jobs";
+import { useJobListings, useMyJobListings, useCreateJobListing, useUpdateJobListing, useJobCheckout, useDeleteJobListing, useJobPricing } from "@/hooks/use-jobs";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import {
   Upload,
   X,
   ImageIcon,
+  Pencil,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -350,11 +351,123 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function EditJobForm({ listing, onSuccess }: { listing: import("@shared/schema").JobListing; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const updateMutation = useUpdateJobListing();
+  const [formData, setFormData] = useState({
+    title: listing.title,
+    description: listing.description,
+    imageUrl: listing.imageUrl || "",
+    contactPhone: listing.contactPhone || "",
+    contactEmail: listing.contactEmail || "",
+  });
+  const [imagePreview, setImagePreview] = useState<string | null>(listing.imageUrl || null);
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: (response) => {
+      setFormData((prev) => ({ ...prev, imageUrl: response.objectPath }));
+      toast({ title: "Image uploaded" });
+    },
+    onError: (error) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleImageSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Image must be under 5MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+    const result = await uploadFile(file);
+    if (!result) setImagePreview(listing.imageUrl || null);
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast({ title: "Missing fields", description: "Title and description are required.", variant: "destructive" });
+      return;
+    }
+    updateMutation.mutate(
+      { id: listing.id, data: formData },
+      {
+        onSuccess: () => {
+          toast({ title: "Listing Updated", description: "Your job listing has been updated." });
+          onSuccess();
+        },
+        onError: (err: Error) => {
+          toast({ title: "Error", description: err.message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="edit-job-title">Job Title *</Label>
+        <Input id="edit-job-title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required data-testid="input-edit-job-title" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-job-description">Description *</Label>
+        <Textarea id="edit-job-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} required data-testid="input-edit-job-description" />
+      </div>
+      <div className="space-y-2">
+        <Label>Image (optional)</Label>
+        {imagePreview ? (
+          <div className="relative rounded-lg overflow-hidden border border-slate-200">
+            <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover" />
+            <button type="button" onClick={removeImage} className="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-1 shadow-sm" data-testid="button-remove-edit-job-image">
+              <X className="h-4 w-4 text-slate-600" />
+            </button>
+            {isUploading && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <span className="text-white text-sm font-medium">Uploading...</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-[#0a4a82] hover:bg-slate-50 transition-colors" data-testid="dropzone-edit-job-image">
+            <ImageIcon className="h-8 w-8 text-slate-400 mb-2" />
+            <span className="text-sm text-slate-500 font-medium">Click or drag to upload an image</span>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageSelect(file); }} data-testid="input-edit-job-image-file" />
+          </label>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="edit-job-phone">Contact Phone</Label>
+          <Input id="edit-job-phone" type="tel" value={formData.contactPhone} onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })} data-testid="input-edit-job-phone" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-job-email">Contact Email</Label>
+          <Input id="edit-job-email" type="email" value={formData.contactEmail} onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })} data-testid="input-edit-job-email" />
+        </div>
+      </div>
+      <Button type="submit" disabled={updateMutation.isPending || isUploading} className="w-full h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold" data-testid="button-save-edit-job">
+        {updateMutation.isPending ? "Saving..." : "Save Changes"}
+      </Button>
+    </form>
+  );
+}
+
 function MyListingsSection({ listings, onDelete, isDeleting }: { listings: import("@shared/schema").JobListing[]; onDelete: (id: number) => void; isDeleting: boolean }) {
   const checkoutMutation = useJobCheckout();
   const { data: pricing } = useJobPricing(true);
   const priceLabel = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}/wk` : "$20/wk";
   const { toast } = useToast();
+  const [editingJob, setEditingJob] = useState<import("@shared/schema").JobListing | null>(null);
 
   const handlePayNow = (listingId: number) => {
     checkoutMutation.mutate(listingId, {
@@ -407,6 +520,15 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="text-[#0a4a82] hover:text-[#083a6a] hover:bg-blue-50"
+                    onClick={() => setEditingJob(listing)}
+                    data-testid={`button-edit-job-${listing.id}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     onClick={() => onDelete(listing.id)}
                     disabled={isDeleting}
@@ -420,6 +542,18 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
           </div>
         ))}
       </div>
+
+      <Dialog open={!!editingJob} onOpenChange={(open) => { if (!open) setEditingJob(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-[#0a4a82]" />
+              Edit Job Listing
+            </DialogTitle>
+          </DialogHeader>
+          {editingJob && <EditJobForm listing={editingJob} onSuccess={() => setEditingJob(null)} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

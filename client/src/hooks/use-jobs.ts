@@ -77,6 +77,29 @@ export function useJobCheckout() {
   });
 }
 
+export function useUpdateJobListing() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { title?: string; description?: string; imageUrl?: string; contactPhone?: string; contactEmail?: string } }) => {
+      const res = await fetch(`/api/jobs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update listing");
+      }
+      return res.json() as Promise<JobListing>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/my-listings"] });
+    },
+  });
+}
+
 export function useDeleteJobListing() {
   const queryClient = useQueryClient();
   return useMutation({
