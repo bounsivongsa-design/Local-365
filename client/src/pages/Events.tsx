@@ -61,7 +61,7 @@ function EventAdPricingGrid() {
           <div
             key={tier.name}
             className={`relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border ${isGold ? "ring-2 ring-[#8a9a5b] shadow-2xl shadow-[#8a9a5b]/20" : "border-slate-200/50 dark:border-slate-700/50"}`}
-            data-testid={`card-event-pricing-${tier.id || "basic"}`}
+            data-testid={`card-event-pricing-${tier.id || "non-member"}`}
           >
             {tier.badgeText && (
               <div className="absolute -top-0 right-4 z-10">
