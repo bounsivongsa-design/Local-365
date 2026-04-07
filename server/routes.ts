@@ -3558,7 +3558,7 @@ Respond in this exact JSON format:
 
       const now = new Date();
       const endDate = new Date(biz.goldTrialEndDate);
-      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysLeft = Math.max(0, Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
       if (daysLeft <= 0) {
         return res.json({ active: false, expired: true });

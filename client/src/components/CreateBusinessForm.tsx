@@ -313,6 +313,9 @@ export function CreateBusinessForm({
                 } catch { /* non-blocking */ }
               }
             }
+            const { queryClient } = await import("@/lib/queryClient");
+            await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+            await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
             toast({
               title: "Business Created",
               description:

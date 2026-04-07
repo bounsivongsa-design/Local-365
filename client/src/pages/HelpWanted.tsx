@@ -518,23 +518,29 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
                     </Button>
                   )}
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-[#0a4a82] hover:text-[#083a6a] hover:bg-blue-50"
+                    className="text-[#0a4a82] border-[#0a4a82]/30 hover:bg-blue-50"
                     onClick={() => setEditingJob(listing)}
                     data-testid={`button-edit-job-${listing.id}`}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Edit
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => onDelete(listing.id)}
+                    className="text-red-500 border-red-200 hover:bg-red-50"
+                    onClick={() => {
+                      if (window.confirm("Cancel this listing? This will stop billing and remove the ad.")) {
+                        onDelete(listing.id);
+                      }
+                    }}
                     disabled={isDeleting}
                     data-testid={`button-delete-job-${listing.id}`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Cancel
                   </Button>
                 </div>
               </div>
@@ -542,6 +548,11 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
           </div>
         ))}
       </div>
+
+      <p className="text-xs text-white/70 mt-3 flex items-center gap-1">
+        <DollarSign className="h-3 w-3" />
+        Listings auto-renew weekly until cancelled. Click "Cancel" to stop billing and remove the listing.
+      </p>
 
       <Dialog open={!!editingJob} onOpenChange={(open) => { if (!open) setEditingJob(null); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

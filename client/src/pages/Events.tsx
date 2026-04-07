@@ -730,6 +730,17 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
       return;
     }
 
+    if (!isAdmin && endDate && startDate) {
+      const maxDays = data.adDuration === "2week" ? 14 : 30;
+      const start = new Date(startDate.split("T")[0] + "T00:00:00");
+      const end = new Date(endDate.split("T")[0] + "T00:00:00");
+      const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (diffDays > maxDays) {
+        toast({ title: "Date Range Too Long", description: `Your ${data.adDuration === "2week" ? "2-week" : "30-day"} ad package covers up to ${maxDays} days. Please shorten your event dates or choose a longer ad duration.`, variant: "destructive" });
+        return;
+      }
+    }
+
     const computedDates = endDate ? generateDateRange(startDate, endDate) : [startDate];
 
     const selectedAdSize = isAdmin ? "large" : (data.adSize || "small");

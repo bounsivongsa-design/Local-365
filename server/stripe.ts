@@ -600,7 +600,7 @@ export function registerStripeRoutes(app: Express) {
   app.post("/api/stripe/ad-checkout", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user?.id;
-      const { adPlacementId } = req.body;
+      const { adPlacementId, promoCode: promoCodeStr } = req.body;
 
       if (!adPlacementId) {
         return res.status(400).json({ message: "Ad placement ID is required" });
@@ -632,8 +632,33 @@ export function registerStripeRoutes(app: Express) {
 
       const baseUrl = `https://${req.get("host")}`;
 
+      let stripeCouponId: string | undefined;
+      if (promoCodeStr) {
+        const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCodeStr.toUpperCase().trim()));
+        if (promo && promo.isActive && (promo.discountType === "percentage" || promo.discountType === "fixed_amount")) {
+          if (promo.discountType === "percentage") {
+            const coupon = await stripe!.coupons.create({
+              percent_off: promo.discountValue || 0,
+              duration: "once",
+              name: `Promo: ${promo.code}`,
+            });
+            stripeCouponId = coupon.id;
+          } else {
+            const coupon = await stripe!.coupons.create({
+              amount_off: Math.round((promo.discountValue || 0) * 100),
+              currency: "usd",
+              duration: "once",
+              name: `Promo: ${promo.code}`,
+            });
+            stripeCouponId = coupon.id;
+          }
+          await db.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promo.id));
+          await db.insert(promoCodeUsages).values({ promoCodeId: promo.id, businessId: biz.id });
+        }
+      }
+
       const sizeLabel = (ad.adSize || "small").charAt(0).toUpperCase() + (ad.adSize || "small").slice(1);
-      const session = await stripe!.checkout.sessions.create({
+      const sessionConfig: any = {
         customer: customerId,
         mode: "payment",
         line_items: [
@@ -657,7 +682,11 @@ export function registerStripeRoutes(app: Express) {
           businessId: String(biz.id),
           userId,
         },
-      });
+      };
+      if (stripeCouponId) {
+        sessionConfig.discounts = [{ coupon: stripeCouponId }];
+      }
+      const session = await stripe!.checkout.sessions.create(sessionConfig);
 
       res.json({ url: session.url });
     } catch (err: any) {

@@ -135,6 +135,9 @@ export default function Advertising() {
   }, []);
 
   const [editingAd, setEditingAd] = useState<AdPlacement | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoStatus, setPromoStatus] = useState<{ valid: boolean; discountType?: string; discountValue?: number; message?: string } | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
   const [formData, setFormData] = useState({
     placementType: "",
     adSize: "small" as "small" | "medium" | "large",
@@ -212,11 +215,15 @@ export default function Advertising() {
       queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
 
       try {
+        const checkoutBody: any = { adPlacementId: newAd.id };
+        if (promoStatus?.valid && promoCode.trim()) {
+          checkoutBody.promoCode = promoCode.trim().toUpperCase();
+        }
         const checkoutRes = await fetch("/api/stripe/ad-checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ adPlacementId: newAd.id }),
+          body: JSON.stringify(checkoutBody),
         });
         if (checkoutRes.ok) {
           const { url } = await checkoutRes.json();
@@ -274,6 +281,29 @@ export default function Advertising() {
   function resetForm() {
     setFormData({ placementType: "", adSize: "small", adDuration: "30", title: "", description: "", imageUrl: "", videoUrl: "", category: "" });
     setEditingAd(null);
+    setPromoCode("");
+    setPromoStatus(null);
+  }
+
+  async function validatePromoCode() {
+    if (!promoCode.trim()) return;
+    setPromoChecking(true);
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode.trim(), businessId: linkedBusiness?.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setPromoStatus({ valid: true, discountType: data.discountType, discountValue: data.discountValue });
+      } else {
+        setPromoStatus({ valid: false, message: data.message || "Invalid promo code" });
+      }
+    } catch {
+      setPromoStatus({ valid: false, message: "Could not verify promo code" });
+    }
+    setPromoChecking(false);
   }
 
   function openEditDialog(ad: AdPlacement) {
@@ -734,6 +764,39 @@ export default function Advertising() {
                       )}
                     </div>
 
+                    {!editingAd && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Promo Code (optional)</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Enter promo code"
+                            value={promoCode}
+                            onChange={(e) => { setPromoCode(e.target.value); setPromoStatus(null); }}
+                            className="bg-white text-[#1a1a2e] flex-1"
+                            style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                            data-testid="input-ad-promo-code"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={validatePromoCode}
+                            disabled={promoChecking || !promoCode.trim()}
+                            data-testid="button-validate-ad-promo"
+                          >
+                            {promoChecking ? "..." : "Apply"}
+                          </Button>
+                        </div>
+                        {promoStatus?.valid && (
+                          <p className="text-sm text-green-600 flex items-center gap-1" data-testid="text-ad-promo-valid">
+                            ✓ {promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — applied at checkout
+                          </p>
+                        )}
+                        {promoStatus && !promoStatus.valid && (
+                          <p className="text-sm text-red-500" data-testid="text-ad-promo-invalid">{promoStatus.message}</p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="bg-[#0a4a82]/5 p-4 rounded-xl border border-[#0a4a82]/10">
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-slate-700 dark:text-slate-300">
@@ -743,6 +806,11 @@ export default function Advertising() {
                           {getDisplayPrice()}
                         </span>
                       </div>
+                      {promoStatus?.valid && (
+                        <p className="text-sm text-green-600 mt-1">
+                          Promo discount will be applied at checkout
+                        </p>
+                      )}
                       <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
                         You'll be redirected to secure checkout after submitting. Your ad will be reviewed and activated once payment is confirmed.
                       </p>
