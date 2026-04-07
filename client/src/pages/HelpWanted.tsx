@@ -149,7 +149,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
   const createMutation = useCreateJobListing();
   const checkoutMutation = useJobCheckout();
   const { data: pricing } = useJobPricing(true);
-  const priceDisplay = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}` : "$20";
+  const priceDisplay = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}` : "...";
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -465,7 +465,7 @@ function EditJobForm({ listing, onSuccess }: { listing: import("@shared/schema")
 function MyListingsSection({ listings, onDelete, isDeleting }: { listings: import("@shared/schema").JobListing[]; onDelete: (id: number) => void; isDeleting: boolean }) {
   const checkoutMutation = useJobCheckout();
   const { data: pricing } = useJobPricing(true);
-  const priceLabel = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}/wk` : "$20/wk";
+  const priceLabel = pricing ? `$${(pricing.pricePerWeek / 100).toFixed(0)}/wk` : ".../wk";
   const { toast } = useToast();
   const [editingJob, setEditingJob] = useState<import("@shared/schema").JobListing | null>(null);
 
@@ -615,9 +615,14 @@ export default function HelpWanted() {
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 drop-shadow-lg" data-testid="heading-help-wanted">
             Help Wanted / Now Hiring
           </h1>
-          <p className="text-lg text-white/80 max-w-2xl mx-auto mb-8 drop-shadow">
-            Local businesses are hiring! Browse open positions or post your own starting at $10/week for Gold members.
+          <p className="text-lg text-white/80 max-w-2xl mx-auto mb-4 drop-shadow">
+            Local businesses are hiring! Browse open positions or post your own.
           </p>
+          <div className="flex items-center justify-center gap-4 mb-8 text-sm text-white/90 drop-shadow">
+            <span className="bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-lg"><span className="text-yellow-300 font-bold">Gold</span> $10/wk</span>
+            <span className="bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-lg"><span className="text-gray-300 font-bold">Silver</span> $15/wk</span>
+            <span className="bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-lg"><span className="text-orange-300 font-bold">Bronze</span> $18/wk</span>
+          </div>
 
           <div className="flex items-center justify-center gap-3">
             {isAuthenticated && isBusinessAccount && (
@@ -703,7 +708,7 @@ export default function HelpWanted() {
                 No Openings Yet
               </h3>
               <p className="text-sm text-gray-400 max-w-md mx-auto">
-                Be the first local business to post a job! Help wanted listings start at $10/week for Gold members and stay up until you remove them.
+                Be the first local business to post a job! Pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk. Listings stay up until you remove them.
               </p>
               {isAuthenticated && isBusinessAccount && (
                 <Button
