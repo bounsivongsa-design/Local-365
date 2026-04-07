@@ -3485,7 +3485,59 @@ Respond in this exact JSON format:
         });
       }
 
-      return res.status(400).json({ message: "This promo code can only be used during checkout on the membership page" });
+      if (promo.discountType === "percentage" || promo.discountType === "fixed_amount") {
+        if (!biz.stripeSubscriptionId) {
+          return res.status(400).json({ message: "You need an active subscription to apply this discount. Please subscribe on the membership page first." });
+        }
+
+        try {
+          const stripe = new (await import("stripe")).default(process.env.Stripeintegration || "");
+
+          let coupon;
+          if (promo.discountType === "percentage") {
+            coupon = await stripe.coupons.create({
+              percent_off: promo.discountValue || 0,
+              duration: "once",
+              name: `Promo: ${promo.code}`,
+            });
+          } else {
+            coupon = await stripe.coupons.create({
+              amount_off: Math.round((promo.discountValue || 0) * 100),
+              currency: "usd",
+              duration: "once",
+              name: `Promo: ${promo.code}`,
+            });
+          }
+
+          await stripe.subscriptions.update(biz.stripeSubscriptionId, {
+            coupon: coupon.id,
+          });
+
+          await pgDb.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promo.id));
+          await pgDb.insert(promoCodeUsages).values({
+            promoCodeId: promo.id,
+            businessId: biz.id,
+          });
+
+          const discountLabel = promo.discountType === "percentage"
+            ? `${promo.discountValue}% off`
+            : `$${promo.discountValue} off`;
+
+          console.log(`Promo code redeemed: business ${biz.id} (${biz.name}) applied ${discountLabel} to subscription`);
+
+          return res.json({
+            success: true,
+            message: `Discount applied! ${discountLabel} your next billing cycle.`,
+            discountType: promo.discountType,
+            discountValue: promo.discountValue,
+          });
+        } catch (stripeErr: any) {
+          console.error("Error applying promo to Stripe subscription:", stripeErr);
+          return res.status(500).json({ message: "Could not apply discount to your subscription. Please try again or contact support." });
+        }
+      }
+
+      return res.status(400).json({ message: "This promo code type is not supported" });
     } catch (err) {
       console.error("Error redeeming promo code:", err);
       res.status(500).json({ message: "Failed to redeem promo code" });
