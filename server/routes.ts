@@ -4360,9 +4360,9 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Invalid business ID" });
       }
 
-      const [biz] = await pgDb.select({ userId: businesses.userId }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
       const isAdmin = req.user?.accountType === "admin";
-      const isOwner = biz && biz.userId === req.user?.id;
+      const [currentUser] = await pgDb.select({ linkedBusinessId: users.linkedBusinessId }).from(users).where(eq(users.id, req.user?.id)).limit(1);
+      const isOwner = currentUser && currentUser.linkedBusinessId === businessId;
       if (!isAdmin && !isOwner) {
         return res.status(403).json({ message: "You can only view analytics for your own business" });
       }
