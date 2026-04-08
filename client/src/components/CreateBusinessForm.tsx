@@ -181,6 +181,7 @@ export function CreateBusinessForm({
   const licenseInputRef = useRef<HTMLInputElement>(null);
 
   const categoryLimit = getCategoryLimit(membershipTier);
+  const tierConfigId = TIER_ID_MAP[membershipTier] ?? membershipTier;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -1150,16 +1151,19 @@ export function CreateBusinessForm({
         )}
 
         <div className="relative">
-          <div className="absolute -top-1 right-0">
-            <span className="text-[10px] font-bold bg-gradient-to-r from-yellow-600 to-amber-500 text-white px-2 py-0.5 rounded-full">GOLD ONLY</span>
-          </div>
+          {tierConfigId !== "gold" && (
+            <div className="absolute -top-1 right-0">
+              <span className="text-[10px] font-bold bg-gradient-to-r from-yellow-600 to-amber-500 text-white px-2 py-0.5 rounded-full">GOLD ONLY</span>
+            </div>
+          )}
           <FormField
             control={form.control}
             name="searchKeywords"
             render={({ field }) => {
+              const isGold = tierConfigId === "gold";
               const charCount = (field.value || "").length;
               return (
-                <FormItem className="opacity-60">
+                <FormItem className={isGold ? "" : "opacity-60"}>
                   <FormLabel>
                     <div className="flex items-center gap-2">
                       <Tags className="h-4 w-4" />
@@ -1168,16 +1172,18 @@ export function CreateBusinessForm({
                   </FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Available with Gold membership — upgrade after creating your listing"
+                      placeholder={isGold ? "plumber, emergency plumbing, water heater, drain cleaning" : "Available with Gold membership — upgrade after creating your listing"}
                       rows={2}
                       {...field}
                       value={field.value || ""}
-                      disabled
+                      disabled={!isGold}
+                      className={isGold ? "bg-white" : ""}
+                      style={isGold ? { color: "#1a1a2e", caretColor: "#1a1a2e" } : undefined}
                       data-testid="input-keywords"
                     />
                   </FormControl>
                   <FormDescription>
-                    Gold members can add keywords to appear in more searches
+                    {isGold ? "Comma-separated keywords help your business appear in more searches" : "Gold members can add keywords to appear in more searches"}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

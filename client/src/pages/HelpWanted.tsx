@@ -490,57 +490,65 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
       </h2>
       <div className="space-y-3">
         {listings.map((listing) => (
-          <div key={listing.id} className="flex items-center gap-3">
-            <Card className="flex-1 bg-white/95 backdrop-blur-sm p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-[#1a1a2e]" data-testid={`text-my-job-${listing.id}`}>{listing.title}</h3>
-                    {listing.isActive ? (
-                      <Badge className="bg-green-100 text-green-800 text-xs" data-testid={`badge-active-${listing.id}`}>Active</Badge>
-                    ) : (
-                      <Badge className="bg-amber-100 text-amber-800 text-xs" data-testid={`badge-pending-${listing.id}`}>Pending Payment</Badge>
+          <div key={listing.id}>
+            <Card className="bg-white/95 backdrop-blur-sm rounded-xl border border-white/20 shadow-md overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-[#1a1a2e] text-base" data-testid={`text-my-job-${listing.id}`}>{listing.title}</h3>
+                      {listing.isActive ? (
+                        <Badge className="bg-green-100 text-green-800 text-xs font-semibold" data-testid={`badge-active-${listing.id}`}>Active</Badge>
+                      ) : (
+                        <Badge className="bg-amber-100 text-amber-800 text-xs font-semibold" data-testid={`badge-pending-${listing.id}`}>Pending Payment</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 line-clamp-2">{listing.description}</p>
+                    {listing.isActive && (
+                      <p className="text-xs text-[#0a4a82]/60 mt-2 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Auto-renews weekly ({priceLabel}/week) until cancelled
+                      </p>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 line-clamp-1">{listing.description}</p>
                 </div>
-                <div className="flex items-center gap-2 ml-3">
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   {!listing.isActive && (
                     <Button
                       size="sm"
-                      className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg text-xs"
+                      className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg text-sm font-semibold px-4"
                       onClick={() => handlePayNow(listing.id)}
                       disabled={checkoutMutation.isPending}
                       data-testid={`button-pay-job-${listing.id}`}
                     >
-                      <DollarSign className="h-3 w-3 mr-1" />
+                      <DollarSign className="h-4 w-4 mr-1" />
                       Pay {priceLabel}
                     </Button>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-[#0a4a82] border-[#0a4a82]/30 hover:bg-blue-50"
+                    className="text-[#0a4a82] border-[#0a4a82]/30 hover:bg-[#0a4a82]/5 rounded-lg text-sm font-medium px-4"
                     onClick={() => setEditingJob(listing)}
                     data-testid={`button-edit-job-${listing.id}`}
                   >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    Edit
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit Listing
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-red-500 border-red-200 hover:bg-red-50"
+                    className="text-red-600 border-red-300 hover:bg-red-50 rounded-lg text-sm font-medium px-4"
                     onClick={() => {
-                      if (window.confirm("Cancel this listing? This will stop billing and remove the ad.")) {
+                      if (window.confirm("Cancel this listing? This will stop weekly billing and remove the ad from the job board.")) {
                         onDelete(listing.id);
                       }
                     }}
                     disabled={isDeleting}
                     data-testid={`button-delete-job-${listing.id}`}
                   >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Cancel
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Cancel & Remove
                   </Button>
                 </div>
               </div>
@@ -549,10 +557,12 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
         ))}
       </div>
 
-      <p className="text-xs text-white/70 mt-3 flex items-center gap-1">
-        <DollarSign className="h-3 w-3" />
-        Listings auto-renew weekly until cancelled. Click "Cancel" to stop billing and remove the listing.
-      </p>
+      <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+        <p className="text-xs text-white/90 font-medium flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5 text-amber-300 flex-shrink-0" />
+          Auto-Renewal: Listings renew weekly until you click "Cancel & Remove." You'll be charged {priceLabel}/week.
+        </p>
+      </div>
 
       <Dialog open={!!editingJob} onOpenChange={(open) => { if (!open) setEditingJob(null); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

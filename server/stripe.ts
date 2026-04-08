@@ -113,6 +113,7 @@ export function registerStripeRoutes(app: Express) {
 
       let promoDiscount = 0;
       let promoId: number | null = null;
+      let goldTrialDays: number | null = null;
       if (promoCode) {
         const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase())).limit(1);
         if (!promo) {
@@ -131,7 +132,7 @@ export function registerStripeRoutes(app: Express) {
         if (promo.maxUses && (promo.currentUses || 0) >= promo.maxUses) {
           return res.status(400).json({ message: "This promo code has reached its usage limit" });
         }
-        if (promo.applicableTiers?.length && !promo.applicableTiers.includes(tier)) {
+        if (promo.discountType !== "gold_trial" && promo.applicableTiers?.length && !promo.applicableTiers.includes(tier)) {
           return res.status(400).json({ message: `This promo code is not applicable to the ${tier} tier` });
         }
         if (biz) {
@@ -142,7 +143,10 @@ export function registerStripeRoutes(app: Express) {
           }
         }
         promoId = promo.id;
-        if (promo.discountType === "percentage") {
+        if (promo.discountType === "gold_trial") {
+          promoDiscount = 0;
+          goldTrialDays = promo.durationDays || 30;
+        } else if (promo.discountType === "percentage") {
           promoDiscount = promo.discountValue / 100;
         } else {
           promoDiscount = promo.discountValue;
@@ -213,10 +217,12 @@ export function registerStripeRoutes(app: Express) {
             price_data: {
               currency: "usd",
               product_data: {
-                name: `Local List 365 — ${tierName} Membership (${freqLabel})${isAutoUpgrade ? ' — Gold Trial' : ''}`,
-                description: isAutoUpgrade
-                  ? `Gold tier trial for first 30 days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
-                  : `${tierName} tier membership`,
+                name: `Local List 365 — ${tierName} Membership (${freqLabel})${isAutoUpgrade || goldTrialDays ? ' — Gold Trial' : ''}`,
+                description: goldTrialDays
+                  ? `Gold tier trial for ${goldTrialDays} days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
+                  : isAutoUpgrade
+                    ? `Gold tier trial for first 30 days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
+                    : `${tierName} tier membership`,
               },
               unit_amount: priceAmount,
               recurring: intervalConfig,
@@ -247,7 +253,9 @@ export function registerStripeRoutes(app: Express) {
         },
       };
 
-      if (isNewMember) {
+      if (goldTrialDays) {
+        sessionParams.subscription_data.trial_period_days = goldTrialDays;
+      } else if (isNewMember) {
         sessionParams.subscription_data.trial_period_days = 30;
       }
 

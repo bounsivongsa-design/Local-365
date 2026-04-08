@@ -725,7 +725,8 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const discount = isAdmin ? 1 : tier === "gold" ? 0.50 : tier === "silver" ? 0.25 : tier === "bronze" ? 0.10 : 0;
   const basePricing = adDuration === "2week" ? EVENT_BASE_PRICING.event2Week : EVENT_BASE_PRICING.eventMonthly;
   const basePrice = adSize ? (basePricing as any)[adSize] || 0 : 0;
-  const finalPrice = isAdmin ? 0 : Math.round(basePrice * (1 - discount));
+  const finalPriceRaw = basePrice * (1 - discount);
+  const finalPrice = isAdmin ? "0" : (Number.isInteger(finalPriceRaw) ? String(finalPriceRaw) : finalPriceRaw.toFixed(2));
 
   const generateDateRange = (start: string, end: string): string[] => {
     const dates: string[] = [];

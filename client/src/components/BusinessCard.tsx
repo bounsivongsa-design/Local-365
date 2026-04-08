@@ -25,9 +25,9 @@ function StarRating({ rating, reviewCount }: { rating: number; reviewCount: numb
     <div className="flex items-center gap-1.5" data-testid="star-rating">
       <div className="flex items-center gap-0.5">{stars}</div>
       {rating > 0 ? (
-        <span className="text-sm font-semibold text-slate-700">{rating.toFixed(1)}</span>
+        <span className="text-sm font-semibold" style={{ color: "#334155" }}>{rating.toFixed(1)}</span>
       ) : null}
-      <span className="text-xs text-slate-500">({reviewCount})</span>
+      <span className="text-xs" style={{ color: "#64748b" }}>({reviewCount})</span>
     </div>
   );
 }
@@ -47,7 +47,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
         data-testid={`card-business-${business.id}`}
       >
         {business.isExample && <ExampleBanner variant="ribbon" />}
-        <div className={`relative h-48 sm:h-48 overflow-hidden bg-gradient-to-br from-[#0a4a82]/10 to-[#d4a373]/10 ${business.isExample ? "opacity-75" : ""}`}>
+        <div className={`relative h-48 sm:h-48 overflow-hidden bg-gradient-to-br from-[#f5f5f0] to-[#e8e4de] ${business.isExample ? "opacity-75" : ""}`}>
           {business.imageUrl ? (
             <img 
               src={business.imageUrl} 
@@ -55,8 +55,9 @@ export function BusinessCard({ business }: BusinessCardProps) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full flex items-center justify-center">
-              <Building2 className="h-16 w-16 text-[#0a4a82]/20" />
+            <div className="h-full w-full flex flex-col items-center justify-center gap-2">
+              <Building2 className="h-12 w-12 text-[#0a4a82]/30" />
+              <span className="text-xs font-medium text-[#0a4a82]/40 uppercase tracking-wider">No Photo</span>
             </div>
           )}
           
@@ -89,7 +90,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
         </div>
         
         <div className="p-5">
-          <h3 className="text-lg font-bold text-foreground group-hover:text-[#0a4a82] transition-colors line-clamp-1">
+          <h3 className="text-lg font-bold group-hover:text-[#0a4a82] transition-colors line-clamp-1" style={{ color: "#1a1a2e" }}>
             {business.name}
           </h3>
 
@@ -97,12 +98,12 @@ export function BusinessCard({ business }: BusinessCardProps) {
             <StarRating rating={rating} reviewCount={reviewCount} />
           </div>
           
-          <div className="flex items-center gap-2 text-sm sm:text-base text-[#1a1a2e]/80 mt-2">
+          <div className="flex items-center gap-2 text-sm sm:text-base mt-2" style={{ color: "#475569" }}>
             <MapPin className="h-4 w-4 text-[#d4a373] flex-shrink-0" />
             <span className="truncate">{business.address.split(',')[0] || 'Moyock, NC'}</span>
           </div>
           
-          <p className="text-sm sm:text-base text-[#1a1a2e]/80 mt-3 line-clamp-2 leading-relaxed">
+          <p className="text-sm sm:text-base mt-3 line-clamp-2 leading-relaxed" style={{ color: "#334155" }}>
             {business.description}
           </p>
           

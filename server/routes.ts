@@ -3384,7 +3384,7 @@ Respond in this exact JSON format:
       if (promo.maxUses && (promo.currentUses || 0) >= promo.maxUses) {
         return res.status(400).json({ valid: false, message: "This promo code has reached its usage limit" });
       }
-      if (tier && promo.applicableTiers && promo.applicableTiers.length > 0) {
+      if (promo.discountType !== "gold_trial" && tier && promo.applicableTiers && promo.applicableTiers.length > 0) {
         if (!promo.applicableTiers.includes(tier)) {
           return res.status(400).json({ valid: false, message: `This promo code is not applicable to the ${tier} tier` });
         }
@@ -4322,6 +4322,17 @@ Respond in this exact JSON format:
       const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
       if (!user?.linkedBusinessId || user.linkedBusinessId !== listing.businessId) {
         return res.status(403).json({ message: "You can only delete your own listings" });
+      }
+
+      if (listing.stripeSubscriptionId) {
+        try {
+          const stripe = (await import("stripe")).default;
+          const stripeClient = new stripe(process.env.Stripeintegration || "");
+          await stripeClient.subscriptions.cancel(listing.stripeSubscriptionId);
+          console.log(`Cancelled Stripe subscription ${listing.stripeSubscriptionId} for job listing ${listingId}`);
+        } catch (stripeErr: any) {
+          console.error(`Failed to cancel Stripe subscription for job ${listingId}:`, stripeErr.message);
+        }
       }
 
       await storage.deleteJobListing(listingId);

@@ -738,6 +738,101 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
   );
 }
 
+function MyAdsSection({ businessId }: { businessId: number }) {
+  const { data: myAds, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/ads/my-ads"],
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardContent className="py-8 text-center">
+          <Loader2 className="h-6 w-6 animate-spin text-[#0a4a82] mx-auto" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const ads = myAds || [];
+
+  return (
+    <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10" data-testid="section-my-ads">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-lg text-[#1a1a2e]">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#062d54] flex items-center justify-center">
+            <Megaphone className="h-4 w-4 text-white" />
+          </div>
+          My Ads
+        </CardTitle>
+        <Link to="/advertising">
+          <Button size="sm" className="rounded-lg bg-[#0a4a82] hover:bg-[#083a6a] text-white" data-testid="button-create-ad">
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            New Ad
+          </Button>
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {ads.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-[#0a4a82]/10 flex items-center justify-center mx-auto mb-4">
+              <Megaphone className="h-8 w-8 text-[#0a4a82]/30" />
+            </div>
+            <p className="text-gray-500 font-medium">No ads yet</p>
+            <p className="text-sm text-gray-400 mt-1">Create banner ads to promote your business across the platform</p>
+            <Link to="/advertising" className="mt-4 inline-block">
+              <Button size="sm" variant="outline" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid="button-browse-ads">
+                <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+                Browse Ad Options
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ads.map((ad: any) => (
+              <div
+                key={ad.id}
+                className="flex items-center gap-4 p-4 bg-gradient-to-r from-[#0a4a82]/5 to-transparent rounded-xl border border-[#0a4a82]/10"
+                data-testid={`ad-item-${ad.id}`}
+              >
+                {ad.imageUrl ? (
+                  <img src={ad.imageUrl} alt={ad.title} className="w-16 h-12 rounded-lg object-cover border border-[#0a4a82]/10" />
+                ) : (
+                  <div className="w-16 h-12 rounded-lg bg-[#0a4a82]/10 flex items-center justify-center">
+                    <Megaphone className="h-5 w-5 text-[#0a4a82]/30" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[#1a1a2e] truncate" data-testid={`text-ad-title-${ad.id}`}>{ad.title}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className={`text-xs border-0 ${
+                      ad.status === "active" ? "bg-green-100 text-green-700" :
+                      ad.status === "pending" ? "bg-amber-100 text-amber-700" :
+                      ad.status === "denied" ? "bg-red-100 text-red-700" :
+                      "bg-gray-100 text-gray-600"
+                    }`} data-testid={`badge-ad-status-${ad.id}`}>
+                      {ad.status === "active" ? "Active" : ad.status === "pending" ? "Pending Approval" : ad.status === "denied" ? "Denied" : ad.status}
+                    </Badge>
+                    {ad.paymentStatus === "unpaid" && (
+                      <Badge className="text-xs bg-red-50 text-red-600 border-0">Unpaid</Badge>
+                    )}
+                    <span className="text-xs text-gray-400 capitalize">{ad.placementType} • {ad.adSize || "Standard"}</span>
+                  </div>
+                </div>
+                <Link to="/advertising">
+                  <Button variant="outline" size="sm" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid={`button-view-ad-${ad.id}`}>
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    View
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function BusinessDashboard({ user, business }: { user: any; business: Business | null }) {
   const { toast } = useToast();
   const hasBusiness = !!business;
@@ -1001,6 +1096,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
           </div>
 
           <DashboardInbox />
+
+          <MyAdsSection businessId={business.id} />
 
           <Card className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] rounded-2xl border-0 shadow-lg overflow-hidden">
             <CardContent className="p-6 flex items-center justify-between">
