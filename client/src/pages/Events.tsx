@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useEvents, useMyEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "@/context/LocationContext";
@@ -699,6 +699,24 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const adDuration = form.watch("adDuration");
   const adSize = form.watch("adSize");
 
+  const maxEndDate = useMemo(() => {
+    if (isAdmin || !startDate || !adDuration) return undefined;
+    const maxDays = adDuration === "2week" ? 13 : 29;
+    const start = new Date(startDate.split("T")[0] + "T00:00:00");
+    start.setDate(start.getDate() + maxDays);
+    const y = start.getFullYear();
+    const m = String(start.getMonth() + 1).padStart(2, "0");
+    const d = String(start.getDate()).padStart(2, "0");
+    const time = startDate.includes("T") ? startDate.split("T")[1] : "23:59";
+    return `${y}-${m}-${d}T${time}`;
+  }, [startDate, adDuration, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && endDate && maxEndDate && endDate > maxEndDate) {
+      setEndDate(maxEndDate);
+    }
+  }, [adDuration, maxEndDate]);
+
   const canDescription = isAdmin || adSize === "medium" || adSize === "large";
   const canImage = isAdmin || adSize === "medium" || adSize === "large";
   const canFlyer = isAdmin || adSize === "large";
@@ -850,69 +868,6 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
           )}
         />
 
-        <div>
-          <label className="text-sm font-medium leading-none mb-2 block">Event Dates & Time</label>
-          <p className="text-xs text-muted-foreground mb-2">Select a start and end date. Multi-day events will appear on the calendar for every day in the range.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Start Date & Time</label>
-              <Input
-                type="datetime-local"
-                className="bg-white text-[#1a1a2e]"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  if (endDate && e.target.value > endDate) {
-                    setEndDate(e.target.value);
-                  }
-                }}
-                data-testid="input-event-start-date"
-                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">End Date (optional for single-day events)</label>
-              <Input
-                type="datetime-local"
-                className="bg-white text-[#1a1a2e]"
-                value={endDate}
-                min={startDate || undefined}
-                onChange={(e) => setEndDate(e.target.value)}
-                data-testid="input-event-end-date"
-                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-              />
-            </div>
-          </div>
-          {startDate && (
-            <div className="mt-3 p-3 rounded-xl bg-[#0a4a82]/5 border border-[#0a4a82]/15">
-              <div className="flex items-center gap-2 text-sm text-[#0a4a82] font-medium">
-                <Calendar className="h-4 w-4" />
-                {endDate && endDate.split("T")[0] !== startDate.split("T")[0] ? (
-                  <span>
-                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    {" — "}
-                    {new Date(endDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    {" "}
-                    <span className="text-slate-500 font-normal">
-                      ({Math.ceil((new Date(endDate.split("T")[0] + "T00:00:00").getTime() - new Date(startDate.split("T")[0] + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)) + 1} days on calendar)
-                    </span>
-                  </span>
-                ) : (
-                  <span>
-                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    {" at "}
-                    {new Date(startDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                    <span className="text-slate-500 font-normal ml-1">(single day)</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-          {!startDate && (
-            <p className="text-xs text-amber-600 font-medium mt-2">Please select a start date above</p>
-          )}
-        </div>
-
         {!isAdmin && (
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
           <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
@@ -989,6 +944,82 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
           )}
         </div>
         )}
+
+        <div>
+          <label className="text-sm font-medium leading-none mb-2 block">Event Dates & Time</label>
+          <p className="text-xs text-muted-foreground mb-2">Select a start and end date. Multi-day events will appear on the calendar for every day in the range.{!isAdmin && adDuration && ` Your ${adDuration === "2week" ? "2-week" : "30-day"} ad covers up to ${adDuration === "2week" ? "14" : "30"} days.`}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Start Date & Time</label>
+              <Input
+                type="datetime-local"
+                className="bg-white text-[#1a1a2e]"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (endDate && e.target.value > endDate) {
+                    setEndDate(e.target.value);
+                  }
+                }}
+                data-testid="input-event-start-date"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">End Date (optional for single-day events)</label>
+              <Input
+                type="datetime-local"
+                className="bg-white text-[#1a1a2e]"
+                value={endDate}
+                min={startDate || undefined}
+                max={maxEndDate || undefined}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!isAdmin && maxEndDate && val > maxEndDate) {
+                    setEndDate(maxEndDate);
+                  } else {
+                    setEndDate(val);
+                  }
+                }}
+                data-testid="input-event-end-date"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              />
+              {!isAdmin && adDuration && startDate && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Max end date: {maxEndDate ? new Date(maxEndDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                </p>
+              )}
+            </div>
+          </div>
+          {startDate && (
+            <div className="mt-3 p-3 rounded-xl bg-[#0a4a82]/5 border border-[#0a4a82]/15">
+              <div className="flex items-center gap-2 text-sm text-[#0a4a82] font-medium">
+                <Calendar className="h-4 w-4" />
+                {endDate && endDate.split("T")[0] !== startDate.split("T")[0] ? (
+                  <span>
+                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {" — "}
+                    {new Date(endDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {" "}
+                    <span className="text-slate-500 font-normal">
+                      ({Math.ceil((new Date(endDate.split("T")[0] + "T00:00:00").getTime() - new Date(startDate.split("T")[0] + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)) + 1} days on calendar)
+                    </span>
+                  </span>
+                ) : (
+                  <span>
+                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {" at "}
+                    {new Date(startDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    <span className="text-slate-500 font-normal ml-1">(single day)</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          {!startDate && (
+            <p className="text-xs text-amber-600 font-medium mt-2">Please select a start date above</p>
+          )}
+        </div>
 
         {canDescription ? (
           <FormField
