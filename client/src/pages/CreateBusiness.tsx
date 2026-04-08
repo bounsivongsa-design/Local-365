@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Loader2, CheckCircle, CreditCard } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const STRIPE_SESSION_KEY = "ll365_stripe_session_id";
 
@@ -45,6 +45,7 @@ export default function CreateBusiness() {
   const fromCheckout = fromCheckoutParam || !!getStoredStripeSession();
 
   const hasPendingTier = !!(user as any)?.pendingMembershipTier;
+  const pendingTier = (user as any)?.pendingMembershipTier || "basic";
   const hasPaymentProof = !!effectiveSessionId || hasPendingTier;
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function CreateBusiness() {
           try {
             await apiRequest("POST", "/api/stripe/verify-session", { sessionId: effectiveSessionId });
             console.log("Session verified for create-business (background)");
+            queryClient.invalidateQueries({ queryKey: ["/api/user"] });
             return;
           } catch (err) {
             console.error(`Background session verification attempt ${attempt} failed:`, err);
@@ -151,6 +153,7 @@ export default function CreateBusiness() {
               navigate("/dashboard");
             }}
             stripeSessionId={effectiveSessionId || undefined}
+            membershipTier={pendingTier}
             initialBusinessName={(user as any)?.pendingBusinessName || ""}
             initialOwnerName={[user?.firstName, user?.lastName].filter(Boolean).join(" ")}
             initialEmail={user?.email || ""}

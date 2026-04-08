@@ -512,33 +512,33 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100 bg-slate-50 -mx-4 -mb-4 px-4 py-3 rounded-b-xl">
                   {!listing.isActive && (
                     <Button
-                      size="sm"
-                      className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg text-sm font-semibold px-4"
+                      size="default"
+                      className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg font-semibold px-5 shadow-sm"
                       onClick={() => handlePayNow(listing.id)}
                       disabled={checkoutMutation.isPending}
                       data-testid={`button-pay-job-${listing.id}`}
                     >
-                      <DollarSign className="h-4 w-4 mr-1" />
+                      <DollarSign className="h-4 w-4 mr-1.5" />
                       Pay {priceLabel}
                     </Button>
                   )}
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="text-[#0a4a82] border-[#0a4a82]/30 hover:bg-[#0a4a82]/5 rounded-lg text-sm font-medium px-4"
+                    size="default"
+                    className="text-[#0a4a82] border-[#0a4a82] hover:bg-[#0a4a82]/10 rounded-lg font-semibold px-5"
                     onClick={() => setEditingJob(listing)}
                     data-testid={`button-edit-job-${listing.id}`}
                   >
-                    <Pencil className="h-4 w-4 mr-1" />
+                    <Pencil className="h-4 w-4 mr-1.5" />
                     Edit Listing
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="text-red-600 border-red-300 hover:bg-red-50 rounded-lg text-sm font-medium px-4"
+                    size="default"
+                    className="text-red-600 border-red-500 hover:bg-red-50 rounded-lg font-semibold px-5"
                     onClick={() => {
                       if (window.confirm("Cancel this listing? This will stop weekly billing and remove the ad from the job board.")) {
                         onDelete(listing.id);
@@ -547,7 +547,7 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
                     disabled={isDeleting}
                     data-testid={`button-delete-job-${listing.id}`}
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
+                    <Trash2 className="h-4 w-4 mr-1.5" />
                     Cancel & Remove
                   </Button>
                 </div>
@@ -557,10 +557,13 @@ function MyListingsSection({ listings, onDelete, isDeleting }: { listings: impor
         ))}
       </div>
 
-      <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-        <p className="text-xs text-white/90 font-medium flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 text-amber-300 flex-shrink-0" />
-          Auto-Renewal: Listings renew weekly until you click "Cancel & Remove." You'll be charged {priceLabel}/week.
+      <div className="mt-4 bg-amber-50 rounded-xl p-4 border border-amber-200 shadow-sm">
+        <p className="text-sm text-amber-900 font-semibold flex items-center gap-2 mb-1">
+          <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          Auto-Renewal Policy
+        </p>
+        <p className="text-xs text-amber-800 leading-relaxed ml-6">
+          All job listings automatically renew every week at {priceLabel}/week until you click the <strong>"Cancel & Remove"</strong> button above. Cancellation takes effect immediately — your listing will be removed and billing will stop.
         </p>
       </div>
 

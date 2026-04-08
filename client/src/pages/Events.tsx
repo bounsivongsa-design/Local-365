@@ -245,7 +245,10 @@ function MyEventsSection({ events: myEvents }: { events: import("@shared/schema"
 }
 
 function EventAdPricingGrid() {
-  const getPrice = (base: number, discount: number) => Math.round(base * (1 - discount));
+  const getPrice = (base: number, discount: number) => {
+    const cents = Math.round(base * 100 * (1 - discount));
+    return (cents / 100).toFixed(2);
+  };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
       {EVENT_TIER_DISCOUNTS.map((tier) => {

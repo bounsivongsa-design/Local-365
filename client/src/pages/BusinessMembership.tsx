@@ -273,7 +273,7 @@ export default function BusinessMembership() {
       });
       const data = await res.json();
       if (data.valid) {
-        setPromoStatus({ valid: true, message: data.description || "Promo code applied!", discountType: data.discountType, discountValue: data.discountValue, description: data.description, expiresAt: data.expiresAt });
+        setPromoStatus({ valid: true, message: data.description || "Promo code applied!", discountType: data.discountType, discountValue: data.discountValue, description: data.description, expiresAt: data.expiresAt, durationDays: data.durationDays });
       } else {
         setPromoStatus({ valid: false, message: data.message || "Invalid promo code" });
       }
