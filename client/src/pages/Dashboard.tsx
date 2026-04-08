@@ -48,6 +48,9 @@ import {
   CreditCard,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 import { DashboardInbox } from "@/components/DashboardInbox";
 import { apiRequest } from "@/lib/queryClient";
@@ -743,6 +746,155 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
   );
 }
 
+function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const [formData, setFormData] = useState({
+    title: ad?.title || "",
+    description: ad?.description || "",
+    linkUrl: ad?.linkUrl || "",
+  });
+  const [imageUrl, setImageUrl] = useState(ad?.imageUrl || "");
+  const [saving, setSaving] = useState(false);
+
+  const isActive = ad?.status === "active" && ad?.paymentStatus === "paid";
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const result = await uploadFile(file);
+    if (result) {
+      setImageUrl(result.objectPath);
+      toast({ title: "Image Uploaded" });
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ads/${ad.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...formData, imageUrl }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update ad");
+      }
+      toast({ title: "Ad Updated", description: "Your changes have been saved." });
+      queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-[#0a4a82]" />
+            Edit Ad Campaign
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          {isActive && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-700 font-medium">
+                Your ad is currently live. You can update the title, description, image, and link. Ad size cannot be changed while active.
+              </p>
+            </div>
+          )}
+          <div>
+            <Label htmlFor="edit-ad-title">Ad Title</Label>
+            <Input
+              id="edit-ad-title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="bg-white"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              data-testid="input-edit-ad-title"
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-ad-description">Description</Label>
+            <Textarea
+              id="edit-ad-description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className="bg-white"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              data-testid="input-edit-ad-description"
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-ad-link">Link URL</Label>
+            <Input
+              id="edit-ad-link"
+              type="url"
+              placeholder="https://yourwebsite.com"
+              value={formData.linkUrl}
+              onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
+              className="bg-white"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              data-testid="input-edit-ad-link"
+            />
+          </div>
+          <div>
+            <Label>Ad Image</Label>
+            {imageUrl ? (
+              <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/20 h-32 mt-1">
+                <img src={imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <label className="cursor-pointer">
+                    <Button type="button" variant="secondary" size="sm" className="shadow-lg pointer-events-none">
+                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Replace
+                    </Button>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-ad-image" />
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#0a4a82]/20 cursor-pointer hover:border-[#0a4a82]/40 transition-colors">
+                <Upload className="h-5 w-5 text-[#0a4a82]/40" />
+                <span className="text-xs text-gray-500">Click to upload an image</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-ad-image-upload" />
+              </label>
+            )}
+            {isUploading && (
+              <div className="mt-2">
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#0a4a82] to-[#d4a373] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              onClick={handleSave}
+              disabled={saving || isUploading}
+              className="flex-1 bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg font-semibold"
+              data-testid="button-save-ad-edit"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <CheckCircle2 className="h-4 w-4 mr-1.5" />}
+              Save Changes
+            </Button>
+            <Button variant="outline" onClick={onClose} className="rounded-lg" data-testid="button-cancel-ad-edit">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function MyAdsSection({ businessId }: { businessId: number }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -751,6 +903,7 @@ function MyAdsSection({ businessId }: { businessId: number }) {
   });
   const [payingAdId, setPayingAdId] = useState<number | null>(null);
   const [deletingAdId, setDeletingAdId] = useState<number | null>(null);
+  const [editingAd, setEditingAd] = useState<any>(null);
 
   const handlePayAd = async (adId: number) => {
     setPayingAdId(adId);
@@ -872,6 +1025,15 @@ function MyAdsSection({ businessId }: { businessId: number }) {
                     </div>
                   </div>
                 </div>
+                {ad.endDate && (
+                  <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(ad.endDate) > new Date()
+                      ? `Runs until ${format(new Date(ad.endDate), "MMM d, yyyy")}`
+                      : `Expired ${format(new Date(ad.endDate), "MMM d, yyyy")}`
+                    }
+                  </p>
+                )}
                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#0a4a82]/10">
                   {ad.paymentStatus === "unpaid" && ad.status !== "denied" && (
                     <Button
@@ -885,12 +1047,18 @@ function MyAdsSection({ businessId }: { businessId: number }) {
                       Pay Now
                     </Button>
                   )}
-                  <Link to="/advertising">
-                    <Button variant="outline" size="sm" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5 text-sm font-medium px-4" data-testid={`button-edit-ad-${ad.id}`}>
-                      <Eye className="h-3.5 w-3.5 mr-1" />
-                      View / Edit
+                  {ad.status !== "denied" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82]/10 text-sm font-semibold px-4"
+                      onClick={() => setEditingAd(ad)}
+                      data-testid={`button-edit-ad-${ad.id}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Edit
                     </Button>
-                  </Link>
+                  )}
                   {ad.status === "pending" && (
                     <Button
                       variant="outline"
@@ -909,7 +1077,16 @@ function MyAdsSection({ businessId }: { businessId: number }) {
             ))}
           </div>
         )}
+        <div className="mt-4 bg-slate-50 rounded-lg p-3 border border-slate-200">
+          <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+            Ads run for the paid duration (monthly) and stop automatically when the end date passes. There is no auto-renewal — create a new ad to continue advertising.
+          </p>
+        </div>
       </CardContent>
+      {editingAd && (
+        <EditAdDialog ad={editingAd} open={!!editingAd} onClose={() => setEditingAd(null)} />
+      )}
     </Card>
   );
 }

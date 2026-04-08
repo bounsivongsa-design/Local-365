@@ -2688,7 +2688,11 @@ Respond in this exact JSON format:
         .leftJoin(businesses, eq(adPlacements.businessId, businesses.id))
         .where(and(
           eq(adPlacements.status, "active"),
-          eq(adPlacements.paymentStatus, "paid")
+          eq(adPlacements.paymentStatus, "paid"),
+          or(
+            sql`${adPlacements.endDate} IS NULL`,
+            sql`${adPlacements.endDate} > NOW()`
+          )
         ));
       
       const results = await query;
@@ -2879,8 +2883,8 @@ Respond in this exact JSON format:
       );
       if (!ad) return res.status(404).json({ message: "Ad not found" });
 
-      if (ad.status !== "pending" && ad.status !== "expired") {
-        return res.status(400).json({ message: "Only pending or expired ads can be edited." });
+      if (ad.status === "denied") {
+        return res.status(400).json({ message: "Denied ads cannot be edited. Please create a new ad." });
       }
 
       const { title, description, imageUrl, videoUrl, linkUrl, adSize } = req.body;
@@ -2896,6 +2900,9 @@ Respond in this exact JSON format:
       }
       if (videoUrl !== undefined) updates.videoUrl = videoUrl;
       if (linkUrl !== undefined) updates.linkUrl = linkUrl;
+      if (ad.status === "active" && ad.paymentStatus === "paid" && adSize && adSize !== ad.adSize) {
+        return res.status(400).json({ message: "Cannot change ad size while the ad is active. You can update the title, description, image, or link." });
+      }
       if (adSize && ["small", "medium", "large"].includes(adSize)) {
         updates.adSize = adSize;
         const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
