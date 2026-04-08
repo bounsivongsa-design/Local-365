@@ -162,7 +162,7 @@ export default function BusinessMembership() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [promoCode, setPromoCode] = useState("");
-  const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number; description?: string; expiresAt?: string } | null>(null);
+  const [promoStatus, setPromoStatus] = useState<{ valid: boolean; message: string; discountType?: string; discountValue?: number; description?: string; expiresAt?: string; durationDays?: number } | null>(null);
   const [validatingPromo, setValidatingPromo] = useState(false);
   const [checkoutTier, setCheckoutTier] = useState<MembershipTier | null>(null);
   const [showGoldTrialDialog, setShowGoldTrialDialog] = useState(false);
@@ -335,8 +335,9 @@ export default function BusinessMembership() {
       }
     }
     const finalTotal = Math.max(0, pricing.total - discount);
-    const hasFreeTrial = isNewMember;
-    return { ...pricing, discount, finalTotal, hasFreeTrial };
+    const hasFreeTrial = isNewMember || (promoStatus?.valid && promoStatus.discountType === "gold_trial");
+    const trialDays = promoStatus?.valid && promoStatus.discountType === "gold_trial" && promoStatus.durationDays ? promoStatus.durationDays : 30;
+    return { ...pricing, discount, finalTotal, hasFreeTrial, trialDays };
   };
 
   const handleManageSubscription = async () => {
@@ -790,7 +791,7 @@ export default function BusinessMembership() {
                                 <div className="mt-2 bg-[#0a4a82]/5 rounded-lg p-3 border border-[#0a4a82]/10">
                                   <div className="flex justify-between items-center">
                                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                      After 30-day trial
+                                      After {checkoutPricing.trialDays}-day trial
                                     </span>
                                     <span className="text-lg font-bold text-[#0a4a82] dark:text-blue-400">
                                       {selectedFrequency === "monthly"
@@ -806,7 +807,7 @@ export default function BusinessMembership() {
                                   )}
                                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                                     <Gift className="h-3 w-3 text-emerald-500" />
-                                    30-day free trial included — no charge until trial ends
+                                    {checkoutPricing.trialDays}-day free trial included — no charge until trial ends
                                   </p>
                                 </div>
                               </>
@@ -863,7 +864,9 @@ export default function BusinessMembership() {
                           {promoStatus.valid ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <X className="h-4 w-4 shrink-0" />}
                           <span data-testid="text-promo-status">
                             {promoStatus.valid
-                              ? `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — Code applied!`
+                              ? promoStatus.discountType === "gold_trial"
+                                ? `Gold Trial — ${promoStatus.durationDays || 30} days free!`
+                                : `${promoStatus.discountType === "percentage" ? `${promoStatus.discountValue}% off` : `$${promoStatus.discountValue} off`} — Code applied!`
                               : promoStatus.message}
                           </span>
                         </div>

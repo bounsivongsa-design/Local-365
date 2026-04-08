@@ -277,9 +277,7 @@ export function CreateBusinessForm({
         const submitData: any = {
           ...restData,
           establishedYear: establishedYearNum,
-          imageUrl:
-            restData.imageUrl ||
-            "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop",
+          imageUrl: restData.imageUrl || "",
           address: restData.address || `${restData.establishedZipCode}`,
           businessHours: JSON.stringify(
             hoursMode === "text"
