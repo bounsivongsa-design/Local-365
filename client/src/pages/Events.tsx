@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X, AlertTriangle, Pencil, Building2 } from "lucide-react";
+import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X, AlertTriangle, Pencil, Building2, CreditCard, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -106,6 +106,7 @@ function MyEventsSection({ events: myEvents }: { events: import("@shared/schema"
   const { toast } = useToast();
   const deleteMutation = useDeleteEvent();
   const [editingEvent, setEditingEvent] = useState<import("@shared/schema").Event | null>(null);
+  const [payingEventId, setPayingEventId] = useState<number | null>(null);
 
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id, {
@@ -118,6 +119,28 @@ function MyEventsSection({ events: myEvents }: { events: import("@shared/schema"
     });
   };
 
+  const handlePayEvent = async (eventId: number) => {
+    setPayingEventId(eventId);
+    try {
+      const res = await fetch("/api/stripe/event-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ eventId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: "Failed to start payment", variant: "destructive" });
+    } finally {
+      setPayingEventId(null);
+    }
+  };
+
   const statusBadge = (status: string | null) => {
     if (status === "approved") return <Badge className="bg-green-100 text-green-800 text-xs">Approved</Badge>;
     if (status === "denied") return <Badge className="bg-red-100 text-red-800 text-xs">Denied</Badge>;
@@ -126,7 +149,7 @@ function MyEventsSection({ events: myEvents }: { events: import("@shared/schema"
 
   const paymentBadge = (paymentStatus: string | null) => {
     if (paymentStatus === "paid") return <Badge className="bg-blue-100 text-blue-800 text-xs">Paid</Badge>;
-    return <Badge className="bg-slate-100 text-slate-600 text-xs">Unpaid</Badge>;
+    return <Badge className="bg-red-100 text-red-600 text-xs font-semibold">Unpaid</Badge>;
   };
 
   return (
@@ -137,39 +160,68 @@ function MyEventsSection({ events: myEvents }: { events: import("@shared/schema"
       </h2>
       <div className="space-y-3">
         {myEvents.map((event) => (
-          <Card key={event.id} className="bg-white/95 backdrop-blur-sm p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-[#1a1a2e]" data-testid={`text-my-event-${event.id}`}>{event.title}</h3>
-                  {statusBadge(event.status)}
-                  {paymentBadge(event.paymentStatus)}
+          <Card key={event.id} className="bg-white/95 backdrop-blur-sm rounded-xl border border-white/20 shadow-md overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h3 className="font-bold text-[#1a1a2e] text-base" data-testid={`text-my-event-${event.id}`}>{event.title}</h3>
+                    {statusBadge(event.status)}
+                    {paymentBadge(event.paymentStatus)}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {event.location} · {event.date ? new Date(event.date).toLocaleDateString() : "No date"}
+                  </p>
+                  {event.priceCharged && event.paymentStatus !== "paid" && (
+                    <p className="text-xs text-[#0a4a82]/70 mt-1">
+                      Amount due: ${((event.priceCharged as number) / 100).toFixed(2)}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  {event.location} · {event.date ? new Date(event.date).toLocaleDateString() : "No date"}
-                </p>
               </div>
-              <div className="flex items-center gap-2 ml-3">
+              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                {event.paymentStatus !== "paid" && event.status !== "denied" && (
+                  <Button
+                    size="sm"
+                    className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg text-sm font-semibold px-4"
+                    onClick={() => handlePayEvent(event.id)}
+                    disabled={payingEventId === event.id}
+                    data-testid={`button-pay-event-${event.id}`}
+                  >
+                    {payingEventId === event.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <CreditCard className="h-4 w-4 mr-1" />
+                    )}
+                    Pay Now
+                  </Button>
+                )}
                 {event.status !== "denied" && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-[#0a4a82] hover:text-[#083a6a] hover:bg-blue-50"
+                    className="text-[#0a4a82] border-[#0a4a82]/30 hover:bg-[#0a4a82]/5 rounded-lg text-sm font-medium px-4"
                     onClick={() => setEditingEvent(event)}
                     data-testid={`button-edit-event-${event.id}`}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit
                   </Button>
                 )}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleDelete(event.id)}
+                  className="text-red-600 border-red-300 hover:bg-red-50 rounded-lg text-sm font-medium px-4"
+                  onClick={() => {
+                    if (window.confirm("Delete this event? This action cannot be undone.")) {
+                      handleDelete(event.id);
+                    }
+                  }}
                   disabled={deleteMutation.isPending}
                   data-testid={`button-delete-event-${event.id}`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
                 </Button>
               </div>
             </div>
