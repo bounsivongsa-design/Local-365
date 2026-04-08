@@ -43,11 +43,16 @@ import {
   Calendar,
   LayoutDashboard,
   Bell,
+  Trash2,
+  Pencil,
+  CreditCard,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 import { DashboardInbox } from "@/components/DashboardInbox";
 import { apiRequest } from "@/lib/queryClient";
+import { useMyJobListings, useDeleteJobListing } from "@/hooks/use-jobs";
+import { useMyEvents, useDeleteEvent } from "@/hooks/use-events";
 import { formatDistanceToNow, format, subDays, eachDayOfInterval } from "date-fns";
 import type { Business } from "@shared/schema";
 
@@ -739,9 +744,53 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 }
 
 function MyAdsSection({ businessId }: { businessId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: myAds, isLoading } = useQuery<any[]>({
     queryKey: ["/api/ads/my-ads"],
   });
+  const [payingAdId, setPayingAdId] = useState<number | null>(null);
+  const [deletingAdId, setDeletingAdId] = useState<number | null>(null);
+
+  const handlePayAd = async (adId: number) => {
+    setPayingAdId(adId);
+    try {
+      const res = await fetch("/api/stripe/ad-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ adPlacementId: adId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to start payment", variant: "destructive" });
+    } finally {
+      setPayingAdId(null);
+    }
+  };
+
+  const handleDeleteAd = async (adId: number) => {
+    if (!window.confirm("Delete this ad campaign? This cannot be undone.")) return;
+    setDeletingAdId(adId);
+    try {
+      const res = await fetch(`/api/ads/${adId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to delete");
+      }
+      toast({ title: "Ad Deleted", description: "Your ad campaign has been removed." });
+      queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingAdId(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -762,7 +811,7 @@ function MyAdsSection({ businessId }: { businessId: number }) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#062d54] flex items-center justify-center">
             <Megaphone className="h-4 w-4 text-white" />
           </div>
-          My Ads
+          My Ad Campaigns
         </CardTitle>
         <Link to="/advertising">
           <Button size="sm" className="rounded-lg bg-[#0a4a82] hover:bg-[#083a6a] text-white" data-testid="button-create-ad">
@@ -777,7 +826,7 @@ function MyAdsSection({ businessId }: { businessId: number }) {
             <div className="w-16 h-16 rounded-full bg-[#0a4a82]/10 flex items-center justify-center mx-auto mb-4">
               <Megaphone className="h-8 w-8 text-[#0a4a82]/30" />
             </div>
-            <p className="text-gray-500 font-medium">No ads yet</p>
+            <p className="text-gray-500 font-medium">No ad campaigns yet</p>
             <p className="text-sm text-gray-400 mt-1">Create banner ads to promote your business across the platform</p>
             <Link to="/advertising" className="mt-4 inline-block">
               <Button size="sm" variant="outline" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid="button-browse-ads">
@@ -791,39 +840,373 @@ function MyAdsSection({ businessId }: { businessId: number }) {
             {ads.map((ad: any) => (
               <div
                 key={ad.id}
-                className="flex items-center gap-4 p-4 bg-gradient-to-r from-[#0a4a82]/5 to-transparent rounded-xl border border-[#0a4a82]/10"
+                className="p-4 bg-gradient-to-r from-[#0a4a82]/5 to-transparent rounded-xl border border-[#0a4a82]/10"
                 data-testid={`ad-item-${ad.id}`}
               >
-                {ad.imageUrl ? (
-                  <img src={ad.imageUrl} alt={ad.title} className="w-16 h-12 rounded-lg object-cover border border-[#0a4a82]/10" />
-                ) : (
-                  <div className="w-16 h-12 rounded-lg bg-[#0a4a82]/10 flex items-center justify-center">
-                    <Megaphone className="h-5 w-5 text-[#0a4a82]/30" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[#1a1a2e] truncate" data-testid={`text-ad-title-${ad.id}`}>{ad.title}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge className={`text-xs border-0 ${
-                      ad.status === "active" ? "bg-green-100 text-green-700" :
-                      ad.status === "pending" ? "bg-amber-100 text-amber-700" :
-                      ad.status === "denied" ? "bg-red-100 text-red-700" :
-                      "bg-gray-100 text-gray-600"
-                    }`} data-testid={`badge-ad-status-${ad.id}`}>
-                      {ad.status === "active" ? "Active" : ad.status === "pending" ? "Pending Approval" : ad.status === "denied" ? "Denied" : ad.status}
-                    </Badge>
-                    {ad.paymentStatus === "unpaid" && (
-                      <Badge className="text-xs bg-red-50 text-red-600 border-0">Unpaid</Badge>
-                    )}
-                    <span className="text-xs text-gray-400 capitalize">{ad.placementType} • {ad.adSize || "Standard"}</span>
+                <div className="flex items-center gap-4">
+                  {ad.imageUrl ? (
+                    <img src={ad.imageUrl} alt={ad.title} className="w-16 h-12 rounded-lg object-cover border border-[#0a4a82]/10" />
+                  ) : (
+                    <div className="w-16 h-12 rounded-lg bg-[#0a4a82]/10 flex items-center justify-center">
+                      <Megaphone className="h-5 w-5 text-[#0a4a82]/30" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#1a1a2e] truncate" data-testid={`text-ad-title-${ad.id}`}>{ad.title}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge className={`text-xs border-0 ${
+                        ad.status === "active" ? "bg-green-100 text-green-700" :
+                        ad.status === "pending" ? "bg-amber-100 text-amber-700" :
+                        ad.status === "denied" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`} data-testid={`badge-ad-status-${ad.id}`}>
+                        {ad.status === "active" ? "Active" : ad.status === "pending" ? "Pending Approval" : ad.status === "denied" ? "Denied" : ad.status}
+                      </Badge>
+                      {ad.paymentStatus === "unpaid" && (
+                        <Badge className="text-xs bg-red-100 text-red-600 border-0 font-semibold">Unpaid</Badge>
+                      )}
+                      {ad.paymentStatus === "paid" && (
+                        <Badge className="text-xs bg-blue-100 text-blue-700 border-0">Paid</Badge>
+                      )}
+                      <span className="text-xs text-gray-400 capitalize">{ad.placementType} · {ad.adSize || "Standard"}</span>
+                    </div>
                   </div>
                 </div>
-                <Link to="/advertising">
-                  <Button variant="outline" size="sm" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid={`button-view-ad-${ad.id}`}>
-                    <Eye className="h-3.5 w-3.5 mr-1" />
-                    View
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#0a4a82]/10">
+                  {ad.paymentStatus === "unpaid" && ad.status !== "denied" && (
+                    <Button
+                      size="sm"
+                      className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg text-sm font-semibold px-4"
+                      onClick={() => handlePayAd(ad.id)}
+                      disabled={payingAdId === ad.id}
+                      data-testid={`button-pay-ad-${ad.id}`}
+                    >
+                      {payingAdId === ad.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CreditCard className="h-4 w-4 mr-1" />}
+                      Pay Now
+                    </Button>
+                  )}
+                  <Link to="/advertising">
+                    <Button variant="outline" size="sm" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5 text-sm font-medium px-4" data-testid={`button-edit-ad-${ad.id}`}>
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      View / Edit
+                    </Button>
+                  </Link>
+                  {ad.status === "pending" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg border-red-300 text-red-600 hover:bg-red-50 text-sm font-medium px-4"
+                      onClick={() => handleDeleteAd(ad.id)}
+                      disabled={deletingAdId === ad.id}
+                      data-testid={`button-delete-ad-${ad.id}`}
+                    >
+                      {deletingAdId === ad.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                      Delete
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyJobsSection() {
+  const { toast } = useToast();
+  const { data: myJobs, isLoading } = useMyJobListings(true);
+  const deleteMutation = useDeleteJobListing();
+  const [payingJobId, setPayingJobId] = useState<number | null>(null);
+
+  const handlePayJob = async (jobId: number) => {
+    setPayingJobId(jobId);
+    try {
+      const res = await fetch("/api/stripe/job-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ jobListingId: jobId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to start payment", variant: "destructive" });
+    } finally {
+      setPayingJobId(null);
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    if (!window.confirm("Delete this job listing? The Stripe subscription will be cancelled. This cannot be undone.")) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast({ title: "Job Listing Deleted", description: "Your help wanted ad has been removed." }),
+      onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardContent className="py-8 text-center">
+          <Loader2 className="h-6 w-6 animate-spin text-[#0a4a82] mx-auto" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const jobs = myJobs || [];
+
+  return (
+    <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10" data-testid="section-my-jobs">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-lg text-[#1a1a2e]">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8a9a5b] to-[#6b7a45] flex items-center justify-center">
+            <Briefcase className="h-4 w-4 text-white" />
+          </div>
+          My Help Wanted Ads
+        </CardTitle>
+        <Link to="/jobs">
+          <Button size="sm" className="rounded-lg bg-[#8a9a5b] hover:bg-[#6b7a45] text-white" data-testid="button-create-job">
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            New Job Ad
+          </Button>
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {jobs.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-[#8a9a5b]/10 flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="h-8 w-8 text-[#8a9a5b]/30" />
+            </div>
+            <p className="text-gray-500 font-medium">No help wanted ads yet</p>
+            <p className="text-sm text-gray-400 mt-1">Post job listings to find local talent in Currituck County</p>
+            <Link to="/jobs" className="mt-4 inline-block">
+              <Button size="sm" variant="outline" className="rounded-lg border-[#8a9a5b]/20 text-[#8a9a5b] hover:bg-[#8a9a5b]/5" data-testid="button-browse-jobs">
+                <Briefcase className="h-3.5 w-3.5 mr-1.5" />
+                Post a Job
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {jobs.map((job) => (
+              <div
+                key={job.id}
+                className="p-4 bg-gradient-to-r from-[#8a9a5b]/5 to-transparent rounded-xl border border-[#8a9a5b]/10"
+                data-testid={`job-item-${job.id}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#1a1a2e] truncate" data-testid={`text-job-title-${job.id}`}>{job.title}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge className={`text-xs border-0 ${job.isActive ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                        {job.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      {job.paidThroughDate && (
+                        <span className="text-xs text-gray-400">
+                          Paid through {new Date(job.paidThroughDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      {!job.isActive && !job.stripeSubscriptionId && (
+                        <Badge className="text-xs bg-red-100 text-red-600 border-0 font-semibold">Unpaid</Badge>
+                      )}
+                    </div>
+                    {job.description && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">{job.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#8a9a5b]/10">
+                  {!job.isActive && !job.stripeSubscriptionId && (
+                    <Button
+                      size="sm"
+                      className="bg-[#8a9a5b] hover:bg-[#6b7a45] text-white rounded-lg text-sm font-semibold px-4"
+                      onClick={() => handlePayJob(job.id)}
+                      disabled={payingJobId === job.id}
+                      data-testid={`button-pay-job-${job.id}`}
+                    >
+                      {payingJobId === job.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CreditCard className="h-4 w-4 mr-1" />}
+                      Pay Now
+                    </Button>
+                  )}
+                  <Link to="/jobs">
+                    <Button variant="outline" size="sm" className="rounded-lg border-[#8a9a5b]/20 text-[#8a9a5b] hover:bg-[#8a9a5b]/5 text-sm font-medium px-4" data-testid={`button-edit-job-${job.id}`}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Edit
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg border-red-300 text-red-600 hover:bg-red-50 text-sm font-medium px-4"
+                    onClick={() => handleDelete(job.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-delete-job-${job.id}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Delete
                   </Button>
-                </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyEventsSection() {
+  const { toast } = useToast();
+  const { data: myEvents, isLoading } = useMyEvents(true);
+  const deleteMutation = useDeleteEvent();
+  const [payingEventId, setPayingEventId] = useState<number | null>(null);
+
+  const handlePayEvent = async (eventId: number) => {
+    setPayingEventId(eventId);
+    try {
+      const res = await fetch("/api/stripe/event-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ eventId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to start payment", variant: "destructive" });
+    } finally {
+      setPayingEventId(null);
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    if (!window.confirm("Delete this event? This cannot be undone.")) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast({ title: "Event Deleted", description: "Your event has been removed." }),
+      onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardContent className="py-8 text-center">
+          <Loader2 className="h-6 w-6 animate-spin text-[#0a4a82] mx-auto" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const events = myEvents || [];
+
+  return (
+    <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10" data-testid="section-my-events">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-lg text-[#1a1a2e]">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4a373] to-[#b8834f] flex items-center justify-center">
+            <Calendar className="h-4 w-4 text-white" />
+          </div>
+          My Event Posts
+        </CardTitle>
+        <Link to="/events">
+          <Button size="sm" className="rounded-lg bg-[#d4a373] hover:bg-[#b8834f] text-white" data-testid="button-create-event">
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            New Event
+          </Button>
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {events.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-[#d4a373]/10 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-[#d4a373]/30" />
+            </div>
+            <p className="text-gray-500 font-medium">No event posts yet</p>
+            <p className="text-sm text-gray-400 mt-1">Promote your events to the Currituck County community</p>
+            <Link to="/events" className="mt-4 inline-block">
+              <Button size="sm" variant="outline" className="rounded-lg border-[#d4a373]/20 text-[#d4a373] hover:bg-[#d4a373]/5" data-testid="button-browse-events">
+                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                Create an Event
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {events.map((evt) => (
+              <div
+                key={evt.id}
+                className="p-4 bg-gradient-to-r from-[#d4a373]/5 to-transparent rounded-xl border border-[#d4a373]/10"
+                data-testid={`event-item-${evt.id}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#1a1a2e] truncate" data-testid={`text-event-title-${evt.id}`}>{evt.title}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge className={`text-xs border-0 ${
+                        evt.status === "approved" ? "bg-green-100 text-green-700" :
+                        evt.status === "denied" ? "bg-red-100 text-red-700" :
+                        "bg-amber-100 text-amber-700"
+                      }`}>
+                        {evt.status === "approved" ? "Approved" : evt.status === "denied" ? "Denied" : "Pending Approval"}
+                      </Badge>
+                      {evt.paymentStatus === "paid" ? (
+                        <Badge className="text-xs bg-blue-100 text-blue-700 border-0">Paid</Badge>
+                      ) : (
+                        <Badge className="text-xs bg-red-100 text-red-600 border-0 font-semibold">Unpaid</Badge>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {evt.location} · {evt.date ? new Date(evt.date).toLocaleDateString() : "No date"}
+                      </span>
+                    </div>
+                    {evt.priceCharged && evt.paymentStatus !== "paid" && (
+                      <p className="text-xs text-[#d4a373] mt-1">
+                        Amount due: ${((evt.priceCharged as number) / 100).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#d4a373]/10">
+                  {evt.paymentStatus !== "paid" && evt.status !== "denied" && (
+                    <Button
+                      size="sm"
+                      className="bg-[#d4a373] hover:bg-[#b8834f] text-white rounded-lg text-sm font-semibold px-4"
+                      onClick={() => handlePayEvent(evt.id)}
+                      disabled={payingEventId === evt.id}
+                      data-testid={`button-pay-event-${evt.id}`}
+                    >
+                      {payingEventId === evt.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CreditCard className="h-4 w-4 mr-1" />}
+                      Pay Now
+                    </Button>
+                  )}
+                  <Link to="/events">
+                    <Button variant="outline" size="sm" className="rounded-lg border-[#d4a373]/20 text-[#d4a373] hover:bg-[#d4a373]/5 text-sm font-medium px-4" data-testid={`button-edit-event-${evt.id}`}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Edit
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg border-red-300 text-red-600 hover:bg-red-50 text-sm font-medium px-4"
+                    onClick={() => handleDelete(evt.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-delete-event-${evt.id}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -1098,6 +1481,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
           <DashboardInbox />
 
           <MyAdsSection businessId={business.id} />
+          <MyJobsSection />
+          <MyEventsSection />
 
           <Card className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] rounded-2xl border-0 shadow-lg overflow-hidden">
             <CardContent className="p-6 flex items-center justify-between">
