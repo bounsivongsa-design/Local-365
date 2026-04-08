@@ -93,7 +93,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
     if (slide.linkUrl) {
       window.open(slide.linkUrl, "_blank");
     } else if (slide.businessId) {
-      window.location.href = `/businesses/${slide.businessId}`;
+      window.location.href = `/directory/${slide.businessId}`;
     }
   };
 
