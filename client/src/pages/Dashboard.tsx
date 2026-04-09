@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { MembershipBadge } from "@/components/MembershipBadge";
+import { ImageCropper } from "@/components/ImageCropper";
 import { Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -757,12 +758,20 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
   });
   const [imageUrl, setImageUrl] = useState(ad?.imageUrl || "");
   const [saving, setSaving] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const isActive = ad?.status === "active" && ad?.paymentStatus === "paid";
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCropFile(file);
+    e.target.value = "";
+  };
+
+  const handleCroppedImage = async (blob: Blob) => {
+    setCropFile(null);
+    const file = new File([blob], "ad-image.jpg", { type: "image/jpeg" });
     const result = await uploadFile(file);
     if (result) {
       setImageUrl(result.objectPath);
@@ -856,7 +865,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
                     <Button type="button" variant="secondary" size="sm" className="shadow-lg pointer-events-none">
                       <Upload className="h-3.5 w-3.5 mr-1.5" /> Replace
                     </Button>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-ad-image" />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-edit-ad-image" />
                   </label>
                 </div>
               </div>
@@ -864,7 +873,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
               <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#0a4a82]/20 cursor-pointer hover:border-[#0a4a82]/40 transition-colors">
                 <Upload className="h-5 w-5 text-[#0a4a82]/40" />
                 <span className="text-xs text-gray-500">Click to upload an image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-ad-image-upload" />
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-edit-ad-image-upload" />
               </label>
             )}
             {isUploading && (
@@ -891,6 +900,14 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
           </div>
         </div>
       </DialogContent>
+      {cropFile && (
+        <ImageCropper
+          imageFile={cropFile}
+          aspectRatio={16 / 9}
+          onCropped={handleCroppedImage}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
     </Dialog>
   );
 }

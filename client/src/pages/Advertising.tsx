@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ImageCropper } from "@/components/ImageCropper";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -148,6 +149,8 @@ export default function Advertising() {
     videoUrl: "",
     category: "",
   });
+
+  const [adCropFile, setAdCropFile] = useState<File | null>(null);
 
   const { uploadFile: uploadAdImage, isUploading: adImageUploading } = useUpload({
     onError: (error) => {
@@ -630,13 +633,10 @@ export default function Advertising() {
                               accept="image/*"
                               className="hidden"
                               disabled={adImageUploading}
-                              onChange={async (e) => {
+                              onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  const result = await uploadAdImage(file);
-                                  if (result) {
-                                    setFormData({ ...formData, imageUrl: result.objectPath });
-                                  }
+                                  setAdCropFile(file);
                                 }
                                 e.target.value = "";
                               }}
@@ -1102,6 +1102,21 @@ export default function Advertising() {
           </div>
         </div>
       </div>
+      {adCropFile && (
+        <ImageCropper
+          imageFile={adCropFile}
+          aspectRatio={16 / 9}
+          onCropped={async (blob) => {
+            setAdCropFile(null);
+            const file = new File([blob], "ad-image.jpg", { type: "image/jpeg" });
+            const result = await uploadAdImage(file);
+            if (result) {
+              setFormData({ ...formData, imageUrl: result.objectPath });
+            }
+          }}
+          onCancel={() => setAdCropFile(null)}
+        />
+      )}
     </div>
   );
 }

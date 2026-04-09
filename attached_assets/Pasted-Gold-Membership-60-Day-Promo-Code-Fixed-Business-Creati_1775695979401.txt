@@ -1,0 +1,13 @@
+Gold Membership 60 Day Promo Code - Fixed
+
+Business Creation - During the 5 tab creation of a business listing the gold options are unavailable for a bronze account.  Limited to 4 categories and no keyword options.  Once I submit the listing I can go to my dashboard, edit listing and all gold options will be available.  Maybe a simple fix is a sentence or pop up before I submit on tab 5 that says: "After submission be sure to edit your listing on the dashboard to enjoy all gold account options for your trial period."
+
+Business Cover Image - It now shows "No Photo" and defaults to nothing.  Consider fixed!
+
+Local Events - I paid for a small 2 week event.  I think the current concept/layout is wrong.  It shows the event on every day of the calendar for 14 days.  When creating the local event calendar, my idea was that the event "car show saturday april 11th"  would be visible on the calendar only on the day of the event for 14 or 30 days.
+
+Home page small ad - The small ad is still the size of all 3 small ads.  When I click on the ad it takes me to the business listing for the business. It does not pop up a larger image of the ad and then an option to view the business listing from there.  This is important if the ad promotes a deal for the business's customers.
+
+Does an admin have to approve each ad, local event and help wanted post?  Initially, this is ok, but it may become an issue once there are many businesses. This is especially true for local event timelines set to a specific date and time, if I can't click approve for 12-24 hours.
+
+Images - In recent tests over the last few days, images loaded for Ads, Cover Images and Business Logos appear super zoomed.  Is there a way businesses can size or crop images upon upload so they fit correctly? "It's like fitting a quarter in the space for a dime."  Currently the logo for my small add is like 5 times too big for the ad aspace.  My cover photo for Goat locker last week was zoomed in a lot as well. At least when uploading a business logo, a preview is shown.

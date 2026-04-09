@@ -362,19 +362,16 @@ export default function Events() {
     }
   }, []);
 
-  const calendarEvents = events?.flatMap(event => {
-    const dates = event.eventDates?.length ? event.eventDates : [event.date];
-    return dates.map((d, i) => ({
-      id: `${event.id}-${i}`,
-      title: event.title,
-      date: d,
-      extendedProps: {
-        description: event.description,
-        location: event.location,
-        eventId: event.id,
-      }
-    }));
-  }) || [];
+  const calendarEvents = events?.map(event => ({
+    id: `${event.id}`,
+    title: event.title,
+    date: event.date,
+    extendedProps: {
+      description: event.description,
+      location: event.location,
+      eventId: event.id,
+    }
+  })) || [];
 
   return (
     <div className="min-h-screen pb-20">
@@ -638,12 +635,10 @@ export default function Events() {
                   <h2 className="text-2xl font-bold text-slate-900">{selectedCalendarEvent.title}</h2>
                 )}
                 <div className="flex flex-wrap gap-3">
-                  {(selectedCalendarEvent.eventDates?.length ? selectedCalendarEvent.eventDates : [selectedCalendarEvent.date]).map((d: string, i: number) => (
-                    <div key={i} className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(d).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-                    </div>
-                  ))}
+                  <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(selectedCalendarEvent.date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                  </div>
                   <div className="inline-flex items-center gap-2 bg-[#8a9a5b]/10 text-[#8a9a5b] px-4 py-2 rounded-xl text-sm font-medium">
                     <Megaphone className="h-4 w-4" />
                     {selectedCalendarEvent.location}

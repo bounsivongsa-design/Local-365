@@ -46,6 +46,7 @@ import {
   ExternalLink,
   Upload,
   ImageIcon,
+  Sparkles,
 } from "lucide-react";
 
 interface Props {
@@ -1431,6 +1432,20 @@ export function CreateBusinessForm({
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
               If you checked "LLC Registered," we'll run an automated check against the NC Secretary of State registry to confirm your registration status.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800" data-testid="gold-features-note">
+        <div className="flex items-start gap-2">
+          <Sparkles className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-blue-800 dark:text-blue-300">
+              Gold Trial Features Available After Submission
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+              After creating your listing, visit your Dashboard and click "Edit Listing" to unlock all Gold-tier features — including extra categories, search keywords, photo gallery, and promo video uploads.
             </p>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExampleBanner } from "@/components/ExampleBanner";
 import { Link } from "react-router-dom";
-import { Megaphone, Sparkles } from "lucide-react";
+import { Megaphone, Sparkles, X, ExternalLink } from "lucide-react";
 import type { AdPlacement } from "@shared/schema";
 
 interface AdWithBusiness extends AdPlacement {
@@ -10,7 +10,7 @@ interface AdWithBusiness extends AdPlacement {
   businessImageUrl: string | null;
 }
 
-type AdSlide = { id: number; title: string; businessName: string; description: string; imageUrl: string; businessId: number | null; linkUrl: string | null };
+type AdSlide = { id: number; title: string; businessName: string; description: string; imageUrl: string; businessId: number | null; linkUrl: string | null; isPlaceholderFill?: boolean };
 
 const LARGE_PLACEHOLDERS: AdSlide[] = [
   { id: 0, title: "Full-Service Home Repairs, Renovations & Emergency Calls", businessName: "Moyock Home Services", description: "Licensed and insured contractors serving Moyock and surrounding areas. From emergency plumbing to full kitchen remodels — we do it all.", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&h=400&fit=crop", businessId: null, linkUrl: null },
@@ -34,28 +34,31 @@ const SMALL_PLACEHOLDERS: AdSlide[] = [
   { id: 0, title: "Window Cleaning", businessName: "Clear View Moyock", description: "", imageUrl: "https://images.unsplash.com/photo-1527689368864-3a821dbccc34?w=400&h=200&fit=crop", businessId: null, linkUrl: null },
 ];
 
-function mapAdsToSlides(realAds: AdWithBusiness[] | undefined, placeholders: AdSlide[]): { slides: AdSlide[]; isPlaceholder: boolean } {
+function mapAdsToSlides(realAds: AdWithBusiness[] | undefined, placeholders: AdSlide[], minSlots?: number): { slides: AdSlide[]; isPlaceholder: boolean; realCount: number } {
   if (realAds && realAds.length > 0) {
-    return {
-      slides: realAds.map(ad => ({
-        id: ad.id,
-        title: ad.title,
-        businessName: ad.businessName || ad.title,
-        description: ad.description || "",
-        imageUrl: ad.imageUrl || "",
-        businessId: ad.businessId,
-        linkUrl: ad.linkUrl,
-      })),
-      isPlaceholder: false,
-    };
+    const mapped = realAds.map(ad => ({
+      id: ad.id,
+      title: ad.title,
+      businessName: ad.businessName || ad.title,
+      description: ad.description || "",
+      imageUrl: ad.imageUrl || "",
+      businessId: ad.businessId,
+      linkUrl: ad.linkUrl,
+    }));
+    if (minSlots && mapped.length < minSlots) {
+      const fillers = placeholders.slice(0, minSlots - mapped.length).map(p => ({ ...p, isPlaceholderFill: true }));
+      return { slides: [...mapped, ...fillers], isPlaceholder: false, realCount: mapped.length };
+    }
+    return { slides: mapped, isPlaceholder: false, realCount: mapped.length };
   }
-  return { slides: placeholders, isPlaceholder: true };
+  return { slides: placeholders, isPlaceholder: true, realCount: 0 };
 }
 
 export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   const [largeAdPos, setLargeAdPos] = useState(0);
   const [mediumAdPos, setMediumAdPos] = useState(0);
   const [smallAdPos, setSmallAdPos] = useState(0);
+  const [previewAd, setPreviewAd] = useState<AdSlide | null>(null);
   const impressionsSent = useRef<Set<number>>(new Set());
 
   const { data: realLargeAds } = useQuery<AdWithBusiness[]>({
@@ -72,8 +75,8 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   });
 
   const largeAds = mapAdsToSlides(realLargeAds, LARGE_PLACEHOLDERS);
-  const mediumAds = mapAdsToSlides(realMediumAds, MEDIUM_PLACEHOLDERS);
-  const smallAds = mapAdsToSlides(realSmallAds, SMALL_PLACEHOLDERS);
+  const mediumAds = mapAdsToSlides(realMediumAds, MEDIUM_PLACEHOLDERS, 2);
+  const smallAds = mapAdsToSlides(realSmallAds, SMALL_PLACEHOLDERS, 3);
 
   const largePageCount = largeAds.slides.length;
   const mediumPageCount = Math.ceil(mediumAds.slides.length / 2);
@@ -88,13 +91,21 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
 
   const handleAdClick = (slide: AdSlide) => {
     if (slide.id > 0) {
-      fetch(`/api/ads/${slide.id}/click`, { method: "POST" }).catch(() => {});
+      setPreviewAd(slide);
     }
-    if (slide.linkUrl) {
-      window.open(slide.linkUrl, "_blank");
-    } else if (slide.businessId) {
-      window.location.href = `/directory/${slide.businessId}`;
+  };
+
+  const handlePreviewAction = (action: "business" | "link") => {
+    if (!previewAd) return;
+    if (previewAd.id > 0) {
+      fetch(`/api/ads/${previewAd.id}/click`, { method: "POST" }).catch(() => {});
     }
+    if (action === "link" && previewAd.linkUrl) {
+      window.open(previewAd.linkUrl, "_blank", "noopener,noreferrer");
+    } else if (action === "business" && previewAd.businessId) {
+      window.location.href = `/directory/${previewAd.businessId}`;
+    }
+    setPreviewAd(null);
   };
 
   useEffect(() => {
@@ -190,14 +201,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-xl group h-full" style={{ minHeight: '100px' }}>
-                              {mediumAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
+                              {(mediumAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
                               <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
                               <div className="absolute bottom-0 left-0 right-0 p-4">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5">
                                     <Megaphone className="h-2.5 w-2.5" />
-                                    {mediumAds.isPlaceholder ? "Medium — $500/mo" : "Sponsored"}
+                                    {(mediumAds.isPlaceholder || slide.isPlaceholderFill) ? "Medium — $500/mo" : "Sponsored"}
                                   </span>
                                 </div>
                                 <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>
@@ -231,14 +242,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-lg group h-full" style={{ minHeight: '80px' }}>
-                              {smallAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
+                              {(smallAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
                               <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                               <div className="absolute bottom-0 left-0 right-0 p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
                                   <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5">
                                     <Megaphone className="h-2 w-2" />
-                                    {smallAds.isPlaceholder ? "Small — $250/mo" : "Ad"}
+                                    {(smallAds.isPlaceholder || slide.isPlaceholderFill) ? "Small — $250/mo" : "Ad"}
                                   </span>
                                 </div>
                                 <p className="text-[#d4a373] text-[10px] font-semibold tracking-wide">{slide.businessName}</p>
@@ -261,6 +272,45 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
           </div>
         </div>
       </div>
+
+      {previewAd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setPreviewAd(null)} data-testid="ad-preview-overlay">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-[90vw] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPreviewAd(null)} className="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors" data-testid="button-close-ad-preview">
+              <X className="h-4 w-4" />
+            </button>
+            {previewAd.imageUrl && (
+              <div className="relative w-full" style={{ maxHeight: '300px' }}>
+                <img src={previewAd.imageUrl} alt={previewAd.title} className="w-full h-auto object-contain bg-gray-100" style={{ maxHeight: '300px' }} />
+              </div>
+            )}
+            <div className="p-5 space-y-3">
+              <div>
+                <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1 mb-2">
+                  <Sparkles className="h-3 w-3" /> Sponsored
+                </span>
+                <p className="text-[#d4a373] text-sm font-semibold tracking-wide">{previewAd.businessName}</p>
+                <h3 className="text-xl font-bold text-slate-900 leading-tight mt-1">{previewAd.title}</h3>
+              </div>
+              {previewAd.description && (
+                <p className="text-slate-600 text-sm leading-relaxed">{previewAd.description}</p>
+              )}
+              <div className="flex gap-3 pt-2">
+                {previewAd.businessId && (
+                  <button onClick={() => handlePreviewAction("business")} className="flex-1 bg-[#0a4a82] hover:bg-[#0a4a82]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm" data-testid="button-ad-view-business">
+                    View Business Listing
+                  </button>
+                )}
+                {previewAd.linkUrl && (
+                  <button onClick={() => handlePreviewAction("link")} className="flex-1 bg-[#d4a373] hover:bg-[#d4a373]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-1.5" data-testid="button-ad-visit-link">
+                    <ExternalLink className="h-4 w-4" /> Visit Website
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

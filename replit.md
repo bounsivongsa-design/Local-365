@@ -67,6 +67,11 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Downgrade Tracking**: Records membership downgrades for win-back campaigns.
 - **Business Hours Format**: Stored as JSON in `businessHours` column. Two modes: `{ _mode: "specific", Monday: { open, close, closed }, ... }` for day-by-day, or `{ _mode: "text", _note: "..." }` for custom text. Legacy data without `_mode` treated as specific.
 - **Max Quotes**: Quote requests support `maxQuotes` (5, 10, or null/unlimited) and `receivedQuotesCount`. Request auto-closes when limit is reached. One quote per business per request enforced.
+- **Ad Preview Popup**: Clicking a real ad on the home page opens a larger preview modal showing the full ad image, title, description, and action buttons (View Business Listing / Visit Website). Click tracking only fires when user takes an outbound action. Placeholder example ads don't trigger previews.
+- **Ad Slot Filling**: When fewer real ads exist than display slots (e.g., 1 small ad for 3 slots), remaining slots are filled with labeled placeholder examples to maintain proper sizing.
+- **Ad Expiration**: Active ads query filters by `endDate > NOW()`, so expired ads automatically stop displaying.
+- **Image Cropper**: Reusable `ImageCropper` component (react-image-crop) provides crop/resize UI before upload. Integrated into ad editing (Dashboard) and ad creation (Advertising page) with 16:9 aspect ratio enforcement.
+- **Events Calendar**: Events appear on the calendar only on their actual event date (the `date` field), not on every day of the ad package duration. The ad package (2-week / 30-day) controls how long the event listing stays visible, not calendar presence.
 
 ### Future: Multi-Zip-Code Expansion
 - Currently single zip code (27958 Moyock). Each business tied to one zip.
