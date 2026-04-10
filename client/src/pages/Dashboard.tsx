@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { ImageCropper } from "@/components/ImageCropper";
+import { AdDesigner } from "@/components/AdDesigner";
 import { Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -57,6 +58,7 @@ import {
   TrendingDown,
   Send,
   CheckCircle,
+  Paintbrush,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -770,6 +772,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
   const [imageUrl, setImageUrl] = useState(ad?.imageUrl || "");
   const [saving, setSaving] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const [showDesigner, setShowDesigner] = useState(false);
 
   const isActive = ad?.status === "active" && ad?.paymentStatus === "paid";
 
@@ -886,6 +889,17 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-edit-ad-image-upload" />
               </label>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 rounded-lg border-[#d4a373] text-[#d4a373] hover:bg-[#d4a373]/10 font-medium text-xs w-full"
+              onClick={() => setShowDesigner(true)}
+              data-testid="button-open-ad-designer-edit"
+            >
+              <Paintbrush className="h-3.5 w-3.5 mr-1.5" />
+              Design Your Ad
+            </Button>
             {isUploading && (
               <div className="mt-2">
                 <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -918,6 +932,30 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
           onCancel={() => setCropFile(null)}
         />
       )}
+      <Dialog open={showDesigner} onOpenChange={setShowDesigner}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-6" data-testid="dialog-ad-designer-edit">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#1a1a2e]">
+              <Paintbrush className="h-5 w-5 text-[#0a4a82]" />
+              Design Your Ad
+            </DialogTitle>
+          </DialogHeader>
+          <AdDesigner
+            adSize={(ad?.adSize as "small" | "medium" | "large") || "medium"}
+            businessName={ad?.businessName || ""}
+            onComplete={async (blob) => {
+              setShowDesigner(false);
+              const file = new File([blob], "designed-ad.png", { type: "image/png" });
+              const result = await uploadFile(file);
+              if (result) {
+                setImageUrl(result.objectPath);
+                toast({ title: "Ad Design Saved!", description: "Your custom design has been set as the ad image." });
+              }
+            }}
+            onCancel={() => setShowDesigner(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

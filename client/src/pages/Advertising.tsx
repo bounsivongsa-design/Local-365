@@ -42,12 +42,14 @@ import {
   Pencil,
   X,
   Upload,
-  Lock
+  Lock,
+  Paintbrush
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import type { AdPricing, AdPlacement } from "@shared/schema";
 import { useUpload } from "@/hooks/use-upload";
+import { AdDesigner } from "@/components/AdDesigner";
 
 const BANNER_PLACEMENTS = ["large_banner", "medium_banner", "small_banner"];
 
@@ -151,6 +153,7 @@ export default function Advertising() {
   });
 
   const [adCropFile, setAdCropFile] = useState<File | null>(null);
+  const [showDesigner, setShowDesigner] = useState(false);
 
   const { uploadFile: uploadAdImage, isUploading: adImageUploading } = useUpload({
     onError: (error) => {
@@ -621,14 +624,14 @@ export default function Advertising() {
                         </div>
                       )}
                       <div className="pt-1">
-                        <p className="text-xs text-[#4a4a5a] mb-1">{businessMedia.length > 0 ? "Or upload a new image:" : "Upload an image:"}</p>
-                        <div className="flex items-center gap-3">
+                        <p className="text-xs text-[#4a4a5a] mb-2">{businessMedia.length > 0 ? "Or choose an option:" : "Choose an option:"}</p>
+                        <div className="flex flex-wrap items-center gap-2">
                           <label
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a4a82] text-white text-sm font-medium cursor-pointer hover:bg-[#083a6a] transition-colors"
                             data-testid="button-upload-ad-image"
                           >
                             <Upload className="h-4 w-4" />
-                            {adImageUploading ? "Uploading..." : "Choose File"}
+                            {adImageUploading ? "Uploading..." : "Upload Image"}
                             <input
                               type="file"
                               accept="image/*"
@@ -643,6 +646,16 @@ export default function Advertising() {
                               }}
                             />
                           </label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-xl border-[#d4a373] text-[#d4a373] hover:bg-[#d4a373]/10 font-medium text-sm"
+                            onClick={() => setShowDesigner(true)}
+                            data-testid="button-open-ad-designer"
+                          >
+                            <Paintbrush className="h-4 w-4 mr-1.5" />
+                            Design Your Ad
+                          </Button>
                           {formData.imageUrl && (
                             <div className="flex items-center gap-2">
                               <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200">
@@ -1118,6 +1131,32 @@ export default function Advertising() {
           onCancel={() => setAdCropFile(null)}
         />
       )}
+
+      <Dialog open={showDesigner} onOpenChange={setShowDesigner}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-6" data-testid="dialog-ad-designer">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#1a1a2e]">
+              <Paintbrush className="h-5 w-5 text-[#0a4a82]" />
+              Design Your Ad
+            </DialogTitle>
+          </DialogHeader>
+          <AdDesigner
+            adSize={formData.adSize}
+            businessName={linkedBusiness?.name || ""}
+            businessLogo={linkedBusiness?.logoUrl ? (linkedBusiness.logoUrl.startsWith("/objects/") ? linkedBusiness.logoUrl : `/objects/${linkedBusiness.logoUrl}`) : undefined}
+            onComplete={async (blob) => {
+              setShowDesigner(false);
+              const file = new File([blob], "designed-ad.png", { type: "image/png" });
+              const result = await uploadAdImage(file);
+              if (result) {
+                setFormData({ ...formData, imageUrl: result.objectPath });
+                toast({ title: "Ad Design Saved!", description: "Your custom design has been set as the ad image." });
+              }
+            }}
+            onCancel={() => setShowDesigner(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
