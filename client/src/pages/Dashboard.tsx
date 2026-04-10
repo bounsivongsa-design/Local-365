@@ -47,6 +47,9 @@ import {
   Trash2,
   Pencil,
   CreditCard,
+  MessageSquare,
+  Gavel,
+  X,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1920,6 +1923,11 @@ export default function Dashboard() {
     enabled: isAuthenticated && !isBusinessAccount,
   });
 
+  const { data: myQuoteRequests, isLoading: quotesLoading } = useQuery<any[]>({
+    queryKey: ["/api/user/quote-requests"],
+    enabled: isAuthenticated && user?.accountType === "customer",
+  });
+
   const { data: business, isLoading: businessLoading } = useQuery<Business>({
     queryKey: ["/api/businesses", user?.linkedBusinessId],
     queryFn: async () => {
@@ -2264,6 +2272,96 @@ export default function Dashboard() {
                       {getStatusBadge(receipt.status)}
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          )}
+
+          {user?.accountType !== "admin" && (
+          <Card className="lg:col-span-3 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#083a6a] flex items-center justify-center">
+                      <Gavel className="h-4 w-4 text-white" />
+                    </div>
+                    My Quote Requests
+                  </CardTitle>
+                  <CardDescription>Track your submitted quote requests and received bids</CardDescription>
+                </div>
+                <Link to="/quotes" data-testid="link-view-all-quotes">
+                  <Button variant="outline" size="sm" className="text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5 rounded-xl text-xs gap-1">
+                    View All <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {quotesLoading ? (
+                <div className="space-y-3">
+                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                </div>
+              ) : !myQuoteRequests || myQuoteRequests.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-[#0a4a82]/20" />
+                  <p className="text-gray-500">No quote requests yet.</p>
+                  <p className="text-sm text-gray-400 mt-1">Need a service? Request quotes from local businesses.</p>
+                  <Link to="/quotes">
+                    <Button size="sm" className="mt-4 bg-gradient-to-r from-[#0a4a82] to-[#083a6a] text-white rounded-xl" data-testid="button-request-quote-from-dashboard">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Request a Quote
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myQuoteRequests.slice(0, 5).map((req: any) => (
+                    <Link key={req.id} to="/quotes" data-testid={`quote-request-item-${req.id}`}>
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#0a4a82]/5 to-transparent rounded-xl border border-[#0a4a82]/10 hover:border-[#0a4a82]/25 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-[#0a4a82]/10 flex items-center justify-center shrink-0">
+                            <MessageSquare className="h-5 w-5 text-[#0a4a82]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-[#1a1a2e] text-sm truncate">{req.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-gray-400">{req.category}</span>
+                              {req.maxQuotes && (
+                                <span className="text-xs text-gray-400">
+                                  · {req.receivedQuotesCount || 0}/{req.maxQuotes} bids
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge className={
+                            req.status === "open" ? "bg-[#8a9a5b]/20 text-[#8a9a5b] border-0 text-xs" :
+                            req.status === "completed" ? "bg-[#0a4a82]/20 text-[#0a4a82] border-0 text-xs" :
+                            req.status === "cancelled" ? "bg-red-100 text-red-600 border-0 text-xs" :
+                            "bg-gray-100 text-gray-600 border-0 text-xs"
+                          } data-testid={`badge-quote-status-${req.id}`}>
+                            {req.status === "open" ? "Active" : req.status === "completed" ? "Completed" : req.status === "cancelled" ? "Cancelled" : req.status}
+                          </Badge>
+                          {req.createdAt && (
+                            <span className="text-xs text-gray-400 hidden sm:inline">
+                              {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {myQuoteRequests.length > 5 && (
+                    <Link to="/quotes" className="block text-center">
+                      <Button variant="ghost" size="sm" className="text-[#0a4a82] text-xs">
+                        View all {myQuoteRequests.length} requests <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               )}
             </CardContent>
