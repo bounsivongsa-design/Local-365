@@ -46,6 +46,7 @@ export default function Directory() {
     search: searchTerm, 
     category: category === "All" ? undefined : category 
   });
+  const { data: allBusinesses } = useBusinesses({ search: searchTerm });
   const { isAuthenticated } = useAuth();
 
   const filteredBusinesses = useMemo(() => {
@@ -56,6 +57,25 @@ export default function Directory() {
       return dist <= radiusMiles;
     });
   }, [businesses, radiusMiles, selectedLocation.zipCode]);
+
+  const allFilteredBusinesses = useMemo(() => {
+    if (!allBusinesses || radiusMiles === 0 || !selectedLocation.zipCode) return allBusinesses;
+    return allBusinesses.filter((biz) => {
+      const dist = getDistanceFromZips(selectedLocation.zipCode!, biz.zipCode || "");
+      if (dist === null) return false;
+      return dist <= radiusMiles;
+    });
+  }, [allBusinesses, radiusMiles, selectedLocation.zipCode]);
+
+  const categoryCounts = useMemo(() => {
+    if (!allFilteredBusinesses) return {};
+    const counts: Record<string, number> = {};
+    allFilteredBusinesses.forEach((biz) => {
+      const cat = biz.category || "Uncategorized";
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [allFilteredBusinesses]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const categories = [
@@ -292,13 +312,22 @@ export default function Directory() {
                           <IconComponent className={`h-5 w-5 transition-transform duration-300 ${isActive ? "" : "group-hover:scale-110"}`} />
                         </span>
                         <span className="flex-1 text-left truncate font-medium">{cat.name}</span>
-                        {cat.name === "All" && filteredBusinesses && (
+                        {cat.name === "All" && allFilteredBusinesses && (
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
                             isActive 
                               ? "bg-white/25 text-white" 
                               : "bg-[#d4a373]/20 text-[#d4a373] group-hover:bg-[#0a4a82]/20 group-hover:text-[#0a4a82]"
                           }`}>
-                            {filteredBusinesses.length}
+                            {allFilteredBusinesses.length}
+                          </span>
+                        )}
+                        {cat.name !== "All" && categoryCounts[cat.name] > 0 && (
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
+                            isActive 
+                              ? "bg-white/25 text-white" 
+                              : "bg-[#d4a373]/20 text-[#d4a373] group-hover:bg-[#0a4a82]/20 group-hover:text-[#0a4a82]"
+                          }`}>
+                            {categoryCounts[cat.name]}
                           </span>
                         )}
                       </button>
