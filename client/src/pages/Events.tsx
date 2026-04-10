@@ -5,6 +5,7 @@ import { useLocation } from "@/context/LocationContext";
 import { useBusiness } from "@/hooks/use-businesses";
 import { useUpload } from "@/hooks/use-upload";
 import { EventCard } from "@/components/EventCard";
+import { ImageCropper } from "@/components/ImageCropper";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -718,6 +719,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const { uploadFile, isUploading, progress } = useUpload();
 
   const [eventDate, setEventDate] = useState("");
+  const [coverCropFile, setCoverCropFile] = useState<File | null>(null);
 
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -959,7 +961,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
 
         <div>
           <label className="text-sm font-medium leading-none mb-2 block">Event Date & Time</label>
-          <p className="text-xs text-muted-foreground mb-2">When does your event take place? Your listing will automatically appear on the calendar {!isAdmin && adDuration ? (adDuration === "2week" ? "14 days" : "30 days") : ""} before this date.</p>
+          <p className="text-xs text-muted-foreground mb-2">When does your event take place? Your listing will automatically appear for the ad duration you selected — {!isAdmin && adDuration ? (adDuration === "2week" ? "14 days" : "30 days") : "14 or 30 days"} prior to your event.</p>
           <Input
             type="datetime-local"
             className="bg-white text-[#1a1a2e]"
@@ -1047,19 +1049,34 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="hidden"
-              onChange={async (e) => {
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 if (file.size > 10 * 1024 * 1024) {
                   toast({ title: "File too large", description: "Image must be under 10MB.", variant: "destructive" });
+                  if (imageInputRef.current) imageInputRef.current.value = "";
                   return;
                 }
-                const result = await uploadFile(file);
-                if (result) form.setValue("imageUrl", result.objectPath);
+                setCoverCropFile(file);
                 if (imageInputRef.current) imageInputRef.current.value = "";
               }}
               data-testid="input-event-image-file"
             />
+            {coverCropFile && (
+              <ImageCropper
+                imageFile={coverCropFile}
+                aspectRatio={16 / 9}
+                onCropped={async (blob) => {
+                  setCoverCropFile(null);
+                  const croppedFile = new File([blob], "event-cover.jpg", { type: "image/jpeg" });
+                  const result = await uploadFile(croppedFile);
+                  if (result) form.setValue("imageUrl", result.objectPath);
+                }}
+                onCancel={() => setCoverCropFile(null)}
+                maxWidth={1200}
+                maxHeight={675}
+              />
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
