@@ -50,12 +50,20 @@ import {
   MessageSquare,
   Gavel,
   X,
+  ChevronDown,
+  ChevronUp,
+  DollarSign,
+  Trophy,
+  TrendingDown,
+  Send,
+  CheckCircle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardInbox } from "@/components/DashboardInbox";
 import { apiRequest } from "@/lib/queryClient";
 import { useMyJobListings, useDeleteJobListing } from "@/hooks/use-jobs";
@@ -1910,6 +1918,367 @@ function PromoCodeRedeemer({ businessId }: { businessId: number }) {
 }
 
 
+function QuoteMessageThread({ quoteId, userId }: { quoteId: number; userId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [newMessage, setNewMessage] = useState("");
+
+  const { data: messages = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/quotes", quoteId, "messages"],
+    queryFn: async () => {
+      const res = await fetch(`/api/quotes/${quoteId}/messages`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await apiRequest("POST", `/api/quotes/${quoteId}/messages`, { message });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/message-counts"] });
+      setNewMessage("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="mt-3 border border-[#0a4a82]/15 rounded-xl overflow-hidden" data-testid={`dash-thread-quote-${quoteId}`}>
+      <div className="bg-[#0a4a82]/5 px-4 py-2 flex items-center gap-2 border-b border-[#0a4a82]/10">
+        <MessageSquare className="h-4 w-4 text-[#0a4a82]" />
+        <span className="text-sm font-semibold text-[#0a4a82]">Messages</span>
+        {messages.length > 0 && <Badge variant="secondary" className="text-xs">{messages.length}</Badge>}
+      </div>
+      <div className="max-h-48 overflow-y-auto p-3 space-y-2 bg-white dark:bg-slate-900">
+        {isLoading ? (
+          <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-[#0a4a82]" /></div>
+        ) : messages.length === 0 ? (
+          <p className="text-center text-sm text-slate-400 py-3">No messages yet. Start the conversation!</p>
+        ) : (
+          messages.map((msg: any) => {
+            const isMe = msg.senderId === userId;
+            return (
+              <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-xl px-3 py-2 ${isMe ? "bg-[#0a4a82] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"}`}>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`text-xs font-medium ${isMe ? "text-white/70" : "text-slate-500"}`}>
+                      {isMe ? "You" : `${msg.senderFirstName || "User"} ${msg.senderLastName?.charAt(0) || ""}.`}
+                    </span>
+                    {msg.senderAccountType === "business" && !isMe && (
+                      <Badge className="text-[10px] px-1 py-0 bg-[#d4a373]/20 text-[#d4a373] border-0">Business</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                  {msg.createdAt && (
+                    <p className={`text-[10px] mt-1 ${isMe ? "text-white/50" : "text-slate-400"}`}>
+                      {format(new Date(msg.createdAt), "MMM d, h:mm a")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <form onSubmit={(e) => { e.preventDefault(); if (newMessage.trim()) sendMutation.mutate(newMessage.trim()); }} className="flex gap-2 p-3 border-t border-[#0a4a82]/10 bg-slate-50 dark:bg-slate-800">
+        <Input
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type a message..."
+          className="flex-1 bg-white"
+          style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+          data-testid={`dash-input-message-${quoteId}`}
+        />
+        <Button type="submit" size="sm" disabled={sendMutation.isPending || !newMessage.trim()} className="bg-[#0a4a82] hover:bg-[#083a6a]" data-testid={`dash-button-send-${quoteId}`}>
+          {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function CustomerQuoteProjects({ userId }: { userId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [expandedRequest, setExpandedRequest] = useState<number | null>(null);
+  const [openMessageThread, setOpenMessageThread] = useState<number | null>(null);
+
+  const { data: myQuoteRequests, isLoading: quotesLoading } = useQuery<any[]>({
+    queryKey: ["/api/user/quote-requests"],
+  });
+
+  const { data: projectQuotes, isLoading: bidsLoading } = useQuery<any[]>({
+    queryKey: ["/api/quotes/requests", expandedRequest, "quotes"],
+    queryFn: async () => {
+      if (!expandedRequest) return [];
+      const res = await fetch(`/api/quotes/requests/${expandedRequest}/quotes`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: expandedRequest !== null,
+  });
+
+  const acceptQuoteMutation = useMutation({
+    mutationFn: async (quoteId: number) => {
+      const res = await apiRequest("POST", `/api/quotes/${quoteId}/accept`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Quote accepted!", description: "The business has been notified." });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/quote-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes/requests", expandedRequest, "quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/inbox"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to accept quote.", variant: "destructive" });
+    },
+  });
+
+  const cancelRequestMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/quote-requests/${requestId}/opt-out`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Request cancelled" });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/quote-requests"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to cancel request.", variant: "destructive" });
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "open": return <Badge className="bg-[#8a9a5b]/20 text-[#8a9a5b] border-0 text-xs">Active</Badge>;
+      case "in_progress": return <Badge className="bg-[#0a4a82]/20 text-[#0a4a82] border-0 text-xs">In Progress</Badge>;
+      case "completed": return <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Completed</Badge>;
+      case "cancelled": return <Badge className="bg-red-100 text-red-600 border-0 text-xs">Cancelled</Badge>;
+      default: return <Badge className="bg-gray-100 text-gray-600 border-0 text-xs">{status}</Badge>;
+    }
+  };
+
+  return (
+    <Card className="lg:col-span-3 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#083a6a] flex items-center justify-center">
+                <Gavel className="h-4 w-4 text-white" />
+              </div>
+              My Quote Requests
+            </CardTitle>
+            <CardDescription>Manage your projects, view bids, and message businesses</CardDescription>
+          </div>
+          <Link to="/quotes" data-testid="link-view-all-quotes">
+            <Button variant="outline" size="sm" className="text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5 rounded-xl text-xs gap-1">
+              New Request <Plus className="h-3 w-3" />
+            </Button>
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {quotesLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </div>
+        ) : !myQuoteRequests || myQuoteRequests.length === 0 ? (
+          <div className="text-center py-8">
+            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-[#0a4a82]/20" />
+            <p className="text-gray-500">No quote requests yet.</p>
+            <p className="text-sm text-gray-400 mt-1">Need a service? Request quotes from local businesses.</p>
+            <Link to="/quotes">
+              <Button size="sm" className="mt-4 bg-gradient-to-r from-[#0a4a82] to-[#083a6a] text-white rounded-xl" data-testid="button-request-quote-from-dashboard">
+                <Plus className="h-4 w-4 mr-1" /> Request a Quote
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {myQuoteRequests.map((req: any) => {
+              const isExpanded = expandedRequest === req.id;
+              return (
+                <div key={req.id} className="rounded-xl border border-[#0a4a82]/10 overflow-hidden" data-testid={`quote-request-item-${req.id}`}>
+                  <div
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-[#0a4a82]/5 to-transparent hover:from-[#0a4a82]/8 transition-colors cursor-pointer"
+                    onClick={() => setExpandedRequest(isExpanded ? null : req.id)}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#0a4a82]/10 flex items-center justify-center shrink-0">
+                        <Gavel className="h-5 w-5 text-[#0a4a82]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#1a1a2e] text-sm truncate">{req.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs text-gray-400">{req.category}</span>
+                          {req.budget && <span className="text-xs text-gray-400">· {req.budget}</span>}
+                          {req.receivedQuotesCount > 0 && (
+                            <span className="text-xs font-medium text-[#0a4a82]">
+                              · {req.receivedQuotesCount} bid{req.receivedQuotesCount !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getStatusBadge(req.status || "open")}
+                      {req.createdAt && (
+                        <span className="text-xs text-gray-400 hidden sm:inline">
+                          {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
+                        </span>
+                      )}
+                      {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-[#0a4a82]/10 p-4 bg-white">
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-4">
+                        {req.budget && (
+                          <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />{req.budget}</span>
+                        )}
+                        {req.timeline && (
+                          <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{req.timeline}</span>
+                        )}
+                        {req.location && (
+                          <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{req.location}</span>
+                        )}
+                      </div>
+                      {req.description && (
+                        <p className="text-sm text-gray-600 mb-4 bg-slate-50 rounded-lg p-3">{req.description}</p>
+                      )}
+
+                      {req.status === "open" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 mb-4"
+                          onClick={() => cancelRequestMutation.mutate(req.id)}
+                          disabled={cancelRequestMutation.isPending}
+                          data-testid={`button-cancel-request-${req.id}`}
+                        >
+                          <X className="h-3 w-3 mr-1" /> Cancel Request
+                        </Button>
+                      )}
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <h4 className="text-sm font-semibold text-[#1a1a2e] mb-3 flex items-center gap-2">
+                          <TrendingDown className="h-4 w-4 text-[#0a4a82]" />
+                          Received Bids
+                        </h4>
+                        {bidsLoading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-16 w-full rounded-lg" />
+                            <Skeleton className="h-16 w-full rounded-lg" />
+                          </div>
+                        ) : projectQuotes && projectQuotes.length > 0 ? (
+                          <div className="space-y-3">
+                            {projectQuotes.length > 1 && (
+                              <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                                <span>Ranked by price (lowest first)</span>
+                                <Badge variant="outline" className="text-green-600 text-xs">
+                                  <Trophy className="h-3 w-3 mr-1" />
+                                  Best: ${Math.min(...projectQuotes.map((q: any) => Number(q.amount))).toLocaleString()}
+                                </Badge>
+                              </div>
+                            )}
+                            {projectQuotes.map((quote: any, index: number) => (
+                              <div
+                                key={quote.id}
+                                className={`p-4 rounded-xl border ${index === 0 ? "bg-green-50/50 border-green-200" : "bg-white border-slate-100"}`}
+                                data-testid={`dash-quote-bid-${quote.id}`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <Avatar className="h-10 w-10 border border-slate-200">
+                                    <AvatarImage src={quote.business?.imageUrl} />
+                                    <AvatarFallback className="bg-[#0a4a82]/10 text-[#0a4a82] text-sm font-semibold">
+                                      {quote.business?.name?.charAt(0) || "B"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-semibold text-sm text-[#1a1a2e] truncate">{quote.business?.name || "Business"}</span>
+                                        {quote.business?.verified && <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />}
+                                        {index === 0 && projectQuotes.length > 1 && (
+                                          <Badge className="bg-green-500 text-white text-[10px] shrink-0">Best Price</Badge>
+                                        )}
+                                      </div>
+                                      <span className={`text-lg font-bold shrink-0 ${index === 0 ? "text-green-600" : "text-[#1a1a2e]"}`}>
+                                        ${Number(quote.amount).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    {quote.message && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{quote.message}</p>}
+                                    {quote.estimatedDuration && (
+                                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />{quote.estimatedDuration}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-3">
+                                      {quote.status === "pending" && req.status === "open" && (
+                                        <Button
+                                          size="sm"
+                                          className="bg-[#8a9a5b] hover:bg-[#7a8a4b] text-white text-xs rounded-lg h-8"
+                                          onClick={() => acceptQuoteMutation.mutate(quote.id)}
+                                          disabled={acceptQuoteMutation.isPending}
+                                          data-testid={`dash-button-accept-${quote.id}`}
+                                        >
+                                          <CheckCircle className="h-3 w-3 mr-1" /> Accept
+                                        </Button>
+                                      )}
+                                      {quote.status === "accepted" && (
+                                        <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Accepted</Badge>
+                                      )}
+                                      {quote.status === "rejected" && (
+                                        <Badge className="bg-red-100 text-red-600 border-0 text-xs">Declined</Badge>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className={`text-xs rounded-lg h-8 ${openMessageThread === quote.id ? "bg-[#0a4a82]/10 border-[#0a4a82]/30" : ""}`}
+                                        onClick={() => setOpenMessageThread(openMessageThread === quote.id ? null : quote.id)}
+                                        data-testid={`dash-button-message-${quote.id}`}
+                                      >
+                                        <MessageSquare className="h-3 w-3 mr-1" /> Message
+                                      </Button>
+                                    </div>
+                                    {openMessageThread === quote.id && (
+                                      <QuoteMessageThread quoteId={quote.id} userId={userId} />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 bg-slate-50 rounded-xl">
+                            <Clock className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                            <p className="text-sm text-gray-400">No bids received yet</p>
+                            <p className="text-xs text-gray-300 mt-1">Businesses are reviewing your request</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -1921,11 +2290,6 @@ export default function Dashboard() {
   const { data: validationData, isLoading } = useQuery<ValidationStatus>({
     queryKey: ["/api/user/validation-status"],
     enabled: isAuthenticated && !isBusinessAccount,
-  });
-
-  const { data: myQuoteRequests, isLoading: quotesLoading } = useQuery<any[]>({
-    queryKey: ["/api/user/quote-requests"],
-    enabled: isAuthenticated && user?.accountType === "customer",
   });
 
   const { data: business, isLoading: businessLoading } = useQuery<Business>({
@@ -2278,94 +2642,8 @@ export default function Dashboard() {
           </Card>
           )}
 
-          {user?.accountType !== "admin" && (
-          <Card className="lg:col-span-3 bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0a4a82] to-[#083a6a] flex items-center justify-center">
-                      <Gavel className="h-4 w-4 text-white" />
-                    </div>
-                    My Quote Requests
-                  </CardTitle>
-                  <CardDescription>Track your submitted quote requests and received bids</CardDescription>
-                </div>
-                <Link to="/quotes" data-testid="link-view-all-quotes">
-                  <Button variant="outline" size="sm" className="text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5 rounded-xl text-xs gap-1">
-                    View All <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {quotesLoading ? (
-                <div className="space-y-3">
-                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                </div>
-              ) : !myQuoteRequests || myQuoteRequests.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-[#0a4a82]/20" />
-                  <p className="text-gray-500">No quote requests yet.</p>
-                  <p className="text-sm text-gray-400 mt-1">Need a service? Request quotes from local businesses.</p>
-                  <Link to="/quotes">
-                    <Button size="sm" className="mt-4 bg-gradient-to-r from-[#0a4a82] to-[#083a6a] text-white rounded-xl" data-testid="button-request-quote-from-dashboard">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Request a Quote
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {myQuoteRequests.slice(0, 5).map((req: any) => (
-                    <Link key={req.id} to="/quotes" data-testid={`quote-request-item-${req.id}`}>
-                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#0a4a82]/5 to-transparent rounded-xl border border-[#0a4a82]/10 hover:border-[#0a4a82]/25 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-[#0a4a82]/10 flex items-center justify-center shrink-0">
-                            <MessageSquare className="h-5 w-5 text-[#0a4a82]" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-[#1a1a2e] text-sm truncate">{req.title}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-gray-400">{req.category}</span>
-                              {req.maxQuotes && (
-                                <span className="text-xs text-gray-400">
-                                  · {req.receivedQuotesCount || 0}/{req.maxQuotes} bids
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge className={
-                            req.status === "open" ? "bg-[#8a9a5b]/20 text-[#8a9a5b] border-0 text-xs" :
-                            req.status === "completed" ? "bg-[#0a4a82]/20 text-[#0a4a82] border-0 text-xs" :
-                            req.status === "cancelled" ? "bg-red-100 text-red-600 border-0 text-xs" :
-                            "bg-gray-100 text-gray-600 border-0 text-xs"
-                          } data-testid={`badge-quote-status-${req.id}`}>
-                            {req.status === "open" ? "Active" : req.status === "completed" ? "Completed" : req.status === "cancelled" ? "Cancelled" : req.status}
-                          </Badge>
-                          {req.createdAt && (
-                            <span className="text-xs text-gray-400 hidden sm:inline">
-                              {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                  {myQuoteRequests.length > 5 && (
-                    <Link to="/quotes" className="block text-center">
-                      <Button variant="ghost" size="sm" className="text-[#0a4a82] text-xs">
-                        View all {myQuoteRequests.length} requests <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {user?.accountType === "customer" && user?.id && (
+            <CustomerQuoteProjects userId={user.id} />
           )}
 
           <div className="lg:col-span-3">

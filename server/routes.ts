@@ -2349,11 +2349,20 @@ Respond in this exact JSON format:
         return res.status(403).json({ message: "Not authorized to view quotes" });
       }
       
-      const requestQuotes = await pgDb.select().from(quotes)
-        .where(and(eq(quotes.requestId, requestId), eq(quotes.businessOptedOut, false)))
-        .orderBy(quotes.amount);
+      let requestQuotes;
+      if (isBusiness && !isRequestOwner && !isAdmin) {
+        const businessRecord = await pgDb.select().from(businesses)
+          .where(eq(businesses.id, userRecord[0].linkedBusinessId!)).limit(1);
+        const businessId = businessRecord[0]?.id;
+        requestQuotes = businessId ? await pgDb.select().from(quotes)
+          .where(and(eq(quotes.requestId, requestId), eq(quotes.businessId, businessId), eq(quotes.businessOptedOut, false)))
+          .orderBy(quotes.amount) : [];
+      } else {
+        requestQuotes = await pgDb.select().from(quotes)
+          .where(and(eq(quotes.requestId, requestId), eq(quotes.businessOptedOut, false)))
+          .orderBy(quotes.amount);
+      }
       
-      // Enrich with business info
       const enrichedQuotes = await Promise.all(requestQuotes.map(async (quote) => {
         const businessInfo = await pgDb.select({
           id: businesses.id,
@@ -2544,6 +2553,14 @@ Respond in this exact JSON format:
       
       if (request.length === 0 || request[0].userId !== userId) {
         return res.status(403).json({ message: "Not authorized to accept this quote" });
+      }
+      
+      if (request[0].status !== "open") {
+        return res.status(400).json({ message: "This request is no longer open for accepting quotes" });
+      }
+      
+      if (quote[0].status !== "pending") {
+        return res.status(400).json({ message: "This quote has already been processed" });
       }
       
       // Accept the quote and update request status
