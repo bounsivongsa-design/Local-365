@@ -857,17 +857,16 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
           </div>
           <div>
             <Label>Ad Image</Label>
+            <p className="text-xs text-muted-foreground mb-1">Recommended: 1200×675px (16:9 ratio), max 5MB</p>
             {imageUrl ? (
               <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/20 h-32 mt-1">
                 <img src={imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <label className="cursor-pointer">
-                    <Button type="button" variant="secondary" size="sm" className="shadow-lg pointer-events-none">
-                      <Upload className="h-3.5 w-3.5 mr-1.5" /> Replace
-                    </Button>
+                <label className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                    <span className="inline-flex items-center gap-1.5 bg-white text-slate-800 font-semibold py-1.5 px-3 rounded-md text-sm shadow-lg">
+                      <Upload className="h-3.5 w-3.5" /> Replace
+                    </span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-edit-ad-image" />
-                  </label>
-                </div>
+                </label>
               </div>
             ) : (
               <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#0a4a82]/20 cursor-pointer hover:border-[#0a4a82]/40 transition-colors">
@@ -1256,11 +1255,125 @@ function MyJobsSection() {
   );
 }
 
+function EditEventDialog({ event, open, onClose }: { event: any; open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const [formData, setFormData] = useState({
+    title: event?.title || "",
+    description: event?.description || "",
+    location: event?.location || "",
+    imageUrl: event?.imageUrl || "",
+    flyerUrl: event?.flyerUrl || "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update event");
+      }
+      toast({ title: "Event Updated", description: "Your changes have been saved. Re-approval may be needed." });
+      queryClient.invalidateQueries({ queryKey: ["/api/events/my-events"] });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const result = await uploadFile(file);
+    if (result) {
+      setFormData({ ...formData, imageUrl: result.objectPath });
+      toast({ title: "Image Uploaded" });
+    }
+    e.target.value = "";
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-[#d4a373]" />
+            Edit Event
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-700 font-medium">
+              Editing an approved event will require re-approval. Date and ad size cannot be changed after submission.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="edit-event-title">Event Title</Label>
+            <Input id="edit-event-title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="bg-white" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-edit-event-title" />
+          </div>
+          <div>
+            <Label htmlFor="edit-event-location">Location</Label>
+            <Input id="edit-event-location" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="bg-white" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-edit-event-location" />
+          </div>
+          <div>
+            <Label htmlFor="edit-event-description">Description</Label>
+            <Textarea id="edit-event-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} className="bg-white" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-edit-event-description" />
+          </div>
+          <div>
+            <Label>Cover Image</Label>
+            <p className="text-xs text-muted-foreground mb-1">Recommended: 800×500px (16:10 ratio)</p>
+            {formData.imageUrl ? (
+              <div className="relative rounded-xl overflow-hidden border-2 border-[#d4a373]/20 h-32 mt-1">
+                <img src={formData.imageUrl} alt="Event preview" className="w-full h-full object-cover" />
+                <label className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                  <span className="inline-flex items-center gap-1.5 bg-white text-slate-800 font-semibold py-1.5 px-3 rounded-md text-sm shadow-lg"><Upload className="h-3.5 w-3.5" /> Replace</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-event-image" />
+                </label>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#d4a373]/20 cursor-pointer hover:border-[#d4a373]/40 transition-colors">
+                <Upload className="h-5 w-5 text-[#d4a373]/40" />
+                <span className="text-xs text-gray-500">Click to upload an image</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-event-image-upload" />
+              </label>
+            )}
+            {isUploading && (
+              <div className="mt-2">
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#d4a373] to-[#b8834f] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button onClick={handleSave} disabled={saving || isUploading} className="flex-1 bg-[#d4a373] hover:bg-[#b8834f] text-white rounded-lg font-semibold" data-testid="button-save-event-edit">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <CheckCircle2 className="h-4 w-4 mr-1.5" />}
+              Save Changes
+            </Button>
+            <Button variant="outline" onClick={onClose} className="rounded-lg" data-testid="button-cancel-event-edit">Cancel</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function MyEventsSection() {
   const { toast } = useToast();
   const { data: myEvents, isLoading } = useMyEvents(true);
   const deleteMutation = useDeleteEvent();
   const [payingEventId, setPayingEventId] = useState<number | null>(null);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
 
   const handlePayEvent = async (eventId: number) => {
     setPayingEventId(eventId);
@@ -1383,12 +1496,10 @@ function MyEventsSection() {
                       Pay Now
                     </Button>
                   )}
-                  <Link to="/events">
-                    <Button variant="outline" size="sm" className="rounded-lg border-[#d4a373]/20 text-[#d4a373] hover:bg-[#d4a373]/5 text-sm font-medium px-4" data-testid={`button-edit-event-${evt.id}`}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                      Edit
-                    </Button>
-                  </Link>
+                  <Button variant="outline" size="sm" className="rounded-lg border-[#d4a373]/20 text-[#d4a373] hover:bg-[#d4a373]/5 text-sm font-medium px-4" onClick={() => setEditingEvent(evt)} data-testid={`button-edit-event-${evt.id}`}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    Edit
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1406,6 +1517,13 @@ function MyEventsSection() {
           </div>
         )}
       </CardContent>
+      {editingEvent && (
+        <EditEventDialog
+          event={editingEvent}
+          open={!!editingEvent}
+          onClose={() => setEditingEvent(null)}
+        />
+      )}
     </Card>
   );
 }

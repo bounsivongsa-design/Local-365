@@ -717,9 +717,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const flyerInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading, progress } = useUpload();
 
-  const [eventDates, setEventDates] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [eventDate, setEventDate] = useState("");
 
   const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -749,23 +747,14 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const adDuration = form.watch("adDuration");
   const adSize = form.watch("adSize");
 
-  const maxEndDate = useMemo(() => {
-    if (isAdmin || !startDate || !adDuration) return undefined;
-    const maxDays = adDuration === "2week" ? 13 : 29;
-    const start = new Date(startDate.split("T")[0] + "T00:00:00");
-    start.setDate(start.getDate() + maxDays);
-    const y = start.getFullYear();
-    const m = String(start.getMonth() + 1).padStart(2, "0");
-    const d = String(start.getDate()).padStart(2, "0");
-    const time = startDate.includes("T") ? startDate.split("T")[1] : "23:59";
-    return `${y}-${m}-${d}T${time}`;
-  }, [startDate, adDuration, isAdmin]);
-
-  useEffect(() => {
-    if (!isAdmin && endDate && maxEndDate && endDate > maxEndDate) {
-      setEndDate(maxEndDate);
-    }
-  }, [adDuration, maxEndDate]);
+  const displayStartInfo = useMemo(() => {
+    if (!eventDate || (!isAdmin && !adDuration)) return null;
+    const days = isAdmin ? 31 : (adDuration === "2week" ? 15 : 31);
+    const evDate = new Date(eventDate.split("T")[0] + "T00:00:00");
+    const dispStart = new Date(evDate);
+    dispStart.setDate(dispStart.getDate() - days);
+    return { displayStart: dispStart, eventDay: evDate, days };
+  }, [eventDate, adDuration, isAdmin]);
 
   const canDescription = isAdmin || adSize === "medium" || adSize === "large";
   const canImage = isAdmin || adSize === "medium" || adSize === "large";
@@ -778,47 +767,19 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   const finalPriceRaw = basePrice * (1 - discount);
   const finalPrice = isAdmin ? "0" : (Number.isInteger(finalPriceRaw) ? String(finalPriceRaw) : finalPriceRaw.toFixed(2));
 
-  const generateDateRange = (start: string, end: string): string[] => {
-    const dates: string[] = [];
-    const startTime = start.includes("T") ? start.split("T")[1] : "09:00";
-    const current = new Date(start.split("T")[0] + "T00:00:00");
-    const last = new Date(end.split("T")[0] + "T00:00:00");
-    while (current <= last) {
-      const y = current.getFullYear();
-      const m = String(current.getMonth() + 1).padStart(2, "0");
-      const d = String(current.getDate()).padStart(2, "0");
-      dates.push(`${y}-${m}-${d}T${startTime}`);
-      current.setDate(current.getDate() + 1);
-    }
-    return dates;
-  };
-
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    if (!startDate) {
-      toast({ title: "Missing Start Date", description: "Please select a start date for your event.", variant: "destructive" });
+    if (!eventDate) {
+      toast({ title: "Missing Event Date", description: "Please select the date & time for your event.", variant: "destructive" });
       return;
     }
-
-    if (!isAdmin && endDate && startDate) {
-      const maxDays = data.adDuration === "2week" ? 14 : 30;
-      const start = new Date(startDate.split("T")[0] + "T00:00:00");
-      const end = new Date(endDate.split("T")[0] + "T00:00:00");
-      const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      if (diffDays > maxDays) {
-        toast({ title: "Date Range Too Long", description: `Your ${data.adDuration === "2week" ? "2-week" : "30-day"} ad package covers up to ${maxDays} days. Please shorten your event dates or choose a longer ad duration.`, variant: "destructive" });
-        return;
-      }
-    }
-
-    const computedDates = endDate ? generateDateRange(startDate, endDate) : [startDate];
 
     const selectedAdSize = isAdmin ? "large" : (data.adSize || "small");
 
     const eventData: any = {
       title: data.title,
       location: data.location,
-      date: computedDates[0],
-      eventDates: computedDates,
+      date: eventDate,
+      eventDates: [eventDate],
       adSize: selectedAdSize,
       adDuration: data.adDuration || "monthly",
       description: data.description || "",
@@ -997,78 +958,38 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
         )}
 
         <div>
-          <label className="text-sm font-medium leading-none mb-2 block">Event Dates & Time</label>
-          <p className="text-xs text-muted-foreground mb-2">Select a start and end date. Multi-day events will appear on the calendar for every day in the range.{!isAdmin && adDuration && ` Your ${adDuration === "2week" ? "2-week" : "30-day"} ad covers up to ${adDuration === "2week" ? "14" : "30"} days.`}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Start Date & Time</label>
-              <Input
-                type="datetime-local"
-                className="bg-white text-[#1a1a2e]"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  if (endDate && e.target.value > endDate) {
-                    setEndDate(e.target.value);
-                  }
-                }}
-                data-testid="input-event-start-date"
-                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">End Date (optional for single-day events)</label>
-              <Input
-                type="datetime-local"
-                className="bg-white text-[#1a1a2e]"
-                value={endDate}
-                min={startDate || undefined}
-                max={maxEndDate || undefined}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!isAdmin && maxEndDate && val > maxEndDate) {
-                    setEndDate(maxEndDate);
-                  } else {
-                    setEndDate(val);
-                  }
-                }}
-                data-testid="input-event-end-date"
-                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
-              />
-              {!isAdmin && adDuration && startDate && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Max end date: {maxEndDate ? new Date(maxEndDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                </p>
-              )}
-            </div>
-          </div>
-          {startDate && (
-            <div className="mt-3 p-3 rounded-xl bg-[#0a4a82]/5 border border-[#0a4a82]/15">
+          <label className="text-sm font-medium leading-none mb-2 block">Event Date & Time</label>
+          <p className="text-xs text-muted-foreground mb-2">When does your event take place? Your listing will automatically appear on the calendar {!isAdmin && adDuration ? (adDuration === "2week" ? "14 days" : "30 days") : ""} before this date.</p>
+          <Input
+            type="datetime-local"
+            className="bg-white text-[#1a1a2e]"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+            data-testid="input-event-date"
+            style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+          />
+          {eventDate && displayStartInfo && (
+            <div className="mt-3 p-3 rounded-xl bg-[#0a4a82]/5 border border-[#0a4a82]/15 space-y-1.5">
               <div className="flex items-center gap-2 text-sm text-[#0a4a82] font-medium">
                 <Calendar className="h-4 w-4" />
-                {endDate && endDate.split("T")[0] !== startDate.split("T")[0] ? (
-                  <span>
-                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    {" — "}
-                    {new Date(endDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    {" "}
-                    <span className="text-slate-500 font-normal">
-                      ({Math.ceil((new Date(endDate.split("T")[0] + "T00:00:00").getTime() - new Date(startDate.split("T")[0] + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)) + 1} days on calendar)
-                    </span>
-                  </span>
-                ) : (
-                  <span>
-                    {new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    {" at "}
-                    {new Date(startDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                    <span className="text-slate-500 font-normal ml-1">(single day)</span>
-                  </span>
-                )}
+                <span>
+                  Event: {new Date(eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                  {" at "}
+                  {new Date(eventDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                </span>
               </div>
+              {!isAdmin && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Megaphone className="h-3.5 w-3.5" />
+                  <span>
+                    Listing visible from {displayStartInfo.displayStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} through {displayStartInfo.eventDay.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ({displayStartInfo.days} days of promotion)
+                  </span>
+                </div>
+              )}
             </div>
           )}
-          {!startDate && (
-            <p className="text-xs text-amber-600 font-medium mt-2">Please select a start date above</p>
+          {!eventDate && (
+            <p className="text-xs text-amber-600 font-medium mt-2">Please select an event date above</p>
           )}
         </div>
 
@@ -1094,6 +1015,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
         {canImage ? (
           <div>
             <label className="text-sm font-medium leading-none mb-2 block">Cover Image</label>
+            <p className="text-xs text-muted-foreground mb-2">Recommended: 800×500px (16:10 ratio), max 5MB</p>
             {form.watch("imageUrl") ? (
               <div className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#0a4a82]/15">
                 <div className="flex items-center gap-3">
@@ -1149,6 +1071,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
         {canFlyer ? (
           <div>
             <label className="text-sm font-medium leading-none mb-2 block">Event Flyer</label>
+            <p className="text-xs text-muted-foreground mb-2">Recommended: 850×1100px (portrait, 8.5×11"), max 10MB</p>
             {form.watch("flyerUrl") ? (
               <div className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#8a9a5b]/15">
                 <div className="flex items-center gap-3">

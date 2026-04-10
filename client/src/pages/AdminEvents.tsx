@@ -229,10 +229,7 @@ export default function AdminEvents() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5" />
-                          {event.eventDates && event.eventDates.length > 0
-                            ? event.eventDates.map(d => format(new Date(d), "MMM d")).join(", ")
-                            : format(new Date(event.date), "MMM d, yyyy")
-                          }
+                          {format(new Date(event.date), "MMM d, yyyy 'at' h:mm a")}
                         </span>
                       </div>
 

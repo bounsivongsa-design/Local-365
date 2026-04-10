@@ -37,8 +37,6 @@ interface EventCardProps {
 export function EventCard({ event }: EventCardProps) {
   const [showDetail, setShowDetail] = useState(false);
   const date = new Date(event.date);
-  const allDates = event.eventDates?.length ? event.eventDates.map((d: string) => new Date(d)) : [date];
-  const hasMultipleDates = allDates.length > 1;
   const adSize = getAdSizeLevel(event.adSize);
 
   const showImage = adSize === "medium" || adSize === "large";
@@ -76,7 +74,6 @@ export function EventCard({ event }: EventCardProps) {
               <div className="absolute top-4 right-4 bg-white/95 rounded-xl p-3 text-center min-w-[4.5rem] border border-white/50 shadow-lg backdrop-blur-sm">
                 <div className="text-xs font-bold text-amber-600 uppercase tracking-wider">{format(date, "MMM")}</div>
                 <div className="text-3xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
-                {hasMultipleDates && <div className="text-[10px] font-semibold text-[#0a4a82] mt-1">+{allDates.length - 1} more</div>}
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-5 md:p-8">
                 <h3 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg mb-2">{event.title}</h3>
@@ -140,7 +137,6 @@ export function EventCard({ event }: EventCardProps) {
             <div className="absolute top-3 right-3 bg-white/95 rounded-xl p-2.5 text-center min-w-[4rem] border border-white/50 shadow-md backdrop-blur-sm">
               <div className="text-xs font-bold text-[#0a4a82] uppercase tracking-wider">{format(date, "MMM")}</div>
               <div className="text-2xl font-bold text-slate-900 leading-none mt-0.5">{format(date, "d")}</div>
-              {hasMultipleDates && <div className="text-[10px] font-semibold text-[#0a4a82] mt-0.5">+{allDates.length - 1} more</div>}
             </div>
           </div>
           <CardContent className="p-5 flex-1 flex flex-col">
@@ -169,7 +165,6 @@ export function EventCard({ event }: EventCardProps) {
               <div className="bg-[#0a4a82] text-white rounded-lg px-3 py-2 text-center mb-3 shadow-sm">
                 <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">{format(date, "MMM")}</div>
                 <div className="text-2xl font-bold leading-none mt-0.5">{format(date, "d")}</div>
-                {hasMultipleDates && <div className="text-[10px] font-medium opacity-80 mt-0.5">+{allDates.length - 1} more</div>}
               </div>
               <h3 className="text-sm font-bold text-[#1a1a2e] group-hover:text-[#0a4a82] transition-colors line-clamp-3 leading-snug">{event.title}</h3>
               <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-2">
@@ -218,12 +213,10 @@ export function EventCard({ event }: EventCardProps) {
             )}
 
             <div className="flex flex-wrap gap-3">
-              {allDates.map((d, i) => (
-                <div key={i} className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(d, "EEEE, MMMM d, yyyy")}
-                </div>
-              ))}
+              <div className="inline-flex items-center gap-2 bg-[#0a4a82]/10 text-[#0a4a82] px-4 py-2 rounded-xl text-sm font-medium">
+                <CalendarIcon className="h-4 w-4" />
+                {format(date, "EEEE, MMMM d, yyyy 'at' h:mm a")}
+              </div>
               <div className="inline-flex items-center gap-2 bg-[#8a9a5b]/10 text-[#8a9a5b] px-4 py-2 rounded-xl text-sm font-medium">
                 <MapPin className="h-4 w-4" />
                 {event.location}

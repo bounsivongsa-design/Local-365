@@ -121,6 +121,8 @@ export const events = pgTable("events", {
   flyerUrl: text("flyer_url"),
   promoVideoUrl: text("promo_video_url"),
   adSize: text("ad_size").default("small"),
+  adDuration: text("ad_duration").default("2week"),
+  displayStartDate: timestamp("display_start_date"),
   businessId: integer("business_id").references(() => businesses.id),
   targetZipCodes: text("target_zip_codes").array().default([]),
   status: text("status").default("pending"),

@@ -598,6 +598,7 @@ export default function Advertising() {
 
                     <div className="space-y-2">
                       <Label>Ad Image</Label>
+                      <p className="text-xs text-muted-foreground">Recommended: 1200×675px (16:9 ratio), max 5MB. Images are auto-cropped to 16:9.</p>
                       {businessMedia.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-xs text-[#4a4a5a]">Choose from your uploaded media:</p>

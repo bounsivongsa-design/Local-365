@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExampleBanner } from "@/components/ExampleBanner";
 import { Link } from "react-router-dom";
@@ -33,6 +33,15 @@ const SMALL_PLACEHOLDERS: AdSlide[] = [
   { id: 0, title: "Gutter Installation", businessName: "Rain Guard Gutters", description: "", imageUrl: "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=400&h=200&fit=crop", businessId: null, linkUrl: null },
   { id: 0, title: "Window Cleaning", businessName: "Clear View Moyock", description: "", imageUrl: "https://images.unsplash.com/photo-1527689368864-3a821dbccc34?w=400&h=200&fit=crop", businessId: null, linkUrl: null },
 ];
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 function mapAdsToSlides(realAds: AdWithBusiness[] | undefined, placeholders: AdSlide[], minSlots?: number): { slides: AdSlide[]; isPlaceholder: boolean; realCount: number } {
   if (realAds && realAds.length > 0) {
@@ -74,9 +83,22 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
     queryFn: async () => { const res = await fetch(`/api/ads/active?type=small_banner&zipCode=${zipCode}`); return res.ok ? res.json() : []; },
   });
 
-  const largeAds = mapAdsToSlides(realLargeAds, LARGE_PLACEHOLDERS);
-  const mediumAds = mapAdsToSlides(realMediumAds, MEDIUM_PLACEHOLDERS, 2);
-  const smallAds = mapAdsToSlides(realSmallAds, SMALL_PLACEHOLDERS, 3);
+  const largeAdsRaw = mapAdsToSlides(realLargeAds, LARGE_PLACEHOLDERS);
+  const mediumAdsRaw = mapAdsToSlides(realMediumAds, MEDIUM_PLACEHOLDERS, 2);
+  const smallAdsRaw = mapAdsToSlides(realSmallAds, SMALL_PLACEHOLDERS, 3);
+
+  const largeAds = useMemo(() => ({
+    ...largeAdsRaw,
+    slides: largeAdsRaw.isPlaceholder ? largeAdsRaw.slides : shuffleArray(largeAdsRaw.slides),
+  }), [realLargeAds]);
+  const mediumAds = useMemo(() => ({
+    ...mediumAdsRaw,
+    slides: mediumAdsRaw.isPlaceholder ? mediumAdsRaw.slides : shuffleArray(mediumAdsRaw.slides),
+  }), [realMediumAds]);
+  const smallAds = useMemo(() => ({
+    ...smallAdsRaw,
+    slides: smallAdsRaw.isPlaceholder ? smallAdsRaw.slides : shuffleArray(smallAdsRaw.slides),
+  }), [realSmallAds]);
 
   const largePageCount = largeAds.slides.length;
   const mediumPageCount = Math.ceil(mediumAds.slides.length / 2);

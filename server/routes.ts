@@ -138,8 +138,8 @@ async function assignPriorityToPremiumBusinesses(
     .select({
       id: businesses.id,
       membershipTier: businesses.membershipTier,
-      averageRating: businesses.averageRating,
-      reviewCount: businesses.reviewCount,
+      averageRating: sql<number>`COALESCE((SELECT AVG(${reviews.rating}) FROM ${reviews} WHERE ${reviews.businessId} = ${businesses.id}), 0)`.as("avg_rating"),
+      reviewCount: sql<number>`COALESCE((SELECT COUNT(*) FROM ${reviews} WHERE ${reviews.businessId} = ${businesses.id}), 0)`.as("review_count"),
     })
     .from(businesses)
     .where(
@@ -160,8 +160,8 @@ async function assignPriorityToPremiumBusinesses(
         WHEN ${businesses.membershipTier} = 'basic' THEN 3 
         ELSE 4 
       END`,
-      desc(businesses.averageRating),
-      desc(businesses.reviewCount)
+      sql`COALESCE((SELECT AVG(${reviews.rating}) FROM ${reviews} WHERE ${reviews.businessId} = ${businesses.id}), 0) DESC`,
+      sql`COALESCE((SELECT COUNT(*) FROM ${reviews} WHERE ${reviews.businessId} = ${businesses.id}), 0) DESC`
     );
   
   // Calculate which businesses to assign for this round
@@ -1731,7 +1731,17 @@ Respond in this exact JSON format:
   app.get(api.events.list.path, async (req, res) => {
     const { zipCode } = req.query;
     const allEvents = await storage.getEvents();
-    const approvedEvents = allEvents.filter(e => e.status === "approved" && (e.paymentStatus === "paid" || e.isExample));
+    const now = new Date();
+    const approvedEvents = allEvents.filter(e => {
+      if (e.status !== "approved" || (e.paymentStatus !== "paid" && !e.isExample)) return false;
+      if (e.displayStartDate) {
+        const displayStart = new Date(e.displayStartDate);
+        const eventDay = new Date(e.date);
+        eventDay.setHours(23, 59, 59, 999);
+        return now >= displayStart && now <= eventDay;
+      }
+      return true;
+    });
     const eventsWithTier = await Promise.all(
       approvedEvents.map(async (event) => {
         let businessMembershipTier: string | null = null;
@@ -1787,6 +1797,7 @@ Respond in this exact JSON format:
       const { businessId: _clientBusinessId, targetZipCodes: _clientTargetZips, adDuration: _adDuration, adSize: clientAdSize, eventDates: clientEventDates, ...bodyWithoutMeta } = req.body;
 
       const adSizeVal = clientAdSize || "large";
+      const adDurationVal = _adDuration || "monthly";
 
       const sanitizedBody = {
         ...bodyWithoutMeta,
@@ -1798,14 +1809,18 @@ Respond in this exact JSON format:
 
       const eventZipCode = req.body.zipCode || businessZipCode || "27958";
 
-      const parsedEventDates: string[] = Array.isArray(clientEventDates) ? clientEventDates.filter((d: string) => d && !isNaN(new Date(d).getTime())) : [];
-      const primaryDate = parsedEventDates.length > 0 ? new Date(parsedEventDates[0]) : new Date(req.body.date);
+      const eventDate = new Date(req.body.date);
+      const displayDays = adDurationVal === "2week" ? 14 : 30;
+      const displayStartDate = new Date(eventDate);
+      displayStartDate.setDate(displayStartDate.getDate() - displayDays);
+
+      const eventDatesArray = [eventDate.toISOString()];
 
       const input = api.events.create.input.parse({
           ...sanitizedBody,
           businessId: serverBusinessId || undefined,
-          date: primaryDate,
-          eventDates: parsedEventDates,
+          date: eventDate,
+          eventDates: eventDatesArray,
           zipCode: eventZipCode,
           city: req.body.city || "Moyock",
           state: req.body.state || "NC",
@@ -1813,12 +1828,16 @@ Respond in this exact JSON format:
       });
       const event = await storage.createEvent(input);
 
+      await pgDb.update(events).set({
+        adDuration: isAdmin ? "monthly" : adDurationVal,
+        displayStartDate: displayStartDate,
+      }).where(eq(events.id, event.id));
+
       if (isAdmin) {
         await pgDb.update(events).set({ status: "approved", paymentStatus: "paid" }).where(eq(events.id, event.id));
         return res.status(201).json({ ...event, status: "approved", paymentStatus: "paid" });
       }
 
-      const adDurationVal = _adDuration || "monthly";
       const eventAdSize = clientAdSize || "small";
       const EVENT_PRICING_2WEEK: Record<string, number> = { small: 2500, medium: 3500, large: 5000 };
       const EVENT_PRICING_MONTHLY: Record<string, number> = { small: 5000, medium: 7500, large: 10000 };
