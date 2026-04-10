@@ -835,6 +835,7 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
   };
 
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-2">
         {isAdmin ? (
@@ -1062,21 +1063,6 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
               }}
               data-testid="input-event-image-file"
             />
-            {coverCropFile && (
-              <ImageCropper
-                imageFile={coverCropFile}
-                aspectRatio={16 / 9}
-                onCropped={async (blob) => {
-                  setCoverCropFile(null);
-                  const croppedFile = new File([blob], "event-cover.jpg", { type: "image/jpeg" });
-                  const result = await uploadFile(croppedFile);
-                  if (result) form.setValue("imageUrl", result.objectPath);
-                }}
-                onCancel={() => setCoverCropFile(null)}
-                maxWidth={1200}
-                maxHeight={675}
-              />
-            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-sm">
@@ -1229,5 +1215,22 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
         )}
       </form>
     </Form>
+
+    {coverCropFile && (
+      <ImageCropper
+        imageFile={coverCropFile}
+        aspectRatio={16 / 9}
+        onCropped={async (blob) => {
+          setCoverCropFile(null);
+          const croppedFile = new File([blob], "event-cover.jpg", { type: "image/jpeg" });
+          const result = await uploadFile(croppedFile);
+          if (result) form.setValue("imageUrl", result.objectPath);
+        }}
+        onCancel={() => setCoverCropFile(null)}
+        maxWidth={1200}
+        maxHeight={675}
+      />
+    )}
+    </>
   );
 }
