@@ -72,15 +72,18 @@ interface DesignState {
   headlineFont: string;
   headlineAlign: "left" | "center" | "right";
   headlinePos: Position;
+  headlineVisible: boolean;
   tagline: string;
   taglineFontSize: number;
   taglineColor: string;
   taglineFont: string;
   taglinePos: Position;
+  taglineVisible: boolean;
   businessName: string;
   businessNameColor: string;
   businessNameFontSize: number;
   businessNamePos: Position;
+  businessNameVisible: boolean;
   showLogo: boolean;
   logoUrl: string | null;
   logoSize: number;
@@ -106,15 +109,18 @@ const defaultDesign: DesignState = {
   headlineFont: "sans",
   headlineAlign: "center",
   headlinePos: { x: 50, y: 45 },
+  headlineVisible: true,
   tagline: "Add a compelling tagline",
   taglineFontSize: 16,
   taglineColor: "#ffffff",
   taglineFont: "sans",
   taglinePos: { x: 50, y: 62 },
+  taglineVisible: true,
   businessName: "",
   businessNameColor: "#d4a373",
   businessNameFontSize: 14,
   businessNamePos: { x: 50, y: 25 },
+  businessNameVisible: true,
   showLogo: false,
   logoUrl: null,
   logoSize: 60,
@@ -464,7 +470,16 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               {isOpen && panel.id === "text" && (
                 <div className="px-4 pb-4 space-y-4 border-t border-slate-100 pt-3">
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-slate-500">Headline</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-500">Headline</Label>
+                      <button
+                        onClick={() => update({ headlineVisible: !design.headlineVisible })}
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${design.headlineVisible ? "bg-[#0a4a82]/10 text-[#0a4a82]" : "bg-slate-100 text-slate-400"}`}
+                        data-testid="toggle-headline-visible"
+                      >
+                        {design.headlineVisible ? "Visible" : "Hidden"}
+                      </button>
+                    </div>
                     <Input
                       value={design.headline}
                       onChange={(e) => update({ headline: e.target.value })}
@@ -515,7 +530,16 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-slate-500">Tagline</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-500">Tagline</Label>
+                      <button
+                        onClick={() => update({ taglineVisible: !design.taglineVisible })}
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${design.taglineVisible ? "bg-[#0a4a82]/10 text-[#0a4a82]" : "bg-slate-100 text-slate-400"}`}
+                        data-testid="toggle-tagline-visible"
+                      >
+                        {design.taglineVisible ? "Visible" : "Hidden"}
+                      </button>
+                    </div>
                     <Input
                       value={design.tagline}
                       onChange={(e) => update({ tagline: e.target.value })}
@@ -548,7 +572,16 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               {isOpen && panel.id === "branding" && (
                 <div className="px-4 pb-4 space-y-4 border-t border-slate-100 pt-3">
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-slate-500">Business Name</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-500">Business Name</Label>
+                      <button
+                        onClick={() => update({ businessNameVisible: !design.businessNameVisible })}
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${design.businessNameVisible ? "bg-[#0a4a82]/10 text-[#0a4a82]" : "bg-slate-100 text-slate-400"}`}
+                        data-testid="toggle-business-name-visible"
+                      >
+                        {design.businessNameVisible ? "Visible" : "Hidden"}
+                      </button>
+                    </div>
                     <Input
                       value={design.businessName}
                       onChange={(e) => update({ businessName: e.target.value })}
@@ -608,7 +641,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                         <Slider
                           value={[design.logoSize]}
                           onValueChange={([v]) => update({ logoSize: v })}
-                          min={30} max={120} step={5}
+                          min={30} max={400} step={5}
                           data-testid="slider-logo-size"
                         />
                       </div>
@@ -747,7 +780,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               </DraggableElement>
             )}
 
-            {design.businessName && (
+            {design.businessName && design.businessNameVisible && (
               <DraggableElement
                 id="businessName"
                 position={design.businessNamePos}
@@ -772,7 +805,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               </DraggableElement>
             )}
 
-            {design.headline && (
+            {design.headline && design.headlineVisible && (
               <DraggableElement
                 id="headline"
                 position={design.headlinePos}
@@ -798,7 +831,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               </DraggableElement>
             )}
 
-            {design.tagline && (
+            {design.tagline && design.taglineVisible && (
               <DraggableElement
                 id="tagline"
                 position={design.taglinePos}

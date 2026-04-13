@@ -1868,6 +1868,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
             </Card>
           </div>
 
+          <BusinessQuoteLeads businessId={business.id} />
+
           <DashboardInbox />
 
           <MyAdsSection businessId={business.id} />
@@ -2068,6 +2070,92 @@ function QuoteMessageThread({ quoteId, userId }: { quoteId: number; userId: stri
         </Button>
       </form>
     </div>
+  );
+}
+
+function BusinessQuoteLeads({ businessId }: { businessId: number }) {
+  const { data: quoteRequests, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/quotes/requests"],
+  });
+
+  const availableLeads = useMemo(() => {
+    if (!quoteRequests) return [];
+    return quoteRequests.filter((req: any) => req.status === "open").slice(0, 5);
+  }, [quoteRequests]);
+
+  return (
+    <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8a9a5b] to-[#6b7a4b] flex items-center justify-center">
+                <Gavel className="h-4 w-4 text-white" />
+              </div>
+              Quote Leads
+            </CardTitle>
+            <CardDescription>Open quote requests from customers — bid to win new business</CardDescription>
+          </div>
+          <Link to="/quotes" data-testid="link-view-all-leads">
+            <Button variant="outline" size="sm" className="text-[#0a4a82] border-[#0a4a82]/20 hover:bg-[#0a4a82]/5 rounded-xl text-xs gap-1">
+              View All <ArrowRight className="h-3 w-3" />
+            </Button>
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+          </div>
+        ) : availableLeads.length === 0 ? (
+          <div className="text-center py-8">
+            <Gavel className="h-12 w-12 mx-auto mb-4 text-[#8a9a5b]/20" />
+            <p className="text-gray-500">No open quote requests right now.</p>
+            <p className="text-sm text-gray-400 mt-1">Check back later for new customer leads.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {availableLeads.map((req: any) => (
+              <Link to="/quotes" key={req.id} data-testid={`lead-item-${req.id}`}>
+                <div className="flex items-center justify-between p-4 rounded-xl border border-[#0a4a82]/10 bg-gradient-to-r from-[#8a9a5b]/5 to-transparent hover:from-[#8a9a5b]/10 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#8a9a5b]/10 flex items-center justify-center shrink-0">
+                      <Gavel className="h-5 w-5 text-[#8a9a5b]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-[#1a1a2e] text-sm truncate">{req.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-gray-400">{req.category}</span>
+                        {req.budget && <span className="text-xs text-gray-400">· {req.budget}</span>}
+                        {req.quoteCount > 0 && (
+                          <span className="text-xs text-[#0a4a82]">· {req.quoteCount} bid{req.quoteCount !== 1 ? "s" : ""}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {req.hasPriorityAccess && (
+                      <Badge className="bg-[#d4a373]/10 text-[#d4a373] border-0 text-[10px]">
+                        <Trophy className="h-3 w-3 mr-1" />
+                        Priority
+                      </Badge>
+                    )}
+                    {req.createdAt && (
+                      <span className="text-xs text-gray-400 hidden sm:inline">
+                        {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
+                      </span>
+                    )}
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

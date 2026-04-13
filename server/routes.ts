@@ -4076,6 +4076,34 @@ Respond in this exact JSON format:
     }
   });
 
+  app.get("/api/admin/quote-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const adminCheck = await isAdminUser(userId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const requests = await pgDb.select().from(quoteRequests).orderBy(desc(quoteRequests.createdAt));
+
+      const enriched = await Promise.all(requests.map(async (r) => {
+        const customerResult = await pgDb.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, r.userId)).limit(1);
+        const customer = customerResult[0];
+        const quoteCountResult = await pgDb.select({ count: quotes.id }).from(quotes)
+          .where(eq(quotes.requestId, r.id));
+        return {
+          ...r,
+          customerName: customer ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() : "Unknown",
+          quoteCount: quoteCountResult.length,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (err) {
+      console.error("Error fetching admin quote requests:", err);
+      res.status(500).json({ message: "Failed to fetch quote requests" });
+    }
+  });
+
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;

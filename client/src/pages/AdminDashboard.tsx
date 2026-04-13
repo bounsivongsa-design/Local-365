@@ -143,7 +143,7 @@ type AdminBusiness = {
   createdAt: string | null;
 };
 
-type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads";
+type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes";
 
 function tierLabel(t: string | null | undefined) {
   if (!t || t === "none") return "No Plan";
@@ -161,8 +161,9 @@ function tierColor(t: string | null | undefined) {
 }
 
 function statusBadge(status: string | null) {
-  if (status === "active") return <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>;
+  if (status === "active" || status === "open") return <Badge className="bg-green-100 text-green-800 text-xs">{status === "open" ? "Open" : "Active"}</Badge>;
   if (status === "pending") return <Badge className="bg-amber-100 text-amber-800 text-xs">Pending</Badge>;
+  if (status === "in_progress") return <Badge className="bg-blue-100 text-blue-800 text-xs">In Progress</Badge>;
   if (status === "completed" || status === "approved") return <Badge className="bg-blue-100 text-blue-800 text-xs">{status}</Badge>;
   if (status === "rejected" || status === "expired" || status === "cancelled") return <Badge className="bg-red-100 text-red-800 text-xs">{status}</Badge>;
   return <Badge className="bg-gray-100 text-gray-600 text-xs">{status || "unknown"}</Badge>;
@@ -195,6 +196,7 @@ export default function AdminDashboard() {
     { id: "events", label: "Events", icon: Calendar },
     { id: "promos", label: "Promos", icon: Tag },
     { id: "ads", label: "Ads", icon: Megaphone },
+    { id: "quotes", label: "Quotes", icon: MessageSquare },
   ];
 
   return (
@@ -239,6 +241,7 @@ export default function AdminDashboard() {
         {activeTab === "events" && <EventsTab />}
         {activeTab === "promos" && <PromosTab />}
         {activeTab === "ads" && <AdsTab />}
+        {activeTab === "quotes" && <QuotesTab />}
       </div>
     </div>
   );
@@ -2020,6 +2023,98 @@ function AdsTab() {
                           {ad.status !== "active" && <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600" onClick={() => updateAd.mutate({ id: ad.id, status: "active" })}><CheckCircle2 className="h-3.5 w-3.5" /></Button>}
                           {ad.status === "active" && <Button size="sm" variant="ghost" className="h-7 px-2 text-amber-600" onClick={() => updateAd.mutate({ id: ad.id, status: "paused" })}><Eye className="h-3.5 w-3.5" /></Button>}
                         </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function QuotesTab() {
+  const { data: allRequests, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/quote-requests"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/quote-requests", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = (allRequests || []).filter((r: any) => statusFilter === "all" || r.status === statusFilter);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-[#1a1a2e]">All Quote Requests</h2>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px] h-9 text-xs rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0">
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-slate-200" />
+              <p className="text-slate-400">No quote requests found</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left p-4 font-semibold text-slate-600">Title</th>
+                    <th className="text-left p-4 font-semibold text-slate-600">Customer</th>
+                    <th className="text-left p-4 font-semibold text-slate-600">Category</th>
+                    <th className="text-left p-4 font-semibold text-slate-600">Budget</th>
+                    <th className="text-left p-4 font-semibold text-slate-600">Bids</th>
+                    <th className="text-left p-4 font-semibold text-slate-600">Status</th>
+                    <th className="text-left p-4 font-semibold text-slate-600">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((req: any) => (
+                    <tr key={req.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors" data-testid={`admin-quote-row-${req.id}`}>
+                      <td className="p-4">
+                        <p className="font-medium text-[#1a1a2e] truncate max-w-[200px]">{req.title}</p>
+                        {req.description && <p className="text-xs text-slate-400 truncate max-w-[200px]">{req.description}</p>}
+                      </td>
+                      <td className="p-4 text-slate-600">
+                        {req.customerName || "Unknown"}
+                      </td>
+                      <td className="p-4">
+                        <Badge className="bg-[#0a4a82]/10 text-[#0a4a82] border-0 text-xs">{req.category}</Badge>
+                      </td>
+                      <td className="p-4 text-slate-600">{req.budget || "—"}</td>
+                      <td className="p-4 text-slate-600">{req.quoteCount || 0}</td>
+                      <td className="p-4">{statusBadge(req.status)}</td>
+                      <td className="p-4 text-xs text-slate-400">
+                        {req.createdAt ? formatDistanceToNow(new Date(req.createdAt), { addSuffix: true }) : "—"}
                       </td>
                     </tr>
                   ))}
