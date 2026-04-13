@@ -1146,7 +1146,7 @@ export default function Advertising() {
             businessLogo={linkedBusiness?.logoUrl ? (linkedBusiness.logoUrl.startsWith("/objects/") ? linkedBusiness.logoUrl : `/objects/${linkedBusiness.logoUrl}`) : undefined}
             onComplete={async (blob) => {
               setShowDesigner(false);
-              const file = new File([blob], "designed-ad.png", { type: "image/png" });
+              const file = new File([blob], `designed-ad-${Date.now()}.png`, { type: "image/png" });
               const result = await uploadAdImage(file);
               if (result) {
                 setFormData({ ...formData, imageUrl: result.objectPath });

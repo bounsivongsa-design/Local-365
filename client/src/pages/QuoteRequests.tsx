@@ -860,10 +860,16 @@ export default function QuoteRequests() {
                               </Badge>
                             )}
                           </div>
-                          {req.priorityExpiresAt && (
+                          {req.priorityExpiresAt && new Date(req.priorityExpiresAt) > new Date() && (
                             <div className="flex items-center gap-1 text-xs text-amber-600">
                               <Timer className="h-3 w-3" />
                               Window ends {formatDistanceToNow(new Date(req.priorityExpiresAt), { addSuffix: true })}
+                            </div>
+                          )}
+                          {req.priorityExpiresAt && new Date(req.priorityExpiresAt) <= new Date() && (
+                            <div className="flex items-center gap-1 text-xs text-green-600">
+                              <Timer className="h-3 w-3" />
+                              Open to all tiers
                             </div>
                           )}
                         </div>

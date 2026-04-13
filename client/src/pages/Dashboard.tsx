@@ -787,10 +787,11 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
 
   const handleCroppedImage = async (blob: Blob) => {
     setCropFile(null);
-    const file = new File([blob], "ad-image.jpg", { type: "image/jpeg" });
+    const file = new File([blob], `ad-image-${Date.now()}.jpg`, { type: "image/jpeg" });
     const result = await uploadFile(file);
     if (result) {
-      setImageUrl(result.objectPath);
+      const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+      setImageUrl(path);
       toast({ title: "Image Uploaded" });
     }
   };
@@ -957,10 +958,11 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
             businessName={ad?.businessName || ""}
             onComplete={async (blob) => {
               setShowDesigner(false);
-              const file = new File([blob], "designed-ad.png", { type: "image/png" });
+              const file = new File([blob], `designed-ad-${Date.now()}.png`, { type: "image/png" });
               const result = await uploadFile(file);
               if (result) {
-                setImageUrl(result.objectPath);
+                const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+                setImageUrl(path);
                 toast({ title: "Ad Design Saved!", description: "Your custom design has been set as the ad image." });
               }
             }}
