@@ -54,6 +54,9 @@ const FONT_OPTIONS = [
   { value: "display", label: "Bold Display", family: "'Impact', 'Arial Black', sans-serif" },
 ];
 
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 675;
+
 type BackgroundType = "gradient" | "solid" | "image";
 
 interface Position { x: number; y: number; }
@@ -169,8 +172,10 @@ function DraggableElement({
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const dx = ((e.clientX - startMouse.current.x) / rect.width) * 100;
-    const dy = ((e.clientY - startMouse.current.y) / rect.height) * 100;
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
+    const dx = ((e.clientX - startMouse.current.x) * scaleX / CANVAS_WIDTH) * 100;
+    const dy = ((e.clientY - startMouse.current.y) * scaleY / CANVAS_HEIGHT) * 100;
     const newX = Math.max(0, Math.min(100, startPos.current.x + dx));
     const newY = Math.max(0, Math.min(100, startPos.current.y + dy));
     onDrag({ x: newX, y: newY });
@@ -243,9 +248,24 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
   const [activePanel, setActivePanel] = useState<string>("background");
   const [selectedElement, setSelectedElement] = useState<DragTarget>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const previewWrapperRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(0.5);
   const { toast } = useToast();
   const bgFileRef = useRef<HTMLInputElement>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (previewWrapperRef.current) {
+        const wrapperWidth = previewWrapperRef.current.clientWidth - 32;
+        const scale = Math.min(wrapperWidth / CANVAS_WIDTH, 1);
+        setPreviewScale(scale);
+      }
+    };
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
 
   const update = useCallback((partial: Partial<DesignState>) => {
     setDesign(prev => ({ ...prev, ...partial }));
@@ -285,10 +305,13 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
     await new Promise(r => setTimeout(r, 50));
     try {
       const dataUrl = await toPng(previewRef.current, {
-        width: 1200,
-        height: 675,
-        pixelRatio: 2,
+        width: CANVAS_WIDTH,
+        height: CANVAS_HEIGHT,
+        pixelRatio: 1,
         cacheBust: true,
+        style: {
+          transform: "none",
+        },
       });
       const response = await fetch(dataUrl);
       const blob = await response.blob();
@@ -708,16 +731,19 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
 
       <div className="flex-1 flex flex-col gap-4 min-w-0">
         <div
+          ref={previewWrapperRef}
           className="flex-1 flex items-center justify-center bg-[repeating-conic-gradient(#e5e5e5_0%_25%,#f5f5f5_0%_50%)] bg-[length:20px_20px] rounded-xl p-4 border border-slate-200 overflow-hidden"
           onClick={handleCanvasClick}
         >
+          <div style={{ width: `${CANVAS_WIDTH * previewScale}px`, height: `${CANVAS_HEIGHT * previewScale}px` }}>
           <div
             ref={previewRef}
             className="relative overflow-hidden shadow-2xl"
             style={{
-              width: "100%",
-              maxWidth: "600px",
-              aspectRatio: "16/9",
+              width: `${CANVAS_WIDTH}px`,
+              height: `${CANVAS_HEIGHT}px`,
+              transform: `scale(${previewScale})`,
+              transformOrigin: "top left",
               borderRadius: "12px",
             }}
             data-testid="ad-preview-canvas"
@@ -883,6 +909,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                 </div>
               </DraggableElement>
             )}
+          </div>
           </div>
         </div>
 
