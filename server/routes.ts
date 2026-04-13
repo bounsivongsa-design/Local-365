@@ -2207,8 +2207,9 @@ Respond in this exact JSON format:
         // Get lowest quote amount
         const allQuotes = await pgDb.select({ amount: quotes.amount }).from(quotes)
           .where(eq(quotes.requestId, request.id));
-        const lowestQuote = allQuotes.length > 0 
-          ? Math.min(...allQuotes.map(q => Number(q.amount)))
+        const pricedQuotes = allQuotes.filter(q => Number(q.amount) > 0);
+        const lowestQuote = pricedQuotes.length > 0 
+          ? Math.min(...pricedQuotes.map(q => Number(q.amount)))
           : null;
         
         // Calculate response window info
@@ -2399,8 +2400,8 @@ Respond in this exact JSON format:
       const requestId = Number(req.params.requestId);
       const { amount, message, estimatedDuration, businessId } = req.body;
       
-      if (!amount || !message) {
-        return res.status(400).json({ message: "Amount and message are required" });
+      if (!message) {
+        return res.status(400).json({ message: "A message is required" });
       }
       
       // Use linked business ID if not provided, or validate ownership
@@ -2496,7 +2497,7 @@ Respond in this exact JSON format:
         requestId,
         businessId: effectiveBusinessId,
         userId,
-        amount: amount.toString(),
+        amount: amount ? amount.toString() : "0",
         message,
         estimatedDuration,
         status: "pending",

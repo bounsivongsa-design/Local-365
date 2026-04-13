@@ -392,10 +392,10 @@ export default function QuoteRequests() {
 
   const handleQuoteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quoteFormData.amount || !quoteFormData.message || !selectedRequestId) {
+    if (!quoteFormData.message || !selectedRequestId) {
       toast({
         title: "Missing information",
-        description: "Please fill in the quote amount and message.",
+        description: "Please include a message to the customer.",
         variant: "destructive",
       });
       return;
@@ -919,7 +919,7 @@ export default function QuoteRequests() {
                           <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
                             <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                               <Shield className="h-3 w-3" />
-                              <span className="font-medium">Priority Access — Submit a bid to start messaging this customer</span>
+                              <span className="font-medium">Priority Access — Respond now to start a conversation with this customer</span>
                             </div>
                           </div>
                         )}
@@ -970,8 +970,8 @@ export default function QuoteRequests() {
                           data-testid={`button-submit-quote-${req.id}`}
                           onClick={() => openQuoteDialog(req.id)}
                         >
-                          <Gavel className="mr-2 h-4 w-4" />
-                          Submit a Quote
+                          <Send className="mr-2 h-4 w-4" />
+                          Respond to Customer
                         </Button>
                       </div>
                     )}
@@ -1007,11 +1007,13 @@ export default function QuoteRequests() {
                             ) : projectQuotes && projectQuotes.length > 0 ? (
                               <>
                                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-                                  <span className="font-medium">Quotes ranked by price (lowest first)</span>
-                                  <Badge variant="outline" className="text-green-600">
-                                    <TrendingDown className="h-3 w-3 mr-1" />
-                                    Best Deal: ${Math.min(...projectQuotes.map(q => Number(q.amount))).toLocaleString()}
-                                  </Badge>
+                                  <span className="font-medium">Responses ranked by price (lowest first)</span>
+                                  {projectQuotes.some(q => Number(q.amount) > 0) && (
+                                    <Badge variant="outline" className="text-green-600">
+                                      <TrendingDown className="h-3 w-3 mr-1" />
+                                      Best Deal: ${Math.min(...projectQuotes.filter(q => Number(q.amount) > 0).map(q => Number(q.amount))).toLocaleString()}
+                                    </Badge>
+                                  )}
                                 </div>
                                 {projectQuotes.map((quote, index) => (
                                   <div 
@@ -1040,7 +1042,7 @@ export default function QuoteRequests() {
                                             )}
                                           </div>
                                           <span className={`text-xl font-bold ${index === 0 ? "text-green-600" : ""}`}>
-                                            ${Number(quote.amount).toLocaleString()}
+                                            {Number(quote.amount) > 0 ? `$${Number(quote.amount).toLocaleString()}` : "Quote pending"}
                                           </span>
                                         </div>
                                         <p className="text-sm text-muted-foreground mt-1">{quote.message}</p>
@@ -1120,33 +1122,50 @@ export default function QuoteRequests() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
-              <Gavel className="h-5 w-5 text-[#8a9a5b]" />
-              Submit Your Quote
+              <Send className="h-5 w-5 text-[#8a9a5b]" />
+              Respond to Customer
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleQuoteSubmit} className="space-y-5 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="quote-amount">Quote Amount ($)</Label>
+              <Label htmlFor="quote-message">Message to Customer</Label>
+              <Textarea
+                id="quote-message"
+                placeholder="Introduce yourself, ask questions about their project, or describe your services..."
+                rows={4}
+                value={quoteFormData.message}
+                onChange={(e) => setQuoteFormData({ ...quoteFormData, message: e.target.value })}
+                className="bg-white"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                data-testid="input-quote-message"
+              />
+              <p className="text-xs text-muted-foreground">You can message the customer first and provide a formal quote later.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quote-amount">Quote Amount ($) <span className="text-muted-foreground font-normal">— optional</span></Label>
               <Input
                 id="quote-amount"
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="e.g., 500.00"
+                placeholder="Enter amount if ready, or leave blank"
                 value={quoteFormData.amount}
                 onChange={(e) => setQuoteFormData({ ...quoteFormData, amount: e.target.value })}
+                className="bg-white"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
                 data-testid="input-quote-amount"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="quote-duration">Estimated Duration</Label>
+              <Label htmlFor="quote-duration">Estimated Duration <span className="text-muted-foreground font-normal">— optional</span></Label>
               <Select 
                 value={quoteFormData.estimatedDuration} 
                 onValueChange={(v) => setQuoteFormData({ ...quoteFormData, estimatedDuration: v })}
               >
                 <SelectTrigger data-testid="select-quote-duration">
-                  <SelectValue placeholder="Select duration" />
+                  <SelectValue placeholder="Select duration (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1-2 hours">1-2 hours</SelectItem>
@@ -1159,28 +1178,16 @@ export default function QuoteRequests() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="quote-message">Message to Customer</Label>
-              <Textarea
-                id="quote-message"
-                placeholder="Describe your services, experience, and what's included in your quote..."
-                rows={4}
-                value={quoteFormData.message}
-                onChange={(e) => setQuoteFormData({ ...quoteFormData, message: e.target.value })}
-                data-testid="input-quote-message"
-              />
-            </div>
-
             <Button 
               type="submit" 
               className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]"
               disabled={submitQuote.isPending}
               data-testid="button-confirm-quote"
             >
-              {submitQuote.isPending ? "Submitting..." : (
+              {submitQuote.isPending ? "Sending..." : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Submit Quote
+                  {quoteFormData.amount ? "Send Quote & Message" : "Send Message"}
                 </>
               )}
             </Button>

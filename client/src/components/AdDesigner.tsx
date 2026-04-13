@@ -302,22 +302,27 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
     const prevSelected = selectedElement;
     setSelectedElement(null);
     setIsGenerating(true);
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 100));
     try {
-      const dataUrl = await toPng(previewRef.current, {
+      const el = previewRef.current;
+      const prevTransform = el.style.transform;
+      el.style.transform = "none";
+      await new Promise(r => setTimeout(r, 50));
+      const dataUrl = await toPng(el, {
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
         pixelRatio: 1,
         cacheBust: true,
-        style: {
-          transform: "none",
-        },
       });
+      el.style.transform = prevTransform;
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       onComplete(blob);
     } catch (err) {
       console.error("Failed to generate ad image:", err);
+      if (previewRef.current) {
+        previewRef.current.style.transform = `scale(${previewScale})`;
+      }
       toast({ title: "Generation Failed", description: "Could not generate the ad image. Please try again.", variant: "destructive" });
       setSelectedElement(prevSelected);
     } finally {

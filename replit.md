@@ -26,7 +26,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Core Features
 - **Business Listings**: Includes credentials (LLC, Insurance, Licensed, Veteran), business hours (specific day-by-day or custom text like "Online 24/7"), social media, search keywords, categories, membership tiers, ratings, logos, gallery photos, and promotional videos.
-- **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier.
+- **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier. Businesses can respond with just a message (inquiry) or include an optional quote amount and estimated duration. Quote amount is NOT required — businesses can message first to gather info, then provide a formal quote later.
 - **Events**: Comprehensive local events calendar with Stripe payment for event ads. Business-submitted events require payment (Stripe checkout) before appearing publicly. Admin-created events are free and auto-approved. Event pricing: Small $25/2wk or $50/mo, Medium $35/2wk or $75/mo, Large $50/2wk or $100/mo (before tier discounts). Events schema includes `paymentStatus` and `priceCharged` columns.
 - **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Membership required. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk.
 - **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions. New signup flow: Register → Choose plan & pay on /membership (CC required) → Create business listing on /create-business → Dashboard. Pending membership stored on user record until business is created, then transferred.
