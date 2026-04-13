@@ -232,7 +232,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                       {pageSlides.map((slide, idx) => (
                         <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
-                            <div className="relative overflow-hidden rounded-xl group h-full" style={{ minHeight: '100px' }}>
+                            <div className="relative overflow-hidden rounded-xl group h-full" style={{ aspectRatio: '20/9' }}>
                               {(mediumAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
                               <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
@@ -273,7 +273,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                       {pageSlides.map((slide, idx) => (
                         <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
-                            <div className="relative overflow-hidden rounded-lg group h-full" style={{ minHeight: '80px' }}>
+                            <div className="relative overflow-hidden rounded-lg group h-full" style={{ aspectRatio: '12/5' }}>
                               {(smallAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
                               <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />

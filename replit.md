@@ -60,7 +60,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Ad Preview Popup**: Interactive modal for viewing ad details and tracking outbound clicks.
 - **Ad Slot Filling**: Fills empty ad slots with placeholder examples to maintain layout.
 - **Image Cropper**: Reusable component for image cropping and resizing with aspect ratio enforcement.
-- **Ad Designer**: In-browser tool for designing ads with customizable elements and a safe zone overlay for text/logo placement.
+- **Ad Designer**: In-browser tool for designing ads with customizable elements. Size-matched canvases: Large=1200×675 (16:9), Medium=1200×540 (20:9), Small=1200×500 (12:5). Each canvas matches the exact carousel display ratio — no cropping.
 - **Events Calendar Display**: Events appear on the calendar only on their specified event date, with ad package duration controlling visibility.
 
 ## External Dependencies
