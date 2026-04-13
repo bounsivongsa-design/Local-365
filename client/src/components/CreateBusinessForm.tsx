@@ -684,6 +684,7 @@ export function CreateBusinessForm({
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-foreground">Business Logo (Optional)</label>
+        <p className="text-xs text-muted-foreground">Recommended: 200×200px (square), max 10MB</p>
         {form.watch("logoUrl") ? (
           <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-[#0a4a82]">
             <img src={form.watch("logoUrl")!} alt="Business logo" className="w-full h-full object-cover" />

@@ -136,6 +136,7 @@ function LogoUploader({ business }: { business: Business }) {
           Business Logo
         </CardTitle>
         <CardDescription>Visible on your listing and directory card</CardDescription>
+        <p className="text-xs text-muted-foreground mt-1">Recommended: 200×200px (square), max 5MB</p>
       </CardHeader>
       <CardContent>
         {business.logoUrl ? (
@@ -233,6 +234,7 @@ function ListingImageUploader({ business }: { business: Business }) {
           Directory Listing Photo
         </CardTitle>
         <CardDescription>This photo appears on your listing card in the directory</CardDescription>
+        <p className="text-xs text-muted-foreground mt-1">Recommended: 800×500px (16:10 ratio), max 5MB</p>
       </CardHeader>
       <CardContent>
         {imgSrc ? (
@@ -354,6 +356,7 @@ function GalleryManager({ business }: { business: Business }) {
           <Badge variant="secondary" className="ml-auto text-xs">{currentPhotos.length}/{maxPhotos}</Badge>
         </CardTitle>
         <CardDescription>Showcase your work, products, or location</CardDescription>
+        <p className="text-xs text-muted-foreground mt-1">Recommended: 800×600px (4:3 ratio), max 5MB per photo</p>
       </CardHeader>
       <CardContent>
         {currentPhotos.length > 0 && (
@@ -475,6 +478,7 @@ function PromoVideoUploader({ business }: { business: Business }) {
           <Badge className="bg-yellow-100 text-yellow-800 border-0 text-xs ml-auto">Gold Feature</Badge>
         </CardTitle>
         <CardDescription>30-second video displayed on your listing page</CardDescription>
+        <p className="text-xs text-muted-foreground mt-1">MP4, WebM, or MOV · Max 50MB · Up to 30 seconds</p>
       </CardHeader>
       <CardContent>
         {business.promoVideoUrl ? (

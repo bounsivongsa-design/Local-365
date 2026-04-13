@@ -14,17 +14,16 @@ import {
 import {
   Paintbrush,
   Type,
-  Image as ImageIcon,
   Download,
   RotateCcw,
   Upload,
   Loader2,
-  Layers,
   ChevronDown,
   ChevronUp,
   Eye,
   Palette,
   Sparkles,
+  Move,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,6 +56,8 @@ const FONT_OPTIONS = [
 
 type BackgroundType = "gradient" | "solid" | "image";
 
+interface Position { x: number; y: number; }
+
 interface DesignState {
   bgType: BackgroundType;
   bgColor1: string;
@@ -70,20 +71,25 @@ interface DesignState {
   headlineBold: boolean;
   headlineFont: string;
   headlineAlign: "left" | "center" | "right";
+  headlinePos: Position;
   tagline: string;
   taglineFontSize: number;
   taglineColor: string;
   taglineFont: string;
+  taglinePos: Position;
   businessName: string;
   businessNameColor: string;
   businessNameFontSize: number;
+  businessNamePos: Position;
   showLogo: boolean;
   logoUrl: string | null;
   logoSize: number;
+  logoPos: Position;
   ctaText: string;
   ctaBgColor: string;
   ctaTextColor: string;
   ctaShow: boolean;
+  ctaPos: Position;
 }
 
 const defaultDesign: DesignState = {
@@ -99,21 +105,126 @@ const defaultDesign: DesignState = {
   headlineBold: true,
   headlineFont: "sans",
   headlineAlign: "center",
+  headlinePos: { x: 50, y: 45 },
   tagline: "Add a compelling tagline",
   taglineFontSize: 16,
   taglineColor: "#ffffff",
   taglineFont: "sans",
+  taglinePos: { x: 50, y: 62 },
   businessName: "",
   businessNameColor: "#d4a373",
   businessNameFontSize: 14,
+  businessNamePos: { x: 50, y: 25 },
   showLogo: false,
   logoUrl: null,
   logoSize: 60,
+  logoPos: { x: 50, y: 12 },
   ctaText: "Learn More",
   ctaBgColor: "#d4a373",
   ctaTextColor: "#ffffff",
   ctaShow: true,
+  ctaPos: { x: 50, y: 80 },
 };
+
+type DragTarget = "headline" | "tagline" | "businessName" | "logo" | "cta" | null;
+
+function DraggableElement({
+  id,
+  position,
+  onDrag,
+  selected,
+  onSelect,
+  containerRef,
+  children,
+}: {
+  id: DragTarget;
+  position: Position;
+  onDrag: (pos: Position) => void;
+  selected: boolean;
+  onSelect: () => void;
+  containerRef: React.RefObject<HTMLDivElement>;
+  children: React.ReactNode;
+}) {
+  const elRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startMouse = useRef({ x: 0, y: 0 });
+  const startPos = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect();
+    isDragging.current = true;
+    startMouse.current = { x: e.clientX, y: e.clientY };
+    startPos.current = { ...position };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const dx = ((e.clientX - startMouse.current.x) / rect.width) * 100;
+    const dy = ((e.clientY - startMouse.current.y) / rect.height) * 100;
+    const newX = Math.max(0, Math.min(100, startPos.current.x + dx));
+    const newY = Math.max(0, Math.min(100, startPos.current.y + dy));
+    onDrag({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = () => {
+    isDragging.current = false;
+  };
+
+  return (
+    <div
+      ref={elRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      style={{
+        position: "absolute",
+        left: `${position.x}%`,
+        top: `${position.y}%`,
+        transform: "translate(-50%, -50%)",
+        cursor: "grab",
+        zIndex: selected ? 30 : 20,
+        userSelect: "none",
+        touchAction: "none",
+      }}
+      data-testid={`draggable-${id}`}
+    >
+      <div
+        style={{
+          outline: selected ? "2px solid #0a4a82" : "2px solid transparent",
+          outlineOffset: "4px",
+          borderRadius: "4px",
+          position: "relative",
+        }}
+      >
+        {selected && (
+          <div style={{
+            position: "absolute",
+            top: "-20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#0a4a82",
+            color: "white",
+            fontSize: "9px",
+            fontWeight: 700,
+            padding: "1px 6px",
+            borderRadius: "4px",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            fontFamily: "system-ui, sans-serif",
+          }}>
+            <Move style={{ width: 8, height: 8, display: "inline", verticalAlign: "middle", marginRight: 2 }} />
+            {id}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessName = "", businessLogo }: AdDesignerProps) {
   const [design, setDesign] = useState<DesignState>({
@@ -124,6 +235,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [activePanel, setActivePanel] = useState<string>("background");
+  const [selectedElement, setSelectedElement] = useState<DragTarget>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const bgFileRef = useRef<HTMLInputElement>(null);
@@ -161,7 +273,10 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
 
   const handleGenerate = async () => {
     if (!previewRef.current) return;
+    const prevSelected = selectedElement;
+    setSelectedElement(null);
     setIsGenerating(true);
+    await new Promise(r => setTimeout(r, 50));
     try {
       const dataUrl = await toPng(previewRef.current, {
         width: 1200,
@@ -175,6 +290,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
     } catch (err) {
       console.error("Failed to generate ad image:", err);
       toast({ title: "Generation Failed", description: "Could not generate the ad image. Please try again.", variant: "destructive" });
+      setSelectedElement(prevSelected);
     } finally {
       setIsGenerating(false);
     }
@@ -187,6 +303,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
       showLogo: !!businessLogo,
       logoUrl: businessLogo || null,
     });
+    setSelectedElement(null);
   };
 
   const applyPreset = (preset: typeof PRESET_GRADIENTS[0]) => {
@@ -197,6 +314,12 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
       headlineColor: preset.text,
       taglineColor: preset.text === "#ffffff" ? "rgba(255,255,255,0.85)" : "rgba(26,26,46,0.7)",
     });
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.testid === "ad-preview-canvas") {
+      setSelectedElement(null);
+    }
   };
 
   const panels = [
@@ -217,6 +340,13 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
           <button onClick={handleReset} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1" data-testid="button-reset-design">
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
+        </div>
+
+        <div className="bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-lg px-3 py-2 mb-1">
+          <p className="text-[10px] text-[#0a4a82] font-medium flex items-center gap-1.5">
+            <Move className="h-3 w-3" />
+            Drag elements on the preview to reposition them
+          </p>
         </div>
 
         {panels.map(panel => {
@@ -544,7 +674,10 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
       </div>
 
       <div className="flex-1 flex flex-col gap-4 min-w-0">
-        <div className="flex-1 flex items-center justify-center bg-[repeating-conic-gradient(#e5e5e5_0%_25%,#f5f5f5_0%_50%)] bg-[length:20px_20px] rounded-xl p-4 border border-slate-200 overflow-hidden">
+        <div
+          className="flex-1 flex items-center justify-center bg-[repeating-conic-gradient(#e5e5e5_0%_25%,#f5f5f5_0%_50%)] bg-[length:20px_20px] rounded-xl p-4 border border-slate-200 overflow-hidden"
+          onClick={handleCanvasClick}
+        >
           <div
             ref={previewRef}
             className="relative overflow-hidden shadow-2xl"
@@ -555,6 +688,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               borderRadius: "12px",
             }}
             data-testid="ad-preview-canvas"
+            onClick={handleCanvasClick}
           >
             {design.bgType === "image" && design.bgImage ? (
               <>
@@ -589,20 +723,15 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
               />
             )}
 
-            <div
-              style={{
-                position: "relative",
-                zIndex: 10,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: design.headlineAlign === "center" ? "center" : design.headlineAlign === "right" ? "flex-end" : "flex-start",
-                height: "100%",
-                padding: "32px 40px",
-                textAlign: design.headlineAlign,
-              }}
-            >
-              {design.showLogo && design.logoUrl && (
+            {design.showLogo && design.logoUrl && (
+              <DraggableElement
+                id="logo"
+                position={design.logoPos}
+                onDrag={(pos) => update({ logoPos: pos })}
+                selected={selectedElement === "logo"}
+                onSelect={() => setSelectedElement("logo")}
+                containerRef={previewRef}
+              >
                 <img
                   src={design.logoUrl}
                   alt="Logo"
@@ -610,13 +739,23 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                     width: `${design.logoSize}px`,
                     height: `${design.logoSize}px`,
                     objectFit: "contain",
-                    marginBottom: "12px",
                     borderRadius: "8px",
+                    display: "block",
                   }}
+                  draggable={false}
                 />
-              )}
+              </DraggableElement>
+            )}
 
-              {design.businessName && (
+            {design.businessName && (
+              <DraggableElement
+                id="businessName"
+                position={design.businessNamePos}
+                onDrag={(pos) => update({ businessNamePos: pos })}
+                selected={selectedElement === "businessName"}
+                onSelect={() => setSelectedElement("businessName")}
+                containerRef={previewRef}
+              >
                 <div
                   style={{
                     color: design.businessNameColor,
@@ -624,49 +763,75 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                     fontWeight: 600,
                     letterSpacing: "2px",
                     textTransform: "uppercase",
-                    marginBottom: "8px",
                     fontFamily: getFontFamily(design.headlineFont),
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {design.businessName}
                 </div>
-              )}
+              </DraggableElement>
+            )}
 
-              {design.headline && (
+            {design.headline && (
+              <DraggableElement
+                id="headline"
+                position={design.headlinePos}
+                onDrag={(pos) => update({ headlinePos: pos })}
+                selected={selectedElement === "headline"}
+                onSelect={() => setSelectedElement("headline")}
+                containerRef={previewRef}
+              >
                 <div
                   style={{
                     color: design.headlineColor,
                     fontSize: `${design.headlineFontSize}px`,
                     fontWeight: design.headlineBold ? 800 : 500,
                     lineHeight: 1.15,
-                    marginBottom: "10px",
                     fontFamily: getFontFamily(design.headlineFont),
-                    maxWidth: "100%",
+                    textAlign: design.headlineAlign,
+                    maxWidth: "500px",
                     wordBreak: "break-word",
                   }}
                 >
                   {design.headline}
                 </div>
-              )}
+              </DraggableElement>
+            )}
 
-              {design.tagline && (
+            {design.tagline && (
+              <DraggableElement
+                id="tagline"
+                position={design.taglinePos}
+                onDrag={(pos) => update({ taglinePos: pos })}
+                selected={selectedElement === "tagline"}
+                onSelect={() => setSelectedElement("tagline")}
+                containerRef={previewRef}
+              >
                 <div
                   style={{
                     color: design.taglineColor,
                     fontSize: `${design.taglineFontSize}px`,
                     fontWeight: 400,
                     lineHeight: 1.4,
-                    marginBottom: "16px",
                     fontFamily: getFontFamily(design.taglineFont),
-                    maxWidth: "90%",
                     opacity: 0.9,
+                    maxWidth: "450px",
                   }}
                 >
                   {design.tagline}
                 </div>
-              )}
+              </DraggableElement>
+            )}
 
-              {design.ctaShow && design.ctaText && (
+            {design.ctaShow && design.ctaText && (
+              <DraggableElement
+                id="cta"
+                position={design.ctaPos}
+                onDrag={(pos) => update({ ctaPos: pos })}
+                selected={selectedElement === "cta"}
+                onSelect={() => setSelectedElement("cta")}
+                containerRef={previewRef}
+              >
                 <div
                   style={{
                     display: "inline-block",
@@ -678,12 +843,13 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                     fontWeight: 700,
                     letterSpacing: "0.5px",
                     fontFamily: getFontFamily(design.headlineFont),
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {design.ctaText}
                 </div>
-              )}
-            </div>
+              </DraggableElement>
+            )}
           </div>
         </div>
 

@@ -67,6 +67,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   const [largeAdPos, setLargeAdPos] = useState(0);
   const [mediumAdPos, setMediumAdPos] = useState(0);
   const [smallAdPos, setSmallAdPos] = useState(0);
+  const initializedRef = useRef(false);
   const [previewAd, setPreviewAd] = useState<AdSlide | null>(null);
   const impressionsSent = useRef<Set<number>>(new Set());
 
@@ -129,6 +130,15 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
     }
     setPreviewAd(null);
   };
+
+  useEffect(() => {
+    if (!initializedRef.current && largePageCount > 0 && mediumPageCount > 0 && smallPageCount > 0) {
+      initializedRef.current = true;
+      setLargeAdPos(Math.floor(Math.random() * largePageCount));
+      setMediumAdPos(Math.floor(Math.random() * mediumPageCount));
+      setSmallAdPos(Math.floor(Math.random() * smallPageCount));
+    }
+  }, [largePageCount, mediumPageCount, smallPageCount]);
 
   useEffect(() => {
     const interval = setInterval(() => {

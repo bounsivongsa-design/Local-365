@@ -338,7 +338,7 @@ function MembershipExpirationBanner() {
 }
 
 function GoldTrialBanner() {
-  const { data } = useQuery<{
+  const { data, isError } = useQuery<{
     active: boolean;
     daysLeft?: number;
     endDate?: string;
@@ -347,9 +347,11 @@ function GoldTrialBanner() {
     expired?: boolean;
   }>({
     queryKey: ["/api/user/gold-trial-status"],
+    retry: 1,
+    staleTime: 60000,
   });
 
-  if (!data?.active) return null;
+  if (isError || !data?.active) return null;
 
   const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", none: "No Plan" };
   const revertLabel = data.revertTierLabel || tierMap[data.revertTier || ""] || "your previous plan";
@@ -875,12 +877,21 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
             {imageUrl ? (
               <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/20 h-32 mt-1">
                 <img src={imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
-                <label className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                <div
+                  className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = (e) => handleImageSelect(e as any);
+                    input.click();
+                  }}
+                  data-testid="button-replace-ad-image"
+                >
                     <span className="inline-flex items-center gap-1.5 bg-white text-slate-800 font-semibold py-1.5 px-3 rounded-md text-sm shadow-lg">
                       <Upload className="h-3.5 w-3.5" /> Replace
                     </span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-edit-ad-image" />
-                </label>
+                </div>
               </div>
             ) : (
               <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#0a4a82]/20 cursor-pointer hover:border-[#0a4a82]/40 transition-colors">
@@ -1384,17 +1395,35 @@ function EditEventDialog({ event, open, onClose }: { event: any; open: boolean; 
             {formData.imageUrl ? (
               <div className="relative rounded-xl overflow-hidden border-2 border-[#d4a373]/20 h-32 mt-1">
                 <img src={formData.imageUrl} alt="Event preview" className="w-full h-full object-cover" />
-                <label className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                <div
+                  className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = (e) => handleImageUpload(e as any);
+                    input.click();
+                  }}
+                  data-testid="button-replace-event-image"
+                >
                   <span className="inline-flex items-center gap-1.5 bg-white text-slate-800 font-semibold py-1.5 px-3 rounded-md text-sm shadow-lg"><Upload className="h-3.5 w-3.5" /> Replace</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-event-image" />
-                </label>
+                </div>
               </div>
             ) : (
-              <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#d4a373]/20 cursor-pointer hover:border-[#d4a373]/40 transition-colors">
+              <div
+                className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#d4a373]/20 cursor-pointer hover:border-[#d4a373]/40 transition-colors"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = (e) => handleImageUpload(e as any);
+                  input.click();
+                }}
+                data-testid="button-upload-event-image"
+              >
                 <Upload className="h-5 w-5 text-[#d4a373]/40" />
                 <span className="text-xs text-gray-500">Click to upload an image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="input-edit-event-image-upload" />
-              </label>
+              </div>
             )}
             {isUploading && (
               <div className="mt-2">
