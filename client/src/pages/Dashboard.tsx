@@ -810,6 +810,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
       }
       toast({ title: "Ad Updated", description: "Your changes have been saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ads/active"] });
       onClose();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });

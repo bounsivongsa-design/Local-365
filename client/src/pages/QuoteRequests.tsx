@@ -909,33 +909,11 @@ export default function QuoteRequests() {
                           </div>
                         </div>
                         
-                        {req.hasPriorityAccess && req.customerContact && (req.customerContact.phone || req.customerContact.email) && (
+                        {req.hasPriorityAccess && (
                           <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
-                            <div className="flex items-center gap-1 mb-2 text-xs text-amber-600 dark:text-amber-400">
+                            <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                               <Shield className="h-3 w-3" />
-                              <span className="font-medium">Priority Contact Access</span>
-                            </div>
-                            <div className="flex flex-wrap gap-4 text-sm">
-                              {req.customerContact.phone && (
-                                <a 
-                                  href={`tel:${req.customerContact.phone}`}
-                                  className="flex items-center gap-1.5 text-[#0a4a82] hover:underline"
-                                  data-testid={`link-phone-${req.id}`}
-                                >
-                                  <Phone className="h-4 w-4" />
-                                  {req.customerContact.phone}
-                                </a>
-                              )}
-                              {req.customerContact.email && (
-                                <a 
-                                  href={`mailto:${req.customerContact.email}`}
-                                  className="flex items-center gap-1.5 text-[#0a4a82] hover:underline"
-                                  data-testid={`link-email-${req.id}`}
-                                >
-                                  <Mail className="h-4 w-4" />
-                                  {req.customerContact.email}
-                                </a>
-                              )}
+                              <span className="font-medium">Priority Access — Submit a bid to start messaging this customer</span>
                             </div>
                           </div>
                         )}

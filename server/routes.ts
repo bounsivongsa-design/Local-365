@@ -2197,13 +2197,7 @@ Respond in this exact JSON format:
           }).from(users).where(eq(users.id, request.userId)).limit(1);
           customerInfo = customerResult[0] || null;
           
-          // Only include contact info for businesses with priority access
-          if (hasPriorityAccess) {
-            customerContact = {
-              phone: request.customerPhone,
-              email: request.customerEmail
-            };
-          }
+          // Contact info is no longer exposed - businesses must communicate through platform messaging
         }
         
         // Get quote count for this request
@@ -2224,7 +2218,7 @@ Respond in this exact JSON format:
         return {
           ...request,
           customer: customerInfo,
-          customerContact,
+          customerContact: null,
           quoteCount: quoteCount.length,
           lowestQuote,
           hasPriorityAccess,
