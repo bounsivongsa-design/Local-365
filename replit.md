@@ -1,7 +1,7 @@
 # Local List 365 - Currituck County Directory
 
 ## Overview
-Local List 365 is a community-focused local business directory and events platform exclusively for Currituck County, North Carolina. It connects visitors and residents with local businesses, service providers, events, and community features, including a quote request system and an AI-powered chatbot assistant named "Ziggy." The platform aims to be a comprehensive local resource, facilitating community engagement and supporting local commerce through features like tiered advertising and business credentialing, covering various Currituck County communities.
+Local List 365 is a community-focused local business directory and events platform for Currituck County, NC. Its purpose is to connect residents and visitors with local businesses, service providers, and community events. Key capabilities include a comprehensive business directory, an event calendar, a quote request system, and an AI-powered chatbot. The platform aims to foster community engagement and support local commerce through features like tiered advertising, business credentialing, and a job board.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -17,7 +17,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 ### Backend
 - **Runtime**: Node.js with Express.js (TypeScript, ESM modules)
 - **API Pattern**: RESTful JSON APIs (`/api` prefix)
-- **Authentication**: Custom email/password + Google OAuth (passport-local, passport-google-oauth20, bcrypt). Three account types: `customer`, `business`, `admin`. Admin accounts are seeded on startup for designated emails; admin creation is NOT available through any UI — only via direct database or code changes.
+- **Authentication**: Custom email/password + Google OAuth, supporting `customer`, `business`, and `admin` account types. Admin accounts are seeded and not available for UI creation.
 - **File Uploads**: Uppy with AWS S3-compatible presigned URLs
 
 ### Data Storage
@@ -25,26 +25,20 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Key-Value Store**: Replit Database
 
 ### Core Features
-- **Business Listings**: Includes credentials (LLC, Insurance, Licensed, Veteran), business hours (specific day-by-day or custom text like "Online 24/7"), social media, search keywords, categories, membership tiers, ratings, logos, gallery photos, and promotional videos.
-- **Quote System**: Enables customers to request quotes from businesses, with priority based on membership tier. Businesses can respond with just a message (inquiry) or include an optional quote amount and estimated duration. Quote amount is NOT required — businesses can message first to gather info, then provide a formal quote later.
-- **Events**: Comprehensive local events calendar with Stripe payment for event ads. Business-submitted events require payment (Stripe checkout) before appearing publicly. Admin-created events are free and auto-approved. Event pricing: Small $25/2wk or $50/mo, Medium $35/2wk or $75/mo, Large $50/2wk or $100/mo (before tier discounts). Events schema includes `paymentStatus` and `priceCharged` columns.
-- **Job Board**: Businesses can post help wanted ads, sorted by membership tier. Membership required. Tier-based pricing: Gold $10/wk, Silver $15/wk, Bronze $18/wk.
-- **Membership Tiers**: Bronze, Silver, Gold tiers offering varying features and benefits, integrated with Stripe for subscriptions. New signup flow: Register → Choose plan & pay on /membership (CC required) → Create business listing on /create-business → Dashboard. Pending membership stored on user record until business is created, then transferred.
-- **Directory Visibility**: Only businesses with active membership (tier != "none") appear in the public directory. Example/seed businesses always visible. Cancellation removes from directory when tier resets to "none".
-- **Cancellation Handling**: Dashboard shows cancellation warning banner with removal date. Stripe webhook handles tier reset on subscription cancellation.
-- **Advertising**: Carousel banner ads displayed on Home page and Directory page in three sizes (Large, Medium, Small). Monthly-only pricing: Small $250/mo, Medium $500/mo, Large $1000/mo (before tier discounts). Member discounts: Gold 50%, Silver 25%, Bronze 10%. Size tier-locking: Small=all, Medium=Silver+, Large=Gold+. Ads require Stripe payment before going live — created as "pending/unpaid", then Stripe checkout, webhook marks as paid, admin approves. Stripe stale customer recovery: validates stored customer IDs before use, auto-creates new ones if stale.
-- **Business Analytics**: Tracks listing engagement (page views, clicks) for businesses.
-- **Review Owner Responses**: Business owners can post a single reply to each customer review on their listing. Responses are shown below the review with "Owner Response" label, timestamp, and business icon. One response per review, max 1000 characters, stored in `ownerResponse` and `ownerResponseDate` columns on the reviews table.
-- **Quote Messaging**: Customers and businesses can message back and forth within quote threads (`quote_messages` table) with read tracking (`readAt`). Navigation badge shows unread quote message count. No direct messaging between users outside of quotes (spam prevention). Dashboard inbox shows quote message threads only. Customer contact info (email/phone) is NOT exposed to businesses — all communication must happen through the platform's quote messaging system.
-- **Contact Admin**: Users can submit messages to admin anytime via "Contact Admin" button in the dashboard inbox. Submissions stored in `admin_submissions` table with status tracking (pending/resolved). Admin can view and respond via `/api/admin/submissions`.
-- **Membership Expiration Alerts**: Dashboard banner warns business owners 7 days before free/promo membership expires, with link to subscribe.
-- **Promo Codes**: Admin-managed promotional codes. Types: (1) percentage/fixed discount codes for Stripe checkout, (2) `gold_trial` codes that directly grant Gold-tier access for 30 or 60 days. Gold trial codes are redeemed from the business Dashboard (not at checkout). When a gold trial expires, the business reverts to their previous tier via `checkExpiredGoldTrials()` background job. Schema: `promoCodes.durationDays` stores trial length; `businesses.goldTrialEndDate` and `businesses.originalMembershipTier` track active trials.
-- **Tier-Locked Feature Greying**: Dashboard shows tier-locked features (promo video upload, photo gallery) as greyed-out cards with upgrade prompts instead of hiding them. Promo video = Gold exclusive; gallery = Silver+.
-- **Local Vendor Eligibility**: Policy enforces local-only business listings with verification during signup.
-- **Admin Account System**: Dedicated "admin" account type (alongside "customer" and "business"). Admin accounts skip business/membership flows and go straight to admin dashboard. Admin accounts are seeded on startup for `boun.sivongsa@gmail.com` and `locallist365@gmail.com`. Admins CANNOT be created or promoted via any UI — only through code/database. The old `isAdmin` boolean flag is deprecated; all checks use `accountType === "admin"`. Navigation shows "Admin" link for admin accounts.
-- **Admin Dashboard**: Full admin command center at `/admin` with platform-wide stats (users, businesses, memberships, ads, quotes, jobs, posts, promos), pending approvals alerts, membership breakdown charts, recent activity feeds, and quick-action links. Tabs: Overview, Users, Businesses, Events, Promos, Ads, Quotes. Quotes tab shows all quote requests with customer names, categories, budgets, bid counts, status filtering.
-- **Event Moderation**: Admin event moderation queue at `/admin/events`. Business-submitted events default to "pending" status and require admin approval before appearing on the public calendar. Admins can approve, deny (with optional reason), unpublish, or delete events. Admin-created events auto-approve.
-- **Business Verification System**: AI-powered NC Secretary of State registry check during business signup (auto-triggered when LLC is claimed). Document upload for insurance certificates, professional licenses, and veteran documentation. Admin verification review panel with AI check results, uploaded doc review (approve/reject with notes), and direct link to sosnc.gov for manual verification. Tables: `business_verification_checks`, `verification_documents`.
+- **Business Listings**: Detailed profiles including credentials, operating hours, social media, keywords, categories, membership tiers, ratings, and media.
+- **Quote System**: Allows customers to request quotes from businesses, with businesses able to respond with messages or formal quotes. All communication occurs within the platform.
+- **Events Platform**: A local events calendar with Stripe payment integration for business-submitted event ads. Admin-created events are free and auto-approved.
+- **Job Board**: Businesses can post help-wanted ads, with pricing based on membership tier.
+- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions. Only businesses with active memberships appear in the public directory.
+- **Advertising**: Carousel banner ads on Home and Directory pages, with tiered pricing and member discounts. An in-browser ad designer tool is available for creating ad images.
+- **Business Analytics**: Tracks engagement metrics for business listings.
+- **Review Owner Responses**: Businesses can post a single reply to customer reviews.
+- **Contact Admin System**: Users can send messages to admins, with submissions stored and tracked.
+- **Membership Expiration Alerts**: Notifies businesses before free/promo memberships expire.
+- **Promo Codes**: Admin-managed codes for discounts or temporary Gold-tier access.
+- **Tier-Locked Feature Greying**: Displays unavailable features with upgrade prompts based on membership tier.
+- **Local Vendor Eligibility**: Policy ensures only local businesses are listed, with AI-powered verification checks for LLCs and document uploads for other credentials.
+- **Admin Dashboard**: A comprehensive control center for platform management, user/business oversight, content moderation, and analytics.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.
@@ -52,34 +46,22 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Location Search**: Zillow-style search with geolocation and radius filtering.
 - **Badges**: Visual badges for business credentials and membership tiers.
 
-### Deployment Rule
-- **Any schema or code changes made in dev MUST be republished to production to stay in sync, unless the user explicitly says not to.** Always republish after making changes — never assume production has the latest schema or code. Verify prod schema matches dev before considering work complete.
-
 ### Technical Implementations
-- **Distance Filtering**: Uses Haversine formula with zip code coordinates.
-- **Category Management**: Hierarchical categories with community suggestion feature.
-- **Stripe Integration**: Handles subscription checkout, webhooks for lifecycle management, and billing portal.
-- **Authentication**: Passwords hashed with bcrypt; sessions stored in PostgreSQL. Google OAuth integration, gracefully disabled if not configured.
-- **Gold Auto-Upgrade**: New Bronze/Silver members receive 30 days of Gold-tier features. Gold trial metadata (goldTrialEndDate, originalMembershipTier) is retrieved from Stripe subscription during business creation when transferring pending membership. Stripe product name shows the original tier (e.g., "Bronze Membership") with " — Gold Trial" suffix, not "Gold Membership".
-- **Admin Delete Business**: Dedicated `DELETE /api/admin/businesses/:businessId` route with full cascading cleanup and Stripe subscription cancellation. Available via trash icon in admin Businesses tab.
-- **Session Verification**: Both `/membership` and `/create-business` pages call `POST /api/stripe/verify-session` on redirect from Stripe checkout. The verify-session endpoint handles new users (no business yet) by storing pending membership tier on the user record, with auth check ensuring session userId matches authenticated user.
-- **Uniqueness Constraints**: Prevents duplicate business registrations by name and zip code.
-- **Downgrade Tracking**: Records membership downgrades for win-back campaigns.
-- **Business Hours Format**: Stored as JSON in `businessHours` column. Two modes: `{ _mode: "specific", Monday: { open, close, closed }, ... }` for day-by-day, or `{ _mode: "text", _note: "..." }` for custom text. Legacy data without `_mode` treated as specific.
-- **Max Quotes**: Quote requests support `maxQuotes` (5, 10, or null/unlimited) and `receivedQuotesCount`. Request auto-closes when limit is reached. One quote per business per request enforced.
-- **Ad Preview Popup**: Clicking a real ad on the home page opens a larger preview modal showing the full ad image, title, description, and action buttons (View Business Listing / Visit Website). Click tracking only fires when user takes an outbound action. Placeholder example ads don't trigger previews.
-- **Ad Slot Filling**: When fewer real ads exist than display slots (e.g., 1 small ad for 3 slots), remaining slots are filled with labeled placeholder examples to maintain proper sizing.
-- **Ad Expiration**: Active ads query filters by `endDate > NOW()`, so expired ads automatically stop displaying.
-- **Image Cropper**: Reusable `ImageCropper` component (react-image-crop) provides crop/resize UI before upload. Integrated into ad editing (Dashboard) and ad creation (Advertising page) with 16:9 aspect ratio enforcement.
-- **Ad Designer**: In-browser ad design tool (`AdDesigner` component) using `html-to-image` for rendering. Lets businesses create ad images with customizable backgrounds (gradient presets, solid color, or photo), headline/tagline text with font/size/color controls, business name/logo placement, and CTA button. Live preview renders at 1200×675px (16:9). Available on both Advertising page (new ads) and Dashboard (edit ads) alongside the traditional image upload option.
-- **Events Calendar**: Events appear on the calendar only on their actual event date (the `date` field), not on every day of the ad package duration. The ad package (2-week / 30-day) controls how long the event listing stays visible, not calendar presence.
-
-### Future: Multi-Zip-Code Expansion
-- Currently single zip code (27958 Moyock). Each business tied to one zip.
-- Expansion approach: "service areas" model where a business profile stays in one place but can select additional zip codes they serve.
-- Key decisions needed before building: membership scope per zip, ad pricing per zip, quote routing across areas, area selector UX.
-- Existing Moyock data will not be affected — expansion is additive.
-- Estimated effort: 2-3 sessions once business rules are decided.
+- **Distance Filtering**: Uses Haversine formula for location-based searches.
+- **Category Management**: Hierarchical categories with community suggestion.
+- **Stripe Integration**: Handles subscriptions, payments, and webhooks.
+- **Authentication**: Bcrypt for password hashing, PostgreSQL for session storage, and Google OAuth.
+- **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive 30 days of Gold-tier features.
+- **Admin Delete Business**: Provides a dedicated route for complete business and associated data removal.
+- **Session Verification**: Ensures secure handling of pending memberships post-Stripe checkout.
+- **Uniqueness Constraints**: Prevents duplicate business registrations.
+- **Business Hours Format**: Flexible JSON structure for specific daily hours or custom text.
+- **Max Quotes**: Configurable limit on quotes received per request, with auto-closure.
+- **Ad Preview Popup**: Interactive modal for viewing ad details and tracking outbound clicks.
+- **Ad Slot Filling**: Fills empty ad slots with placeholder examples to maintain layout.
+- **Image Cropper**: Reusable component for image cropping and resizing with aspect ratio enforcement.
+- **Ad Designer**: In-browser tool for designing ads with customizable elements and a safe zone overlay for text/logo placement.
+- **Events Calendar Display**: Events appear on the calendar only on their specified event date, with ad package duration controlling visibility.
 
 ## External Dependencies
 
@@ -87,24 +69,11 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Supabase**: Client SDK for database interaction.
 - **OpenAI**: AI chat integration via Replit AI Integrations proxy.
 - **Replit Object Storage**: For file uploads.
-- **Open-Meteo**: For local weather data.
-- **Stripe**: Payment processing for subscriptions and one-time purchases.
-- **Resend**: Email notifications to admin for new businesses, events, and ads.
+- **Stripe**: Payment processing.
+- **Resend**: Email notifications for administrative alerts.
 
 ### Key NPM Packages
 - **UI Components**: Radix UI primitives, FullCalendar.
 - **Database**: `drizzle-orm`, `pg`.
 - **Validation**: `zod`, `drizzle-zod`.
 - **Date Handling**: `date-fns`.
-
-### Environment Variables Required
-- `DATABASE_URL`
-- `AI_INTEGRATIONS_OPENAI_API_KEY`
-- `AI_INTEGRATIONS_OPENAI_BASE_URL`
-- `SESSION_SECRET`
-- `DEFAULT_OBJECT_STORAGE_BUCKET_ID`
-- `GOOGLE_CLIENT_ID` (optional, for Google OAuth)
-- `GOOGLE_CLIENT_SECRET` (optional, for Google OAuth)
-- `Stripeintegration` (Stripe Secret Key)
-- `Stripepublishable` (Stripe Publishable Key)
-- `RESEND_API_KEY` (Resend email service — admin notification emails)

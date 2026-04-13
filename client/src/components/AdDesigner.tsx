@@ -57,6 +57,12 @@ const FONT_OPTIONS = [
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 675;
 
+const SAFE_ZONE_CROP: Record<string, { topPct: number; bottomPct: number; label: string }> = {
+  large: { topPct: 0, bottomPct: 0, label: "Full image visible — no cropping" },
+  medium: { topPct: 12, bottomPct: 12, label: "Top & bottom ~12% may be cropped" },
+  small: { topPct: 15, bottomPct: 15, label: "Top & bottom ~15% may be cropped" },
+};
+
 type BackgroundType = "gradient" | "solid" | "image";
 
 interface Position { x: number; y: number; }
@@ -238,15 +244,28 @@ function DraggableElement({
 }
 
 export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessName = "", businessLogo }: AdDesignerProps) {
+  const safeZone = SAFE_ZONE_CROP[adSize] || SAFE_ZONE_CROP.medium;
+  const safeTop = safeZone.topPct;
+  const safeBottom = 100 - safeZone.bottomPct;
+  const safeCenter = (safeTop + safeBottom) / 2;
+
   const [design, setDesign] = useState<DesignState>({
     ...defaultDesign,
     businessName,
     showLogo: !!businessLogo,
     logoUrl: businessLogo || null,
+    ...(adSize !== "large" ? {
+      headlinePos: { x: 50, y: safeCenter - 5 },
+      taglinePos: { x: 50, y: safeCenter + 12 },
+      businessNamePos: { x: 50, y: safeTop + 8 },
+      logoPos: { x: 50, y: safeTop + 5 },
+      ctaPos: { x: 50, y: safeBottom - 8 },
+    } : {}),
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [activePanel, setActivePanel] = useState<string>("background");
   const [selectedElement, setSelectedElement] = useState<DragTarget>(null);
+  const [showSafeZone, setShowSafeZone] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const previewWrapperRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(0.5);
@@ -300,13 +319,17 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
   const handleGenerate = async () => {
     if (!previewRef.current) return;
     const prevSelected = selectedElement;
+    const prevShowSafeZone = showSafeZone;
     setSelectedElement(null);
+    setShowSafeZone(false);
     setIsGenerating(true);
     await new Promise(r => setTimeout(r, 100));
     try {
       const el = previewRef.current;
       const prevTransform = el.style.transform;
       el.style.transform = "none";
+      const safeZoneEl = el.querySelector('[data-safe-zone-overlay]') as HTMLElement | null;
+      if (safeZoneEl) safeZoneEl.style.display = "none";
       await new Promise(r => setTimeout(r, 50));
       const dataUrl = await toPng(el, {
         width: CANVAS_WIDTH,
@@ -315,6 +338,7 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
         cacheBust: true,
       });
       el.style.transform = prevTransform;
+      if (safeZoneEl) safeZoneEl.style.display = "";
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       onComplete(blob);
@@ -322,9 +346,12 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
       console.error("Failed to generate ad image:", err);
       if (previewRef.current) {
         previewRef.current.style.transform = `scale(${previewScale})`;
+        const overlay = previewRef.current.querySelector('[data-safe-zone-overlay]') as HTMLElement | null;
+        if (overlay) overlay.style.display = "";
       }
       toast({ title: "Generation Failed", description: "Could not generate the ad image. Please try again.", variant: "destructive" });
       setSelectedElement(prevSelected);
+      setShowSafeZone(prevShowSafeZone);
     } finally {
       setIsGenerating(false);
     }
@@ -336,6 +363,13 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
       businessName,
       showLogo: !!businessLogo,
       logoUrl: businessLogo || null,
+      ...(adSize !== "large" ? {
+        headlinePos: { x: 50, y: safeCenter - 5 },
+        taglinePos: { x: 50, y: safeCenter + 12 },
+        businessNamePos: { x: 50, y: safeTop + 8 },
+        logoPos: { x: 50, y: safeTop + 5 },
+        ctaPos: { x: 50, y: safeBottom - 8 },
+      } : {}),
     });
     setSelectedElement(null);
   };
@@ -376,11 +410,16 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
           </button>
         </div>
 
-        <div className="bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-lg px-3 py-2 mb-1">
+        <div className="bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-lg px-3 py-2 mb-1 space-y-1">
           <p className="text-[10px] text-[#0a4a82] font-medium flex items-center gap-1.5">
             <Move className="h-3 w-3" />
             Drag elements on the preview to reposition them
           </p>
+          {adSize !== "large" && (
+            <p className="text-[10px] text-red-600 font-medium">
+              Keep text and logos inside the safe zone (red hatched areas will be cropped on {adSize} ads)
+            </p>
+          )}
         </div>
 
         {panels.map(panel => {
@@ -735,6 +774,33 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
       </div>
 
       <div className="flex-1 flex flex-col gap-4 min-w-0">
+        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
+              adSize === "large" ? "bg-amber-100 text-amber-800" :
+              adSize === "medium" ? "bg-blue-100 text-blue-800" :
+              "bg-slate-100 text-slate-700"
+            }`} data-testid="badge-ad-size">
+              {adSize.charAt(0).toUpperCase() + adSize.slice(1)} Ad
+            </span>
+            <span className="text-[11px] text-slate-500">
+              {SAFE_ZONE_CROP[adSize]?.label}
+            </span>
+          </div>
+          {adSize !== "large" && (
+            <button
+              onClick={() => setShowSafeZone(!showSafeZone)}
+              className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-colors ${
+                showSafeZone
+                  ? "bg-red-50 text-red-600 border border-red-200"
+                  : "bg-slate-100 text-slate-400 border border-slate-200"
+              }`}
+              data-testid="toggle-safe-zone"
+            >
+              {showSafeZone ? "Safe Zone: ON" : "Safe Zone: OFF"}
+            </button>
+          )}
+        </div>
         <div
           ref={previewWrapperRef}
           className="flex-1 flex items-center justify-center bg-[repeating-conic-gradient(#e5e5e5_0%_25%,#f5f5f5_0%_50%)] bg-[length:20px_20px] rounded-xl p-4 border border-slate-200 overflow-hidden"
@@ -914,6 +980,68 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                 </div>
               </DraggableElement>
             )}
+
+            {showSafeZone && adSize !== "large" && (() => {
+              const crop = SAFE_ZONE_CROP[adSize] || SAFE_ZONE_CROP.medium;
+              const topPx = Math.round(CANVAS_HEIGHT * crop.topPct / 100);
+              const bottomPx = Math.round(CANVAS_HEIGHT * crop.bottomPct / 100);
+              return (
+                <div data-safe-zone-overlay="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 50 }}>
+                  <div style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: `${topPx}px`,
+                    background: "repeating-linear-gradient(-45deg, rgba(220,38,38,0.12), rgba(220,38,38,0.12) 8px, rgba(220,38,38,0.04) 8px, rgba(220,38,38,0.04) 16px)",
+                    borderBottom: "2px dashed rgba(220,38,38,0.6)",
+                  }}>
+                    <div style={{
+                      position: "absolute",
+                      bottom: "6px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "rgba(220,38,38,0.85)",
+                      color: "white",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "2px 10px",
+                      borderRadius: "4px",
+                      whiteSpace: "nowrap",
+                      fontFamily: "system-ui, sans-serif",
+                    }}>
+                      CROP ZONE — may be hidden
+                    </div>
+                  </div>
+                  <div style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: `${bottomPx}px`,
+                    background: "repeating-linear-gradient(-45deg, rgba(220,38,38,0.12), rgba(220,38,38,0.12) 8px, rgba(220,38,38,0.04) 8px, rgba(220,38,38,0.04) 16px)",
+                    borderTop: "2px dashed rgba(220,38,38,0.6)",
+                  }}>
+                    <div style={{
+                      position: "absolute",
+                      top: "6px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "rgba(220,38,38,0.85)",
+                      color: "white",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "2px 10px",
+                      borderRadius: "4px",
+                      whiteSpace: "nowrap",
+                      fontFamily: "system-ui, sans-serif",
+                    }}>
+                      CROP ZONE — may be hidden
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           </div>
         </div>
