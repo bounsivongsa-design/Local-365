@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LocationPicker } from "./LocationPicker";
-import logoImage from "@assets/image_1773172786986.png";
+import logoImage from "@assets/logo_no_bg.png";
 
 export function Navigation() {
   const routerLocation = useRouterLocation();
