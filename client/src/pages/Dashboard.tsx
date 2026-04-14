@@ -59,6 +59,7 @@ import {
   Send,
   CheckCircle,
   Paintbrush,
+  Crop,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -783,6 +784,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
   const [imageUrl, setImageUrl] = useState(ad?.imageUrl || "");
   const [saving, setSaving] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const [pendingDashFile, setPendingDashFile] = useState<File | null>(null);
   const [showDesigner, setShowDesigner] = useState(false);
 
   const isActive = ad?.status === "active" && ad?.paymentStatus === "paid";
@@ -790,7 +792,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCropFile(file);
+    setPendingDashFile(file);
     e.target.value = "";
   };
 
@@ -951,11 +953,57 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
           </div>
         </div>
       </DialogContent>
+      {pendingDashFile && !cropFile && (
+        <Dialog open={true} onOpenChange={() => setPendingDashFile(null)}>
+          <DialogContent className="max-w-md" data-testid="dialog-dash-upload-choice">
+            <DialogHeader>
+              <DialogTitle className="text-[#1a1a2e]">How would you like to upload?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              If your image is already designed to the correct size, upload it directly. Otherwise, use the crop tool to adjust it.
+            </p>
+            <div className="flex flex-col gap-3 mt-2">
+              <Button
+                className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
+                data-testid="button-dash-upload-direct"
+                disabled={isUploading}
+                onClick={async () => {
+                  const file = pendingDashFile;
+                  setPendingDashFile(null);
+                  const result = await uploadFile(file);
+                  if (result) {
+                    const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+                    setImageUrl(path);
+                    toast({ title: "Image Uploaded" });
+                  }
+                }}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {isUploading ? "Uploading..." : "Upload Directly (No Cropping)"}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-[#0a4a82] text-[#0a4a82]"
+                data-testid="button-dash-upload-crop"
+                onClick={() => {
+                  setCropFile(pendingDashFile);
+                  setPendingDashFile(null);
+                }}
+              >
+                <Crop className="h-4 w-4 mr-2" />
+                Crop & Resize First
+              </Button>
+              <Button variant="ghost" onClick={() => setPendingDashFile(null)} data-testid="button-dash-upload-cancel">
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       {cropFile && (
         <ImageCropper
           imageFile={cropFile}
           aspectRatio={16 / 9}
-          allowSkipCrop={true}
           onCropped={handleCroppedImage}
           onCancel={() => setCropFile(null)}
         />

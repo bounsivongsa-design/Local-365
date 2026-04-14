@@ -43,7 +43,8 @@ import {
   X,
   Upload,
   Lock,
-  Paintbrush
+  Paintbrush,
+  Crop
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
@@ -153,6 +154,7 @@ export default function Advertising() {
   });
 
   const [adCropFile, setAdCropFile] = useState<File | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
   const [showDesigner, setShowDesigner] = useState(false);
 
   const { uploadFile: uploadAdImage, isUploading: adImageUploading } = useUpload({
@@ -645,7 +647,7 @@ export default function Advertising() {
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setAdCropFile(file);
+                                  setPendingUploadFile(file);
                                 }
                                 e.target.value = "";
                               }}
@@ -1126,11 +1128,55 @@ export default function Advertising() {
           </div>
         </div>
       </div>
+      {pendingUploadFile && !adCropFile && (
+        <Dialog open={true} onOpenChange={() => setPendingUploadFile(null)}>
+          <DialogContent className="max-w-md" data-testid="dialog-upload-choice">
+            <DialogHeader>
+              <DialogTitle className="text-[#1a1a2e]">How would you like to upload?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              If your image is already designed to the correct size, upload it directly. Otherwise, use the crop tool to adjust it.
+            </p>
+            <div className="flex flex-col gap-3 mt-2">
+              <Button
+                className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
+                data-testid="button-upload-direct"
+                onClick={async () => {
+                  const file = pendingUploadFile;
+                  setPendingUploadFile(null);
+                  const result = await uploadAdImage(file);
+                  if (result) {
+                    setFormData({ ...formData, imageUrl: result.objectPath });
+                    toast({ title: "Image Uploaded", description: "Your ad image has been set." });
+                  }
+                }}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Directly (No Cropping)
+              </Button>
+              <Button
+                variant="outline"
+                className="border-[#0a4a82] text-[#0a4a82]"
+                data-testid="button-upload-crop"
+                onClick={() => {
+                  setAdCropFile(pendingUploadFile);
+                  setPendingUploadFile(null);
+                }}
+              >
+                <Crop className="h-4 w-4 mr-2" />
+                Crop & Resize First
+              </Button>
+              <Button variant="ghost" onClick={() => setPendingUploadFile(null)} data-testid="button-upload-cancel">
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       {adCropFile && (
         <ImageCropper
           imageFile={adCropFile}
           aspectRatio={16 / 9}
-          allowSkipCrop={true}
           onCropped={async (blob) => {
             setAdCropFile(null);
             const ext = blob.type === "image/png" ? "png" : "jpg";
