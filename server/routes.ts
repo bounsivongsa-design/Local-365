@@ -4718,8 +4718,91 @@ async function seedDatabase() {
       isExample: true,
     });
 
-    console.log("Database seeded with 26 placeholder businesses and 3 events!");
+    const seededBusinesses = await storage.getBusinesses();
+    const plumbingBiz = seededBusinesses.find(b => b.name === "Coastal Plumbing Co");
+    const landscapeBiz = seededBusinesses.find(b => b.name === "Sandy Shores Landscaping");
+    const hvacBiz = seededBusinesses.find(b => b.name === "Moyock HVAC Pros");
+
+    const exampleJobs = [
+      {
+        businessId: plumbingBiz?.id || seededBusinesses[0]?.id,
+        title: "Licensed Plumber — Full-Time",
+        description: "We're looking for a licensed plumber to join our growing team. Must have valid NC plumbing license, 3+ years of residential experience, and a clean driving record. Competitive pay ($25–$35/hr), health benefits, paid time off, and company vehicle provided. We serve Moyock, Chesapeake, and surrounding areas.",
+        contactPhone: "(252) 555-0101",
+        contactEmail: "jobs@coastalplumbingco.example.com",
+        isActive: true,
+        imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=400&fit=crop",
+      },
+      {
+        businessId: landscapeBiz?.id || seededBusinesses[1]?.id,
+        title: "Landscape Crew Member — Seasonal",
+        description: "Seasonal position from April through November. Help with mowing, mulching, planting, and hardscape installation. No experience required — we'll train! Must be able to lift 50 lbs and work outdoors in summer heat. $15–$20/hr depending on experience. Great for students or anyone who loves working outside.",
+        contactPhone: "(252) 555-0202",
+        contactEmail: "hire@sandyshores.example.com",
+        isActive: true,
+        imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=600&h=400&fit=crop",
+      },
+      {
+        businessId: hvacBiz?.id || seededBusinesses[2]?.id,
+        title: "HVAC Technician — Immediate Opening",
+        description: "Moyock HVAC Pros is hiring an experienced HVAC technician. EPA 608 certification required. We specialize in residential installation and repair across Currituck County. Offering $28–$40/hr based on experience, sign-on bonus, and year-round work. On-call rotation with extra pay. Company truck and tools provided.",
+        contactPhone: "(252) 555-0303",
+        contactEmail: "careers@moyockhvac.example.com",
+        isActive: true,
+        imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=400&fit=crop",
+      },
+    ];
+
+    for (const job of exampleJobs) {
+      await storage.createJobListing(job as any);
+    }
+    console.log("Seeded 3 example job listings!");
+
+    console.log("Database seeded with 26 placeholder businesses, 3 events, and 3 job listings!");
   } else {
+    const existingJobs = await storage.getActiveJobListings();
+    if (existingJobs.length === 0) {
+      const plumbingBiz = existingBusinesses.find(b => b.name === "Coastal Plumbing Co");
+      const landscapeBiz = existingBusinesses.find(b => b.name === "Sandy Shores Landscaping");
+      const hvacBiz = existingBusinesses.find(b => b.name === "Moyock HVAC Pros");
+      if (plumbingBiz || landscapeBiz || hvacBiz) {
+        console.log("Seeding example job listings...");
+        const jobsToSeed = [
+          plumbingBiz && {
+            businessId: plumbingBiz.id,
+            title: "Licensed Plumber — Full-Time",
+            description: "We're looking for a licensed plumber to join our growing team. Must have valid NC plumbing license, 3+ years of residential experience, and a clean driving record. Competitive pay ($25–$35/hr), health benefits, paid time off, and company vehicle provided.",
+            contactPhone: "(252) 555-0101",
+            contactEmail: "jobs@coastalplumbingco.example.com",
+            isActive: true,
+            imageUrl: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=400&fit=crop",
+          },
+          landscapeBiz && {
+            businessId: landscapeBiz.id,
+            title: "Landscape Crew Member — Seasonal",
+            description: "Seasonal position from April through November. Help with mowing, mulching, planting, and hardscape installation. No experience required — we'll train! Must be able to lift 50 lbs and work outdoors in summer heat. $15–$20/hr depending on experience.",
+            contactPhone: "(252) 555-0202",
+            contactEmail: "hire@sandyshores.example.com",
+            isActive: true,
+            imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=600&h=400&fit=crop",
+          },
+          hvacBiz && {
+            businessId: hvacBiz.id,
+            title: "HVAC Technician — Immediate Opening",
+            description: "Moyock HVAC Pros is hiring an experienced HVAC technician. EPA 608 certification required. Offering $28–$40/hr based on experience, sign-on bonus, and year-round work. On-call rotation with extra pay. Company truck and tools provided.",
+            contactPhone: "(252) 555-0303",
+            contactEmail: "careers@moyockhvac.example.com",
+            isActive: true,
+            imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=400&fit=crop",
+          },
+        ].filter(Boolean);
+        for (const job of jobsToSeed) {
+          await storage.createJobListing(job as any);
+        }
+        console.log(`Seeded ${jobsToSeed.length} example job listings!`);
+      }
+    }
+
     const nonExampleSeeds = existingBusinesses.filter(b => !b.isExample && b.imageUrl?.includes("unsplash.com"));
     if (nonExampleSeeds.length > 0) {
       console.log(`Marking ${nonExampleSeeds.length} seed businesses as examples...`);
