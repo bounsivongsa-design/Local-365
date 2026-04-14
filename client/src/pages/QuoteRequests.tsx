@@ -47,8 +47,11 @@ import {
   User,
   Loader2,
   X,
+  Lock,
+  ArrowUpCircle,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { QuoteRequest } from "@shared/models/auth";
 
@@ -822,7 +825,7 @@ export default function QuoteRequests() {
               const isOwner = user?.id === req.userId;
               
               return (
-                <Card key={req.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-project-${req.id}`}>
+                <Card key={req.id} className={`overflow-hidden transition-shadow ${req.hasPriorityAccess || isOwner ? "hover:shadow-lg" : "opacity-75"}`} data-testid={`card-project-${req.id}`}>
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start gap-4 mb-4">
                       <div className="flex-1">
@@ -831,149 +834,155 @@ export default function QuoteRequests() {
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         {getStatusBadge(req.status || "open")}
-                        {req.quoteCount > 0 && (
-                          <Badge className="bg-[#0a4a82]/10 text-[#0a4a82] border-[#0a4a82]/20">
-                            <Gavel className="h-3 w-3 mr-1" />
-                            {req.quoteCount}{(req as any).maxQuotes ? `/${(req as any).maxQuotes}` : ""} {req.quoteCount === 1 ? "quote" : "quotes"}
-                          </Badge>
-                        )}
-                        {(req as any).maxQuotes && (
-                          <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
-                            Max {(req as any).maxQuotes} quotes
-                          </Badge>
-                        )}
                       </div>
                     </div>
 
-                    {req.hasPriorityAccess && (
-                      <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-amber-600" />
-                            <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                              {req.accessRound || "Priority Access"}
-                            </span>
-                            {req.isEmergency && (
-                              <Badge className="bg-red-500 text-white text-xs">
-                                <Zap className="h-3 w-3 mr-1" />
-                                Emergency
-                              </Badge>
-                            )}
-                          </div>
-                          {req.priorityExpiresAt && new Date(req.priorityExpiresAt) > new Date() && (
-                            <div className="flex items-center gap-1 text-xs text-amber-600">
-                              <Timer className="h-3 w-3" />
-                              Window ends {formatDistanceToNow(new Date(req.priorityExpiresAt), { addSuffix: true })}
-                            </div>
-                          )}
-                          {req.priorityExpiresAt && new Date(req.priorityExpiresAt) <= new Date() && (
-                            <div className="flex items-center gap-1 text-xs text-green-600">
-                              <Timer className="h-3 w-3" />
-                              Open to all tiers
-                            </div>
-                          )}
-                        </div>
+                    {!req.hasPriorityAccess && !isOwner && (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-center">
+                        <Lock className="h-6 w-6 text-slate-400 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                          Not yet available for your tier
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Higher-tier members get early access to new projects. Upgrade for priority access.
+                        </p>
+                        <Link to="/membership">
+                          <Button variant="outline" size="sm" className="mt-3 border-[#d4a373] text-[#d4a373] hover:bg-[#d4a373]/10" data-testid={`button-upgrade-tier-${req.id}`}>
+                            <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
+                            View Upgrade Options
+                          </Button>
+                        </Link>
                       </div>
                     )}
 
-                    {!req.hasPriorityAccess && (
-                      <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-slate-400" />
-                          <span className="text-sm text-slate-500">
-                            Not yet available for your tier — upgrade for earlier access
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {req.customer && (
-                      <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border-2 border-white">
-                            <AvatarImage src={req.customer.profileImageUrl || undefined} />
-                            <AvatarFallback className="bg-[#0a4a82]/10 text-[#0a4a82]">
-                              {req.customer.firstName?.charAt(0) || "C"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium">
-                                {req.customer.firstName} {req.customer.lastName?.charAt(0)}.
-                              </span>
-                              <Badge className={ratingBadge.color}>
-                                <Star className="h-3 w-3 mr-1 fill-current" />
-                                {req.customer.customerRating || "5.0"} {ratingBadge.label}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                              <span>{req.customer.projectsCompleted || 0} projects completed</span>
-                              {Number(req.customer.totalSpent) > 0 && (
-                                <span>${Number(req.customer.totalSpent).toLocaleString()} spent</span>
+                    {(req.hasPriorityAccess || isOwner) && (
+                      <>
+                        {req.hasPriorityAccess && (
+                          <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-amber-600" />
+                                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                                  {req.accessRound || "Priority Access"}
+                                </span>
+                                {req.isEmergency && (
+                                  <Badge className="bg-red-500 text-white text-xs">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Emergency
+                                  </Badge>
+                                )}
+                              </div>
+                              {req.priorityExpiresAt && new Date(req.priorityExpiresAt) > new Date() && (
+                                <div className="flex items-center gap-1 text-xs text-amber-600">
+                                  <Timer className="h-3 w-3" />
+                                  Window ends {formatDistanceToNow(new Date(req.priorityExpiresAt), { addSuffix: true })}
+                                </div>
+                              )}
+                              {req.priorityExpiresAt && new Date(req.priorityExpiresAt) <= new Date() && (
+                                <div className="flex items-center gap-1 text-xs text-green-600">
+                                  <Timer className="h-3 w-3" />
+                                  Open to all tiers
+                                </div>
                               )}
                             </div>
                           </div>
-                        </div>
-                        
-                        {req.hasPriorityAccess && (
-                          <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
-                            <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                              <Shield className="h-3 w-3" />
-                              <span className="font-medium">Priority Access — Respond now to start a conversation with this customer</span>
+                        )}
+
+                        {req.customer && (
+                          <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10 border-2 border-white">
+                                <AvatarImage src={req.customer.profileImageUrl || undefined} />
+                                <AvatarFallback className="bg-[#0a4a82]/10 text-[#0a4a82]">
+                                  {req.customer.firstName?.charAt(0) || "C"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">
+                                    {req.customer.firstName} {req.customer.lastName?.charAt(0)}.
+                                  </span>
+                                  <Badge className={ratingBadge.color}>
+                                    <Star className="h-3 w-3 mr-1 fill-current" />
+                                    {req.customer.customerRating || "5.0"} {ratingBadge.label}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                                  <span>{req.customer.projectsCompleted || 0} projects completed</span>
+                                  {Number(req.customer.totalSpent) > 0 && (
+                                    <span>${Number(req.customer.totalSpent).toLocaleString()} spent</span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
+                            
+                            {req.hasPriorityAccess && (
+                              <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
+                                <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                                  <Shield className="h-3 w-3" />
+                                  <span className="font-medium">Priority Access — Respond now to start a conversation with this customer</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
-                    
-                    <p className="text-muted-foreground mb-4 line-clamp-2">{req.description}</p>
-                    
-                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                      {req.budget && (
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          {req.budget}
-                        </span>
-                      )}
-                      {req.timeline && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {req.timeline}
-                        </span>
-                      )}
-                      {req.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {req.location}
-                        </span>
-                      )}
-                      {req.address && (
-                        <span className="flex items-center gap-1 text-slate-500">
-                          {req.address}
-                        </span>
-                      )}
-                      {req.lowestQuote && (
-                        <span className="flex items-center gap-1 text-green-600 font-medium">
-                          <TrendingDown className="h-4 w-4" />
-                          Lowest: ${req.lowestQuote.toLocaleString()}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1 ml-auto">
-                        Posted {req.createdAt ? formatDistanceToNow(new Date(req.createdAt), { addSuffix: true }) : "recently"}
-                      </span>
-                    </div>
+                        
+                        <p className="text-muted-foreground mb-4 line-clamp-2">{req.description}</p>
+                        
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          {req.budget && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="h-4 w-4" />
+                              {req.budget}
+                            </span>
+                          )}
+                          {req.timeline && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {req.timeline}
+                            </span>
+                          )}
+                          {req.location && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {req.location}
+                            </span>
+                          )}
+                          {req.address && (
+                            <span className="flex items-center gap-1 text-slate-500">
+                              {req.address}
+                            </span>
+                          )}
+                          {req.quoteCount > 0 && (
+                            <Badge className="bg-[#0a4a82]/10 text-[#0a4a82] border-[#0a4a82]/20">
+                              <Gavel className="h-3 w-3 mr-1" />
+                              {req.quoteCount}{(req as any).maxQuotes ? `/${(req as any).maxQuotes}` : ""} {req.quoteCount === 1 ? "quote" : "quotes"}
+                            </Badge>
+                          )}
+                          {req.lowestQuote && (
+                            <span className="flex items-center gap-1 text-green-600 font-medium">
+                              <TrendingDown className="h-4 w-4" />
+                              Lowest: ${req.lowestQuote.toLocaleString()}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 ml-auto">
+                            Posted {req.createdAt ? formatDistanceToNow(new Date(req.createdAt), { addSuffix: true }) : "recently"}
+                          </span>
+                        </div>
 
-                    {req.hasPriorityAccess && (
-                      <div className="mt-4 pt-4 border-t">
-                        <Button 
-                          className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]" 
-                          data-testid={`button-submit-quote-${req.id}`}
-                          onClick={() => openQuoteDialog(req.id)}
-                        >
-                          <Send className="mr-2 h-4 w-4" />
-                          Respond to Customer
-                        </Button>
-                      </div>
+                        {req.hasPriorityAccess && (
+                          <div className="mt-4 pt-4 border-t">
+                            <Button 
+                              className="w-full bg-[#8a9a5b] hover:bg-[#7a8a4b]" 
+                              data-testid={`button-submit-quote-${req.id}`}
+                              onClick={() => openQuoteDialog(req.id)}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Respond to Customer
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {isOwner && req.quoteCount > 0 && (

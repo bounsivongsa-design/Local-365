@@ -2083,7 +2083,7 @@ function BusinessQuoteLeads({ businessId }: { businessId: number }) {
 
   const availableLeads = useMemo(() => {
     if (!quoteRequests) return [];
-    return quoteRequests.filter((req: any) => req.status === "open").slice(0, 5);
+    return quoteRequests.filter((req: any) => req.status === "open" && req.hasPriorityAccess).slice(0, 5);
   }, [quoteRequests]);
 
   return (
