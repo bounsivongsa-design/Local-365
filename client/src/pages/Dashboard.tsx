@@ -74,6 +74,37 @@ import { useMyEvents, useDeleteEvent } from "@/hooks/use-events";
 import { formatDistanceToNow, format, subDays, eachDayOfInterval } from "date-fns";
 import type { Business } from "@shared/schema";
 
+function resizeImageToFit(file: File, targetW: number, targetH: number): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+
+      const srcRatio = img.width / img.height;
+      const tgtRatio = targetW / targetH;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (srcRatio > tgtRatio) {
+        sw = img.height * tgtRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = img.width / tgtRatio;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      canvas.toBlob((blob) => {
+        if (!blob) { reject(new Error("Failed to create image")); return; }
+        resolve(new File([blob], `ad-${targetW}x${targetH}.jpg`, { type: "image/jpeg" }));
+      }, "image/jpeg", 0.92);
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 interface Receipt {
   id: number;
   fileName: string;
@@ -959,10 +990,16 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
             <DialogHeader>
               <DialogTitle className="text-[#1a1a2e]">How would you like to upload?</DialogTitle>
             </DialogHeader>
+            <div className="bg-[#0a4a82]/5 rounded-lg p-3 text-sm">
+              <p className="font-medium text-[#0a4a82] mb-1">Recommended size for your ad:</p>
+              <p className="text-[#0a4a82]/80 font-mono">
+                {(ad?.adSize || "large") === "large" ? "1200 × 675px (16:9)" : (ad?.adSize || "large") === "medium" ? "1200 × 540px (20:9)" : "1200 × 500px (12:5)"}
+              </p>
+            </div>
             <p className="text-sm text-muted-foreground">
-              If your image is already designed to the correct size, upload it directly. Otherwise, use the crop tool to adjust it.
+              <strong>Upload Directly</strong> will automatically resize your image to fit perfectly. <strong>Crop First</strong> lets you pick which part of the image to use.
             </p>
-            <div className="flex flex-col gap-3 mt-2">
+            <div className="flex flex-col gap-3 mt-1">
               <Button
                 className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
                 data-testid="button-dash-upload-direct"
@@ -970,16 +1007,24 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
                 onClick={async () => {
                   const file = pendingDashFile;
                   setPendingDashFile(null);
-                  const result = await uploadFile(file);
-                  if (result) {
-                    const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
-                    setImageUrl(path);
-                    toast({ title: "Image Uploaded" });
+                  const adSz = (ad?.adSize || "large") as string;
+                  const dims: Record<string, { w: number; h: number }> = { large: { w: 1200, h: 675 }, medium: { w: 1200, h: 540 }, small: { w: 1200, h: 500 } };
+                  const target = dims[adSz] || dims.large;
+                  try {
+                    const resized = await resizeImageToFit(file, target.w, target.h);
+                    const result = await uploadFile(resized);
+                    if (result) {
+                      const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+                      setImageUrl(path);
+                      toast({ title: "Image Uploaded", description: `Resized to ${target.w}×${target.h} and uploaded.` });
+                    }
+                  } catch {
+                    toast({ title: "Upload failed", description: "Could not process the image.", variant: "destructive" });
                   }
                 }}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {isUploading ? "Uploading..." : "Upload Directly (No Cropping)"}
+                {isUploading ? "Uploading..." : "Upload Directly (Auto-Resize)"}
               </Button>
               <Button
                 variant="outline"

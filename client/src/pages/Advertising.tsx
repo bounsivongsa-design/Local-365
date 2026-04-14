@@ -52,6 +52,37 @@ import type { AdPricing, AdPlacement } from "@shared/schema";
 import { useUpload } from "@/hooks/use-upload";
 import { AdDesigner } from "@/components/AdDesigner";
 
+function resizeImageToFit(file: File, targetW: number, targetH: number): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+
+      const srcRatio = img.width / img.height;
+      const tgtRatio = targetW / targetH;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (srcRatio > tgtRatio) {
+        sw = img.height * tgtRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = img.width / tgtRatio;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      canvas.toBlob((blob) => {
+        if (!blob) { reject(new Error("Failed to create image")); return; }
+        resolve(new File([blob], `ad-${targetW}x${targetH}.jpg`, { type: "image/jpeg" }));
+      }, "image/jpeg", 0.92);
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 const BANNER_PLACEMENTS = ["large_banner", "medium_banner", "small_banner"];
 
 const AD_BASE_PRICING = {
@@ -1134,25 +1165,39 @@ export default function Advertising() {
             <DialogHeader>
               <DialogTitle className="text-[#1a1a2e]">How would you like to upload?</DialogTitle>
             </DialogHeader>
+            <div className="bg-[#0a4a82]/5 rounded-lg p-3 text-sm">
+              <p className="font-medium text-[#0a4a82] mb-1">Recommended size for your ad:</p>
+              <p className="text-[#0a4a82]/80 font-mono">
+                {formData.adSize === "large" ? "1200 × 675px (16:9)" : formData.adSize === "medium" ? "1200 × 540px (20:9)" : "1200 × 500px (12:5)"}
+              </p>
+            </div>
             <p className="text-sm text-muted-foreground">
-              If your image is already designed to the correct size, upload it directly. Otherwise, use the crop tool to adjust it.
+              <strong>Upload Directly</strong> will automatically resize your image to fit perfectly. <strong>Crop First</strong> lets you pick which part of the image to use.
             </p>
-            <div className="flex flex-col gap-3 mt-2">
+            <div className="flex flex-col gap-3 mt-1">
               <Button
                 className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
                 data-testid="button-upload-direct"
+                disabled={adImageUploading}
                 onClick={async () => {
                   const file = pendingUploadFile;
                   setPendingUploadFile(null);
-                  const result = await uploadAdImage(file);
-                  if (result) {
-                    setFormData({ ...formData, imageUrl: result.objectPath });
-                    toast({ title: "Image Uploaded", description: "Your ad image has been set." });
+                  const dims = { large: { w: 1200, h: 675 }, medium: { w: 1200, h: 540 }, small: { w: 1200, h: 500 } };
+                  const target = dims[formData.adSize as keyof typeof dims] || dims.large;
+                  try {
+                    const resized = await resizeImageToFit(file, target.w, target.h);
+                    const result = await uploadAdImage(resized);
+                    if (result) {
+                      setFormData({ ...formData, imageUrl: result.objectPath });
+                      toast({ title: "Image Uploaded", description: `Resized to ${target.w}×${target.h} and uploaded.` });
+                    }
+                  } catch {
+                    toast({ title: "Upload failed", description: "Could not process the image.", variant: "destructive" });
                   }
                 }}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Directly (No Cropping)
+                {adImageUploading ? "Uploading..." : "Upload Directly (Auto-Resize)"}
               </Button>
               <Button
                 variant="outline"
