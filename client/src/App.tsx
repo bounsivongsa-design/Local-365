@@ -100,10 +100,6 @@ function AppRouter() {
               <li><Link to="/legal?section=disclaimers" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-disclaimers">Disclaimers</Link></li>
               <li><Link to="/faq" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
             </ul>
-            <h4 className="font-bold text-white mb-3 mt-6 text-sm uppercase tracking-wider">Community Friends</h4>
-            <ul className="space-y-2 text-sm">
-              <li><a href="http://www.southernhopeanimalrescue.org/" target="_blank" rel="noopener noreferrer" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-southern-hope">Southern Hope Animal Rescue</a></li>
-            </ul>
           </div>
         </div>
         <div className="container mt-10 pt-6 border-t border-white/15 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
