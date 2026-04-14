@@ -3348,7 +3348,7 @@ Respond in this exact JSON format:
         discountType: discountType || "percentage",
         discountValue: discountValue || 0,
         applicableTiers: applicableTiers || [],
-        maxUses: maxUses || null,
+        maxUses: maxUses ?? 1,
         startsAt: startsAt ? new Date(startsAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         durationDays: durationDays || null,
