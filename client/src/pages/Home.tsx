@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import heroImage from "@assets/image_1773172681995.png";
+import { ExampleBanner } from "@/components/ExampleBanner";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 
 const ICON_MAP: Record<string, any> = {
@@ -394,7 +395,12 @@ export default function Home() {
               <div className="space-y-4">
                 {featuredBusinesses.map(biz => (
                   <Link key={biz.id} to={`/directory/${biz.id}`}>
-                    <div className="flex gap-4 p-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-border transition-[shadow,background-color,border-color] duration-200 cursor-pointer group">
+                    <div className="flex gap-4 p-3 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-border transition-[shadow,background-color,border-color] duration-200 cursor-pointer group relative">
+                      {biz.isExample && (
+                        <div className="absolute top-1 right-1 z-10 bg-orange-500 text-white text-[8px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded shadow" data-testid={`badge-example-gem-${biz.id}`}>
+                          Example
+                        </div>
+                      )}
                       <div className="h-16 w-16 rounded-lg bg-muted overflow-hidden shrink-0">
                         {biz.imageUrl ? (
                           <img src={biz.imageUrl} alt={biz.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
