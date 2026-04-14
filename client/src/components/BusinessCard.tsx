@@ -47,8 +47,8 @@ export function BusinessCard({ business }: BusinessCardProps) {
         data-testid={`card-business-${business.id}`}
       >
         {business.isExample && <ExampleBanner variant="ribbon" />}
-        <div className={`relative h-48 sm:h-48 overflow-hidden bg-gradient-to-br from-[#f5f5f0] to-[#e8e4de] ${business.isExample ? "opacity-75" : ""}`}>
-          {business.imageUrl && !business.isExample ? (
+        <div className={`relative h-48 sm:h-48 overflow-hidden bg-gradient-to-br from-[#f5f5f0] to-[#e8e4de]`}>
+          {business.imageUrl ? (
             <img 
               src={business.imageUrl} 
               alt={business.name}
@@ -57,7 +57,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
           ) : (
             <div className="h-full w-full flex flex-col items-center justify-center gap-2">
               <Building2 className="h-12 w-12 text-[#0a4a82]/30" />
-              <span className="text-xs font-medium text-[#0a4a82]/40 uppercase tracking-wider">{business.isExample ? "Example Listing" : "No Photo"}</span>
+              <span className="text-xs font-medium text-[#0a4a82]/40 uppercase tracking-wider">No Photo</span>
             </div>
           )}
           
