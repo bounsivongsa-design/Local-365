@@ -4578,6 +4578,21 @@ async function seedDatabase() {
   console.log("Checking for existing categories...");
   const existingCategories = await db.get('categories');
   console.log("Existing categories result:", existingCategories);
+  const catList = existingCategories?.ok ? existingCategories.value : (Array.isArray(existingCategories) ? existingCategories : null);
+  if (catList && Array.isArray(catList)) {
+    const newCats = [
+      { id: 35, name: "Recreation & Sports", subs: ["Golf", "Fishing", "Fitness", "Outdoor Adventures"] },
+      { id: 36, name: "Restaurants & Dining", subs: ["Dine-In", "Takeout", "Bar & Grill", "Seafood"] },
+      { id: 37, name: "IT & Technology", subs: ["Computer Repair", "Networking", "Web Hosting", "Managed IT"] },
+    ];
+    const existingNames = catList.map((c: any) => c.name);
+    const toAdd = newCats.filter(c => !existingNames.includes(c.name));
+    if (toAdd.length > 0) {
+      const updated = [...catList, ...toAdd];
+      await db.set('categories', updated);
+      console.log(`Added ${toAdd.length} new categories: ${toAdd.map(c => c.name).join(', ')}`);
+    }
+  }
   if (!existingCategories || (existingCategories && existingCategories.ok === false)) {
     console.log("Seeding categories...");
     const categories = [
@@ -4617,6 +4632,9 @@ async function seedDatabase() {
       { id: 28, name: "Event Planning & Rentals", subs: ["Event Planning", "Event Rentals", "Event Locations"] },
       { id: 33, name: "Auto Detailing", subs: [] },
       { id: 34, name: "Window Tinting", subs: [] },
+      { id: 35, name: "Recreation & Sports", subs: ["Golf", "Fishing", "Fitness", "Outdoor Adventures"] },
+      { id: 36, name: "Restaurants & Dining", subs: ["Dine-In", "Takeout", "Bar & Grill", "Seafood"] },
+      { id: 37, name: "IT & Technology", subs: ["Computer Repair", "Networking", "Web Hosting", "Managed IT"] },
     ];
     await db.set('categories', categories);
     console.log("Categories seeded!");
