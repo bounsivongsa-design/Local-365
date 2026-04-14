@@ -4749,7 +4749,7 @@ async function seedDatabase() {
         contactPhone: "(252) 555-0303",
         contactEmail: "careers@moyockhvac.example.com",
         isActive: true,
-        imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=400&fit=crop",
+        imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=600&h=400&fit=crop",
       },
     ];
 
@@ -4793,7 +4793,7 @@ async function seedDatabase() {
             contactPhone: "(252) 555-0303",
             contactEmail: "careers@moyockhvac.example.com",
             isActive: true,
-            imageUrl: "https://images.unsplash.com/photo-1631545308207-4b7e5e573a68?w=600&h=400&fit=crop",
+            imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=600&h=400&fit=crop",
           },
         ].filter(Boolean);
         for (const job of jobsToSeed) {
