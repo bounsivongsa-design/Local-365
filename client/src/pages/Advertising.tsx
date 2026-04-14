@@ -1130,12 +1130,15 @@ export default function Advertising() {
         <ImageCropper
           imageFile={adCropFile}
           aspectRatio={16 / 9}
+          allowSkipCrop={true}
           onCropped={async (blob) => {
             setAdCropFile(null);
-            const file = new File([blob], "ad-image.jpg", { type: "image/jpeg" });
+            const ext = blob.type === "image/png" ? "png" : "jpg";
+            const file = new File([blob], `ad-image.${ext}`, { type: blob.type || "image/jpeg" });
             const result = await uploadAdImage(file);
             if (result) {
               setFormData({ ...formData, imageUrl: result.objectPath });
+              toast({ title: "Image Uploaded", description: "Your ad image has been set." });
             }
           }}
           onCancel={() => setAdCropFile(null)}

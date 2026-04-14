@@ -11,6 +11,7 @@ interface ImageCropperProps {
   onCancel: () => void;
   maxWidth?: number;
   maxHeight?: number;
+  allowSkipCrop?: boolean;
 }
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
@@ -21,7 +22,7 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
   );
 }
 
-export function ImageCropper({ imageFile, aspectRatio, onCropped, onCancel, maxWidth = 1200, maxHeight = 800 }: ImageCropperProps) {
+export function ImageCropper({ imageFile, aspectRatio, onCropped, onCancel, maxWidth = 1200, maxHeight = 800, allowSkipCrop = false }: ImageCropperProps) {
   const [crop, setCrop] = useState<Crop>();
   const [imgSrc, setImgSrc] = useState("");
   const imgRef = useRef<HTMLImageElement>(null);
@@ -86,6 +87,17 @@ export function ImageCropper({ imageFile, aspectRatio, onCropped, onCancel, maxW
     }, "image/jpeg", 0.9);
   };
 
+  const handleSkipCrop = async () => {
+    setProcessing(true);
+    try {
+      const arrayBuf = await imageFile.arrayBuffer();
+      const blob = new Blob([arrayBuf], { type: imageFile.type || "image/png" });
+      onCropped(blob);
+    } catch {
+      setProcessing(false);
+    }
+  };
+
   const handleReset = () => {
     if (!imgRef.current) return;
     const { naturalWidth, naturalHeight } = imgRef.current;
@@ -127,9 +139,16 @@ export function ImageCropper({ imageFile, aspectRatio, onCropped, onCancel, maxW
         </div>
 
         <div className="flex items-center justify-between p-4 border-t bg-gray-50">
-          <Button type="button" variant="outline" size="sm" onClick={handleReset} data-testid="button-reset-crop">
-            <RotateCcw className="h-4 w-4 mr-1" /> Reset
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={handleReset} data-testid="button-reset-crop">
+              <RotateCcw className="h-4 w-4 mr-1" /> Reset
+            </Button>
+            {allowSkipCrop && (
+              <Button type="button" variant="outline" size="sm" onClick={handleSkipCrop} disabled={processing} className="text-[#d4a373] border-[#d4a373] hover:bg-[#d4a373]/10" data-testid="button-skip-crop">
+                Use As-Is
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onCancel} data-testid="button-cancel-crop">
               <X className="h-4 w-4 mr-1" /> Cancel

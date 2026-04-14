@@ -796,7 +796,8 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
 
   const handleCroppedImage = async (blob: Blob) => {
     setCropFile(null);
-    const file = new File([blob], `ad-image-${Date.now()}.jpg`, { type: "image/jpeg" });
+    const ext = blob.type === "image/png" ? "png" : "jpg";
+    const file = new File([blob], `ad-image-${Date.now()}.${ext}`, { type: blob.type || "image/jpeg" });
     const result = await uploadFile(file);
     if (result) {
       const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
@@ -954,6 +955,7 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
         <ImageCropper
           imageFile={cropFile}
           aspectRatio={16 / 9}
+          allowSkipCrop={true}
           onCropped={handleCroppedImage}
           onCancel={() => setCropFile(null)}
         />
