@@ -35,6 +35,51 @@ async function sendAdminEmail(subject: string, html: string) {
   }
 }
 
+export async function sendPasswordResetEmail(email: string, resetUrl: string) {
+  const resend = getResend();
+  if (!resend) {
+    console.log(`[EMAIL SKIPPED] Password reset for ${email} — Resend not configured`);
+    return false;
+  }
+
+  try {
+    await resend.emails.send({
+      from: "Local List 365 <onboarding@resend.dev>",
+      to: [email],
+      subject: "Reset Your Password — Local List 365",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #0a4a82, #0d5a9e); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+            <h1 style="margin: 0; font-size: 20px;">Password Reset Request</h1>
+          </div>
+          <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+            <p style="color: #333; font-size: 15px; line-height: 1.6;">
+              We received a request to reset your password for your Local List 365 account. Click the button below to choose a new password.
+            </p>
+            <div style="margin: 24px 0; text-align: center;">
+              <a href="${resetUrl}" style="display: inline-block; background: #0a4a82; color: white; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">
+                Reset Password
+              </a>
+            </div>
+            <p style="color: #666; font-size: 13px; line-height: 1.5;">
+              This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email — your password won't be changed.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              Local List 365 — Your Moyock Community Directory
+            </p>
+          </div>
+        </div>
+      `,
+    });
+    console.log(`[EMAIL SENT] Password reset for ${email}`);
+    return true;
+  } catch (err: any) {
+    console.error(`[EMAIL FAILED] Password reset for ${email}:`, err?.message);
+    return false;
+  }
+}
+
 export async function notifyAdminNewEvent(eventTitle: string, businessName: string, price: number) {
   const priceFormatted = `$${(price / 100).toFixed(2)}`;
   const subject = `New Event Submitted — ${eventTitle}`;

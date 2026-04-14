@@ -83,6 +83,15 @@ export const receipts = pgTable("receipts", {
   reviewedAt: timestamp("reviewed_at"),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Emergency categories that require 2-hour response window instead of 24 hours
 export const EMERGENCY_CATEGORIES = ["HVAC", "Electrical", "Plumbing", "Roofing"];
 

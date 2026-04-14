@@ -38,6 +38,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Promo Codes**: Admin-managed codes for discounts or temporary Gold-tier access.
 - **Tier-Locked Feature Greying**: Displays unavailable features with upgrade prompts based on membership tier.
 - **Local Vendor Eligibility**: Policy ensures only local businesses are listed, with AI-powered verification checks for LLCs and document uploads for other credentials.
+- **Password Reset**: Secure token-based password reset flow with email delivery via Resend. Tokens expire after 1 hour. Pages: `/forgot-password` and `/reset-password?token=...`.
 - **Admin Dashboard**: A comprehensive control center for platform management, user/business oversight, content moderation, and analytics.
 
 ### UI/UX Decisions

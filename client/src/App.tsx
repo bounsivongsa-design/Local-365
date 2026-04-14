@@ -22,6 +22,8 @@ import AdminEvents from "@/pages/AdminEvents";
 import AdminDashboard from "@/pages/AdminDashboard";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Legal from "@/pages/Legal";
 import FAQ from "@/pages/FAQ";
 import HelpWanted from "@/pages/HelpWanted";
@@ -62,6 +64,8 @@ function AppRouter() {
           <Route path="/create-business" element={<CreateBusiness />} />
           <Route path="/edit-listing" element={<EditListing />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="*" element={<NotFound />} />

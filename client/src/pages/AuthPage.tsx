@@ -301,6 +301,15 @@ export default function AuthPage() {
                     </>
                   )}
                 </Button>
+                <div className="text-center">
+                  <a
+                    href="/forgot-password"
+                    className="text-sm text-[#0a4a82] hover:text-[#083a6a] hover:underline font-medium"
+                    data-testid="link-forgot-password"
+                  >
+                    Forgot your password?
+                  </a>
+                </div>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">
