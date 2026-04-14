@@ -1820,7 +1820,7 @@ Respond in this exact JSON format:
       const eventZipCode = req.body.zipCode || businessZipCode || "27958";
 
       const eventDate = new Date(req.body.date);
-      const displayDays = adDurationVal === "2week" ? 14 : 30;
+      const displayDays = adDurationVal === "2week" ? 15 : 31;
       const displayStartDate = new Date(eventDate);
       displayStartDate.setDate(displayStartDate.getDate() - displayDays);
 

@@ -141,22 +141,37 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   }, [largePageCount, mediumPageCount, smallPageCount]);
 
   useEffect(() => {
+    if (largePageCount <= 1) return;
     const interval = setInterval(() => {
-      setLargeAdPos(p => (p + 1) % largePageCount);
+      setLargeAdPos(p => {
+        let next;
+        do { next = Math.floor(Math.random() * largePageCount); } while (next === p);
+        return next;
+      });
     }, 6000);
     return () => clearInterval(interval);
   }, [largePageCount]);
 
   useEffect(() => {
+    if (mediumPageCount <= 1) return;
     const interval = setInterval(() => {
-      setMediumAdPos(p => (p + 1) % mediumPageCount);
+      setMediumAdPos(p => {
+        let next;
+        do { next = Math.floor(Math.random() * mediumPageCount); } while (next === p);
+        return next;
+      });
     }, 8000);
     return () => clearInterval(interval);
   }, [mediumPageCount]);
 
   useEffect(() => {
+    if (smallPageCount <= 1) return;
     const interval = setInterval(() => {
-      setSmallAdPos(p => (p + 1) % smallPageCount);
+      setSmallAdPos(p => {
+        let next;
+        do { next = Math.floor(Math.random() * smallPageCount); } while (next === p);
+        return next;
+      });
     }, 10000);
     return () => clearInterval(interval);
   }, [smallPageCount]);

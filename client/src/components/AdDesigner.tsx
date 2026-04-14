@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { toPng } from "html-to-image";
+import { toPng, toCanvas } from "html-to-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -309,26 +309,73 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
     const prevSelected = selectedElement;
     setSelectedElement(null);
     setIsGenerating(true);
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 150));
     try {
       const el = previewRef.current;
       const prevTransform = el.style.transform;
       el.style.transform = "none";
-      await new Promise(r => setTimeout(r, 50));
-      const dataUrl = await toPng(el, {
+      el.style.width = `${CANVAS_WIDTH}px`;
+      el.style.height = `${CANVAS_HEIGHT}px`;
+      await new Promise(r => setTimeout(r, 100));
+
+      let blob: Blob | null = null;
+      let lastErr: any = null;
+
+      const opts = {
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
         pixelRatio: 1,
         cacheBust: true,
-      });
+        skipFonts: true,
+        includeQueryParams: true,
+        filter: (node: any) => {
+          if (node?.tagName === 'LINK' && node?.rel === 'stylesheet') return false;
+          return true;
+        },
+      };
+
+      for (let attempt = 0; attempt < 3 && !blob; attempt++) {
+        try {
+          const dataUrl = await toPng(el, opts);
+          if (dataUrl && dataUrl.length > 100) {
+            const resp = await fetch(dataUrl);
+            blob = await resp.blob();
+          }
+        } catch (e) {
+          lastErr = e;
+          console.warn(`toPng attempt ${attempt + 1} failed:`, e);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+
+      if (!blob) {
+        try {
+          console.log("Falling back to toCanvas...");
+          const canvas = await toCanvas(el, opts);
+          blob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((b) => b ? resolve(b) : reject(new Error("Canvas toBlob failed")), "image/png");
+          });
+        } catch (e2) {
+          console.warn("toCanvas fallback also failed:", e2);
+          lastErr = lastErr || e2;
+        }
+      }
+
       el.style.transform = prevTransform;
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      el.style.width = "";
+      el.style.height = "";
+
+      if (!blob) {
+        throw lastErr || new Error("Could not generate image");
+      }
+
       onComplete(blob);
     } catch (err) {
       console.error("Failed to generate ad image:", err);
       if (previewRef.current) {
         previewRef.current.style.transform = `scale(${previewScale})`;
+        previewRef.current.style.width = "";
+        previewRef.current.style.height = "";
       }
       toast({ title: "Generation Failed", description: "Could not generate the ad image. Please try again.", variant: "destructive" });
       setSelectedElement(prevSelected);

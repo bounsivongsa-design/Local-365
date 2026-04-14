@@ -338,7 +338,7 @@ function MembershipExpirationBanner() {
 }
 
 function GoldTrialBanner() {
-  const { data, isError } = useQuery<{
+  const { data, isLoading } = useQuery<{
     active: boolean;
     daysLeft?: number;
     endDate?: string;
@@ -347,11 +347,20 @@ function GoldTrialBanner() {
     expired?: boolean;
   }>({
     queryKey: ["/api/user/gold-trial-status"],
-    retry: 1,
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/user/gold-trial-status", { credentials: "include" });
+        if (!res.ok) return { active: false };
+        return await res.json();
+      } catch {
+        return { active: false };
+      }
+    },
+    retry: 2,
     staleTime: 60000,
   });
 
-  if (isError || !data?.active) return null;
+  if (isLoading || !data?.active) return null;
 
   const tierMap: Record<string, string> = { basic: "Bronze", standard: "Silver", none: "No Plan" };
   const revertLabel = data.revertTierLabel || tierMap[data.revertTier || ""] || "your previous plan";
@@ -877,10 +886,15 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
             <Label>Ad Image</Label>
             <p className="text-xs text-muted-foreground mb-1">Recommended: 1200×675px (16:9 ratio), max 5MB</p>
             {imageUrl ? (
-              <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/20 h-32 mt-1">
-                <img src={imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
-                <div
-                  className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+              <div>
+                <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/20 h-32 mt-1">
+                  <img src={imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5 font-medium text-xs w-full"
                   onClick={() => {
                     const input = document.createElement("input");
                     input.type = "file";
@@ -890,10 +904,9 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
                   }}
                   data-testid="button-replace-ad-image"
                 >
-                    <span className="inline-flex items-center gap-1.5 bg-white text-slate-800 font-semibold py-1.5 px-3 rounded-md text-sm shadow-lg">
-                      <Upload className="h-3.5 w-3.5" /> Replace
-                    </span>
-                </div>
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  Replace Image
+                </Button>
               </div>
             ) : (
               <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#0a4a82]/20 cursor-pointer hover:border-[#0a4a82]/40 transition-colors">
@@ -1436,6 +1449,7 @@ function EditEventDialog({ event, open, onClose }: { event: any; open: boolean; 
               >
                 <Upload className="h-5 w-5 text-[#d4a373]/40" />
                 <span className="text-xs text-gray-500">Click to upload an image</span>
+                <span className="text-xs text-gray-400">Recommended: 800×500px (16:10 ratio) · max 5MB</span>
               </div>
             )}
             {isUploading && (

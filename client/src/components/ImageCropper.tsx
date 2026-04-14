@@ -99,7 +99,7 @@ export function ImageCropper({ imageFile, aspectRatio, onCropped, onCancel, maxW
   if (!imgSrc) return <div className="flex items-center justify-center py-12 text-muted-foreground">Loading image...</div>;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" data-testid="image-cropper-overlay">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm" style={{ zIndex: 9999 }} data-testid="image-cropper-overlay">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
           <div className="flex items-center gap-2">

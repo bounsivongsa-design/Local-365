@@ -289,7 +289,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
           >
             <ImageIcon className="h-8 w-8 text-slate-400 mb-2" />
             <span className="text-sm text-slate-500 font-medium">Click or drag to upload an image</span>
-            <span className="text-xs text-slate-400 mt-1">JPG, PNG, or WebP — max 5MB</span>
+            <span className="text-xs text-slate-400 mt-1">Recommended: 600×400px (3:2 ratio) · JPG, PNG, or WebP · max 5MB</span>
             <input
               type="file"
               accept="image/*"
@@ -443,6 +443,7 @@ function EditJobForm({ listing, onSuccess }: { listing: import("@shared/schema")
           <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-[#0a4a82] hover:bg-slate-50 transition-colors" data-testid="dropzone-edit-job-image">
             <ImageIcon className="h-8 w-8 text-slate-400 mb-2" />
             <span className="text-sm text-slate-500 font-medium">Click or drag to upload an image</span>
+            <span className="text-xs text-slate-400 mt-1">Recommended: 600×400px (3:2 ratio) · max 5MB</span>
             <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageSelect(file); }} data-testid="input-edit-job-image-file" />
           </label>
         )}
