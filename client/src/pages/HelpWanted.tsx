@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MembershipBadge } from "@/components/MembershipBadge";
+import { ExampleBanner } from "@/components/ExampleBanner";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,8 @@ function JobCard({ listing }: { listing: JobListingWithBusiness }) {
   const tierLabel = getTierLabel(tier);
 
   return (
-    <Card className={`overflow-hidden bg-white/95 backdrop-blur-sm hover:shadow-lg transition-all ${getTierBorderClass(tier)}`} data-testid={`card-job-${listing.id}`}>
+    <Card className={`overflow-hidden bg-white/95 backdrop-blur-sm hover:shadow-lg transition-all relative ${getTierBorderClass(tier)}`} data-testid={`card-job-${listing.id}`}>
+      {listing.business?.isExample && <ExampleBanner variant="ribbon" />}
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
           {listing.imageUrl && (
