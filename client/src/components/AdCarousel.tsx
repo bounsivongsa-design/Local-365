@@ -67,7 +67,6 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   const [largeAdPos, setLargeAdPos] = useState(0);
   const [mediumAdPos, setMediumAdPos] = useState(0);
   const [smallAdPos, setSmallAdPos] = useState(0);
-  const initializedRef = useRef(false);
   const [previewAd, setPreviewAd] = useState<AdSlide | null>(null);
   const impressionsSent = useRef<Set<number>>(new Set());
 
@@ -105,6 +104,10 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   const mediumPageCount = Math.ceil(mediumAds.slides.length / 2);
   const smallPageCount = Math.ceil(smallAds.slides.length / 3);
 
+  const safeLargePos = largePageCount > 0 ? Math.min(largeAdPos, largePageCount - 1) : 0;
+  const safeMediumPos = mediumPageCount > 0 ? Math.min(mediumAdPos, mediumPageCount - 1) : 0;
+  const safeSmallPos = smallPageCount > 0 ? Math.min(smallAdPos, smallPageCount - 1) : 0;
+
   const trackImpression = (adId: number) => {
     if (adId > 0 && !impressionsSent.current.has(adId)) {
       impressionsSent.current.add(adId);
@@ -133,20 +136,29 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   };
 
   useEffect(() => {
-    if (!initializedRef.current && largePageCount > 0 && mediumPageCount > 0 && smallPageCount > 0) {
-      initializedRef.current = true;
-      setLargeAdPos(Math.floor(Math.random() * largePageCount));
-      setMediumAdPos(Math.floor(Math.random() * mediumPageCount));
-      setSmallAdPos(Math.floor(Math.random() * smallPageCount));
+    if (largePageCount > 0) {
+      setLargeAdPos(p => p >= largePageCount ? 0 : p);
     }
-  }, [largePageCount, mediumPageCount, smallPageCount]);
+  }, [largePageCount]);
+
+  useEffect(() => {
+    if (mediumPageCount > 0) {
+      setMediumAdPos(p => p >= mediumPageCount ? 0 : p);
+    }
+  }, [mediumPageCount]);
+
+  useEffect(() => {
+    if (smallPageCount > 0) {
+      setSmallAdPos(p => p >= smallPageCount ? 0 : p);
+    }
+  }, [smallPageCount]);
 
   useEffect(() => {
     if (largePageCount <= 1) return;
     const interval = setInterval(() => {
       setLargeAdPos(p => {
         let next;
-        do { next = Math.floor(Math.random() * largePageCount); } while (next === p);
+        do { next = Math.floor(Math.random() * largePageCount); } while (next === p && largePageCount > 1);
         return next;
       });
     }, 6000);
@@ -158,7 +170,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
     const interval = setInterval(() => {
       setMediumAdPos(p => {
         let next;
-        do { next = Math.floor(Math.random() * mediumPageCount); } while (next === p);
+        do { next = Math.floor(Math.random() * mediumPageCount); } while (next === p && mediumPageCount > 1);
         return next;
       });
     }, 8000);
@@ -170,7 +182,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
     const interval = setInterval(() => {
       setSmallAdPos(p => {
         let next;
-        do { next = Math.floor(Math.random() * smallPageCount); } while (next === p);
+        do { next = Math.floor(Math.random() * smallPageCount); } while (next === p && smallPageCount > 1);
         return next;
       });
     }, 10000);
@@ -178,22 +190,22 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   }, [smallPageCount]);
 
   useEffect(() => {
-    if (largeAds.slides[largeAdPos]) trackImpression(largeAds.slides[largeAdPos].id);
-  }, [largeAdPos, largeAds.slides]);
+    if (largeAds.slides[safeLargePos]) trackImpression(largeAds.slides[safeLargePos].id);
+  }, [safeLargePos, largeAds.slides]);
 
   useEffect(() => {
-    const startIdx = mediumAdPos * 2;
+    const startIdx = safeMediumPos * 2;
     for (let i = startIdx; i < startIdx + 2 && i < mediumAds.slides.length; i++) {
       trackImpression(mediumAds.slides[i].id);
     }
-  }, [mediumAdPos, mediumAds.slides]);
+  }, [safeMediumPos, mediumAds.slides]);
 
   useEffect(() => {
-    const startIdx = smallAdPos * 3;
+    const startIdx = safeSmallPos * 3;
     for (let i = startIdx; i < startIdx + 3 && i < smallAds.slides.length; i++) {
       trackImpression(smallAds.slides[i].id);
     }
-  }, [smallAdPos, smallAds.slides]);
+  }, [safeSmallPos, smallAds.slides]);
 
   return (
     <div className="bg-gradient-to-b from-[#0a3a6e] via-[#0a4a82] to-[#0a3a6e] py-12">
@@ -208,11 +220,11 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
           <div>
             <div className="relative rounded-2xl shadow-2xl shadow-black/30 overflow-hidden max-h-[280px] lg:max-h-none" style={{ aspectRatio: '16/9' }}>
               {largeAds.slides.map((slide, idx) => (
-                <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === largeAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
+                <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === safeLargePos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
                   <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                     <div className="relative w-full h-full overflow-hidden group">
                       {largeAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
-                      <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" />
+                      {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6">
                         <div className="flex items-center gap-2 mb-2">
@@ -232,7 +244,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
             </div>
             <div className="flex justify-center gap-2 mt-3">
               {largeAds.slides.map((_, idx) => (
-                <button key={idx} onClick={() => setLargeAdPos(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === largeAdPos ? 'bg-[#d4a373] w-5' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-large-dot-${idx}`} />
+                <button key={idx} onClick={() => setLargeAdPos(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === safeLargePos ? 'bg-[#d4a373] w-5' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-large-dot-${idx}`} />
               ))}
             </div>
           </div>
@@ -243,14 +255,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
               {Array.from({ length: mediumPageCount }).map((_, pageIdx) => {
                 const pageSlides = mediumAds.slides.slice(pageIdx * 2, pageIdx * 2 + 2);
                 return (
-                  <div key={`med-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === mediumAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                  <div key={`med-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === safeMediumPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                     <div className="flex flex-col gap-3 h-full">
                       {pageSlides.map((slide, idx) => (
                         <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-xl group h-full" style={{ aspectRatio: '20/9' }}>
                               {(mediumAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
-                              <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" />
+                              {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
                               <div className="absolute bottom-0 left-0 right-0 p-4">
                                 <div className="flex items-center gap-2 mb-1">
@@ -273,7 +285,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
             </div>
             <div className="flex justify-center gap-2 mt-3">
               {Array.from({ length: mediumPageCount }).map((_, idx) => (
-                <button key={idx} onClick={() => setMediumAdPos(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === mediumAdPos ? 'bg-[#d4a373] w-5' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-medium-dot-${idx}`} />
+                <button key={idx} onClick={() => setMediumAdPos(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === safeMediumPos ? 'bg-[#d4a373] w-5' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-medium-dot-${idx}`} />
               ))}
             </div>
           </div>
@@ -284,14 +296,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
               {Array.from({ length: smallPageCount }).map((_, pageIdx) => {
                 const pageSlides = smallAds.slides.slice(pageIdx * 3, pageIdx * 3 + 3);
                 return (
-                  <div key={`sm-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === smallAdPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                  <div key={`sm-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === safeSmallPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                     <div className="flex flex-col gap-2 h-full">
                       {pageSlides.map((slide, idx) => (
                         <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-lg group h-full" style={{ aspectRatio: '12/5' }}>
                               {(smallAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
-                              <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" />
+                              {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                               <div className="absolute bottom-0 left-0 right-0 p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
@@ -314,7 +326,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
             </div>
             <div className="flex justify-center gap-1.5 mt-3">
               {Array.from({ length: smallPageCount }).map((_, idx) => (
-                <button key={idx} onClick={() => setSmallAdPos(idx)} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === smallAdPos ? 'bg-[#d4a373] w-4' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-small-dot-${idx}`} />
+                <button key={idx} onClick={() => setSmallAdPos(idx)} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === safeSmallPos ? 'bg-[#d4a373] w-4' : 'bg-white/40 hover:bg-white/60'}`} data-testid={`ad-small-dot-${idx}`} />
               ))}
             </div>
           </div>
