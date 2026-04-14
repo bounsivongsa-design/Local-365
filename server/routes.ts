@@ -2881,7 +2881,7 @@ Respond in this exact JSON format:
         description,
         imageUrl: normalizedImageUrl,
         videoUrl: validatedVideoUrl,
-        linkUrl,
+        linkUrl: linkUrl && linkUrl.trim() && !linkUrl.startsWith("http") ? `https://${linkUrl}` : linkUrl,
         category,
         startDate: adStartDate,
         endDate: adEndDate,
@@ -2940,7 +2940,7 @@ Respond in this exact JSON format:
         updates.imageUrl = normalizedImg;
       }
       if (videoUrl !== undefined) updates.videoUrl = videoUrl;
-      if (linkUrl !== undefined) updates.linkUrl = linkUrl;
+      if (linkUrl !== undefined) updates.linkUrl = linkUrl && linkUrl.trim() && !linkUrl.startsWith("http") ? `https://${linkUrl}` : linkUrl;
       if (ad.status === "active" && ad.paymentStatus === "paid" && adSize && adSize !== ad.adSize) {
         return res.status(400).json({ message: "Cannot change ad size while the ad is active. You can update the title, description, image, or link." });
       }

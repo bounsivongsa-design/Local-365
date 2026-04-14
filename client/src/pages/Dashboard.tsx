@@ -842,11 +842,12 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const normalizedLink = formData.linkUrl && formData.linkUrl.trim() && !formData.linkUrl.startsWith("http") ? `https://${formData.linkUrl}` : formData.linkUrl;
       const res = await fetch(`/api/ads/${ad.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...formData, imageUrl }),
+        body: JSON.stringify({ ...formData, linkUrl: normalizedLink, imageUrl }),
       });
       if (!res.ok) {
         const err = await res.json();

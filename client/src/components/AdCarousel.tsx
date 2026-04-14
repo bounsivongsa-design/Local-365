@@ -124,7 +124,8 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
       fetch(`/api/ads/${previewAd.id}/click`, { method: "POST" }).catch(() => {});
     }
     if (action === "link" && previewAd.linkUrl) {
-      window.open(previewAd.linkUrl, "_blank", "noopener,noreferrer");
+      const url = previewAd.linkUrl.startsWith("http") ? previewAd.linkUrl : `https://${previewAd.linkUrl}`;
+      window.open(url, "_blank", "noopener,noreferrer");
     } else if (action === "business" && previewAd.businessId) {
       window.location.href = `/directory/${previewAd.businessId}`;
     }
