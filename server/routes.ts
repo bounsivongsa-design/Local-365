@@ -4719,5 +4719,13 @@ async function seedDatabase() {
     });
 
     console.log("Database seeded with 26 placeholder businesses and 3 events!");
+  } else {
+    const nonExampleSeeds = existingBusinesses.filter(b => !b.isExample && b.imageUrl?.includes("unsplash.com"));
+    if (nonExampleSeeds.length > 0) {
+      console.log(`Marking ${nonExampleSeeds.length} seed businesses as examples...`);
+      const ids = nonExampleSeeds.map(b => b.id);
+      await pgDb.update(businesses).set({ isExample: true }).where(inArray(businesses.id, ids));
+      console.log("Done marking seed businesses as examples.");
+    }
   }
 }
