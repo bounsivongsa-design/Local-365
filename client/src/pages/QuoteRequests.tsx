@@ -478,11 +478,12 @@ export default function QuoteRequests() {
                         <Clock className="h-4 w-4" />
                         How it works
                       </h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 text-left">
-                        <li>Gold members see your request first (0-24 hrs)</li>
-                        <li>Silver members join at 24-48 hrs</li>
-                        <li>Bronze members join after 48 hrs</li>
-                        <li>All quotes expire after 10 business days</li>
+                      <ul className="text-sm text-muted-foreground space-y-1.5 text-left">
+                        <li><span className="font-medium text-amber-600">Gold</span> members get first access right away</li>
+                        <li><span className="font-medium text-slate-500">Silver</span> members join after 24 hrs</li>
+                        <li><span className="font-medium text-amber-800">Bronze</span> members join after 48 hrs</li>
+                        <li className="pt-1 border-t border-slate-200">Once a round opens, those businesses can quote for the <span className="font-medium">entire remaining period</span></li>
+                        <li>All requests stay open for up to 10 business days</li>
                       </ul>
                     </div>
                     <Button onClick={() => {
@@ -735,30 +736,36 @@ export default function QuoteRequests() {
                 <CardContent className="p-5">
                   <h4 className="font-semibold text-[#0a4a82] mb-3 flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    How Quote Rounds Work
+                    How the Quoting Process Works
                   </h4>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Businesses are given access in rounds based on their membership tier. Once a round opens, those businesses can view and respond to your request for the <span className="font-semibold text-[#0a4a82]">entire quoting period</span> — not just their priority window.
+                  </p>
                   <div className="space-y-3 text-sm">
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
                       <div>
-                        <p className="font-medium">Gold Members (0-24 hrs)</p>
-                        <p className="text-slate-500 text-xs">Top-tier businesses see your request first</p>
+                        <p className="font-medium">Round 1 — Gold Members</p>
+                        <p className="text-slate-500 text-xs">Get first access immediately. Can quote for the full 10 business days.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
                       <div>
-                        <p className="font-medium">Silver Members (24-48 hrs)</p>
-                        <p className="text-slate-500 text-xs">More businesses compete for your project</p>
+                        <p className="font-medium">Round 2 — Silver Members</p>
+                        <p className="text-slate-500 text-xs">Access opens after 24 hrs. Can quote for the remaining days alongside Gold.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-amber-700 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
                       <div>
-                        <p className="font-medium">Bronze Members (48+ hrs)</p>
-                        <p className="text-slate-500 text-xs">Join the bidding after Gold and Silver members</p>
+                        <p className="font-medium">Round 3 — Bronze Members</p>
+                        <p className="text-slate-500 text-xs">Access opens after 48 hrs. Can quote for the remaining days alongside Gold & Silver.</p>
                       </div>
                     </div>
+                  </div>
+                  <div className="mt-3 p-2 bg-[#0a4a82]/5 rounded-lg">
+                    <p className="text-xs text-[#0a4a82] font-medium">All requests stay open for up to 10 business days. Higher-tier members simply get a head start — every business can quote once their round opens.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -841,10 +848,10 @@ export default function QuoteRequests() {
                       <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-center">
                         <Lock className="h-6 w-6 text-slate-400 mx-auto mb-2" />
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                          Not yet available for your tier
+                          Your round hasn't opened yet
                         </p>
                         <p className="text-xs text-slate-400 mt-1">
-                          Higher-tier members get early access to new projects. Upgrade for priority access.
+                          Higher-tier members get earlier access. Once your round opens, you can quote for the entire remaining period. Upgrade to get access sooner.
                         </p>
                         <Link to="/membership">
                           <Button variant="outline" size="sm" className="mt-3 border-[#d4a373] text-[#d4a373] hover:bg-[#d4a373]/10" data-testid={`button-upgrade-tier-${req.id}`}>
@@ -875,13 +882,13 @@ export default function QuoteRequests() {
                               {req.priorityExpiresAt && new Date(req.priorityExpiresAt) > new Date() && (
                                 <div className="flex items-center gap-1 text-xs text-amber-600">
                                   <Timer className="h-3 w-3" />
-                                  Window ends {formatDistanceToNow(new Date(req.priorityExpiresAt), { addSuffix: true })}
+                                  Exclusive access for {formatDistanceToNow(new Date(req.priorityExpiresAt))} more
                                 </div>
                               )}
                               {req.priorityExpiresAt && new Date(req.priorityExpiresAt) <= new Date() && (
                                 <div className="flex items-center gap-1 text-xs text-green-600">
                                   <Timer className="h-3 w-3" />
-                                  Open to all tiers
+                                  Open to all tiers — you can still quote
                                 </div>
                               )}
                             </div>
@@ -920,7 +927,7 @@ export default function QuoteRequests() {
                               <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
                                 <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                                   <Shield className="h-3 w-3" />
-                                  <span className="font-medium">Priority Access — Respond now to start a conversation with this customer</span>
+                                  <span className="font-medium">You have access — respond anytime before the request closes</span>
                                 </div>
                               </div>
                             )}
