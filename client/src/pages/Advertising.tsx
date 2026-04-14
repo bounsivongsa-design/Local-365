@@ -232,9 +232,14 @@ export default function Advertising() {
           body: JSON.stringify(checkoutBody),
         });
         if (checkoutRes.ok) {
-          const { url } = await checkoutRes.json();
-          if (url) {
-            window.location.href = url;
+          const checkoutData = await checkoutRes.json();
+          if (checkoutData.founderBypass) {
+            toast({ title: "Activated!", description: checkoutData.message });
+            queryClient.invalidateQueries({ queryKey: ["/api/ads/my"] });
+            return;
+          }
+          if (checkoutData.url) {
+            window.location.href = checkoutData.url;
             return;
           }
         }
@@ -1007,8 +1012,13 @@ export default function Advertising() {
                                       body: JSON.stringify({ adPlacementId: ad.id }),
                                     });
                                     if (res.ok) {
-                                      const { url } = await res.json();
-                                      if (url) window.location.href = url;
+                                      const adData = await res.json();
+                                      if (adData.founderBypass) {
+                                        toast({ title: "Activated!", description: adData.message });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ads/my"] });
+                                      } else if (adData.url) {
+                                        window.location.href = adData.url;
+                                      }
                                     } else {
                                       const err = await res.json();
                                       toast({ variant: "destructive", title: "Error", description: err.message });

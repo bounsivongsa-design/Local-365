@@ -313,6 +313,13 @@ export default function BusinessMembership() {
         toast({ title: "Error", description: data.message || "Failed to start checkout", variant: "destructive" });
         return;
       }
+      if (data.founderBypass) {
+        toast({ title: "Gold Membership Activated!", description: data.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user/gold-trial-status"] });
+        setCheckoutTier(null);
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       }

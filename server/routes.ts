@@ -21,7 +21,17 @@ async function isAdminUser(userId: string): Promise<boolean> {
 
 const ADMIN_EMAILS = ["boun.sivongsa@gmail.com", "locallist365@gmail.com"];
 
-function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null }): string {
+const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
+
+function isFounderBusiness(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return FOUNDER_BUSINESSES.some(fb => fb.toLowerCase() === name.toLowerCase());
+}
+
+function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null }): string {
+  if (biz.name && isFounderBusiness(biz.name)) {
+    return "premium";
+  }
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) {
     return "premium";
   }

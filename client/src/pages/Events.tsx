@@ -130,6 +130,12 @@ function MyEventsSection({ events: myEvents }: { events: import("@shared/schema"
         body: JSON.stringify({ eventId }),
       });
       const data = await res.json();
+      if (data.founderBypass) {
+        toast({ title: "Activated!", description: data.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/events/my"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -809,9 +815,15 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
             body: JSON.stringify({ eventId: newEvent.id }),
           });
           if (checkoutRes.ok) {
-            const { url } = await checkoutRes.json();
-            if (url) {
-              window.location.href = url;
+            const evtData = await checkoutRes.json();
+            if (evtData.founderBypass) {
+              toast({ title: "Event Activated!", description: evtData.message });
+              queryClient.invalidateQueries({ queryKey: ["/api/events/my"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+              return;
+            }
+            if (evtData.url) {
+              window.location.href = evtData.url;
               return;
             }
           }

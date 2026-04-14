@@ -6,7 +6,17 @@ import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
-function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null }): string {
+const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
+
+function isFounderBusiness(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return FOUNDER_BUSINESSES.some(fb => fb.toLowerCase() === name.toLowerCase());
+}
+
+function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null }): string {
+  if (biz.name && isFounderBusiness(biz.name)) {
+    return "premium";
+  }
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) {
     return "premium";
   }
@@ -109,6 +119,15 @@ export function registerStripeRoutes(app: Express) {
       if (req.user?.linkedBusinessId) {
         const [found] = await db.select().from(businesses).where(eq(businesses.id, req.user.linkedBusinessId));
         biz = found || null;
+      }
+
+      if (biz && isFounderBusiness(biz.name)) {
+        await db.update(businesses).set({
+          membershipTier: "premium",
+          membershipStartDate: new Date(),
+          membershipEndDate: null,
+        }).where(eq(businesses.id, biz.id));
+        return res.json({ founderBypass: true, message: "Founder business — Gold membership activated for free!" });
       }
 
       let promoDiscount = 0;
@@ -550,6 +569,11 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "Business not found" });
       }
 
+      if (isFounderBusiness(biz.name)) {
+        await db.update(jobListings).set({ isActive: true, paymentStatus: "paid" as any }).where(eq(jobListings.id, jobListingId));
+        return res.json({ founderBypass: true, message: "Founder business — job listing activated for free!" });
+      }
+
       const JOB_PRICES_BY_TIER: Record<string, number> = {
         premium: 1000,
         standard: 1500,
@@ -633,6 +657,11 @@ export function registerStripeRoutes(app: Express) {
       const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
       if (!biz) {
         return res.status(404).json({ message: "Business not found" });
+      }
+
+      if (isFounderBusiness(biz.name)) {
+        await db.update(adPlacements).set({ paymentStatus: "paid", status: "active" }).where(eq(adPlacements.id, adPlacementId));
+        return res.json({ founderBypass: true, message: "Founder business — ad activated for free!" });
       }
 
       const priceInCents = ad.priceMonthly || 25000;
@@ -731,6 +760,11 @@ export function registerStripeRoutes(app: Express) {
       const [biz] = await db.select().from(businesses).where(eq(businesses.id, user.linkedBusinessId));
       if (!biz) {
         return res.status(404).json({ message: "Business not found" });
+      }
+
+      if (isFounderBusiness(biz.name)) {
+        await db.update(events).set({ paymentStatus: "paid", status: "approved" }).where(eq(events.id, eventId));
+        return res.json({ founderBypass: true, message: "Founder business — event ad activated for free!" });
       }
 
       const priceInCents = (evt.priceCharged || 5000);

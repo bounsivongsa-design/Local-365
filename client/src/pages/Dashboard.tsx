@@ -994,6 +994,11 @@ function MyAdsSection({ businessId }: { businessId: number }) {
         body: JSON.stringify({ adPlacementId: adId }),
       });
       const data = await res.json();
+      if (data.founderBypass) {
+        toast({ title: "Activated!", description: data.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/ads/my"] });
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -1186,6 +1191,11 @@ function MyJobsSection() {
         body: JSON.stringify({ jobListingId: jobId }),
       });
       const data = await res.json();
+      if (data.founderBypass) {
+        toast({ title: "Activated!", description: data.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/jobs/my"] });
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -1466,6 +1476,11 @@ function MyEventsSection() {
         body: JSON.stringify({ eventId }),
       });
       const data = await res.json();
+      if (data.founderBypass) {
+        toast({ title: "Activated!", description: data.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/events/my"] });
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       } else {
