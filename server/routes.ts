@@ -1258,6 +1258,21 @@ Respond in this exact JSON format:
           return res.status(400).json({ message: "Invalid image URL" });
         }
       }
+      if (updates.category !== undefined && (!updates.category || typeof updates.category !== "string")) {
+        return res.status(400).json({ message: "Primary category is required" });
+      }
+      if (updates.additionalCategories !== undefined) {
+        const effectiveTier = getEffectiveTier(biz);
+        const tierConfig = getMembershipTier(effectiveTier);
+        const maxCategories = tierConfig?.limits.maxCategories ?? 4;
+        let addCats = Array.isArray(updates.additionalCategories) ? updates.additionalCategories : [];
+        const primaryCat = updates.category || biz.category;
+        addCats = [...new Set(addCats.filter((c: string) => c && c !== primaryCat))];
+        if (1 + addCats.length > maxCategories) {
+          addCats = addCats.slice(0, maxCategories - 1);
+        }
+        updates.additionalCategories = addCats;
+      }
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
       }

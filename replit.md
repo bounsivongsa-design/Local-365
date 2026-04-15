@@ -50,7 +50,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Technical Implementations
 - **Distance Filtering**: Uses Haversine formula for location-based searches.
-- **Category Management**: Hierarchical categories with community suggestion.
+- **Category Management**: Hierarchical categories with community suggestion. Dashboard edit form supports primary + additional category editing with tier-based limits enforced both client-side and server-side.
 - **Stripe Integration**: Handles subscriptions, payments, and webhooks.
 - **Authentication**: Bcrypt for password hashing, PostgreSQL for session storage, and Google OAuth.
 - **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive 30 days of Gold-tier features.

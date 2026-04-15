@@ -1197,10 +1197,10 @@ export function CreateBusinessForm({
 
   const renderStep4 = () => (
     <div className="space-y-5">
-      <h3 className="text-lg font-semibold text-[#0a4a82] dark:text-blue-300">
+      <h3 className="text-lg font-semibold text-[#1a1a2e] dark:text-blue-300">
         Business Credentials
       </h3>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-gray-600 dark:text-gray-400">
         These badges appear on your public profile and help build trust with
         customers.
       </p>
