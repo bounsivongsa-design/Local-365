@@ -333,7 +333,7 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true, sta
   { message: "Flyer URL must start with http:// or https://", path: ["flyerUrl"] }
 );
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, authorId: true, likes: true, commentCount: true }); 
-export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true });
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, userId: true, businessId: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, authorId: true, likes: true });
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
 export const insertAdPlacementSchema = createInsertSchema(adPlacements).omit({ 
