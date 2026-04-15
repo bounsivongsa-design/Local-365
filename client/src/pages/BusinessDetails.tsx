@@ -88,7 +88,7 @@ export default function BusinessDetails() {
                <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
                {business.address && (
                  <p className="text-white/90 mt-2 flex items-center gap-1.5 text-sm drop-shadow-sm">
-                   <MapPin className="h-4 w-4" /> {business.address}{business.city ? `, ${business.city}` : ""}{business.state ? `, ${business.state}` : ""} {business.zipCode || ""}
+                   <MapPin className="h-4 w-4" /> {business.address}
                  </p>
                )}
              </div>
