@@ -651,7 +651,7 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e]">Categories</CardTitle>
+          <CardTitle className="text-base" style={{ color: '#1a1a2e' }}>Categories</CardTitle>
           <p className="text-xs text-gray-500">
             {1 + additionalCategories.length} / {maxCategories} categories selected
           </p>
@@ -721,7 +721,7 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e]">Business Hours</CardTitle>
+          <CardTitle className="text-base" style={{ color: '#1a1a2e' }}>Business Hours</CardTitle>
           <div className="flex gap-2 mt-2">
             <button
               type="button"
@@ -796,7 +796,7 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e]">Social Media</CardTitle>
+          <CardTitle className="text-base" style={{ color: '#1a1a2e' }}>Social Media</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
@@ -806,7 +806,7 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
             { key: "linkedin", label: "LinkedIn" },
           ].map(({ key, label }) => (
             <div key={key} className="space-y-1">
-              <label className="text-xs font-medium text-gray-500">{label}</label>
+              <label className="text-xs font-medium" style={{ color: '#1a1a2e' }}>{label}</label>
               <input
                 value={social[key] || ""}
                 onChange={(e) => setSocial({ ...social, [key]: e.target.value })}
@@ -821,7 +821,7 @@ function EditBusinessForm({ business, onClose }: { business: Business; onClose: 
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e]">Credentials & Preferences</CardTitle>
+          <CardTitle className="text-base" style={{ color: '#1a1a2e' }}>Credentials & Preferences</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

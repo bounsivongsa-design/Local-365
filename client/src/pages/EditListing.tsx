@@ -29,7 +29,10 @@ import {
   Search,
   Shield,
   CheckCircle2,
+  Tag,
 } from "lucide-react";
+import { BUSINESS_CATEGORIES } from "@shared/config/categories";
+import { getMembershipTier } from "@shared/config/membership";
 
 interface Business {
   id: number;
@@ -50,6 +53,7 @@ interface Business {
   galleryPhotos: string[] | null;
   promoVideoUrl: string | null;
   effectiveTier?: string | null;
+  additionalCategories?: string[] | null;
   hasLLC: boolean;
   hasInsurance: boolean;
   isLicensed: boolean;
@@ -576,8 +580,19 @@ function ProfileEditor({ business }: { business: Business }) {
     })()
   );
   const [social, setSocial] = useState<Record<string, string>>(parseSocial(business.socialMediaUrls));
+  const [additionalCategories, setAdditionalCategories] = useState<string[]>(
+    business.additionalCategories || []
+  );
+
+  const effectiveTier = business.effectiveTier || business.membershipTier || "basic";
+  const tierConfig = getMembershipTier(effectiveTier);
+  const maxCategories = tierConfig?.limits.maxCategories ?? 4;
 
   const handleSave = async () => {
+    if (!form.category) {
+      toast({ variant: "destructive", title: "Error", description: "Please select a primary category." });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/businesses/${business.id}`, {
@@ -586,6 +601,7 @@ function ProfileEditor({ business }: { business: Business }) {
         credentials: "include",
         body: JSON.stringify({
           ...form,
+          additionalCategories,
           businessHours: JSON.stringify(
             hoursMode === "text"
               ? { _mode: "text", _note: hoursNote }
@@ -614,7 +630,7 @@ function ProfileEditor({ business }: { business: Business }) {
     <div className="space-y-6">
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e] flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2" style={{ color: '#1a1a2e' }}>
             <Settings className="h-4 w-4 text-[#0a4a82]" />
             Business Information
           </CardTitle>
@@ -708,7 +724,80 @@ function ProfileEditor({ business }: { business: Business }) {
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e] flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2" style={{ color: '#1a1a2e' }}>
+            <Tag className="h-4 w-4 text-[#0a4a82]" />
+            Categories
+          </CardTitle>
+          <p className="text-xs" style={{ color: '#6b7280' }}>
+            {1 + additionalCategories.length} / {maxCategories} categories selected
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium" style={{ color: '#1a1a2e' }}>Primary Category</label>
+            <select
+              value={form.category}
+              onChange={(e) => {
+                const newPrimary = e.target.value;
+                setForm({ ...form, category: newPrimary });
+                setAdditionalCategories(prev => prev.filter(c => c !== newPrimary));
+              }}
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white focus:ring-2 focus:ring-[#0a4a82]/30 focus:border-[#0a4a82] outline-none"
+              style={inputStyle}
+              data-testid="select-edit-category"
+            >
+              <option value="">Select a category</option>
+              {BUSINESS_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          {maxCategories > 1 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium" style={{ color: '#1a1a2e' }}>Additional Categories</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                {BUSINESS_CATEGORIES
+                  .filter(cat => cat.name !== form.category)
+                  .map((cat) => {
+                    const isSelected = additionalCategories.includes(cat.name);
+                    const atLimit = 1 + additionalCategories.length >= maxCategories;
+                    return (
+                      <label
+                        key={cat.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all text-sm ${
+                          isSelected
+                            ? 'bg-[#0a4a82]/5 border-[#0a4a82]/30'
+                            : atLimit
+                              ? 'bg-gray-50 border-gray-100 cursor-not-allowed'
+                              : 'bg-gray-50 border-gray-200 hover:border-[#0a4a82]/20'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!isSelected && atLimit}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAdditionalCategories([...additionalCategories, cat.name]);
+                            } else {
+                              setAdditionalCategories(additionalCategories.filter(c => c !== cat.name));
+                            }
+                          }}
+                          className="h-3.5 w-3.5 rounded border-gray-300 text-[#0a4a82]"
+                        />
+                        <span className="text-xs" style={{ color: isSelected ? '#0a4a82' : atLimit ? '#d1d5db' : '#1a1a2e' }}>{cat.name}</span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2" style={{ color: '#1a1a2e' }}>
             <Clock className="h-4 w-4 text-[#0a4a82]" />
             Business Hours
           </CardTitle>
@@ -774,7 +863,7 @@ function ProfileEditor({ business }: { business: Business }) {
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e]">Social Media</CardTitle>
+          <CardTitle className="text-base" style={{ color: '#1a1a2e' }}>Social Media</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
@@ -784,7 +873,7 @@ function ProfileEditor({ business }: { business: Business }) {
             { key: "linkedin", label: "LinkedIn" },
           ].map(({ key, label }) => (
             <div key={key} className="space-y-1">
-              <label className="text-xs font-medium text-gray-500">{label}</label>
+              <label className="text-xs font-medium" style={{ color: '#1a1a2e' }}>{label}</label>
               <input
                 value={social[key] || ""}
                 onChange={(e) => setSocial({ ...social, [key]: e.target.value })}
@@ -799,7 +888,7 @@ function ProfileEditor({ business }: { business: Business }) {
 
       <Card className="bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.1)] rounded-2xl border-[#0a4a82]/10">
         <CardHeader>
-          <CardTitle className="text-base text-[#1a1a2e] flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2" style={{ color: '#1a1a2e' }}>
             <Shield className="h-4 w-4 text-[#0a4a82]" />
             Credentials & Preferences
           </CardTitle>
