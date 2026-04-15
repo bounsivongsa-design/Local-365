@@ -4618,6 +4618,7 @@ async function seedDatabase() {
       { id: 35, name: "Recreation & Sports", subs: ["Golf", "Fishing", "Fitness", "Outdoor Adventures"] },
       { id: 36, name: "Restaurants & Dining", subs: ["Dine-In", "Takeout", "Bar & Grill", "Seafood"] },
       { id: 37, name: "IT & Technology", subs: ["Computer Repair", "Networking", "Web Hosting", "Managed IT"] },
+      { id: 38, name: "Land Development", subs: [] },
     ];
     const existingNames = catList.map((c: any) => c.name);
     const toAdd = newCats.filter(c => !existingNames.includes(c.name));
@@ -4669,6 +4670,7 @@ async function seedDatabase() {
       { id: 35, name: "Recreation & Sports", subs: ["Golf", "Fishing", "Fitness", "Outdoor Adventures"] },
       { id: 36, name: "Restaurants & Dining", subs: ["Dine-In", "Takeout", "Bar & Grill", "Seafood"] },
       { id: 37, name: "IT & Technology", subs: ["Computer Repair", "Networking", "Web Hosting", "Managed IT"] },
+      { id: 38, name: "Land Development", subs: [] },
     ];
     await db.set('categories', categories);
     console.log("Categories seeded!");
