@@ -8,9 +8,14 @@ import { isAuthenticated } from "./replit_integrations/auth";
 
 const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
 
+function normalizeBusinessName(name: string): string {
+  return name.toLowerCase().replace(/\b(llc|inc|corp|ltd|co)\b\.?/gi, '').trim().replace(/\s+/g, ' ');
+}
+
 function isFounderBusiness(name: string | null | undefined): boolean {
   if (!name) return false;
-  return FOUNDER_BUSINESSES.some(fb => fb.toLowerCase() === name.toLowerCase());
+  const normalized = normalizeBusinessName(name);
+  return FOUNDER_BUSINESSES.some(fb => normalizeBusinessName(fb) === normalized);
 }
 
 function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null }): string {
