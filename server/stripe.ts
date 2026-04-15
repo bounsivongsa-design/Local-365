@@ -522,6 +522,22 @@ export function registerStripeRoutes(app: Express) {
             }
           } catch (e) {}
 
+          const promoCodeIdStr2 = session.metadata?.promoCodeId;
+          if (promoCodeIdStr2) {
+            const promoCodeId2 = parseInt(promoCodeIdStr2);
+            const existingUsage2 = await db.select({ id: promoCodeUsages.id }).from(promoCodeUsages)
+              .where(eq(promoCodeUsages.stripeSessionId, session.id)).limit(1);
+            if (existingUsage2.length === 0) {
+              await db.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promoCodeId2));
+              await db.insert(promoCodeUsages).values({
+                promoCodeId: promoCodeId2,
+                businessId: checkoutUser.linkedBusinessId,
+                stripeSessionId: session.id,
+              });
+              console.log(`Promo code ${promoCodeId2} usage recorded via verify-session (linked business) for business ${checkoutUser.linkedBusinessId}`);
+            }
+          }
+
           return res.json({ success: true, type: "membership", tier: DB_TO_TIER[tier] || tier });
         } else {
           await db.update(users).set({

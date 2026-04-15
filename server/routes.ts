@@ -12,7 +12,7 @@ import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
 import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews } from "@shared/schema";
 import OpenAI from "openai";
-import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, lt, gt, lte } from "drizzle-orm";
+import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte } from "drizzle-orm";
 
 async function isAdminUser(userId: string): Promise<boolean> {
   const [u] = await pgDb.select({ accountType: users.accountType }).from(users).where(eq(users.id, userId));
@@ -4838,5 +4838,32 @@ async function seedDatabase() {
       await pgDb.update(businesses).set({ isExample: true }).where(inArray(businesses.id, ids));
       console.log("Done marking seed businesses as examples.");
     }
+  }
+
+  try {
+    const allPromos = await pgDb.select().from(promoCodes);
+    const allUsages = await pgDb.select().from(promoCodeUsages);
+    const activeBiz = await pgDb.select({ id: businesses.id, stripeSubscriptionId: businesses.stripeSubscriptionId }).from(businesses).where(isNotNull(businesses.stripeSubscriptionId));
+
+    for (const biz of activeBiz) {
+      if (!biz.stripeSubscriptionId) continue;
+      try {
+        const stripe = (await import("stripe")).default;
+        const stripeClient = new stripe(process.env.Stripeintegration as string);
+        const sub = await stripeClient.subscriptions.retrieve(biz.stripeSubscriptionId);
+        const sessionList = await stripeClient.checkout.sessions.list({ subscription: biz.stripeSubscriptionId, limit: 1 });
+        const session = sessionList.data[0];
+        if (!session?.metadata?.promoCodeId) continue;
+        const promoCodeId = parseInt(session.metadata.promoCodeId);
+        const hasUsage = allUsages.some(u => u.promoCodeId === promoCodeId && u.businessId === biz.id);
+        if (!hasUsage) {
+          await pgDb.insert(promoCodeUsages).values({ promoCodeId, businessId: biz.id, stripeSessionId: session.id });
+          await pgDb.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promoCodeId));
+          console.log(`[RECONCILE] Promo code ${promoCodeId} usage recorded for business ${biz.id}`);
+        }
+      } catch (e) {}
+    }
+  } catch (e) {
+    console.log("Promo reconciliation skipped:", (e as any)?.message);
   }
 }
