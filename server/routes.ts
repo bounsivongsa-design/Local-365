@@ -7,6 +7,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { registerStripeRoutes } from "./stripe";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
+import { getMembershipTier } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
@@ -41,6 +42,31 @@ function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate
     return "premium";
   }
   return biz.membershipTier || "none";
+}
+
+function enforceTierLimits(biz: any): any {
+  const effectiveTier = getEffectiveTier(biz);
+  const tierConfig = getMembershipTier(effectiveTier);
+  if (!tierConfig) return biz;
+
+  const maxCategories = tierConfig.limits.maxCategories;
+  const maxPhotos = tierConfig.limits.maxPhotos;
+
+  const result = { ...biz };
+
+  if (result.additionalCategories && Array.isArray(result.additionalCategories)) {
+    result.additionalCategories = result.additionalCategories.slice(0, Math.max(0, maxCategories - 1));
+  }
+
+  if (result.photoUrls && Array.isArray(result.photoUrls)) {
+    result.photoUrls = result.photoUrls.slice(0, maxPhotos);
+  }
+
+  if (!tierConfig.limits.socialLinksAllowed) {
+    result.socialMediaUrls = null;
+  }
+
+  return result;
 }
 
 async function seedAdminAccounts() {
@@ -690,8 +716,8 @@ export async function registerRoutes(
   app.get(api.businesses.list.path, async (req, res) => {
     const category = req.query.category as string | undefined;
     const search = req.query.search as string | undefined;
-    const businesses = await storage.getBusinesses(category, search);
-    res.json(businesses);
+    const businessList = await storage.getBusinesses(category, search);
+    res.json(businessList.map(enforceTierLimits));
   });
 
   app.get(api.businesses.get.path, async (req, res) => {
@@ -700,8 +726,8 @@ export async function registerRoutes(
     if (!business) {
       return res.status(404).json({ message: "Business not found" });
     }
-    const reviews = await storage.getReviewsForBusiness(businessId);
-    res.json({ ...business, reviews });
+    const reviewsList = await storage.getReviewsForBusiness(businessId);
+    res.json({ ...enforceTierLimits(business), reviews: reviewsList });
   });
 
   app.post(api.businesses.create.path, isAuthenticated, async (req, res) => {
