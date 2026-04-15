@@ -315,9 +315,10 @@ export default function BusinessMembership() {
       }
       if (data.founderBypass) {
         toast({ title: "Gold Membership Activated!", description: data.message });
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/user/gold-trial-status"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/user/gold-trial-status"] });
         setCheckoutTier(null);
+        navigate("/create-business");
         return;
       }
       if (data.url) {

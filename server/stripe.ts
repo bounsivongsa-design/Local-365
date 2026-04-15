@@ -144,6 +144,10 @@ export function registerStripeRoutes(app: Express) {
             membershipStartDate: new Date(),
             membershipEndDate: null,
           }).where(eq(businesses.id, biz.id));
+        } else {
+          await db.update(users).set({
+            pendingMembershipTier: "premium",
+          }).where(eq(users.id, req.user!.id));
         }
         return res.json({ founderBypass: true, message: "Founder business — Gold membership activated for free!" });
       }
