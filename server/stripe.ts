@@ -7,6 +7,12 @@ import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 
 const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
+const FOUNDER_EMAILS = [
+  "boun.sivongsa@gmail.com",
+  "bsivongsa@blackwatertechnologysolutions.com",
+  "boun.sivongsa@hotmail.com",
+  "goatlockerprinting@gmail.com",
+];
 
 function normalizeBusinessName(name: string): string {
   return name.toLowerCase().replace(/\b(llc|inc|corp|ltd|co)\b\.?/gi, '').trim().replace(/\s+/g, ' ');
@@ -16,6 +22,11 @@ function isFounderBusiness(name: string | null | undefined): boolean {
   if (!name) return false;
   const normalized = normalizeBusinessName(name);
   return FOUNDER_BUSINESSES.some(fb => normalizeBusinessName(fb) === normalized);
+}
+
+function isFounderEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return FOUNDER_EMAILS.some(fe => fe.toLowerCase() === email.toLowerCase());
 }
 
 function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null }): string {
@@ -126,12 +137,14 @@ export function registerStripeRoutes(app: Express) {
         biz = found || null;
       }
 
-      if (biz && isFounderBusiness(biz.name)) {
-        await db.update(businesses).set({
-          membershipTier: "premium",
-          membershipStartDate: new Date(),
-          membershipEndDate: null,
-        }).where(eq(businesses.id, biz.id));
+      if ((biz && isFounderBusiness(biz.name)) || isFounderEmail(req.user?.email)) {
+        if (biz) {
+          await db.update(businesses).set({
+            membershipTier: "premium",
+            membershipStartDate: new Date(),
+            membershipEndDate: null,
+          }).where(eq(businesses.id, biz.id));
+        }
         return res.json({ founderBypass: true, message: "Founder business — Gold membership activated for free!" });
       }
 
