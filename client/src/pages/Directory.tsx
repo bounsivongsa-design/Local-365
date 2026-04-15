@@ -11,7 +11,7 @@ import {
   Heart, Calculator, Scale, Hammer, ChefHat, Truck, PartyPopper, Waves,
   ShoppingBag, UtensilsCrossed, PawPrint, DoorOpen, Fence, Shield, Bug,
   Scissors, Dumbbell, Anchor, HeartPulse, Landmark, Monitor, MapPin,
-  Music, MapPinned, Film
+  Music, MapPinned, Film, LandPlot
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -102,6 +102,7 @@ export default function Directory() {
     { name: "Home Repair", icon: Wrench },
     { name: "HVAC", icon: Wind },
     { name: "Insurance", icon: Shield },
+    { name: "Land Development", icon: LandPlot },
     { name: "Landscaping", icon: Trees },
     { name: "Lawn Care", icon: TreePine },
     { name: "Legal", icon: Scale },

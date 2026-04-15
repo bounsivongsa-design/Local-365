@@ -1032,6 +1032,22 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
     ],
   },
   {
+    id: "land-development",
+    name: "Land Development",
+    icon: "LandPlot",
+    description: "Land clearing, grading, site preparation, and development services",
+    subcategories: [
+      { id: "land-clearing", name: "Land Clearing", description: "Clearing trees, brush, and debris from land" },
+      { id: "grading-excavation", name: "Grading & Excavation", description: "Site grading and earth moving" },
+      { id: "site-preparation", name: "Site Preparation", description: "Preparing land for construction or use" },
+      { id: "drainage-stormwater", name: "Drainage & Stormwater", description: "Drainage systems and stormwater management" },
+      { id: "lot-subdivision", name: "Lot Subdivision", description: "Dividing land into buildable lots" },
+      { id: "paving-driveways", name: "Paving & Driveways", description: "Asphalt and concrete paving" },
+      { id: "surveying", name: "Land Surveying", description: "Property surveys and boundary marking" },
+      { id: "environmental", name: "Environmental Services", description: "Environmental assessments and remediation" },
+    ],
+  },
+  {
     id: "event-rentals",
     name: "Event Rentals",
     icon: "Tent",
