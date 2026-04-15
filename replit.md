@@ -32,6 +32,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions. Only businesses with active memberships appear in the public directory.
 - **Advertising**: Carousel banner ads on Home and Directory pages, with tiered pricing and member discounts. An in-browser ad designer tool is available for creating ad images.
 - **Business Analytics**: Tracks engagement metrics for business listings.
+- **Review System**: Proof of service (receipt, invoice, email, etc.) is optional but earns a "Verified" badge. Business owners can confirm or dispute reviews. Verification statuses: `unverified`, `proof_submitted`, `business_confirmed`, `business_disputed`.
 - **Review Owner Responses**: Businesses can post a single reply to customer reviews.
 - **Contact Admin System**: Users can send messages to admins, with submissions stored and tracked.
 - **Membership Expiration Alerts**: Notifies businesses before free/promo memberships expire.

@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle, Share2 } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, ShieldCheck, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle, Share2, ThumbsUp, AlertTriangle } from "lucide-react";
 import { SiFacebook, SiInstagram, SiLinkedin } from "react-icons/si";
 import { FaXTwitter } from "react-icons/fa6";
 import { TrustBadges } from "@/components/TrustBadges";
@@ -443,7 +443,7 @@ export default function BusinessDetails() {
               ) : null}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed" data-testid="text-review-guidelines">
-              Reviews should be respectful, honest, and based on a real experience. A receipt or proof of purchase is required. Local List 365 reserves the right to remove any review that does not adhere to our <a href="/legal?section=terms" className="text-[#0a4a82] hover:underline">Terms of Service</a>.
+              Reviews should be respectful, honest, and based on a real experience. Uploading proof of service (receipt, invoice, email, etc.) earns a <span className="text-green-600 font-semibold">Verified</span> badge. Business owners can also confirm reviews. Local List 365 reserves the right to remove any review that does not adhere to our <a href="/legal?section=terms" className="text-[#0a4a82] hover:underline">Terms of Service</a>.
             </p>
 
             {business.reviews?.length === 0 ? (
@@ -472,13 +472,20 @@ export default function BusinessDetails() {
                            </p>
                         </div>
                       </div>
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} />
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <ReviewVerificationBadge status={review.verificationStatus} />
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star key={i} className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} />
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <p className="text-[#4a4a5a] leading-relaxed">{review.comment}</p>
+
+                    {user?.linkedBusinessId === business.id && review.verificationStatus !== "business_confirmed" && review.verificationStatus !== "business_disputed" && (
+                      <ReviewVerifyActions reviewId={review.id} businessId={business.id} />
+                    )}
                     
                     {review.ownerResponse && (
                       <div className="mt-4 ml-4 pl-4 border-l-2 border-[#d4a373]/40 bg-[#d4a373]/5 rounded-r-xl p-4">
@@ -622,6 +629,70 @@ function PromoVideoPlayer({ videoUrl, businessName }: { videoUrl: string; busine
 }
 
 
+function ReviewVerificationBadge({ status }: { status?: string | null }) {
+  if (status === "proof_submitted" || status === "business_confirmed") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold" data-testid="badge-verified-review">
+        <ShieldCheck className="h-3 w-3" />
+        {status === "business_confirmed" ? "Confirmed" : "Verified"}
+      </span>
+    );
+  }
+  if (status === "business_disputed") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold" data-testid="badge-disputed-review">
+        <AlertTriangle className="h-3 w-3" />
+        Disputed
+      </span>
+    );
+  }
+  return null;
+}
+
+function ReviewVerifyActions({ reviewId, businessId }: { reviewId: number; businessId: number }) {
+  const { toast } = useToast();
+  const confirmMutation = useMutation({
+    mutationFn: async (status: string) => {
+      await apiRequest("POST", `/api/reviews/${reviewId}/verify`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId] });
+      toast({ title: "Review updated", description: "Review verification status has been updated." });
+    },
+    onError: (err) => {
+      toast({ title: "Error", description: err.message || "Could not update review.", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <span className="text-xs text-muted-foreground mr-1">Was this customer yours?</span>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50"
+        onClick={() => confirmMutation.mutate("business_confirmed")}
+        disabled={confirmMutation.isPending}
+        data-testid={`button-confirm-review-${reviewId}`}
+      >
+        <ThumbsUp className="h-3 w-3 mr-1" />
+        Confirm
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+        onClick={() => confirmMutation.mutate("business_disputed")}
+        disabled={confirmMutation.isPending}
+        data-testid={`button-dispute-review-${reviewId}`}
+      >
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        Dispute
+      </Button>
+    </div>
+  );
+}
+
 function ReviewDialog({ businessId, businessName }: { businessId: number; businessName: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [rating, setRating] = useState(5);
@@ -669,10 +740,6 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptUploaded && user?.accountType !== "admin") {
-      toast({ title: "Receipt required", description: "Please upload a receipt or proof of purchase from this business.", variant: "destructive" });
-      return;
-    }
     createReview.mutate({ businessId, rating, comment, receiptUrl: receiptPath || undefined }, {
       onSuccess: () => {
         setIsOpen(false);
@@ -737,16 +804,16 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
           {user?.accountType !== "admin" && (
           <div className="space-y-2">
             <Label className="font-semibold">
-              Upload Receipt / Proof of Purchase <span className="text-red-500">*</span>
+              Upload Proof of Service <span className="text-xs font-normal text-muted-foreground">(optional)</span>
             </Label>
             <p className="text-xs text-muted-foreground">
-              To maintain trust and integrity, a receipt or proof of purchase from this business is required to post a review.
+              Upload a receipt, invoice, email confirmation, closing document, business card, or any proof you worked with this business. Reviews with proof earn a <span className="font-semibold text-green-600">Verified</span> badge.
             </p>
             <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
               {receiptUploaded ? (
                 <div className="flex items-center justify-center gap-2 text-green-600">
                   <CheckCircle className="h-5 w-5" />
-                  <span className="text-sm font-medium">{receiptFile?.name || "Receipt uploaded"}</span>
+                  <span className="text-sm font-medium">{receiptFile?.name || "Proof uploaded"}</span>
                 </div>
               ) : (
                 <>
@@ -762,7 +829,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="h-6 w-6 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        {isUploading ? "Uploading..." : "Click to upload receipt"}
+                        {isUploading ? "Uploading..." : "Click to upload proof of service"}
                       </span>
                     </div>
                   </label>

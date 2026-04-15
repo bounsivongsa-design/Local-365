@@ -2818,7 +2818,7 @@ export default function Dashboard() {
                   </div>
                   <h3 className="text-xl font-bold text-[#d4a373] mb-2">Pending Verification</h3>
                   <p className="text-white/70 text-sm mb-4">
-                    Upload a receipt to verify your account and unlock community posting. Each business review requires a receipt from that specific business.
+                    Upload proof of service (receipt, invoice, email, etc.) to earn a Verified badge on your reviews. Proof is optional but encouraged!
                   </p>
                   {pendingReceipts.length > 0 && (
                     <p className="text-sm text-white/60">

@@ -162,6 +162,7 @@ export const reviews = pgTable("reviews", {
   businessId: integer("business_id").notNull().references(() => businesses.id),
   ownerResponse: text("owner_response"),
   ownerResponseDate: timestamp("owner_response_date"),
+  verificationStatus: varchar("verification_status").default("unverified"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

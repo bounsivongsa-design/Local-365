@@ -2017,14 +2017,12 @@ Respond in this exact JSON format:
       const businessId = Number(req.params.id);
       const input = api.reviews.create.input.parse(req.body);
       const reviewUserId = (req as any).user?.id;
-      const [reviewUser] = await pgDb.select({ accountType: users.accountType }).from(users).where(eq(users.id, reviewUserId));
-      if (!input.receiptUrl && reviewUser?.accountType !== "admin") {
-        return res.status(400).json({ message: "A receipt or proof of purchase is required to submit a review." });
-      }
+      const verificationStatus = input.receiptUrl ? "proof_submitted" : "unverified";
       const review = await storage.createReview({
         ...input,
-        userId: (req as any).user?.id,
+        userId: reviewUserId,
         businessId: businessId,
+        verificationStatus,
       });
       res.status(201).json(review);
     } catch (err) {
@@ -2032,6 +2030,32 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: err.message });
       }
       throw err;
+    }
+  });
+
+  app.post("/api/reviews/:reviewId/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const reviewId = Number(req.params.reviewId);
+      const { status } = req.body;
+      if (!["business_confirmed", "business_disputed"].includes(status)) {
+        return res.status(400).json({ message: "Invalid verification status" });
+      }
+      const [review] = await pgDb.select().from(reviews).where(eq(reviews.id, reviewId));
+      if (!review) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      const userId = req.user?.id;
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId));
+      const isAdmin = user?.accountType === "admin";
+      const isOwner = user?.linkedBusinessId === review.businessId;
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ message: "Only the business owner or admin can verify reviews" });
+      }
+      await pgDb.update(reviews).set({ verificationStatus: status }).where(eq(reviews.id, reviewId));
+      res.json({ success: true, verificationStatus: status });
+    } catch (err) {
+      console.error("Review verification error:", err);
+      res.status(500).json({ message: "Failed to update review verification" });
     }
   });
 
