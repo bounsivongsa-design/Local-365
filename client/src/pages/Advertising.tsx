@@ -96,12 +96,17 @@ function resizeImageToFit(
       }
 
       canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
         if (!blob) { reject(new Error("Failed to create image")); return; }
         resolve(new File([blob], `ad-${targetW}x${targetH}.jpg`, { type: "image/jpeg" }));
       }, "image/jpeg", 0.92);
     };
-    img.onerror = () => reject(new Error("Failed to load image"));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    const url = URL.createObjectURL(file);
+    img.src = url;
   });
 }
 
@@ -186,6 +191,7 @@ function UploadChoiceDialog({
   const target = dims[adSize as keyof typeof dims] || dims.large;
   const [bgColor, setBgColor] = useState<string>("#ffffff");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [processedFile, setProcessedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
@@ -199,6 +205,7 @@ function UploadChoiceDialog({
         const url = URL.createObjectURL(resized);
         revokeUrl = url;
         setPreviewUrl(url);
+        setProcessedFile(resized);
         setIsProcessing(false);
       })
       .catch(() => { if (!cancelled) setIsProcessing(false); });
@@ -210,7 +217,7 @@ function UploadChoiceDialog({
 
   const handleConfirm = async () => {
     try {
-      const resized = await resizeImageToFit(file, target.w, target.h, "contain", bgColor);
+      const resized = processedFile ?? await resizeImageToFit(file, target.w, target.h, "contain", bgColor);
       await onUploadFitted(resized);
     } catch {
       toast({ title: "Upload failed", description: "Could not process the image.", variant: "destructive" });
@@ -796,7 +803,9 @@ export default function Advertising() {
 
                     <div className="space-y-2">
                       <Label>Ad Image</Label>
-                      <p className="text-xs text-muted-foreground">Recommended: 1200×675px (16:9 ratio), max 5MB. Images are auto-cropped to 16:9.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Recommended: {formData.adSize === "large" ? "1200×675px (16:9)" : formData.adSize === "medium" ? "1200×540px (20:9)" : "1200×500px (12:5)"}, max 5MB. Your full image is preserved with optional padding — choose "Crop & Resize Instead" if you want to zoom in to a specific area.
+                      </p>
                       {businessMedia.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-xs text-[#4a4a5a]">Choose from your uploaded media:</p>
@@ -1339,7 +1348,13 @@ export default function Advertising() {
       {adCropFile && (
         <ImageCropper
           imageFile={adCropFile}
-          aspectRatio={16 / 9}
+          aspectRatio={
+            formData.adSize === "medium"
+              ? 1200 / 540
+              : formData.adSize === "small"
+              ? 1200 / 500
+              : 16 / 9
+          }
           onCropped={async (blob) => {
             setAdCropFile(null);
             const ext = blob.type === "image/png" ? "png" : "jpg";
