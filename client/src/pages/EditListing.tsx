@@ -301,13 +301,19 @@ function GalleryManager({ business }: { business: Business }) {
         credentials: "include",
         body: JSON.stringify({ photoUrl }),
       });
-      if (!res.ok) throw new Error("Failed to add photo");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to add photo");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/businesses", business.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/my-business"] });
       toast({ title: "Photo added to gallery" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     },
   });
 

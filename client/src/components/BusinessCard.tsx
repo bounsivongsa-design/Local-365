@@ -61,14 +61,31 @@ export function BusinessCard({ business }: BusinessCardProps) {
             </div>
           )}
           
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5 max-w-[70%]">
             {business.category && (
-              <Badge className="bg-white/95 text-[#0a4a82] border-0 shadow-sm text-xs sm:text-xs">
-                {business.category}
-              </Badge>
+              <div className="flex flex-wrap gap-1">
+                <Badge className="bg-white/95 text-[#0a4a82] border-0 shadow-sm text-xs">
+                  {business.category}
+                </Badge>
+                {Array.isArray((business as any).additionalCategories) &&
+                  (business as any).additionalCategories
+                    .filter((c: string) => c && c !== business.category)
+                    .slice(0, 2)
+                    .map((c: string) => (
+                      <Badge key={c} className="bg-white/80 text-[#0a4a82]/90 border-0 shadow-sm text-[10px] font-medium">
+                        {c}
+                      </Badge>
+                    ))}
+                {Array.isArray((business as any).additionalCategories) &&
+                  (business as any).additionalCategories.filter((c: string) => c && c !== business.category).length > 2 && (
+                    <Badge className="bg-white/70 text-[#0a4a82]/80 border-0 shadow-sm text-[10px] font-medium">
+                      +{(business as any).additionalCategories.filter((c: string) => c && c !== business.category).length - 2} more
+                    </Badge>
+                  )}
+              </div>
             )}
             {business.isLocal365Partner && (
-              <Badge className="bg-[#8a9a5b] text-white border-0 shadow-sm">
+              <Badge className="bg-[#8a9a5b] text-white border-0 shadow-sm w-fit">
                 <Award className="h-3 w-3 mr-1" />
                 Local 365 Partner
               </Badge>

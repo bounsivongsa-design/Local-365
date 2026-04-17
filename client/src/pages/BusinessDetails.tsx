@@ -1,7 +1,7 @@
 import { useBusiness, useCreateReview } from "@/hooks/use-businesses";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, ShieldCheck, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle, Share2, ThumbsUp, AlertTriangle } from "lucide-react";
+import { Star, MapPin, Globe, Clock, MessageSquare, ArrowLeft, Award, Gift, Sparkles, Crown, Shield, ShieldCheck, Phone, Mail, ExternalLink, Building2, Calendar, MapPinned, Home, Briefcase, Video, Upload, Trash2, Play, CheckCircle, Share2, ThumbsUp, AlertTriangle, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiFacebook, SiInstagram, SiLinkedin } from "react-icons/si";
 import { FaXTwitter } from "react-icons/fa6";
 import { TrustBadges } from "@/components/TrustBadges";
@@ -568,7 +568,27 @@ export default function BusinessDetails() {
 
 function GalleryDisplay({ business }: { business: any }) {
   const currentPhotos: string[] = business.galleryPhotos || [];
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+
   if (currentPhotos.length === 0) return null;
+
+  const resolveSrc = (p: string) => (p.startsWith("/objects/") ? p : `/objects/${p}`);
+
+  useEffect(() => {
+    if (lightboxIdx === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxIdx(null);
+      else if (e.key === "ArrowRight") setLightboxIdx((i) => (i === null ? null : (i + 1) % currentPhotos.length));
+      else if (e.key === "ArrowLeft") setLightboxIdx((i) => (i === null ? null : (i - 1 + currentPhotos.length) % currentPhotos.length));
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightboxIdx, currentPhotos.length]);
 
   return (
     <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md border border-[#0a4a82]/8 relative overflow-hidden" data-testid="section-gallery">
@@ -578,19 +598,74 @@ function GalleryDisplay({ business }: { business: any }) {
           <Award className="h-5 w-5 text-white" />
         </div>
         <h2 className="font-display text-2xl font-bold text-[#1a1a2e]">Photo Gallery</h2>
+        <span className="ml-auto text-xs text-slate-400 font-medium">Click any photo to enlarge</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {currentPhotos.map((photo: string, i: number) => (
-          <div key={i} className="aspect-[4/3] rounded-xl overflow-hidden shadow-sm border border-[#0a4a82]/10">
+          <button
+            type="button"
+            key={i}
+            onClick={() => setLightboxIdx(i)}
+            className="aspect-[4/3] rounded-xl overflow-hidden shadow-sm border border-[#0a4a82]/10 cursor-zoom-in group relative bg-slate-100"
+            data-testid={`button-gallery-${i}`}
+          >
             <img
-              src={photo.startsWith("/objects/") ? photo : `/objects/${photo}`}
+              src={resolveSrc(photo)}
               alt={`Gallery photo ${i + 1}`}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               data-testid={`img-gallery-${i}`}
             />
-          </div>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+          </button>
         ))}
       </div>
+
+      {lightboxIdx !== null && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setLightboxIdx(null)}
+          data-testid="lightbox-gallery"
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxIdx(null); }}
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            data-testid="button-close-lightbox"
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          {currentPhotos.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx - 1 + currentPhotos.length) % currentPhotos.length); }}
+                className="absolute left-4 md:left-8 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                data-testid="button-lightbox-prev"
+                aria-label="Previous"
+              >
+                <ChevronLeft className="h-7 w-7" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx + 1) % currentPhotos.length); }}
+                className="absolute right-4 md:right-8 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                data-testid="button-lightbox-next"
+                aria-label="Next"
+              >
+                <ChevronRight className="h-7 w-7" />
+              </button>
+            </>
+          )}
+          <img
+            src={resolveSrc(currentPhotos[lightboxIdx])}
+            alt={`Gallery photo ${lightboxIdx + 1}`}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="img-lightbox"
+          />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-1.5 rounded-full font-medium">
+            {lightboxIdx + 1} / {currentPhotos.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

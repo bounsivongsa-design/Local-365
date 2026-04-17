@@ -847,6 +847,9 @@ export async function registerRoutes(
 
       if (userId) {
         const updateFields: any = { linkedBusinessId: business.id };
+        if (currentUser?.accountType !== "admin") {
+          updateFields.accountType = "business";
+        }
         if (currentUser?.pendingMembershipTier) {
           updateFields.pendingMembershipTier = null;
           updateFields.pendingStripeSubscriptionId = null;
@@ -854,6 +857,7 @@ export async function registerRoutes(
         }
         updateFields.pendingBusinessName = null;
         await pgDb.update(users).set(updateFields).where(eq(users.id, userId));
+        console.log(`[CREATE-BIZ] User ${userId} accountType set to "business", linkedBusinessId=${business.id}`);
 
         const subIdToUpdate = currentUser?.pendingStripeSubscriptionId || input.stripeSubscriptionId;
         if (subIdToUpdate) {
