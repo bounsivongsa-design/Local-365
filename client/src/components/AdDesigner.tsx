@@ -24,6 +24,7 @@ import {
   Palette,
   Sparkles,
   Move,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -254,10 +255,26 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
   const [isGenerating, setIsGenerating] = useState(false);
   const [activePanel, setActivePanel] = useState<string>("background");
   const [selectedElement, setSelectedElement] = useState<DragTarget>(null);
+  const [showFullPreview, setShowFullPreview] = useState(false);
+  const [logoAspectRatio, setLogoAspectRatio] = useState<number>(1);
   const previewRef = useRef<HTMLDivElement>(null);
   const previewWrapperRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(0.5);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!design.logoUrl) {
+      setLogoAspectRatio(1);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalHeight > 0) {
+        setLogoAspectRatio(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    img.src = design.logoUrl;
+  }, [design.logoUrl]);
   const bgFileRef = useRef<HTMLInputElement>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
 
@@ -719,13 +736,19 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                     <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                     {design.logoUrl && (
                       <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-slate-500">Logo Size: {design.logoSize}px</Label>
+                        <Label className="text-xs font-semibold text-slate-500">
+                          Logo Width: {design.logoSize}px
+                          <span className="text-[10px] text-slate-400 font-normal ml-1">(height auto-fits)</span>
+                        </Label>
                         <Slider
                           value={[design.logoSize]}
                           onValueChange={([v]) => update({ logoSize: v })}
-                          min={30} max={400} step={5}
+                          min={40} max={600} step={5}
                           data-testid="slider-logo-size"
                         />
+                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                          Your logo's full shape is preserved — never cropped or squished.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -869,9 +892,8 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
                   alt="Logo"
                   style={{
                     width: `${design.logoSize}px`,
-                    height: `${design.logoSize}px`,
+                    height: `${design.logoSize / logoAspectRatio}px`,
                     objectFit: "contain",
-                    borderRadius: "8px",
                     display: "block",
                   }}
                   draggable={false}
@@ -990,11 +1012,20 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
         <div className="flex gap-2">
           <Button
             variant="outline"
-            className="flex-1 rounded-xl"
+            className="rounded-xl"
             onClick={onCancel}
             data-testid="button-cancel-design"
           >
             Cancel
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 rounded-xl border-[#0a4a82] text-[#0a4a82] hover:bg-[#0a4a82]/5 font-semibold"
+            onClick={() => { setSelectedElement(null); setShowFullPreview(true); }}
+            disabled={isGenerating}
+            data-testid="button-preview-design"
+          >
+            <Eye className="h-4 w-4 mr-2" /> Preview
           </Button>
           <Button
             className="flex-1 rounded-xl bg-gradient-to-r from-[#0a4a82] to-[#083a6a] hover:from-[#083a6a] hover:to-[#062d54] text-white font-semibold shadow-lg"
@@ -1009,6 +1040,176 @@ export function AdDesigner({ onComplete, onCancel, adSize = "medium", businessNa
             )}
           </Button>
         </div>
+      </div>
+
+      {showFullPreview && (
+        <FullPreviewModal
+          design={design}
+          canvasWidth={CANVAS_WIDTH}
+          canvasHeight={CANVAS_HEIGHT}
+          adSize={adSize}
+          canvasLabel={canvasSize.label}
+          logoAspectRatio={logoAspectRatio}
+          getFontFamily={getFontFamily}
+          onClose={() => setShowFullPreview(false)}
+          onConfirm={() => { setShowFullPreview(false); handleGenerate(); }}
+          isGenerating={isGenerating}
+        />
+      )}
+    </div>
+  );
+}
+
+function FullPreviewModal({
+  design,
+  canvasWidth,
+  canvasHeight,
+  adSize,
+  canvasLabel,
+  logoAspectRatio,
+  getFontFamily,
+  onClose,
+  onConfirm,
+  isGenerating,
+}: {
+  design: DesignState;
+  canvasWidth: number;
+  canvasHeight: number;
+  adSize: "small" | "medium" | "large";
+  canvasLabel: string;
+  logoAspectRatio: number;
+  getFontFamily: (k: string) => string;
+  onClose: () => void;
+  onConfirm: () => void;
+  isGenerating: boolean;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+
+  useEffect(() => {
+    const update = () => {
+      if (!wrapperRef.current) return;
+      const w = wrapperRef.current.clientWidth - 32;
+      const h = wrapperRef.current.clientHeight - 32;
+      setScale(Math.min(w / canvasWidth, h / canvasHeight, 1));
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [canvasWidth, canvasHeight]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col"
+      data-testid="modal-full-preview"
+      onClick={onClose}
+    >
+      <div className="flex items-center justify-between px-4 py-3 bg-[#1a1a2e]/90 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <Eye className="h-4 w-4 text-white/80" />
+          <div>
+            <p className="text-sm font-bold text-white">Final Preview</p>
+            <p className="text-[11px] text-white/60">
+              {adSize.charAt(0).toUpperCase() + adSize.slice(1)} Ad — {canvasLabel} — exactly how it will display
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+          data-testid="button-close-preview"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div
+        ref={wrapperRef}
+        className="flex-1 flex items-center justify-center p-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ width: `${canvasWidth * scale}px`, height: `${canvasHeight * scale}px` }}>
+          <div
+            className="relative overflow-hidden shadow-2xl"
+            style={{
+              width: `${canvasWidth}px`,
+              height: `${canvasHeight}px`,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              borderRadius: "12px",
+            }}
+            data-testid="full-preview-canvas"
+          >
+            {design.bgType === "image" && design.bgImage ? (
+              <>
+                <img src={design.bgImage} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: 0, backgroundColor: `rgba(0,0,0,${design.bgOverlayOpacity / 100})` }} />
+              </>
+            ) : (
+              <div style={{ position: "absolute", inset: 0, background: design.bgType === "gradient" ? `linear-gradient(${design.bgGradientAngle}deg, ${design.bgColor1}, ${design.bgColor2})` : design.bgColor1 }} />
+            )}
+
+            {design.showLogo && design.logoUrl && (
+              <div style={{ position: "absolute", left: `${design.logoPos.x}%`, top: `${design.logoPos.y}%`, transform: "translate(-50%, -50%)" }}>
+                <img
+                  src={design.logoUrl}
+                  alt="Logo"
+                  style={{
+                    width: `${design.logoSize}px`,
+                    height: `${design.logoSize / logoAspectRatio}px`,
+                    objectFit: "contain",
+                    display: "block",
+                  }}
+                />
+              </div>
+            )}
+            {design.businessName && design.businessNameVisible && (
+              <div style={{ position: "absolute", left: `${design.businessNamePos.x}%`, top: `${design.businessNamePos.y}%`, transform: "translate(-50%, -50%)", color: design.businessNameColor, fontSize: `${design.businessNameFontSize}px`, fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", fontFamily: getFontFamily(design.headlineFont), whiteSpace: "nowrap" }}>
+                {design.businessName}
+              </div>
+            )}
+            {design.headline && design.headlineVisible && (
+              <div style={{ position: "absolute", left: `${design.headlinePos.x}%`, top: `${design.headlinePos.y}%`, transform: "translate(-50%, -50%)", color: design.headlineColor, fontSize: `${design.headlineFontSize}px`, fontWeight: design.headlineBold ? 800 : 500, lineHeight: 1.15, fontFamily: getFontFamily(design.headlineFont), textAlign: design.headlineAlign, maxWidth: "500px", wordBreak: "break-word" }}>
+                {design.headline}
+              </div>
+            )}
+            {design.tagline && design.taglineVisible && (
+              <div style={{ position: "absolute", left: `${design.taglinePos.x}%`, top: `${design.taglinePos.y}%`, transform: "translate(-50%, -50%)", color: design.taglineColor, fontSize: `${design.taglineFontSize}px`, fontWeight: 400, lineHeight: 1.4, fontFamily: getFontFamily(design.taglineFont), opacity: 0.9, maxWidth: "450px" }}>
+                {design.tagline}
+              </div>
+            )}
+            {design.ctaShow && design.ctaText && (
+              <div style={{ position: "absolute", left: `${design.ctaPos.x}%`, top: `${design.ctaPos.y}%`, transform: "translate(-50%, -50%)" }}>
+                <div style={{ display: "inline-block", backgroundColor: design.ctaBgColor, color: design.ctaTextColor, padding: "10px 28px", borderRadius: "8px", fontSize: "14px", fontWeight: 700, letterSpacing: "0.5px", fontFamily: getFontFamily(design.headlineFont), whiteSpace: "nowrap" }}>
+                  {design.ctaText}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 px-4 py-3 bg-[#1a1a2e]/90 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="outline"
+          className="flex-1 rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20"
+          onClick={onClose}
+          data-testid="button-keep-editing"
+        >
+          Keep Editing
+        </Button>
+        <Button
+          className="flex-1 rounded-xl bg-gradient-to-r from-[#d4a373] to-[#c89261] hover:from-[#c89261] hover:to-[#b8854f] text-white font-semibold shadow-lg"
+          onClick={onConfirm}
+          disabled={isGenerating}
+          data-testid="button-confirm-from-preview"
+        >
+          {isGenerating ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
+          ) : (
+            <><Download className="h-4 w-4 mr-2" /> Looks Good — Use This Design</>
+          )}
+        </Button>
       </div>
     </div>
   );
