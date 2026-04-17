@@ -52,7 +52,13 @@ import type { AdPricing, AdPlacement } from "@shared/schema";
 import { useUpload } from "@/hooks/use-upload";
 import { AdDesigner } from "@/components/AdDesigner";
 
-function resizeImageToFit(file: File, targetW: number, targetH: number): Promise<File> {
+function resizeImageToFit(
+  file: File,
+  targetW: number,
+  targetH: number,
+  mode: "contain" | "cover" = "contain",
+  bgColor: string = "#ffffff"
+): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -64,15 +70,31 @@ function resizeImageToFit(file: File, targetW: number, targetH: number): Promise
 
       const srcRatio = img.width / img.height;
       const tgtRatio = targetW / targetH;
-      let sx = 0, sy = 0, sw = img.width, sh = img.height;
-      if (srcRatio > tgtRatio) {
-        sw = img.height * tgtRatio;
-        sx = (img.width - sw) / 2;
+
+      if (mode === "cover") {
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        if (srcRatio > tgtRatio) {
+          sw = img.height * tgtRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / tgtRatio;
+          sy = (img.height - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
       } else {
-        sh = img.width / tgtRatio;
-        sy = (img.height - sh) / 2;
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, targetW, targetH);
+        let dw = targetW, dh = targetH, dx = 0, dy = 0;
+        if (srcRatio > tgtRatio) {
+          dh = targetW / srcRatio;
+          dy = (targetH - dh) / 2;
+        } else {
+          dw = targetH * srcRatio;
+          dx = (targetW - dw) / 2;
+        }
+        ctx.drawImage(img, 0, 0, img.width, img.height, dx, dy, dw, dh);
       }
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+
       canvas.toBlob((blob) => {
         if (!blob) { reject(new Error("Failed to create image")); return; }
         resolve(new File([blob], `ad-${targetW}x${targetH}.jpg`, { type: "image/jpeg" }));
@@ -143,6 +165,141 @@ function getPaymentBadge(status: string) {
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
+}
+
+function UploadChoiceDialog({
+  file,
+  adSize,
+  isUploading,
+  onClose,
+  onCrop,
+  onUploadFitted,
+}: {
+  file: File;
+  adSize: string;
+  isUploading: boolean;
+  onClose: () => void;
+  onCrop: () => void;
+  onUploadFitted: (file: File) => void | Promise<void>;
+}) {
+  const dims = { large: { w: 1200, h: 675 }, medium: { w: 1200, h: 540 }, small: { w: 1200, h: 500 } };
+  const target = dims[adSize as keyof typeof dims] || dims.large;
+  const [bgColor, setBgColor] = useState<string>("#ffffff");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    let revokeUrl: string | null = null;
+    setIsProcessing(true);
+    resizeImageToFit(file, target.w, target.h, "contain", bgColor)
+      .then((resized) => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(resized);
+        revokeUrl = url;
+        setPreviewUrl(url);
+        setIsProcessing(false);
+      })
+      .catch(() => { if (!cancelled) setIsProcessing(false); });
+    return () => {
+      cancelled = true;
+      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+    };
+  }, [file, target.w, target.h, bgColor]);
+
+  const handleConfirm = async () => {
+    try {
+      const resized = await resizeImageToFit(file, target.w, target.h, "contain", bgColor);
+      await onUploadFitted(resized);
+    } catch {
+      toast({ title: "Upload failed", description: "Could not process the image.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl" data-testid="dialog-upload-choice">
+        <DialogHeader>
+          <DialogTitle className="text-[#1a1a2e]">Preview Your Ad Image</DialogTitle>
+        </DialogHeader>
+        <div className="bg-[#0a4a82]/5 rounded-lg p-3 text-sm">
+          <p className="font-medium text-[#0a4a82] mb-1">Ad slot dimensions:</p>
+          <p className="text-[#0a4a82]/80 font-mono">{target.w} × {target.h}px</p>
+        </div>
+
+        <div
+          className="rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-[repeating-conic-gradient(#eee_0%_25%,#fafafa_0%_50%)] bg-[length:20px_20px] flex items-center justify-center"
+          style={{ aspectRatio: `${target.w} / ${target.h}` }}
+        >
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Ad preview"
+              className="w-full h-full object-contain"
+              data-testid="img-upload-preview"
+            />
+          ) : (
+            <div className="text-xs text-slate-400">{isProcessing ? "Processing..." : "Loading preview..."}</div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 px-1">
+          <Label className="text-xs font-semibold text-slate-600">Padding color:</Label>
+          <input
+            type="color"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="w-8 h-8 rounded border border-slate-200 cursor-pointer"
+            data-testid="input-padding-color"
+          />
+          <div className="flex gap-1">
+            {["#ffffff", "#000000", "#0a4a82", "#1a1a2e", "#d4a373"].map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setBgColor(c)}
+                className={`w-7 h-7 rounded border-2 ${bgColor === c ? "border-[#0a4a82]" : "border-slate-200"}`}
+                style={{ backgroundColor: c }}
+                aria-label={`Padding color ${c}`}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] text-slate-400 ml-auto">Fills empty space around your image</span>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Your full image is shown — nothing is cropped. To zoom in and crop a specific section instead, choose "Crop & Resize First".
+        </p>
+
+        <div className="flex flex-col gap-2 mt-1">
+          <Button
+            className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
+            data-testid="button-upload-direct"
+            disabled={isUploading || isProcessing}
+            onClick={handleConfirm}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {isUploading ? "Uploading..." : "Use This — Upload Now"}
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 border-[#0a4a82] text-[#0a4a82]"
+              data-testid="button-upload-crop"
+              onClick={onCrop}
+            >
+              <Crop className="h-4 w-4 mr-2" />
+              Crop & Resize Instead
+            </Button>
+            <Button variant="ghost" onClick={onClose} data-testid="button-upload-cancel">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function Advertising() {
@@ -1160,63 +1317,24 @@ export default function Advertising() {
         </div>
       </div>
       {pendingUploadFile && !adCropFile && (
-        <Dialog open={true} onOpenChange={() => setPendingUploadFile(null)}>
-          <DialogContent className="max-w-md" data-testid="dialog-upload-choice">
-            <DialogHeader>
-              <DialogTitle className="text-[#1a1a2e]">How would you like to upload?</DialogTitle>
-            </DialogHeader>
-            <div className="bg-[#0a4a82]/5 rounded-lg p-3 text-sm">
-              <p className="font-medium text-[#0a4a82] mb-1">Recommended size for your ad:</p>
-              <p className="text-[#0a4a82]/80 font-mono">
-                {formData.adSize === "large" ? "1200 × 675px (16:9)" : formData.adSize === "medium" ? "1200 × 540px (20:9)" : "1200 × 500px (12:5)"}
-              </p>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              <strong>Upload Directly</strong> will automatically resize your image to fit perfectly. <strong>Crop First</strong> lets you pick which part of the image to use.
-            </p>
-            <div className="flex flex-col gap-3 mt-1">
-              <Button
-                className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
-                data-testid="button-upload-direct"
-                disabled={adImageUploading}
-                onClick={async () => {
-                  const file = pendingUploadFile;
-                  setPendingUploadFile(null);
-                  const dims = { large: { w: 1200, h: 675 }, medium: { w: 1200, h: 540 }, small: { w: 1200, h: 500 } };
-                  const target = dims[formData.adSize as keyof typeof dims] || dims.large;
-                  try {
-                    const resized = await resizeImageToFit(file, target.w, target.h);
-                    const result = await uploadAdImage(resized);
-                    if (result) {
-                      setFormData({ ...formData, imageUrl: result.objectPath });
-                      toast({ title: "Image Uploaded", description: `Resized to ${target.w}×${target.h} and uploaded.` });
-                    }
-                  } catch {
-                    toast({ title: "Upload failed", description: "Could not process the image.", variant: "destructive" });
-                  }
-                }}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {adImageUploading ? "Uploading..." : "Upload Directly (Auto-Resize)"}
-              </Button>
-              <Button
-                variant="outline"
-                className="border-[#0a4a82] text-[#0a4a82]"
-                data-testid="button-upload-crop"
-                onClick={() => {
-                  setAdCropFile(pendingUploadFile);
-                  setPendingUploadFile(null);
-                }}
-              >
-                <Crop className="h-4 w-4 mr-2" />
-                Crop & Resize First
-              </Button>
-              <Button variant="ghost" onClick={() => setPendingUploadFile(null)} data-testid="button-upload-cancel">
-                Cancel
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <UploadChoiceDialog
+          file={pendingUploadFile}
+          adSize={formData.adSize}
+          isUploading={adImageUploading}
+          onClose={() => setPendingUploadFile(null)}
+          onCrop={() => {
+            setAdCropFile(pendingUploadFile);
+            setPendingUploadFile(null);
+          }}
+          onUploadFitted={async (file) => {
+            setPendingUploadFile(null);
+            const result = await uploadAdImage(file);
+            if (result) {
+              setFormData({ ...formData, imageUrl: result.objectPath });
+              toast({ title: "Image Uploaded", description: `Your ad image has been set.` });
+            }
+          }}
+        />
       )}
       {adCropFile && (
         <ImageCropper
