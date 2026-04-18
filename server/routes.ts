@@ -4380,11 +4380,23 @@ Respond in this exact JSON format:
       const SUBSCRIPTION_SEMI: Record<string, number> = { basic: 24000, standard: 48000, premium: 96000 };
       const SUBSCRIPTION_ANNUAL: Record<string, number> = { basic: 33000, standard: 66000, premium: 132000 };
 
-      let subscriptionRevenue = { bronze: { count: 0, monthly: 0 }, silver: { count: 0, monthly: 0 }, gold: { count: 0, monthly: 0 }, total: 0 };
+      const blankTierBreakdown = () => ({
+        bronze: { count: 0, monthly: 0 },
+        silver: { count: 0, monthly: 0 },
+        gold: { count: 0, monthly: 0 },
+        total: 0,
+      });
+      let subscriptionRevenue = {
+        realized: blankTierBreakdown(),
+        projected: blankTierBreakdown(),
+        trialingCount: 0,
+      };
       try {
         const activeSubs = await pgDb.select({
           membershipTier: businesses.membershipTier,
           paymentFrequency: businesses.membershipPaymentFrequency,
+          goldTrialEndDate: businesses.goldTrialEndDate,
+          originalMembershipTier: businesses.originalMembershipTier,
         }).from(businesses).where(
           and(
             sql`${businesses.membershipTier} IS NOT NULL`,
@@ -4392,38 +4404,82 @@ Respond in this exact JSON format:
             sql`${businesses.stripeSubscriptionId} IS NOT NULL`
           )
         );
+        const now = new Date();
+        const tierToKey = (t: string | null) => t === "basic" ? "bronze" : t === "standard" ? "silver" : t === "premium" ? "gold" : null;
+        const monthlyForTier = (t: string, freq: string) => {
+          if (freq === "semi_annual") return Math.round((SUBSCRIPTION_SEMI[t] || 0) / 6);
+          if (freq === "annual") return Math.round((SUBSCRIPTION_ANNUAL[t] || 0) / 12);
+          return SUBSCRIPTION_MONTHLY[t] || 0;
+        };
         for (const sub of activeSubs) {
-          const tier = sub.membershipTier || "none";
           const freq = sub.paymentFrequency || "monthly";
-          let monthlyEquiv = SUBSCRIPTION_MONTHLY[tier] || 0;
-          if (freq === "semi_annual") monthlyEquiv = Math.round((SUBSCRIPTION_SEMI[tier] || 0) / 6);
-          else if (freq === "annual") monthlyEquiv = Math.round((SUBSCRIPTION_ANNUAL[tier] || 0) / 12);
-          const key = tier === "basic" ? "bronze" : tier === "standard" ? "silver" : tier === "premium" ? "gold" : null;
-          if (key && subscriptionRevenue[key as keyof typeof subscriptionRevenue] && typeof subscriptionRevenue[key as keyof typeof subscriptionRevenue] === "object") {
-            (subscriptionRevenue[key as keyof typeof subscriptionRevenue] as { count: number; monthly: number }).count++;
-            (subscriptionRevenue[key as keyof typeof subscriptionRevenue] as { count: number; monthly: number }).monthly += monthlyEquiv;
+          const inTrial = sub.goldTrialEndDate ? new Date(sub.goldTrialEndDate) > now : false;
+          const postTrialTier = (sub.originalMembershipTier || sub.membershipTier || "none");
+          const projKey = tierToKey(postTrialTier);
+          if (projKey) {
+            const m = monthlyForTier(postTrialTier, freq);
+            subscriptionRevenue.projected[projKey].count++;
+            subscriptionRevenue.projected[projKey].monthly += m;
+          }
+          if (inTrial) {
+            subscriptionRevenue.trialingCount++;
+          } else {
+            const billKey = tierToKey(sub.membershipTier);
+            if (billKey) {
+              const m = monthlyForTier(sub.membershipTier!, freq);
+              subscriptionRevenue.realized[billKey].count++;
+              subscriptionRevenue.realized[billKey].monthly += m;
+            }
           }
         }
-        subscriptionRevenue.total = subscriptionRevenue.bronze.monthly + subscriptionRevenue.silver.monthly + subscriptionRevenue.gold.monthly;
+        subscriptionRevenue.realized.total = subscriptionRevenue.realized.bronze.monthly + subscriptionRevenue.realized.silver.monthly + subscriptionRevenue.realized.gold.monthly;
+        subscriptionRevenue.projected.total = subscriptionRevenue.projected.bronze.monthly + subscriptionRevenue.projected.silver.monthly + subscriptionRevenue.projected.gold.monthly;
       } catch {}
 
-      let adRevenue = { small: { count: 0, revenue: 0 }, medium: { count: 0, revenue: 0 }, large: { count: 0, revenue: 0 }, total: 0, totalPaid: 0 };
+      const blankAdBreakdown = () => ({
+        small: { count: 0, revenue: 0 },
+        medium: { count: 0, revenue: 0 },
+        large: { count: 0, revenue: 0 },
+        total: 0,
+      });
+      let adRevenue = {
+        realized: blankAdBreakdown(),
+        projected: blankAdBreakdown(),
+        unpaidActiveCount: 0,
+        totalPaid: 0,
+      };
       try {
-        const adsBySize = await pgDb.select({
+        const AD_MONTHLY: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
+        const projectedRows = await pgDb.select({
           adSize: adPlacements.adSize,
           count: sql<number>`count(*)::int`,
-          totalPaid: sql<number>`COALESCE(sum(${adPlacements.totalPaid}), 0)::int`,
         }).from(adPlacements).where(eq(adPlacements.status, "active")).groupBy(adPlacements.adSize);
-        const AD_MONTHLY: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-        for (const row of adsBySize) {
-          const size = row.adSize || "small";
-          const key = size as keyof typeof adRevenue;
-          if (adRevenue[key] && typeof adRevenue[key] === "object") {
-            (adRevenue[key] as { count: number; revenue: number }).count = row.count;
-            (adRevenue[key] as { count: number; revenue: number }).revenue = row.count * (AD_MONTHLY[size] || 25000);
+        for (const row of projectedRows) {
+          const size = (row.adSize || "small") as "small" | "medium" | "large";
+          if (adRevenue.projected[size]) {
+            adRevenue.projected[size].count = row.count;
+            adRevenue.projected[size].revenue = row.count * (AD_MONTHLY[size] || 25000);
           }
         }
-        adRevenue.total = adRevenue.small.revenue + adRevenue.medium.revenue + adRevenue.large.revenue;
+        adRevenue.projected.total = adRevenue.projected.small.revenue + adRevenue.projected.medium.revenue + adRevenue.projected.large.revenue;
+
+        const realizedRows = await pgDb.select({
+          adSize: adPlacements.adSize,
+          count: sql<number>`count(*)::int`,
+        }).from(adPlacements).where(and(eq(adPlacements.status, "active"), eq(adPlacements.paymentStatus, "paid"))).groupBy(adPlacements.adSize);
+        for (const row of realizedRows) {
+          const size = (row.adSize || "small") as "small" | "medium" | "large";
+          if (adRevenue.realized[size]) {
+            adRevenue.realized[size].count = row.count;
+            adRevenue.realized[size].revenue = row.count * (AD_MONTHLY[size] || 25000);
+          }
+        }
+        adRevenue.realized.total = adRevenue.realized.small.revenue + adRevenue.realized.medium.revenue + adRevenue.realized.large.revenue;
+
+        const projectedActive = adRevenue.projected.small.count + adRevenue.projected.medium.count + adRevenue.projected.large.count;
+        const realizedActive = adRevenue.realized.small.count + adRevenue.realized.medium.count + adRevenue.realized.large.count;
+        adRevenue.unpaidActiveCount = Math.max(0, projectedActive - realizedActive);
+
         const allAdPaid = await pgDb.select({
           totalPaid: sql<number>`COALESCE(sum(${adPlacements.totalPaid}), 0)::int`,
         }).from(adPlacements);

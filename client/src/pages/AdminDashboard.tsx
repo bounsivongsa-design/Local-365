@@ -93,16 +93,34 @@ type AdminStats = {
   membershipBreakdown: Record<string, number>;
   revenueBreakdown: {
     subscriptions: {
-      bronze: { count: number; monthly: number };
-      silver: { count: number; monthly: number };
-      gold: { count: number; monthly: number };
-      total: number;
+      realized: {
+        bronze: { count: number; monthly: number };
+        silver: { count: number; monthly: number };
+        gold: { count: number; monthly: number };
+        total: number;
+      };
+      projected: {
+        bronze: { count: number; monthly: number };
+        silver: { count: number; monthly: number };
+        gold: { count: number; monthly: number };
+        total: number;
+      };
+      trialingCount: number;
     };
     ads: {
-      small: { count: number; revenue: number };
-      medium: { count: number; revenue: number };
-      large: { count: number; revenue: number };
-      total: number;
+      realized: {
+        small: { count: number; revenue: number };
+        medium: { count: number; revenue: number };
+        large: { count: number; revenue: number };
+        total: number;
+      };
+      projected: {
+        small: { count: number; revenue: number };
+        medium: { count: number; revenue: number };
+        large: { count: number; revenue: number };
+        total: number;
+      };
+      unpaidActiveCount: number;
       totalPaid: number;
     };
     jobs: {
@@ -272,8 +290,16 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
   const mb = stats?.membershipBreakdown || {};
   const rev = stats?.revenueBreakdown;
   const formatCents = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const totalMonthlyRevenue = (rev?.subscriptions?.total || 0) + (rev?.ads?.total || 0) + (rev?.jobs?.totalEstimated || 0);
-  const totalAnnualProjection = totalMonthlyRevenue * 12;
+  const subsRealized = rev?.subscriptions?.realized;
+  const subsProjected = rev?.subscriptions?.projected;
+  const adsRealized = rev?.ads?.realized;
+  const adsProjected = rev?.ads?.projected;
+  const trialingCount = rev?.subscriptions?.trialingCount || 0;
+  const unpaidActiveAds = rev?.ads?.unpaidActiveCount || 0;
+  const realizedMrr = (subsRealized?.total || 0) + (adsRealized?.total || 0) + (rev?.jobs?.totalEstimated || 0);
+  const projectedMrr = (subsProjected?.total || 0) + (adsProjected?.total || 0) + (rev?.jobs?.totalEstimated || 0);
+  const realizedAnnual = realizedMrr * 12;
+  const projectedAnnual = projectedMrr * 12;
 
   return (
     <div className="space-y-8">
@@ -350,10 +376,20 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp className="h-4 w-4 text-white/80" />
-                <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Total MRR</span>
+                <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Realized MRR</span>
               </div>
-              <p className="text-2xl font-bold text-white">{formatCents(totalMonthlyRevenue)}</p>
-              <p className="text-xs text-white/60 mt-1">Est. annual: {formatCents(totalAnnualProjection)}</p>
+              <p className="text-2xl font-bold text-white" data-testid="text-realized-mrr">{formatCents(realizedMrr)}</p>
+              <p className="text-xs text-white/70 mt-1">Actually billing now · Annual: {formatCents(realizedAnnual)}</p>
+              <div className="mt-2 pt-2 border-t border-white/20">
+                <p className="text-[11px] text-white/80">
+                  <span className="font-semibold">Projected: </span>
+                  <span data-testid="text-projected-mrr">{formatCents(projectedMrr)}/mo</span>
+                  <span className="text-white/60"> · {formatCents(projectedAnnual)}/yr</span>
+                </p>
+                {trialingCount > 0 && (
+                  <p className="text-[10px] text-white/60 mt-0.5">{trialingCount} on free trial (not yet billing)</p>
+                )}
+              </div>
             </CardContent>
           </Card>
           <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-subscription-revenue">
@@ -362,8 +398,9 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
                 <Receipt className="h-4 w-4 text-[#0a4a82]" />
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subscriptions</span>
               </div>
-              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.total || 0)}</p>
-              <p className="text-xs text-slate-400 mt-1">{(rev?.subscriptions?.bronze?.count || 0) + (rev?.subscriptions?.silver?.count || 0) + (rev?.subscriptions?.gold?.count || 0)} active subscribers</p>
+              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(subsRealized?.total || 0)}</p>
+              <p className="text-xs text-slate-400 mt-1">{(subsRealized?.bronze?.count || 0) + (subsRealized?.silver?.count || 0) + (subsRealized?.gold?.count || 0)} billing now</p>
+              <p className="text-[11px] text-slate-500 mt-1">Projected: <span className="font-semibold text-slate-700">{formatCents(subsProjected?.total || 0)}/mo</span></p>
             </CardContent>
           </Card>
           <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-ad-revenue">
@@ -372,8 +409,9 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
                 <Megaphone className="h-4 w-4 text-rose-500" />
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ad Revenue</span>
               </div>
-              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.total || 0)}</p>
-              <p className="text-xs text-slate-400 mt-1">{(rev?.ads?.small?.count || 0) + (rev?.ads?.medium?.count || 0) + (rev?.ads?.large?.count || 0)} active ads</p>
+              <p className="text-2xl font-bold text-[#1a1a2e]">{formatCents(adsRealized?.total || 0)}</p>
+              <p className="text-xs text-slate-400 mt-1">{(adsRealized?.small?.count || 0) + (adsRealized?.medium?.count || 0) + (adsRealized?.large?.count || 0)} paid · {unpaidActiveAds} comped</p>
+              <p className="text-[11px] text-slate-500 mt-1">Projected: <span className="font-semibold text-slate-700">{formatCents(adsProjected?.total || 0)}/mo</span></p>
             </CardContent>
           </Card>
           <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-job-revenue">
@@ -399,34 +437,65 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-yellow-50 border border-yellow-100">
+              <div className="grid grid-cols-3 gap-2 px-1 pb-1 text-[10px] font-semibold text-slate-400 uppercase">
+                <span>Tier</span>
+                <span className="text-right">Realized</span>
+                <span className="text-right">Projected</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-2 py-2 px-3 rounded-xl bg-yellow-50 border border-yellow-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-yellow-500" />
                   <span className="text-sm font-medium text-[#1a1a2e]">Gold</span>
-                  <Badge className="bg-yellow-500 text-white text-[10px] px-1.5">{rev?.subscriptions?.gold?.count || 0}</Badge>
                 </div>
-                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.gold?.monthly || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+                <div className="text-right">
+                  <Badge className="bg-yellow-500 text-white text-[10px] px-1.5 mr-1">{subsRealized?.gold?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-[#1a1a2e]">{formatCents(subsRealized?.gold?.monthly || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-yellow-200 text-yellow-900 text-[10px] px-1.5 mr-1">{subsProjected?.gold?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-slate-600">{formatCents(subsProjected?.gold?.monthly || 0)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="grid grid-cols-3 items-center gap-2 py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-slate-400" />
                   <span className="text-sm font-medium text-[#1a1a2e]">Silver</span>
-                  <Badge className="bg-slate-400 text-white text-[10px] px-1.5">{rev?.subscriptions?.silver?.count || 0}</Badge>
                 </div>
-                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.silver?.monthly || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+                <div className="text-right">
+                  <Badge className="bg-slate-400 text-white text-[10px] px-1.5 mr-1">{subsRealized?.silver?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-[#1a1a2e]">{formatCents(subsRealized?.silver?.monthly || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-slate-200 text-slate-700 text-[10px] px-1.5 mr-1">{subsProjected?.silver?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-slate-600">{formatCents(subsProjected?.silver?.monthly || 0)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-100">
+              <div className="grid grid-cols-3 items-center gap-2 py-2 px-3 rounded-xl bg-amber-50 border border-amber-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-amber-700" />
                   <span className="text-sm font-medium text-[#1a1a2e]">Bronze</span>
-                  <Badge className="bg-amber-700 text-white text-[10px] px-1.5">{rev?.subscriptions?.bronze?.count || 0}</Badge>
                 </div>
-                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.subscriptions?.bronze?.monthly || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+                <div className="text-right">
+                  <Badge className="bg-amber-700 text-white text-[10px] px-1.5 mr-1">{subsRealized?.bronze?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-[#1a1a2e]">{formatCents(subsRealized?.bronze?.monthly || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-amber-200 text-amber-900 text-[10px] px-1.5 mr-1">{subsProjected?.bronze?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-slate-600">{formatCents(subsProjected?.bronze?.monthly || 0)}</span>
+                </div>
               </div>
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500 uppercase">Total Subscription MRR</span>
-                <span className="text-sm font-bold text-emerald-600">{formatCents(rev?.subscriptions?.total || 0)}</span>
+                <span className="text-xs font-semibold text-slate-500 uppercase">Subscription MRR</span>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-emerald-600">{formatCents(subsRealized?.total || 0)}</div>
+                  <div className="text-[11px] text-slate-500">Projected: {formatCents(subsProjected?.total || 0)}</div>
+                </div>
               </div>
+              {trialingCount > 0 && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
+                  {trialingCount} subscriber{trialingCount > 1 ? "s" : ""} on free trial — counted in projected only.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -439,34 +508,65 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-rose-50 border border-rose-100">
+              <div className="grid grid-cols-3 gap-2 px-1 pb-1 text-[10px] font-semibold text-slate-400 uppercase">
+                <span>Size</span>
+                <span className="text-right">Realized</span>
+                <span className="text-right">Projected</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-2 py-2 px-3 rounded-xl bg-rose-50 border border-rose-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-rose-500" />
-                  <span className="text-sm font-medium text-[#1a1a2e]">Large Ads</span>
-                  <Badge className="bg-rose-500 text-white text-[10px] px-1.5">{rev?.ads?.large?.count || 0}</Badge>
+                  <span className="text-sm font-medium text-[#1a1a2e]">Large</span>
                 </div>
-                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.large?.revenue || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+                <div className="text-right">
+                  <Badge className="bg-rose-500 text-white text-[10px] px-1.5 mr-1">{adsRealized?.large?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-[#1a1a2e]">{formatCents(adsRealized?.large?.revenue || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-rose-200 text-rose-900 text-[10px] px-1.5 mr-1">{adsProjected?.large?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-slate-600">{formatCents(adsProjected?.large?.revenue || 0)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-blue-50 border border-blue-100">
+              <div className="grid grid-cols-3 items-center gap-2 py-2 px-3 rounded-xl bg-blue-50 border border-blue-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-[#0a4a82]" />
-                  <span className="text-sm font-medium text-[#1a1a2e]">Medium Ads</span>
-                  <Badge className="bg-[#0a4a82] text-white text-[10px] px-1.5">{rev?.ads?.medium?.count || 0}</Badge>
+                  <span className="text-sm font-medium text-[#1a1a2e]">Medium</span>
                 </div>
-                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.medium?.revenue || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+                <div className="text-right">
+                  <Badge className="bg-[#0a4a82] text-white text-[10px] px-1.5 mr-1">{adsRealized?.medium?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-[#1a1a2e]">{formatCents(adsRealized?.medium?.revenue || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-blue-200 text-blue-900 text-[10px] px-1.5 mr-1">{adsProjected?.medium?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-slate-600">{formatCents(adsProjected?.medium?.revenue || 0)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="grid grid-cols-3 items-center gap-2 py-2 px-3 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-gray-500" />
-                  <span className="text-sm font-medium text-[#1a1a2e]">Small Ads</span>
-                  <Badge className="bg-gray-500 text-white text-[10px] px-1.5">{rev?.ads?.small?.count || 0}</Badge>
+                  <span className="text-sm font-medium text-[#1a1a2e]">Small</span>
                 </div>
-                <span className="text-sm font-bold text-[#1a1a2e]">{formatCents(rev?.ads?.small?.revenue || 0)}<span className="text-xs text-slate-400 font-normal">/mo</span></span>
+                <div className="text-right">
+                  <Badge className="bg-gray-500 text-white text-[10px] px-1.5 mr-1">{adsRealized?.small?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-[#1a1a2e]">{formatCents(adsRealized?.small?.revenue || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-gray-200 text-gray-700 text-[10px] px-1.5 mr-1">{adsProjected?.small?.count || 0}</Badge>
+                  <span className="text-xs font-semibold text-slate-600">{formatCents(adsProjected?.small?.revenue || 0)}</span>
+                </div>
               </div>
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500 uppercase">Total Ad MRR</span>
-                <span className="text-sm font-bold text-emerald-600">{formatCents(rev?.ads?.total || 0)}</span>
+                <span className="text-xs font-semibold text-slate-500 uppercase">Ad MRR</span>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-emerald-600">{formatCents(adsRealized?.total || 0)}</div>
+                  <div className="text-[11px] text-slate-500">Projected: {formatCents(adsProjected?.total || 0)}</div>
+                </div>
               </div>
+              {unpaidActiveAds > 0 && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
+                  {unpaidActiveAds} active ad{unpaidActiveAds > 1 ? "s" : ""} not paid (comped/trial) — counted in projected only.
+                </p>
+              )}
               {(rev?.ads?.totalPaid || 0) > 0 && (
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span>Lifetime ad payments collected</span>
