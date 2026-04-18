@@ -4,7 +4,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Tabs,
   TabsContent,
@@ -183,19 +195,7 @@ export default function AILab() {
 
         {/* CREDITS — Phase 1A target */}
         <TabsContent value="credits" className="space-y-4">
-          <PlaceholderPanel
-            icon={<CreditCard className="h-6 w-6" />}
-            title="Credit System"
-            phase="1A"
-            description="Track per-business credit balances, monthly Gold allowance grants, credit pack purchases via Stripe, and full transaction history. Founder businesses bypass charges but their costs are tracked."
-            buildSteps={[
-              "Schema: ai_credits, ai_credit_transactions, ai_credit_packs",
-              "Monthly grant cron (1st of month → 500 credits to all active Gold members)",
-              "Stripe products for credit packs (one-time charges)",
-              "Credit purchase flow + webhook handler",
-              "Business-facing balance widget (preview here only)",
-            ]}
-          />
+          <CreditsPanel />
         </TabsContent>
 
         {/* CONCIERGE — Phase 1B/1C */}
@@ -247,19 +247,7 @@ export default function AILab() {
 
         {/* REVENUE — Phase 1A admin side */}
         <TabsContent value="revenue" className="space-y-4">
-          <PlaceholderPanel
-            icon={<TrendingUp className="h-6 w-6" />}
-            title="AI Revenue Dashboard"
-            phase="1A"
-            description="Per-business and aggregate view of AI usage costs vs. revenue. Shows what each member is being charged, what they cost in API spend, and net profit per feature."
-            buildSteps={[
-              "Aggregate KPIs (revenue, cost, margin, this month + YTD)",
-              "Per-business breakdown table with drill-down",
-              "Feature-level revenue/cost split",
-              "Cost spike alerts + budget caps",
-              "Refund flow (admin can credit back)",
-            ]}
-          />
+          <RevenuePanel />
         </TabsContent>
 
         {/* SETTINGS — model selection, pricing tweaks */}
@@ -485,3 +473,569 @@ const ROADMAP: Array<{
     tags: ["Admin", "Internal"],
   },
 ];
+
+/* ────────────────── Phase 1A: live panels ────────────────── */
+
+type Balance = {
+  businessId: number;
+  businessName: string;
+  membershipTier: string | null;
+  balance: number | null;
+  monthlyAllowance: number | null;
+  adsUsedThisCycle: number | null;
+  reelsUsedThisCycle: number | null;
+  enhancementsUsedThisCycle: number | null;
+  cycleResetsAt: string | null;
+  lastGrantAt: string | null;
+  isFounderComp: boolean | null;
+};
+type Pack = {
+  id: number;
+  sku: string;
+  name: string;
+  credits: number;
+  priceCents: number;
+};
+type Txn = {
+  id: number;
+  businessId: number;
+  businessName: string | null;
+  type: string;
+  feature: string | null;
+  creditsDelta: number;
+  costCents: number;
+  revenueCents: number;
+  metadata: string | null;
+  createdAt: string;
+};
+
+function fmtUsd(cents: number) {
+  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function CreditsPanel() {
+  const { toast } = useToast();
+  const [adjustBizId, setAdjustBizId] = useState<number | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState<string>("");
+
+  const balancesQ = useQuery<{ balances: Balance[] }>({
+    queryKey: ["/api/admin/ai-lab/balances"],
+  });
+  const packsQ = useQuery<{ packs: Pack[] }>({
+    queryKey: ["/api/admin/ai-lab/packs"],
+  });
+  const txnsQ = useQuery<{ transactions: Txn[] }>({
+    queryKey: ["/api/admin/ai-lab/transactions"],
+  });
+
+  const grantMonthly = useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const res = await apiRequest("POST", "/api/admin/ai-lab/run-monthly-grant", { dryRun });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.dryRun ? "Dry run complete" : "Monthly grants applied",
+        description: `${data.grantedCount} businesses granted, ${data.skippedCount} skipped (of ${data.totalGold} Gold).`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/balances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/revenue"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Grant failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const adjust = useMutation({
+    mutationFn: async (vars: { businessId: number; creditsDelta: number; note?: string }) => {
+      const res = await apiRequest("POST", "/api/admin/ai-lab/adjust", vars);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Balance updated" });
+      setAdjustBizId(null);
+      setAdjustAmount("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/balances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/transactions"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Adjustment failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const balances = balancesQ.data?.balances ?? [];
+  const goldOnly = balances.filter((b) => b.membershipTier === "premium");
+
+  return (
+    <div className="space-y-4">
+      {/* Credit packs catalog */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Credit Packs
+              </CardTitle>
+              <CardDescription>One-time top-ups Gold members can buy. Stripe wiring lands in Phase 1B.</CardDescription>
+            </div>
+            <Badge variant="outline" className="font-mono text-xs">Phase 1A</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {packsQ.isLoading ? (
+            <Skeleton className="h-20 w-full" />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {packsQ.data?.packs.map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-lg border p-3 text-center"
+                  data-testid={`pack-${p.sku}`}
+                >
+                  <p className="text-xs uppercase text-muted-foreground">{p.sku}</p>
+                  <p className="text-2xl font-bold text-[#0a4a82] mt-1">
+                    {p.credits.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">credits</p>
+                  <p className="text-sm font-semibold mt-2">{fmtUsd(p.priceCents)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {(p.priceCents / p.credits).toFixed(2)}¢ / credit
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cron simulator */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Monthly Grant (Cron Simulator)
+              </CardTitle>
+              <CardDescription>
+                Grants the included monthly bonus credits to every active Gold member and resets cycle counters.
+                Production will run this on the 1st of each month.
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => grantMonthly.mutate(true)}
+                disabled={grantMonthly.isPending}
+                data-testid="button-grant-dryrun"
+              >
+                Dry Run
+              </Button>
+              <Button
+                onClick={() => grantMonthly.mutate(false)}
+                disabled={grantMonthly.isPending}
+                data-testid="button-grant-monthly"
+                className="bg-[#0a4a82] hover:bg-[#083a66]"
+              >
+                {grantMonthly.isPending ? "Granting…" : "Run Monthly Grant"}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Balances table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Business Credit Balances</CardTitle>
+          <CardDescription>
+            {goldOnly.length} Gold member{goldOnly.length === 1 ? "" : "s"} · {balances.length} total business{balances.length === 1 ? "" : "es"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {balancesQ.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : balances.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No businesses yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Business</TableHead>
+                    <TableHead>Tier</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-center">Used (Ads / Reels / Enh)</TableHead>
+                    <TableHead>Last Grant</TableHead>
+                    <TableHead>Adjust</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {balances.map((b) => (
+                    <TableRow key={b.businessId} data-testid={`row-balance-${b.businessId}`}>
+                      <TableCell className="font-medium">
+                        {b.businessName}
+                        {b.isFounderComp && (
+                          <Badge variant="outline" className="ml-2 text-[10px] border-amber-400 text-amber-700">
+                            Founder
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <TierBadge tier={b.membershipTier} />
+                      </TableCell>
+                      <TableCell className="text-right font-mono" data-testid={`balance-${b.businessId}`}>
+                        {(b.balance ?? 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">
+                        {b.adsUsedThisCycle ?? 0} / {b.reelsUsedThisCycle ?? 0} / {b.enhancementsUsedThisCycle ?? 0}
+                      </TableCell>
+                      <TableCell className="text-xs">{fmtDate(b.lastGrantAt)}</TableCell>
+                      <TableCell>
+                        {adjustBizId === b.businessId ? (
+                          <div className="flex gap-1">
+                            <Input
+                              type="number"
+                              placeholder="±100"
+                              value={adjustAmount}
+                              onChange={(e) => setAdjustAmount(e.target.value)}
+                              className="h-8 w-20 text-xs"
+                              data-testid={`input-adjust-${b.businessId}`}
+                            />
+                            <Button
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => {
+                                const n = parseInt(adjustAmount, 10);
+                                if (!isNaN(n) && n !== 0) {
+                                  adjust.mutate({ businessId: b.businessId, creditsDelta: n, note: "Admin sandbox grant" });
+                                }
+                              }}
+                              disabled={adjust.isPending}
+                              data-testid={`button-confirm-adjust-${b.businessId}`}
+                            >
+                              Apply
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => { setAdjustBizId(null); setAdjustAmount(""); }}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            onClick={() => setAdjustBizId(b.businessId)}
+                            data-testid={`button-adjust-${b.businessId}`}
+                          >
+                            Grant / Deduct
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent transactions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+          <CardDescription>Most recent 50 credit movements across all businesses.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {txnsQ.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (txnsQ.data?.transactions ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No transactions yet. Run a monthly grant or adjust a balance to see activity here.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Business</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Feature</TableHead>
+                    <TableHead className="text-right">Δ Credits</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {txnsQ.data!.transactions.map((t) => (
+                    <TableRow key={t.id} data-testid={`row-txn-${t.id}`}>
+                      <TableCell className="text-xs">{fmtDate(t.createdAt)}</TableCell>
+                      <TableCell className="text-xs">{t.businessName ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] font-mono">{t.type}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{t.feature ?? "—"}</TableCell>
+                      <TableCell className={`text-right font-mono text-xs ${t.creditsDelta >= 0 ? "text-green-700" : "text-red-700"}`}>
+                        {t.creditsDelta > 0 ? "+" : ""}{t.creditsDelta.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">{t.costCents > 0 ? fmtUsd(t.costCents) : "—"}</TableCell>
+                      <TableCell className="text-right text-xs">{t.revenueCents > 0 ? fmtUsd(t.revenueCents) : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+type RevenueData = {
+  windowStart: string;
+  months: number;
+  totals: {
+    revenueCents: number;
+    costCents: number;
+    netCents: number;
+    marginPct: number;
+    creditsGranted: number;
+    creditsPurchased: number;
+    creditsUsed: number;
+    transactionCount: number;
+  };
+  featureBreakdown: Array<{ feature: string; costCents: number; usageCount: number }>;
+  perBusiness: Array<{
+    businessId: number;
+    businessName: string;
+    membershipTier: string;
+    revenueCents: number;
+    costCents: number;
+    netCents: number;
+    creditsUsed: number;
+  }>;
+};
+
+function RevenuePanel() {
+  const [months, setMonths] = useState(1);
+  const revenueQ = useQuery<RevenueData>({
+    queryKey: ["/api/admin/ai-lab/revenue", months],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/ai-lab/revenue?months=${months}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load revenue");
+      return res.json();
+    },
+  });
+
+  const t = revenueQ.data?.totals;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                AI Revenue & Cost
+              </CardTitle>
+              <CardDescription>
+                Window: last {months} month{months === 1 ? "" : "s"} ·{" "}
+                {revenueQ.data ? `since ${fmtDate(revenueQ.data.windowStart)}` : "loading"}
+              </CardDescription>
+            </div>
+            <div className="flex gap-1">
+              {[1, 3, 6, 12].map((m) => (
+                <Button
+                  key={m}
+                  size="sm"
+                  variant={months === m ? "default" : "outline"}
+                  className={months === m ? "bg-[#0a4a82] hover:bg-[#083a66]" : ""}
+                  onClick={() => setMonths(m)}
+                  data-testid={`button-window-${m}m`}
+                >
+                  {m}M
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {revenueQ.isLoading || !t ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiTile label="Revenue" value={fmtUsd(t.revenueCents)} tone="green" testId="kpi-revenue" />
+              <KpiTile label="API Cost" value={fmtUsd(t.costCents)} tone="amber" testId="kpi-cost" />
+              <KpiTile
+                label="Net Profit"
+                value={fmtUsd(t.netCents)}
+                tone={t.netCents >= 0 ? "blue" : "red"}
+                testId="kpi-net"
+              />
+              <KpiTile
+                label="Margin"
+                value={t.revenueCents > 0 ? `${t.marginPct}%` : "—"}
+                tone="blue"
+                testId="kpi-margin"
+              />
+              <KpiTile
+                label="Credits Granted"
+                value={t.creditsGranted.toLocaleString()}
+                tone="slate"
+                testId="kpi-granted"
+              />
+              <KpiTile
+                label="Credits Purchased"
+                value={t.creditsPurchased.toLocaleString()}
+                tone="slate"
+                testId="kpi-purchased"
+              />
+              <KpiTile
+                label="Credits Used"
+                value={t.creditsUsed.toLocaleString()}
+                tone="slate"
+                testId="kpi-used"
+              />
+              <KpiTile
+                label="Transactions"
+                value={t.transactionCount.toLocaleString()}
+                tone="slate"
+                testId="kpi-txn"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cost by Feature</CardTitle>
+          <CardDescription>Where your API spend is going. Empty until features start running.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {revenueQ.isLoading ? (
+            <Skeleton className="h-20 w-full" />
+          ) : (revenueQ.data?.featureBreakdown ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No usage logged in this window yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Feature</TableHead>
+                  <TableHead className="text-right">Uses</TableHead>
+                  <TableHead className="text-right">Total Cost</TableHead>
+                  <TableHead className="text-right">Avg Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {revenueQ.data!.featureBreakdown.map((f) => (
+                  <TableRow key={f.feature} data-testid={`feature-${f.feature}`}>
+                    <TableCell className="font-mono text-xs">{f.feature}</TableCell>
+                    <TableCell className="text-right">{f.usageCount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{fmtUsd(f.costCents)}</TableCell>
+                    <TableCell className="text-right">
+                      {f.usageCount > 0 ? fmtUsd(Math.round(f.costCents / f.usageCount)) : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Per-Business Profitability</CardTitle>
+          <CardDescription>Sorted by net profit (revenue minus cost).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {revenueQ.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (revenueQ.data?.perBusiness ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Business</TableHead>
+                    <TableHead>Tier</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                    <TableHead className="text-right">Net</TableHead>
+                    <TableHead className="text-right">Credits Used</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {revenueQ.data!.perBusiness.map((b) => (
+                    <TableRow key={b.businessId} data-testid={`pb-row-${b.businessId}`}>
+                      <TableCell className="font-medium">{b.businessName}</TableCell>
+                      <TableCell><TierBadge tier={b.membershipTier} /></TableCell>
+                      <TableCell className="text-right text-xs">{fmtUsd(b.revenueCents)}</TableCell>
+                      <TableCell className="text-right text-xs">{fmtUsd(b.costCents)}</TableCell>
+                      <TableCell className={`text-right text-xs font-semibold ${b.netCents >= 0 ? "text-green-700" : "text-red-700"}`}>
+                        {fmtUsd(b.netCents)}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">{b.creditsUsed.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function TierBadge({ tier }: { tier: string | null }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    premium: { label: "Gold", cls: "bg-[#f5f5dc] text-[#0a4a82] border-[#d4a373]" },
+    standard: { label: "Silver", cls: "bg-slate-100 text-slate-700 border-slate-300" },
+    basic: { label: "Bronze", cls: "bg-amber-50 text-amber-800 border-amber-300" },
+  };
+  const m = (tier && map[tier]) || { label: tier ?? "none", cls: "bg-muted text-muted-foreground" };
+  return <Badge variant="outline" className={`text-[10px] ${m.cls}`}>{m.label}</Badge>;
+}
+
+function KpiTile({
+  label,
+  value,
+  tone,
+  testId,
+}: {
+  label: string;
+  value: string;
+  tone: "green" | "amber" | "blue" | "red" | "slate";
+  testId: string;
+}) {
+  const tones: Record<typeof tone, string> = {
+    green: "border-green-300 bg-green-50 text-green-800",
+    amber: "border-amber-300 bg-amber-50 text-amber-800",
+    blue: "border-[#d4a373] bg-[#f5f5dc] text-[#0a4a82]",
+    red: "border-red-300 bg-red-50 text-red-800",
+    slate: "border-slate-200 bg-slate-50 text-slate-700",
+  } as const;
+  return (
+    <div className={`rounded-lg border p-3 ${tones[tone]}`} data-testid={testId}>
+      <p className="text-[10px] uppercase tracking-wide opacity-80">{label}</p>
+      <p className="text-2xl font-bold mt-1">{value}</p>
+    </div>
+  );
+}

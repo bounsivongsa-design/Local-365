@@ -41,6 +41,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Local Vendor Eligibility**: Policy ensures only local businesses are listed, with AI-powered verification checks for LLCs and document uploads for other credentials.
 - **Password Reset**: Secure token-based password reset flow with email delivery via Resend. Tokens expire after 1 hour. Pages: `/forgot-password` and `/reset-password?token=...`.
 - **Admin Dashboard**: A comprehensive control center for platform management, user/business oversight, content moderation, and analytics.
+- **AI Lab (sandbox)**: Admin-only page at `/admin/ai-lab` for incubating the Gold-exclusive AI Suite. Phase 1A ships a credit system foundation: `ai_credit_packs` (4 SKUs at $10/$25/$75/$200), per-business `ai_credits` balance with monthly allowance, and an `ai_credit_transactions` ledger. Idempotent monthly grants (unique index on `business_id, type, grant_period`), atomic balance/ledger writes (DB transactions), unique `stripe_payment_intent_id` for Phase 1B safety. Founder businesses (Goat Locker Printing, Blackwater Technology Solutions) auto-flagged `is_founder_comp = true`. Admin endpoints under `/api/admin/ai-lab/*` (packs, balances, transactions, revenue, adjust, run-monthly-grant). Customer-facing flows untouched.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.

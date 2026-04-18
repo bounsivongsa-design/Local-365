@@ -6,6 +6,7 @@ import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { registerStripeRoutes } from "./stripe";
+import { registerAiLabRoutes } from "./aiLab";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
 import { getMembershipTier } from "@shared/config/membership";
 import db from "./lib/replitDb";
@@ -417,6 +418,9 @@ export async function registerRoutes(
 
   // Stripe Payment Routes
   registerStripeRoutes(app);
+
+  // AI Lab (sandbox) — Phase 1A: credits + revenue dashboard
+  registerAiLabRoutes(app);
 
   // ============ LOCATION ROUTES ============
   

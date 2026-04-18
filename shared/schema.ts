@@ -1,5 +1,5 @@
 export * from "./models/auth";
-import { pgTable, text, serial, integer, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -417,3 +417,79 @@ export type CreateCommentRequest = z.infer<typeof insertCommentSchema>;
 // Re-export chat models for AI chat feature
 export { conversations, messages, insertConversationSchema, insertMessageSchema } from "./models/chat";
 export type { Conversation, Message, InsertConversation, InsertMessage } from "./models/chat";
+
+/* ────────────────────────────────────────────────────────────────────────
+   AI Lab — Phase 1A: Credit System
+   These tables are isolated to the AI Suite. Nothing in the rest of the
+   platform reads from or writes to them yet. They are populated and
+   exercised exclusively from the admin AI Lab page until graduated.
+   ──────────────────────────────────────────────────────────────────────── */
+
+// Credit packs sold to Gold members (one-time Stripe purchases)
+export const aiCreditPacks = pgTable("ai_credit_packs", {
+  id: serial("id").primaryKey(),
+  sku: text("sku").notNull().unique(), // e.g. "starter", "popular", "power", "pro"
+  name: text("name").notNull(), // display name e.g. "1,500 credits"
+  credits: integer("credits").notNull(),
+  priceCents: integer("price_cents").notNull(),
+  stripePriceId: text("stripe_price_id"), // wired in Phase 1B
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Per-business credit balance + monthly allowance settings
+export const aiCredits = pgTable("ai_credits", {
+  businessId: integer("business_id").primaryKey().references(() => businesses.id, { onDelete: "cascade" }),
+  balance: integer("balance").notNull().default(0),
+  monthlyAllowance: integer("monthly_allowance").notNull().default(250), // bonus credits granted to Gold
+  monthlyAdsIncluded: integer("monthly_ads_included").notNull().default(1),
+  monthlyReelsIncluded: integer("monthly_reels_included").notNull().default(1),
+  monthlyEnhancementsIncluded: integer("monthly_enhancements_included").notNull().default(25),
+  adsUsedThisCycle: integer("ads_used_this_cycle").notNull().default(0),
+  reelsUsedThisCycle: integer("reels_used_this_cycle").notNull().default(0),
+  enhancementsUsedThisCycle: integer("enhancements_used_this_cycle").notNull().default(0),
+  cycleResetsAt: timestamp("cycle_resets_at"), // next monthly grant
+  lastGrantAt: timestamp("last_grant_at"),
+  autoReloadEnabled: boolean("auto_reload_enabled").default(false),
+  autoReloadPackSku: text("auto_reload_pack_sku"),
+  isFounderComp: boolean("is_founder_comp").default(false), // bypasses charges, costs still tracked
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Every credit movement: grants, purchases, usage, refunds, founder-comps
+export const aiCreditTransactions = pgTable("ai_credit_transactions", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  // type: monthly_grant | founder_grant | purchase | usage | refund | admin_adjust
+  type: text("type").notNull(),
+  // for usage rows: which feature was used
+  // text_generation | ad_image | ad_image_included | reel | reel_included
+  // photo_enhance | photo_enhance_included | listing_coach | review_insights | competitor_intel
+  feature: text("feature"),
+  // signed credit delta (+grant / -usage)
+  creditsDelta: integer("credits_delta").notNull().default(0),
+  // your actual API spend in cents (positive cost; only set on usage rows)
+  costCents: integer("cost_cents").notNull().default(0),
+  // revenue collected in cents (only set on purchase rows)
+  revenueCents: integer("revenue_cents").notNull().default(0),
+  // free-form notes / payload (e.g. Stripe payment intent id, prompt summary)
+  metadata: text("metadata"), // JSON string
+  // Idempotency keys:
+  // - grantPeriod: "YYYY-MM" for monthly_grant/founder_grant rows; ensures one grant per business per cycle
+  // - stripePaymentIntentId: unique per Stripe charge so duplicate webhooks cannot double-credit
+  grantPeriod: text("grant_period"),
+  stripePaymentIntentId: text("stripe_payment_intent_id").unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  // Exactly-once grants per (business, type, period) — partial-style index works in Postgres
+  uniqGrantPerPeriod: uniqueIndex("ai_credit_txn_unique_grant_per_period")
+    .on(t.businessId, t.type, t.grantPeriod),
+}));
+
+export const insertAiCreditPackSchema = createInsertSchema(aiCreditPacks).omit({ id: true, createdAt: true });
+export type AiCreditPack = typeof aiCreditPacks.$inferSelect;
+export type InsertAiCreditPack = z.infer<typeof insertAiCreditPackSchema>;
+export type AiCredits = typeof aiCredits.$inferSelect;
+export type AiCreditTransaction = typeof aiCreditTransactions.$inferSelect;
