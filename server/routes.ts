@@ -4058,6 +4058,8 @@ Respond in this exact JSON format:
           membershipTier: businesses.membershipTier,
           membershipStartDate: businesses.membershipStartDate,
           membershipEndDate: businesses.membershipEndDate,
+          originalMembershipTier: businesses.originalMembershipTier,
+          goldTrialEndDate: businesses.goldTrialEndDate,
           verified: businesses.verified,
           acceptsQuotes: businesses.acceptsQuotes,
           createdAt: businesses.createdAt,

@@ -138,6 +138,8 @@ type AdminBusiness = {
   membershipTier: string | null;
   membershipStartDate: string | null;
   membershipEndDate: string | null;
+  originalMembershipTier: string | null;
+  goldTrialEndDate: string | null;
   verified: boolean | null;
   acceptsQuotes: boolean | null;
   createdAt: string | null;
@@ -1250,7 +1252,14 @@ function BusinessesTab() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <Badge className={`text-xs ${tierColor(b.membershipTier)}`}>{tierLabel(b.membershipTier)}</Badge>
+                      <Badge className={`text-xs ${tierColor(b.membershipTier)}`} data-testid={`badge-tier-${b.id}`}>{tierLabel(b.membershipTier)}</Badge>
+                      {b.goldTrialEndDate && b.originalMembershipTier && b.originalMembershipTier !== b.membershipTier && (
+                        <p className="text-[10px] text-amber-700 mt-1 font-medium" data-testid={`text-trial-${b.id}`}>
+                          Gold trial · signed up: {tierLabel(b.originalMembershipTier)}
+                          <br />
+                          ends {format(new Date(b.goldTrialEndDate), "MMM d, yyyy")}
+                        </p>
+                      )}
                       {b.membershipEndDate && (
                         <p className="text-[10px] text-slate-400 mt-1">
                           exp {format(new Date(b.membershipEndDate), "MMM d")}
