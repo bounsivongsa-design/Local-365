@@ -4390,18 +4390,21 @@ Respond in this exact JSON format:
         realized: blankTierBreakdown(),
         projected: blankTierBreakdown(),
         trialingCount: 0,
+        founderCount: 0,
       };
       try {
         const activeSubs = await pgDb.select({
+          id: businesses.id,
+          name: businesses.name,
           membershipTier: businesses.membershipTier,
           paymentFrequency: businesses.membershipPaymentFrequency,
           goldTrialEndDate: businesses.goldTrialEndDate,
           originalMembershipTier: businesses.originalMembershipTier,
+          stripeSubscriptionId: businesses.stripeSubscriptionId,
         }).from(businesses).where(
           and(
             sql`${businesses.membershipTier} IS NOT NULL`,
-            sql`${businesses.membershipTier} != 'none'`,
-            sql`${businesses.stripeSubscriptionId} IS NOT NULL`
+            sql`${businesses.membershipTier} != 'none'`
           )
         );
         const now = new Date();
@@ -4411,24 +4414,75 @@ Respond in this exact JSON format:
           if (freq === "annual") return Math.round((SUBSCRIPTION_ANNUAL[t] || 0) / 12);
           return SUBSCRIPTION_MONTHLY[t] || 0;
         };
+
+        // Lazy-load Stripe for live trial-status detection
+        let stripeClient: any = null;
+        try {
+          if (process.env.Stripeintegration) {
+            const Stripe = (await import("stripe")).default;
+            stripeClient = new Stripe(process.env.Stripeintegration as string, { apiVersion: "2025-02-24.acacia" as any });
+          }
+        } catch {}
+
         for (const sub of activeSubs) {
+          // Founder businesses are permanently free — exclude from both realized and projected.
+          if (isFounderBusiness(sub.name)) {
+            subscriptionRevenue.founderCount++;
+            continue;
+          }
+          if (!sub.stripeSubscriptionId) continue; // No Stripe sub = not actually billing.
+
           const freq = sub.paymentFrequency || "monthly";
-          const inTrial = sub.goldTrialEndDate ? new Date(sub.goldTrialEndDate) > now : false;
-          const postTrialTier = (sub.originalMembershipTier || sub.membershipTier || "none");
-          const projKey = tierToKey(postTrialTier);
+
+          // Live trial check + actual Stripe price (most accurate; covers cases where
+          // originalMembershipTier wasn't recorded locally).
+          let inTrial = sub.goldTrialEndDate ? new Date(sub.goldTrialEndDate) > now : false;
+          let liveMonthlyCents: number | null = null;
+          let liveTierKey: "bronze" | "silver" | "gold" | null = null;
+          if (stripeClient) {
+            try {
+              const liveSub = await stripeClient.subscriptions.retrieve(sub.stripeSubscriptionId);
+              if (liveSub?.status === "trialing") inTrial = true;
+              else if (liveSub?.status === "active" || liveSub?.status === "past_due") inTrial = false;
+              const price = liveSub?.items?.data?.[0]?.price;
+              if (price?.unit_amount && price?.recurring) {
+                const unit = price.unit_amount as number;
+                const interval = price.recurring.interval;
+                const intervalCount = price.recurring.interval_count || 1;
+                if (interval === "year") liveMonthlyCents = Math.round(unit / 12);
+                else if (interval === "month") liveMonthlyCents = Math.round(unit / intervalCount);
+                else if (interval === "week") liveMonthlyCents = Math.round((unit * 52) / 12 / intervalCount);
+                else if (interval === "day") liveMonthlyCents = Math.round((unit * 365) / 12 / intervalCount);
+                if (liveMonthlyCents !== null) {
+                  if (liveMonthlyCents <= 7000) liveTierKey = "bronze";
+                  else if (liveMonthlyCents <= 14000) liveTierKey = "silver";
+                  else liveTierKey = "gold";
+                }
+              }
+            } catch {}
+          }
+
+          const fallbackPostTrialTier = sub.originalMembershipTier || sub.membershipTier || "none";
+          const fallbackPostTrialKey = tierToKey(fallbackPostTrialTier);
+          const projKey = liveTierKey || fallbackPostTrialKey;
+          const projMonthly = liveMonthlyCents !== null
+            ? liveMonthlyCents
+            : (fallbackPostTrialKey ? monthlyForTier(fallbackPostTrialTier, freq) : 0);
           if (projKey) {
-            const m = monthlyForTier(postTrialTier, freq);
             subscriptionRevenue.projected[projKey].count++;
-            subscriptionRevenue.projected[projKey].monthly += m;
+            subscriptionRevenue.projected[projKey].monthly += projMonthly;
           }
           if (inTrial) {
             subscriptionRevenue.trialingCount++;
           } else {
-            const billKey = tierToKey(sub.membershipTier);
+            // Active billing — use live Stripe amount when available, else fall back to local tier
+            const billKey = liveTierKey || tierToKey(sub.membershipTier);
+            const billMonthly = liveMonthlyCents !== null
+              ? liveMonthlyCents
+              : (sub.membershipTier ? monthlyForTier(sub.membershipTier, freq) : 0);
             if (billKey) {
-              const m = monthlyForTier(sub.membershipTier!, freq);
               subscriptionRevenue.realized[billKey].count++;
-              subscriptionRevenue.realized[billKey].monthly += m;
+              subscriptionRevenue.realized[billKey].monthly += billMonthly;
             }
           }
         }
@@ -4466,7 +4520,11 @@ Respond in this exact JSON format:
         const realizedRows = await pgDb.select({
           adSize: adPlacements.adSize,
           count: sql<number>`count(*)::int`,
-        }).from(adPlacements).where(and(eq(adPlacements.status, "active"), eq(adPlacements.paymentStatus, "paid"))).groupBy(adPlacements.adSize);
+        }).from(adPlacements).where(and(
+          eq(adPlacements.status, "active"),
+          eq(adPlacements.paymentStatus, "paid"),
+          sql`${adPlacements.totalPaid} > 0`
+        )).groupBy(adPlacements.adSize);
         for (const row of realizedRows) {
           const size = (row.adSize || "small") as "small" | "medium" | "large";
           if (adRevenue.realized[size]) {
