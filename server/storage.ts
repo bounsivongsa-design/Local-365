@@ -85,6 +85,8 @@ export class DatabaseStorage implements IStorage {
       websiteUrl: businesses.websiteUrl,
       logoUrl: businesses.logoUrl,
       isExample: businesses.isExample,
+      isFoundingMember: businesses.isFoundingMember,
+      foundingMemberNumber: businesses.foundingMemberNumber,
       averageRating: sql<number>`COALESCE(AVG(${reviews.rating}), 0)`,
       reviewCount: sql<number>`COUNT(${reviews.id})`
     })

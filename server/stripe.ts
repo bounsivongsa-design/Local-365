@@ -5,6 +5,7 @@ import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListi
 import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
+import { processMembershipActivation } from "./referrals";
 
 const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
 const FOUNDER_EMAILS = [
@@ -144,6 +145,7 @@ export function registerStripeRoutes(app: Express) {
             membershipStartDate: new Date(),
             membershipEndDate: null,
           }).where(eq(businesses.id, biz.id));
+          await processMembershipActivation(biz.id).catch((e) => console.error("[referrals] founder bypass:", e));
         } else {
           await db.update(users).set({
             pendingMembershipTier: "premium",
@@ -511,6 +513,7 @@ export function registerStripeRoutes(app: Express) {
 
           await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
           console.log(`Membership activated via session verification: business ${businessId} → ${tier}`);
+          await processMembershipActivation(businessId).catch((e) => console.error("[referrals] verify-session:", e));
 
           const promoCodeIdStr = session.metadata?.promoCodeId;
           if (promoCodeIdStr) {
@@ -561,6 +564,7 @@ export function registerStripeRoutes(app: Express) {
 
           await db.update(businesses).set(updates).where(eq(businesses.id, checkoutUser.linkedBusinessId));
           console.log(`Membership applied directly via verify-session: business ${checkoutUser.linkedBusinessId} → ${tier}`);
+          await processMembershipActivation(checkoutUser.linkedBusinessId).catch((e) => console.error("[referrals] verify-session-linked:", e));
 
           try {
             if (session.subscription) {
@@ -995,6 +999,7 @@ export function registerStripeRoutes(app: Express) {
 
             await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
             console.log(`Membership activated: business ${businessId} → ${tier}`);
+            await processMembershipActivation(businessId).catch((e) => console.error("[referrals] webhook:", e));
 
             const promoCodeIdStr = session.metadata?.promoCodeId;
             if (promoCodeIdStr) {
@@ -1045,6 +1050,7 @@ export function registerStripeRoutes(app: Express) {
 
               await db.update(businesses).set(updates).where(eq(businesses.id, checkoutUser.linkedBusinessId));
               console.log(`Membership applied directly to business ${checkoutUser.linkedBusinessId} → ${tier} (user already had business)`);
+              await processMembershipActivation(checkoutUser.linkedBusinessId).catch((e) => console.error("[referrals] webhook-linked:", e));
 
               if (session.subscription) {
                 try {

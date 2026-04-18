@@ -4,6 +4,7 @@ import { type BusinessWithRating } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
+import { FoundingMemberBadge } from "@/components/FoundingMemberBadge";
 import { ExampleBanner } from "@/components/ExampleBanner";
 
 function StarRating({ rating, reviewCount }: { rating: number; reviewCount: number }) {
@@ -135,6 +136,9 @@ export function BusinessCard({ business }: BusinessCardProps) {
                   variant="compact"
                 />
                 <MembershipBadge tier={business.membershipTier} variant="compact" />
+                {(business as any).isFoundingMember && (
+                  <FoundingMemberBadge number={(business as any).foundingMemberNumber} variant="compact" />
+                )}
               </div>
               <span className="text-sm text-[#0a4a82] font-semibold group-hover:underline flex items-center gap-1">
                 View Details

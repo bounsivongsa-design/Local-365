@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { CardImagePicker } from "@/components/CardImagePicker";
+import { getStoredReferralCode, clearStoredReferralCode } from "@/hooks/use-referral-capture";
 import { Link } from "react-router-dom";
 import {
   Shield,
@@ -180,6 +181,17 @@ export function CreateBusinessForm({
   const [verificationDocs, setVerificationDocs] = useState<{type: string; fileName: string; fileUrl: string}[]>([]);
   const insuranceInputRef = useRef<HTMLInputElement>(null);
   const licenseInputRef = useRef<HTMLInputElement>(null);
+  // Referral code captured via ?ref= URL param (or typed manually below).
+  // Read URL synchronously to handle direct landings on /create-business?ref=CODE
+  // where the AppRouter capture effect hasn't written localStorage yet.
+  const [referralCode, setReferralCode] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const urlRef = new URLSearchParams(window.location.search).get("ref");
+      if (urlRef && urlRef.length <= 32) return urlRef.trim().toUpperCase();
+    } catch {}
+    return getStoredReferralCode() ?? "";
+  });
 
   const categoryLimit = getCategoryLimit(membershipTier);
   const tierConfigId = TIER_ID_MAP[membershipTier] ?? membershipTier;
@@ -296,8 +308,14 @@ export function CreateBusinessForm({
           submitData.stripeSessionId = stripeSessionId;
         }
 
+        const trimmedRef = referralCode.trim().toUpperCase();
+        if (trimmedRef) {
+          submitData.referredByCode = trimmedRef;
+        }
+
         createBusiness.mutate(submitData, {
           onSuccess: async (createdBusiness: any) => {
+            clearStoredReferralCode();
             if (verificationDocs.length > 0 && createdBusiness?.id) {
               for (const doc of verificationDocs) {
                 try {
@@ -1509,6 +1527,26 @@ export function CreateBusinessForm({
             </Button>
           )}
         </div>
+
+        {step === STEPS.length - 1 && (
+          <div className="mt-6 rounded-lg border border-dashed border-[#0a4a82]/30 bg-[#0a4a82]/5 p-4">
+            <label htmlFor="referral-code-input" className="text-sm font-semibold text-[#0a4a82]">
+              Got a referral code? (optional)
+            </label>
+            <p className="text-xs text-muted-foreground mt-1 mb-2">
+              Were you invited by another local business? Enter their code to give them — and yourself — 30 free days of Gold features.
+            </p>
+            <Input
+              id="referral-code-input"
+              placeholder="REF-XXXXXX"
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+              className="font-mono uppercase max-w-xs"
+              maxLength={32}
+              data-testid="input-referral-code"
+            />
+          </div>
+        )}
       </form>
     </Form>
   );

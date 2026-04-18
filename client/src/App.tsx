@@ -33,9 +33,11 @@ import EditListing from "@/pages/EditListing";
 import NotFound from "@/pages/not-found";
 import { DevModePanel } from "@/components/DevModePanel";
 import { CookieConsent } from "@/components/CookieConsent";
+import { useReferralCapture } from "@/hooks/use-referral-capture";
 import backgroundImage from "@assets/image_1773172681995.png";
 
 function AppRouter() {
+  useReferralCapture();
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased relative">
       {/* Static Image Background */}

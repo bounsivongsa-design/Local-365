@@ -6,6 +6,7 @@ import { SiFacebook, SiInstagram, SiLinkedin } from "react-icons/si";
 import { FaXTwitter } from "react-icons/fa6";
 import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
+import { FoundingMemberBadge } from "@/components/FoundingMemberBadge";
 import { ExampleBanner } from "@/components/ExampleBanner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +85,12 @@ export default function BusinessDetails() {
            </Link>
            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
              <div>
-               <Badge className="mb-3 bg-[#d4a373] text-white border-none px-4 py-1.5 text-sm font-semibold shadow-lg">{business.category}</Badge>
+               <div className="flex flex-wrap items-center gap-2 mb-3">
+                 <Badge className="bg-[#d4a373] text-white border-none px-4 py-1.5 text-sm font-semibold shadow-lg">{business.category}</Badge>
+                 {(business as any).isFoundingMember && (
+                   <FoundingMemberBadge number={(business as any).foundingMemberNumber} />
+                 )}
+               </div>
                <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
                {business.address && (
                  <p className="text-white/90 mt-2 flex items-center gap-1.5 text-sm drop-shadow-sm">

@@ -55,6 +55,11 @@ export const businesses = pgTable("businesses", {
   membershipTrialUsed: boolean("membership_trial_used").default(false),
   goldTrialEndDate: timestamp("gold_trial_end_date"),
   originalMembershipTier: text("original_membership_tier"),
+  // Referral & Founding-Member program (added 2026-04)
+  referralCode: text("referral_code").unique(),
+  referredByCode: text("referred_by_code"),
+  isFoundingMember: boolean("is_founding_member").default(false),
+  foundingMemberNumber: integer("founding_member_number").unique(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   phone: text("phone"),
@@ -298,6 +303,23 @@ export const promoCodes = pgTable("promo_codes", {
   isActive: boolean("is_active").default(true),
   durationDays: integer("duration_days"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Refer-a-Business growth program. A new business may set
+// `referredByCode` at signup; once they activate any paid membership,
+// processMembershipActivation() finds the matching pending row, flips
+// it to 'rewarded', and extends both businesses' goldTrialEndDate by
+// 30 days. Unique on referredBusinessId so a business can only ever be
+// the recipient of one referral.
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerBusinessId: integer("referrer_business_id").notNull().references(() => businesses.id),
+  referredBusinessId: integer("referred_business_id").notNull().unique().references(() => businesses.id),
+  code: text("code").notNull(),
+  status: text("status").notNull().default("pending"), // 'pending' | 'rewarded'
+  rewardDays: integer("reward_days").notNull().default(30),
+  createdAt: timestamp("created_at").defaultNow(),
+  rewardedAt: timestamp("rewarded_at"),
 });
 
 export const promoCodeUsages = pgTable("promo_code_usages", {

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { linkReferralOnSignup, processMembershipActivation, ensureReferralCode, generateUniqueReferralCode } from "./referrals";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
@@ -844,8 +845,26 @@ export async function registerRoutes(
         return res.status(400).json({ message: "A membership plan is required. Please choose a plan before creating your business listing." });
       }
 
+      // Auto-issue this business's own referral code so they can start
+      // sharing immediately. Stored on the row before insert.
+      if (!input.referralCode) {
+        input.referralCode = await generateUniqueReferralCode();
+      }
+
       const business = await storage.createBusiness(input);
       console.log(`[CREATE-BIZ] Business created: id=${business.id}, name="${business.name}", membershipTier=${business.membershipTier}`);
+
+      // If they pasted a referral code, create the pending link.
+      if (business.referredByCode) {
+        const linkResult = await linkReferralOnSignup(business.id, business.referredByCode);
+        console.log(`[CREATE-BIZ] Referral link result for biz=${business.id}:`, linkResult);
+      }
+
+      // Fire-and-await: deliver any referral reward + assign founding number.
+      // Idempotent and tolerates failure.
+      await processMembershipActivation(business.id).catch((e) =>
+        console.error("[referrals] createBusiness activation hook:", e),
+      );
 
       notifyAdminNewBusiness(business.name, currentUser?.email || "", business.membershipTier || "").catch(() => {});
 
@@ -1082,6 +1101,68 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Get verification error:", err);
       res.status(500).json({ message: "Failed to get verification info" });
+    }
+  });
+
+  // Refer-a-Business + Founding Member status for the dashboard widget.
+  // Returns: { referralCode, isFoundingMember, foundingMemberNumber,
+  //           goldDaysEarned, referrals: [...] }
+  app.get("/api/businesses/:id/referrals", isAuthenticated, async (req: any, res) => {
+    try {
+      const businessId = parseInt(req.params.id);
+      if (!businessId) return res.status(400).json({ message: "Invalid business id" });
+
+      const userId = req.user?.id;
+      const [user] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      if (user.linkedBusinessId !== businessId && user.accountType !== "admin") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const [biz] = await pgDb
+        .select({
+          id: businesses.id,
+          referralCode: businesses.referralCode,
+          isFoundingMember: businesses.isFoundingMember,
+          foundingMemberNumber: businesses.foundingMemberNumber,
+        })
+        .from(businesses)
+        .where(eq(businesses.id, businessId));
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      // Lazy-issue a code if somehow missing
+      const code = biz.referralCode ?? (await ensureReferralCode(businessId));
+
+      const { referrals } = await import("@shared/schema");
+      const refs = await pgDb
+        .select({
+          id: referrals.id,
+          referredBusinessId: referrals.referredBusinessId,
+          referredName: businesses.name,
+          status: referrals.status,
+          rewardDays: referrals.rewardDays,
+          createdAt: referrals.createdAt,
+          rewardedAt: referrals.rewardedAt,
+        })
+        .from(referrals)
+        .leftJoin(businesses, eq(businesses.id, referrals.referredBusinessId))
+        .where(eq(referrals.referrerBusinessId, businessId))
+        .orderBy(desc(referrals.createdAt));
+
+      const goldDaysEarned = refs
+        .filter((r) => r.status === "rewarded")
+        .reduce((sum, r) => sum + (r.rewardDays ?? 30), 0);
+
+      res.json({
+        referralCode: code,
+        isFoundingMember: biz.isFoundingMember,
+        foundingMemberNumber: biz.foundingMemberNumber,
+        goldDaysEarned,
+        referrals: refs,
+      });
+    } catch (err) {
+      console.error("Get referrals error:", err);
+      res.status(500).json({ message: "Failed to get referrals" });
     }
   });
 
@@ -4399,6 +4480,86 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Error fetching admin quote requests:", err);
       res.status(500).json({ message: "Failed to fetch quote requests" });
+    }
+  });
+
+  // Admin growth dashboard: referral leaderboard + founding members roster.
+  app.get("/api/admin/referrals/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const adminCheck = await isAdminUser(userId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const { referrals } = await import("@shared/schema");
+      const FOUNDING_LIMIT = 100;
+
+      const [{ totalReferrals = 0 } = {}] = await pgDb
+        .select({ totalReferrals: sql<number>`count(*)::int` })
+        .from(referrals);
+      const [{ rewardedReferrals = 0 } = {}] = await pgDb
+        .select({ rewardedReferrals: sql<number>`count(*)::int` })
+        .from(referrals)
+        .where(eq(referrals.status, "rewarded"));
+      const pendingReferrals = (totalReferrals as number) - (rewardedReferrals as number);
+
+      // Top referrers (by rewarded count, then total)
+      const referrerRows = await pgDb
+        .select({
+          businessId: referrals.referrerBusinessId,
+          rewarded: sql<number>`sum(case when ${referrals.status} = 'rewarded' then 1 else 0 end)::int`,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(referrals)
+        .groupBy(referrals.referrerBusinessId);
+
+      const referrerIds = referrerRows.map((r) => r.businessId).filter(Boolean) as number[];
+      const referrerBizMap = new Map<number, string>();
+      if (referrerIds.length > 0) {
+        const refBizRows = await pgDb
+          .select({ id: businesses.id, name: businesses.name })
+          .from(businesses)
+          .where(inArray(businesses.id, referrerIds));
+        refBizRows.forEach((b) => referrerBizMap.set(b.id, b.name));
+      }
+      const leaderboard = referrerRows
+        .map((r) => ({
+          businessId: r.businessId,
+          businessName: referrerBizMap.get(r.businessId as number) ?? `Business #${r.businessId}`,
+          rewarded: r.rewarded,
+          total: r.total,
+        }))
+        .sort((a, b) => b.rewarded - a.rewarded || b.total - a.total)
+        .slice(0, 20);
+
+      // Founding members roster
+      const founders = await pgDb
+        .select({
+          id: businesses.id,
+          name: businesses.name,
+          membershipTier: businesses.membershipTier,
+          foundingMemberNumber: businesses.foundingMemberNumber,
+        })
+        .from(businesses)
+        .where(eq(businesses.isFoundingMember, true))
+        .orderBy(businesses.foundingMemberNumber);
+
+      res.json({
+        totals: {
+          totalReferrals,
+          rewardedReferrals,
+          pendingReferrals,
+        },
+        founding: {
+          limit: FOUNDING_LIMIT,
+          claimed: founders.length,
+          remaining: Math.max(0, FOUNDING_LIMIT - founders.length),
+          members: founders,
+        },
+        leaderboard,
+      });
+    } catch (err) {
+      console.error("Admin referrals stats error:", err);
+      res.status(500).json({ message: "Failed to load referral stats" });
     }
   });
 

@@ -63,6 +63,8 @@ import {
   TrendingUp,
   Receipt,
   CircleDollarSign,
+  Sparkles,
+  Copy,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
@@ -163,7 +165,7 @@ type AdminBusiness = {
   createdAt: string | null;
 };
 
-type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes";
+type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes" | "growth";
 
 function tierLabel(t: string | null | undefined) {
   if (!t || t === "none") return "No Plan";
@@ -217,6 +219,7 @@ export default function AdminDashboard() {
     { id: "promos", label: "Promos", icon: Tag },
     { id: "ads", label: "Ads", icon: Megaphone },
     { id: "quotes", label: "Quotes", icon: MessageSquare },
+    { id: "growth", label: "Growth", icon: Sparkles },
   ];
 
   return (
@@ -262,6 +265,7 @@ export default function AdminDashboard() {
         {activeTab === "promos" && <PromosTab />}
         {activeTab === "ads" && <AdsTab />}
         {activeTab === "quotes" && <QuotesTab />}
+        {activeTab === "growth" && <GrowthTab />}
       </div>
     </div>
   );
@@ -2591,6 +2595,150 @@ function QuotesTab() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function GrowthTab() {
+  const { toast } = useToast();
+  const { data, isLoading } = useQuery<{
+    totals: { totalReferrals: number; rewardedReferrals: number; pendingReferrals: number };
+    founding: {
+      limit: number;
+      claimed: number;
+      remaining: number;
+      members: { id: number; name: string; membershipTier: string | null; foundingMemberNumber: number }[];
+    };
+    leaderboard: { businessId: number; businessName: string; rewarded: number; total: number }[];
+  }>({
+    queryKey: ["/api/admin/referrals/stats"],
+  });
+
+  if (isLoading) {
+    return <div className="text-white/60">Loading growth metrics…</div>;
+  }
+  if (!data) {
+    return <div className="text-white/60">No data yet.</div>;
+  }
+
+  const { totals, founding, leaderboard } = data;
+  const claimedPct = Math.round((founding.claimed / founding.limit) * 100);
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "Copied" });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="space-y-6" data-testid="tab-content-growth">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-white/95 p-6">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Total Referrals</div>
+          <div className="text-3xl font-bold text-[#0a4a82] mt-2" data-testid="stat-total-referrals">
+            {totals.totalReferrals}
+          </div>
+          <div className="text-sm text-slate-500 mt-1">
+            {totals.rewardedReferrals} rewarded · {totals.pendingReferrals} pending
+          </div>
+        </Card>
+        <Card className="bg-white/95 p-6">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Founding Members</div>
+          <div className="text-3xl font-bold text-amber-700 mt-2" data-testid="stat-founding-claimed">
+            {founding.claimed} / {founding.limit}
+          </div>
+          <div className="mt-3 h-2 w-full bg-amber-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-300 to-amber-500"
+              style={{ width: `${claimedPct}%` }}
+            />
+          </div>
+          <div className="text-sm text-slate-500 mt-2">{founding.remaining} slots remaining</div>
+        </Card>
+        <Card className="bg-white/95 p-6">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Reward Cost</div>
+          <div className="text-3xl font-bold text-emerald-700 mt-2">
+            {totals.rewardedReferrals * 60}d
+          </div>
+          <div className="text-sm text-slate-500 mt-1">
+            Gold days granted (30d × 2 sides × {totals.rewardedReferrals})
+          </div>
+        </Card>
+      </div>
+
+      <Card className="bg-white/95">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-[#0a4a82]" />
+            Top Referrers
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {leaderboard.length === 0 ? (
+            <p className="text-sm text-slate-500">No referrals yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-left text-slate-500 border-b">
+                <tr>
+                  <th className="py-2">#</th>
+                  <th className="py-2">Business</th>
+                  <th className="py-2 text-right">Rewarded</th>
+                  <th className="py-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((row, i) => (
+                  <tr key={row.businessId} className="border-b last:border-0" data-testid={`row-leaderboard-${row.businessId}`}>
+                    <td className="py-2 font-semibold text-slate-400">{i + 1}</td>
+                    <td className="py-2 font-medium text-[#1a1a2e]">{row.businessName}</td>
+                    <td className="py-2 text-right font-bold text-emerald-700">{row.rewarded}</td>
+                    <td className="py-2 text-right text-slate-600">{row.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/95">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Crown className="h-5 w-5 text-amber-600" />
+            Founding Members Roster
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {founding.members.length === 0 ? (
+            <p className="text-sm text-slate-500">No founding members assigned yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {founding.members.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200"
+                  data-testid={`founder-${m.foundingMemberNumber}`}
+                >
+                  <span className="font-mono text-xs font-bold text-amber-800 w-10">
+                    #{m.foundingMemberNumber}
+                  </span>
+                  <span className="text-sm text-slate-800 truncate flex-1">{m.name}</span>
+                  <button
+                    onClick={() => copy(`${m.name} (#${m.foundingMemberNumber})`)}
+                    className="text-slate-400 hover:text-slate-700"
+                    aria-label="Copy"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
