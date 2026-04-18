@@ -518,10 +518,27 @@ function fmtDate(iso: string | null) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+type AiPromo = {
+  id: number;
+  code: string;
+  description: string | null;
+  aiCreditAmount: number | null;
+  maxUses: number | null;
+  currentUses: number | null;
+  expiresAt: string | null;
+  isActive: boolean | null;
+  createdAt: string | null;
+};
+
 function CreditsPanel() {
   const { toast } = useToast();
   const [adjustBizId, setAdjustBizId] = useState<number | null>(null);
   const [adjustAmount, setAdjustAmount] = useState<string>("");
+  const [newCode, setNewCode] = useState("");
+  const [newCredits, setNewCredits] = useState("500");
+  const [newMaxUses, setNewMaxUses] = useState("");
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemBizId, setRedeemBizId] = useState<string>("");
 
   const balancesQ = useQuery<{ balances: Balance[] }>({
     queryKey: ["/api/admin/ai-lab/balances"],
@@ -531,6 +548,68 @@ function CreditsPanel() {
   });
   const txnsQ = useQuery<{ transactions: Txn[] }>({
     queryKey: ["/api/admin/ai-lab/transactions"],
+  });
+  const promosQ = useQuery<{ promoCodes: AiPromo[] }>({
+    queryKey: ["/api/admin/ai-lab/promo-codes"],
+  });
+
+  const createPromo = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/ai-lab/promo-codes", {
+        code: newCode,
+        aiCreditAmount: parseInt(newCredits, 10),
+        maxUses: newMaxUses ? parseInt(newMaxUses, 10) : null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Promo code created" });
+      setNewCode("");
+      setNewMaxUses("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/promo-codes"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Create failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const togglePromo = useMutation({
+    mutationFn: async (vars: { id: number; isActive: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/ai-lab/promo-codes/${vars.id}`, {
+        isActive: vars.isActive,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/promo-codes"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const redeemPromo = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/ai-lab/promo-codes/redeem", {
+        code: redeemCode,
+        businessId: parseInt(redeemBizId, 10),
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Redeemed",
+        description: `+${data.credited.toLocaleString()} credits applied to business #${data.businessId}.`,
+      });
+      setRedeemCode("");
+      setRedeemBizId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/balances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-lab/promo-codes"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Redeem failed", description: err.message, variant: "destructive" });
+    },
   });
 
   const grantMonthly = useMutation({
@@ -649,6 +728,153 @@ function CreditsPanel() {
             </div>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* Promo codes for free credits */}
+      <Card data-testid="card-ai-promo">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Free-Credit Promo Codes
+              </CardTitle>
+              <CardDescription>
+                Hand these out to anyone (Bronze, Silver, or no membership) so they can test AI features.
+                Each business may redeem a given code only once.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Create form */}
+          <div className="rounded-lg border p-3 grid gap-2 md:grid-cols-[1fr_120px_120px_auto] items-end">
+            <div>
+              <label className="text-xs text-muted-foreground">Code</label>
+              <Input
+                placeholder="TESTAI100"
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                className="h-9 font-mono"
+                data-testid="input-promo-code"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Credits</label>
+              <Input
+                type="number"
+                value={newCredits}
+                onChange={(e) => setNewCredits(e.target.value)}
+                className="h-9"
+                data-testid="input-promo-credits"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Max Uses</label>
+              <Input
+                type="number"
+                placeholder="∞"
+                value={newMaxUses}
+                onChange={(e) => setNewMaxUses(e.target.value)}
+                className="h-9"
+                data-testid="input-promo-max-uses"
+              />
+            </div>
+            <Button
+              onClick={() => createPromo.mutate()}
+              disabled={createPromo.isPending || !newCode.trim() || !newCredits}
+              className="bg-[#0a4a82] hover:bg-[#083a66] h-9"
+              data-testid="button-create-promo"
+            >
+              {createPromo.isPending ? "Creating…" : "Create Code"}
+            </Button>
+          </div>
+
+          {/* Redeem form */}
+          <div className="rounded-lg border border-dashed p-3 grid gap-2 md:grid-cols-[1fr_180px_auto] items-end bg-muted/30">
+            <div>
+              <label className="text-xs text-muted-foreground">Redeem Code</label>
+              <Input
+                placeholder="TESTAI100"
+                value={redeemCode}
+                onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                className="h-9 font-mono"
+                data-testid="input-redeem-code"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">For Business ID</label>
+              <Input
+                type="number"
+                placeholder="e.g. 12"
+                value={redeemBizId}
+                onChange={(e) => setRedeemBizId(e.target.value)}
+                className="h-9"
+                data-testid="input-redeem-biz-id"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => redeemPromo.mutate()}
+              disabled={redeemPromo.isPending || !redeemCode.trim() || !redeemBizId.trim()}
+              className="h-9"
+              data-testid="button-redeem-promo"
+            >
+              {redeemPromo.isPending ? "Redeeming…" : "Redeem on Behalf"}
+            </Button>
+          </div>
+
+          {/* Codes list */}
+          {promosQ.isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (promosQ.data?.promoCodes ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No promo codes yet. Create one above to start handing out free credits.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead className="text-right">Credits</TableHead>
+                    <TableHead className="text-center">Uses</TableHead>
+                    <TableHead>Expires</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {promosQ.data!.promoCodes.map((p) => (
+                    <TableRow key={p.id} data-testid={`row-promo-${p.id}`}>
+                      <TableCell className="font-mono text-sm">{p.code}</TableCell>
+                      <TableCell className="text-right font-mono">{(p.aiCreditAmount ?? 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">
+                        {p.currentUses ?? 0}{p.maxUses ? ` / ${p.maxUses}` : ""}
+                      </TableCell>
+                      <TableCell className="text-xs">{p.expiresAt ? fmtDate(p.expiresAt) : "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={p.isActive ? "default" : "outline"} className="text-[10px]">
+                          {p.isActive ? "Active" : "Disabled"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => togglePromo.mutate({ id: p.id, isActive: !p.isActive })}
+                          disabled={togglePromo.isPending}
+                          data-testid={`button-toggle-promo-${p.id}`}
+                        >
+                          {p.isActive ? "Disable" : "Enable"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Balances table */}

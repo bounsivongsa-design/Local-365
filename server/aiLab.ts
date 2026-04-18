@@ -13,6 +13,8 @@ import {
   aiCreditTransactions,
   businesses,
   users,
+  promoCodes,
+  promoCodeUsages,
 } from "@shared/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 
@@ -365,5 +367,173 @@ export function registerAiLabRoutes(app: Express) {
         }))
         .sort((a, b) => b.netCents - a.netCents),
     });
+  });
+
+  /* ─────────── Promo codes for AI credits ───────────
+     Lets admins (you / Nick) hand out free-credit codes to anyone — including
+     non-Gold members — for testing. Reuses the existing promo_codes table by
+     setting discountType='ai_credits' and aiCreditAmount = N credits. */
+
+  // List all AI credit promo codes (admin)
+  app.get("/api/admin/ai-lab/promo-codes", requireAdmin, async (_req, res) => {
+    const codes = await pgDb
+      .select()
+      .from(promoCodes)
+      .where(eq(promoCodes.discountType, "ai_credits"))
+      .orderBy(desc(promoCodes.createdAt));
+    res.json({ promoCodes: codes });
+  });
+
+  // Create a new AI credit promo code (admin)
+  app.post("/api/admin/ai-lab/promo-codes", requireAdmin, async (req, res) => {
+    const { code, aiCreditAmount, description, maxUses, expiresAt } = req.body as {
+      code?: string;
+      aiCreditAmount?: number;
+      description?: string;
+      maxUses?: number | null;
+      expiresAt?: string | null;
+    };
+
+    const cleanCode = (code ?? "").trim().toUpperCase();
+    if (!cleanCode || !/^[A-Z0-9_-]{3,32}$/.test(cleanCode)) {
+      return res.status(400).json({ message: "Code must be 3-32 chars, letters/numbers/_/- only" });
+    }
+    if (!aiCreditAmount || !Number.isInteger(aiCreditAmount) || aiCreditAmount <= 0 || aiCreditAmount > 100000) {
+      return res.status(400).json({ message: "aiCreditAmount must be a positive integer <= 100,000" });
+    }
+
+    try {
+      const [created] = await pgDb
+        .insert(promoCodes)
+        .values({
+          code: cleanCode,
+          description: description?.trim() || `AI credits: ${aiCreditAmount.toLocaleString()}`,
+          discountType: "ai_credits",
+          discountValue: 0, // not used for ai_credits but column is NOT NULL
+          aiCreditAmount,
+          applicableTiers: [], // empty = any tier may redeem
+          maxUses: maxUses && maxUses > 0 ? maxUses : null,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          isActive: true,
+        })
+        .returning();
+      res.json({ promoCode: created });
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        return res.status(409).json({ message: "Code already exists" });
+      }
+      throw err;
+    }
+  });
+
+  // Toggle active / deactivate a code
+  app.patch("/api/admin/ai-lab/promo-codes/:id", requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+    const { isActive } = req.body as { isActive?: boolean };
+    if (typeof isActive !== "boolean") return res.status(400).json({ message: "isActive required" });
+
+    const [updated] = await pgDb
+      .update(promoCodes)
+      .set({ isActive })
+      .where(and(eq(promoCodes.id, id), eq(promoCodes.discountType, "ai_credits")))
+      .returning();
+    if (!updated) return res.status(404).json({ message: "Code not found" });
+    res.json({ promoCode: updated });
+  });
+
+  /**
+   * Redeem an AI credit promo code for a given business.
+   *
+   * Sandbox mode: this endpoint is admin-only so admins can redeem on behalf
+   * of testers. A self-serve member-facing endpoint can be added in Phase 1B
+   * once a member-facing UI exists. Logic is shared so the future endpoint
+   * can call the same atomic flow.
+   *
+   * Idempotency: enforced at the (promo_code_id, business_id) pair via an
+   * existence check inside the same DB transaction. The first row wins; a
+   * second redemption for the same business returns 409.
+   */
+  app.post("/api/admin/ai-lab/promo-codes/redeem", requireAdmin, async (req, res) => {
+    const { code, businessId } = req.body as { code?: string; businessId?: number };
+    const cleanCode = (code ?? "").trim().toUpperCase();
+    if (!cleanCode || !businessId || !Number.isInteger(businessId)) {
+      return res.status(400).json({ message: "code and businessId required" });
+    }
+
+    const [biz] = await pgDb
+      .select({ id: businesses.id, name: businesses.name })
+      .from(businesses)
+      .where(eq(businesses.id, businessId));
+    if (!biz) return res.status(404).json({ message: "Business not found" });
+
+    const [promo] = await pgDb
+      .select()
+      .from(promoCodes)
+      .where(and(eq(promoCodes.code, cleanCode), eq(promoCodes.discountType, "ai_credits")));
+    if (!promo) return res.status(404).json({ message: "Promo code not found" });
+    if (!promo.isActive) return res.status(400).json({ message: "Code is no longer active" });
+    if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+      return res.status(400).json({ message: "Code has expired" });
+    }
+    if (promo.maxUses != null && (promo.currentUses ?? 0) >= promo.maxUses) {
+      return res.status(400).json({ message: "Code has reached its usage limit" });
+    }
+    const credits = promo.aiCreditAmount ?? 0;
+    if (credits <= 0) {
+      return res.status(400).json({ message: "Code has no credit value configured" });
+    }
+
+    try {
+      const result = await pgDb.transaction(async (tx) => {
+        // Prevent double-redemption per business
+        const [existing] = await tx
+          .select({ id: promoCodeUsages.id })
+          .from(promoCodeUsages)
+          .where(and(eq(promoCodeUsages.promoCodeId, promo.id), eq(promoCodeUsages.businessId, businessId)));
+        if (existing) {
+          throw Object.assign(new Error("Already redeemed by this business"), { httpStatus: 409 });
+        }
+
+        await ensureCreditRow(biz.id, biz.name, tx);
+
+        await tx
+          .update(aiCredits)
+          .set({
+            balance: sql`${aiCredits.balance} + ${credits}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(aiCredits.businessId, businessId));
+
+        await tx.insert(aiCreditTransactions).values({
+          businessId,
+          type: "promo_grant",
+          creditsDelta: credits,
+          metadata: JSON.stringify({ promoCode: cleanCode, promoCodeId: promo.id }),
+        });
+
+        await tx.insert(promoCodeUsages).values({
+          promoCodeId: promo.id,
+          businessId,
+        });
+
+        await tx
+          .update(promoCodes)
+          .set({ currentUses: sql`COALESCE(${promoCodes.currentUses}, 0) + 1` })
+          .where(eq(promoCodes.id, promo.id));
+
+        const [row] = await tx
+          .select()
+          .from(aiCredits)
+          .where(eq(aiCredits.businessId, businessId));
+        return { credits, balance: row };
+      });
+
+      res.json({ credited: result.credits, businessId, balance: result.balance });
+    } catch (err: any) {
+      if (err?.httpStatus === 409) return res.status(409).json({ message: err.message });
+      console.error("[ai-lab] redeem failed:", err);
+      res.status(500).json({ message: "Redemption failed" });
+    }
   });
 }

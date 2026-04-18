@@ -283,8 +283,13 @@ export const promoCodes = pgTable("promo_codes", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
   description: text("description"),
+  // discountType: 'percentage' | 'fixed' | 'gold_access' | 'ai_credits'
+  // When 'ai_credits', `aiCreditAmount` is the number of credits granted on
+  // redemption and the code can be redeemed by ANY tier (lets us hand codes
+  // to non-Gold testers).
   discountType: text("discount_type").notNull().default("percentage"),
   discountValue: integer("discount_value").notNull(),
+  aiCreditAmount: integer("ai_credit_amount"), // only used when discountType='ai_credits'
   applicableTiers: text("applicable_tiers").array().default([]),
   maxUses: integer("max_uses"),
   currentUses: integer("current_uses").default(0),
