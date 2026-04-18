@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { ReferAndEarnCard } from "@/components/ReferAndEarnCard";
+import { AICreditsCard } from "@/components/AICreditsCard";
 import { ImageCropper } from "@/components/ImageCropper";
 import { AdDesigner } from "@/components/AdDesigner";
 import { Link } from "react-router-dom";
@@ -1967,6 +1968,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
             </Card>
 
             <ReferAndEarnCard businessId={business.id} />
+
+            <AICreditsCard businessId={business.id} />
 
             <Card className="bg-gradient-to-br from-[#8a9a5b] to-[#6b7a42] border-0 shadow-[0_8px_30px_rgba(138,154,91,0.3)] rounded-2xl text-white">
               <CardHeader className="pb-3">

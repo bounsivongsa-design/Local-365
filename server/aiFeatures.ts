@@ -277,12 +277,58 @@ export function registerAiFeatureRoutes(app: Express) {
         .select()
         .from(aiCredits)
         .where(eq(aiCredits.businessId, businessId));
+
+      // Aggregate this-month usage from the ledger so the dashboard widget
+      // can show "X credits used this month, across N calls, broken down by
+      // feature". Cheap single SELECT — only `usage` rows in the current
+      // calendar month for this business.
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const startOfNextMonth = new Date(startOfMonth);
+      startOfNextMonth.setMonth(startOfNextMonth.getMonth() + 1);
+      const usageRows = await pgDb
+        .select({
+          feature: aiCreditTransactions.feature,
+          creditsDelta: aiCreditTransactions.creditsDelta,
+          costCents: aiCreditTransactions.costCents,
+        })
+        .from(aiCreditTransactions)
+        .where(
+          and(
+            eq(aiCreditTransactions.businessId, businessId),
+            eq(aiCreditTransactions.type, "usage"),
+            sql`${aiCreditTransactions.createdAt} >= ${startOfMonth}`,
+            sql`${aiCreditTransactions.createdAt} < ${startOfNextMonth}`,
+          ),
+        );
+      const byFeature: Record<string, { credits: number; calls: number }> = {};
+      let totalCredits = 0;
+      let totalCalls = 0;
+      let totalCostCents = 0;
+      for (const r of usageRows) {
+        const used = -(r.creditsDelta ?? 0); // usage rows are negative
+        const feat = r.feature ?? "unknown";
+        byFeature[feat] = byFeature[feat] || { credits: 0, calls: 0 };
+        byFeature[feat].credits += used;
+        byFeature[feat].calls += 1;
+        totalCredits += used;
+        totalCalls += 1;
+        totalCostCents += r.costCents ?? 0;
+      }
+
       res.json({
         balance: row?.balance ?? 0,
         monthlyAllowance: row?.monthlyAllowance ?? 250,
         cycleResetsAt: row?.cycleResetsAt ?? null,
         isFounder: row?.isFounderComp ?? isFounderName(auth.business.name),
         eligible: true,
+        monthUsage: {
+          totalCredits,
+          totalCalls,
+          totalCostCents,
+          byFeature,
+        },
       });
     },
   );

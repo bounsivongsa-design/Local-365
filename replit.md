@@ -1,7 +1,7 @@
 # Local List 365 - Currituck County Directory
 
 ## Overview
-Local List 365 is a community-focused local business directory and events platform for Currituck County, NC. Its purpose is to connect residents and visitors with local businesses, service providers, and community events. Key capabilities include a comprehensive business directory, an event calendar, a quote request system, and an AI-powered chatbot. The platform aims to foster community engagement and support local commerce through features like tiered advertising, business credentialing, and a job board.
+Local List 365 is a community-focused platform for Currituck County, NC, connecting residents and visitors with local businesses and events. It features a comprehensive business directory, an event calendar, a quote request system, and AI-powered tools. The platform aims to foster community engagement and support local commerce through tiered advertising, business credentialing, and a job board, ultimately serving as a central hub for local economic and social activity.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -17,7 +17,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 ### Backend
 - **Runtime**: Node.js with Express.js (TypeScript, ESM modules)
 - **API Pattern**: RESTful JSON APIs (`/api` prefix)
-- **Authentication**: Custom email/password + Google OAuth, supporting `customer`, `business`, and `admin` account types. Admin accounts are seeded and not available for UI creation.
+- **Authentication**: Custom email/password + Google OAuth, supporting `customer`, `business`, and `admin` account types.
 - **File Uploads**: Uppy with AWS S3-compatible presigned URLs
 
 ### Data Storage
@@ -26,29 +26,18 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Core Features
 - **Business Listings**: Detailed profiles including credentials, operating hours, social media, keywords, categories, membership tiers, ratings, and media.
-- **Quote System**: Allows customers to request quotes from businesses, with businesses able to respond with messages or formal quotes. All communication occurs within the platform.
-- **Events Platform**: A local events calendar with Stripe payment integration for business-submitted event ads. Admin-created events are free and auto-approved.
-- **Job Board**: Businesses can post help-wanted ads, with pricing based on membership tier.
-- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions. Only businesses with active memberships appear in the public directory.
-- **Advertising**: Carousel banner ads on Home and Directory pages, with tiered pricing and member discounts. An in-browser ad designer tool is available for creating ad images.
+- **Quote System**: Enables customers to request quotes and businesses to respond within the platform.
+- **Events Platform**: Local events calendar with Stripe payment integration for business-submitted event ads.
+- **Job Board**: Businesses can post help-wanted ads based on membership tier.
+- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions.
+- **Advertising**: Carousel banner ads with tiered pricing and an in-browser ad designer tool.
 - **Business Analytics**: Tracks engagement metrics for business listings.
-- **Review System**: Proof of service (receipt, invoice, email, etc.) is optional but earns a "Verified" badge. Business owners can confirm or dispute reviews. Verification statuses: `unverified`, `proof_submitted`, `business_confirmed`, `business_disputed`.
-- **Review Owner Responses**: Businesses can post a single reply to customer reviews.
-- **Contact Admin System**: Users can send messages to admins, with submissions stored and tracked.
-- **Membership Expiration Alerts**: Notifies businesses before free/promo memberships expire.
-- **Promo Codes**: Admin-managed codes for discounts or temporary Gold-tier access.
-- **Tier-Locked Feature Greying**: Displays unavailable features with upgrade prompts based on membership tier.
-- **Local Vendor Eligibility**: Policy ensures only local businesses are listed, with AI-powered verification checks for LLCs and document uploads for other credentials.
-- **Password Reset**: Secure token-based password reset flow with email delivery via Resend. Tokens expire after 1 hour. Pages: `/forgot-password` and `/reset-password?token=...`.
-- **Admin Dashboard**: A comprehensive control center for platform management, user/business oversight, content moderation, and analytics.
-- **AI Lab (sandbox)**: Admin-only page at `/admin/ai-lab` for incubating the Gold-exclusive AI Suite. Phase 1A ships a credit system foundation: `ai_credit_packs` (4 SKUs at $10/$25/$75/$200), per-business `ai_credits` balance with monthly allowance, and an `ai_credit_transactions` ledger. Idempotent monthly grants (unique index on `business_id, type, grant_period`), atomic balance/ledger writes (DB transactions), unique `stripe_payment_intent_id` for Phase 1B safety. Founder businesses (Goat Locker Printing, Blackwater Technology Solutions) auto-flagged `is_founder_comp = true`. Admin endpoints under `/api/admin/ai-lab/*` (packs, balances, transactions, revenue, adjust, run-monthly-grant). Customer-facing flows untouched.
-- **Growth Marketing Surface (Public)**: Homepage `<GrowthPromoSection>` (rendered after the AdCarousel) advertises both growth perks to logged-out visitors with a live "X/100 founding spots claimed" progress bar fed by `GET /api/public/founding-stats` (auth-free, returns only `{limit, claimed, remaining}` — no PII). Companion CTA pushes visitors to `/membership`. Section auto-flips copy from "Claim Your Founding Spot" → "Join the Directory" once the 100-slot roster fills.
-- **Founding Urgency Banner (site-wide)**: Slim `<FoundingUrgencyBanner>` mounted above `<Navigation>` in `App.tsx`, shown on all public pages but auto-hidden on conversion/admin/auth/dashboard routes (`/membership`, `/create-business`, `/admin*`, `/dashboard`, `/account-setup`, `/edit-listing`, `/auth`). Reuses `/api/public/founding-stats`. Only renders when `claimed >= 1` AND `remaining > 0` (avoids a "0 of 100 spots left" cold-start mood and disappears once full). Switches from coastal-blue to amber-urgency styling when ≤25% of seats remain (or ≤10, whichever is greater). Dismissible via X button — preference persisted in localStorage (`ll365_founding_banner_dismissed`) and cross-tab synced via `storage` event.
-- **Referral Reward Emails**: When `processMembershipActivation()` commits a referral reward (after the DB transaction), `notifyReferralRewarded()` (server/email.ts) sends two parallel Resend emails — one congratulating the referrer ("+30 days of Gold — thanks for the referral!") and one welcoming the referee ("Welcome bonus: +30 days of Gold on us"). Both emails are best-effort (`Promise.allSettled` + try/catch); a Resend outage never rolls back the reward. Skipped silently if `RESEND_API_KEY` is unset.
-- **Refer-a-Business + Founding Members (Growth)**: Every business gets a unique `referralCode` (auto-issued at signup, format `REF-XXXXXX`). Signup form accepts a referral code (visible field at last step + automatic capture of `?ref=CODE` from URL via `use-referral-capture.ts`, persisted in localStorage with 30-day TTL to survive Stripe checkout). On paid-membership activation, `processMembershipActivation()` (server/referrals.ts) runs idempotently from createBusiness route + 5 stripe.ts entry points (verify-session, webhook, founder bypass): atomically assigns the next `foundingMemberNumber` (1-100, locked in for life) via SQL CTE, finds any pending referral, and extends `goldTrialEndDate` by 30 days for BOTH referrer and referee. Reuses existing `getEffectiveTier()` Gold-window logic so rewards expire cleanly. Referral state lives in `referrals` table (unique on `referredBusinessId` prevents double-rewards). Dashboard shows `<ReferAndEarnCard>` with code, copy-link button, native share, rewarded/pending/Gold-days counters, and Founding Member badge. `<FoundingMemberBadge>` renders on BusinessCard + BusinessDetails. Admin "Growth" tab (`/api/admin/referrals/stats`) shows totals, founding roster (X/100 progress bar), and top-referrers leaderboard. No business-funded customer discounts (saved for loyalty program).
-- **AI Review Reply Generator (Phase 1B, second Gold AI feature)**: `POST /api/ai/review-reply` (server/aiFeatures.ts) generates 2 reply variants (Direct / Empathetic) for a customer review. Costs **3 credits**; founders unlimited but still ledgered. Server loads the review, derives a rating label (`positive` ≥4 / `neutral` 3 / `negative` ≤2), and prompt-instructs the model differently per band (negative → acknowledge issue + invite follow-up; positive → reference something specific they said). Validates request body (`reviewId` + optional tone) and AI response (Zod, exactly 2 variants). Refuses with 400 ALREADY_REPLIED if `reviews.ownerResponse` is non-null. Reuses `authorizeOwnerOnGold` (owner-only, Gold-or-trial) and `reserveCredits` (atomic FOR UPDATE deduct + ledger) — same primitives as listing-description. UI: extended `OwnerReplyForm` in `BusinessDetails.tsx` — when an owner opens the reply form, an amber "Suggest with AI" pill appears (only if their business is Gold-eligible per `/api/businesses/:id/ai-credits`). Click → 2 cards inline with "Use this" → populates the textarea (still editable before posting). Cost + balance shown inline; founders see "free" instead of credit cost.
-- **AI Listing Description Writer (Phase 1B, first Gold AI feature)**: `POST /api/ai/listing-description` (server/aiFeatures.ts) generates 3 description variants (Concise / Detailed / Story-driven) via OpenAI `gpt-4o-mini` with `response_format: json_object`. Costs **5 credits** per generation; founder businesses (`is_founder_comp = true`) get unlimited use but still log a ledger row (`creditsDelta=0`). Auth flow: `authorizeOwnerOnGold` middleware verifies session → `users.linkedBusinessId` matches → `effectiveTier === 'premium'` (Gold). Atomic credit spend: single `UPDATE...RETURNING` guarded by `balance >= cost`; insufficient balance returns **402 INSUFFICIENT_CREDITS** without an OpenAI call. Successful generation writes `usage` ledger entry with `feature='listing_description'` and `costCents` (~1¢). Companion endpoint `GET /api/businesses/:id/ai-credits` returns `{balance, monthlyAllowance, cycleResetsAt, isFounder, eligible}` for client gating. UI: `<AIListingWriter>` (client/src/components/AIListingWriter.tsx) is a Dialog-based modal mounted next to the description textarea in `EditListing`. Returns `null` for non-Gold owners (eligible=false → button never shown). Modal collects `services / yearsInBusiness / uniqueValueProps / tone`, displays current balance + cost, generates 3 variants, and "Use this" callback populates the parent's description state. CreateBusinessForm intentionally does not embed it (no businessId until first save). Test admin: `agent-test-admin@locallist365.test`.
-- **AI Credit Promo Codes**: Admins (Doug/Nick) can mint `discount_type='ai_credits'` codes from the AI Lab Credits tab to hand out free credits to anyone — including non-Gold members — for testing. Reuses the existing `promo_codes` + `promo_code_usages` tables; redemption is idempotent per `(promo_code_id, business_id)` and runs in a single DB transaction (balance update + `promo_grant` ledger entry + usage row + counter bump). Endpoints: `GET/POST /api/admin/ai-lab/promo-codes`, `PATCH /api/admin/ai-lab/promo-codes/:id`, `POST /api/admin/ai-lab/promo-codes/redeem`. Self-serve member redemption UI deferred until Phase 1B AI features ship.
+- **Review System**: Allows customer reviews with optional proof of service, business confirmation/dispute, and owner responses.
+- **Admin Dashboard**: Comprehensive control center for platform management, user/business oversight, and content moderation.
+- **AI Lab**: Admin-only sandbox for developing Gold-exclusive AI features, including an AI credit system.
+- **Growth Features**: Includes a "Founding Urgency Banner" and "Refer-a-Business" program with unique referral codes and Gold-tier rewards.
+- **AI Listing Description Writer**: Generates multiple description variants for Gold members.
+- **AI Review Reply Generator**: Generates two reply variants for customer reviews for Gold members.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.
@@ -58,20 +47,12 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 
 ### Technical Implementations
 - **Distance Filtering**: Uses Haversine formula for location-based searches.
-- **Category Management**: Hierarchical categories with community suggestion. Dashboard edit form supports primary + additional category editing with tier-based limits enforced both client-side and server-side.
+- **Category Management**: Hierarchical categories with community suggestion and tier-based limits.
 - **Stripe Integration**: Handles subscriptions, payments, and webhooks.
 - **Authentication**: Bcrypt for password hashing, PostgreSQL for session storage, and Google OAuth.
 - **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive 30 days of Gold-tier features.
-- **Admin Delete Business**: Provides a dedicated route for complete business and associated data removal.
-- **Session Verification**: Ensures secure handling of pending memberships post-Stripe checkout.
-- **Uniqueness Constraints**: Prevents duplicate business registrations.
-- **Business Hours Format**: Flexible JSON structure for specific daily hours or custom text.
-- **Max Quotes**: Configurable limit on quotes received per request, with auto-closure.
-- **Ad Preview Popup**: Interactive modal for viewing ad details and tracking outbound clicks.
-- **Ad Slot Filling**: Fills empty ad slots with placeholder examples to maintain layout.
-- **Image Cropper**: Reusable component for image cropping and resizing with aspect ratio enforcement.
-- **Ad Designer**: In-browser tool for designing ads with customizable elements. Size-matched canvases: Large=1200×675 (16:9), Medium=1200×540 (20:9), Small=1200×500 (12:5). Each canvas matches the exact carousel display ratio — no cropping.
-- **Events Calendar Display**: Events appear on the calendar only on their specified event date, with ad package duration controlling visibility.
+- **Image Cropper**: Reusable component for image cropping and resizing.
+- **Ad Designer**: In-browser tool for designing ads with customizable elements and size-matched canvases.
 
 ## External Dependencies
 
@@ -80,7 +61,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **OpenAI**: AI chat integration via Replit AI Integrations proxy.
 - **Replit Object Storage**: For file uploads.
 - **Stripe**: Payment processing.
-- **Resend**: Email notifications for administrative alerts.
+- **Resend**: Email notifications.
 
 ### Key NPM Packages
 - **UI Components**: Radix UI primitives, FullCalendar.
