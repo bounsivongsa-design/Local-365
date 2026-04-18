@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navigation } from "@/components/Navigation";
+import { FoundingUrgencyBanner } from "@/components/FoundingUrgencyBanner";
 import { LocationProvider } from "@/context/LocationContext";
 
 import Home from "@/pages/Home";
@@ -45,6 +46,7 @@ function AppRouter() {
         className="fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat -z-10"
         style={{ backgroundImage: `url(${backgroundImage})` }}
       />
+      <FoundingUrgencyBanner />
       <Navigation />
       <main className="flex-1">
         <Routes>
