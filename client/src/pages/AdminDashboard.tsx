@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useNavigate } from "react-router-dom";
@@ -767,6 +767,11 @@ function UsersTab() {
   const [newPassword, setNewPassword] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<AdminUser | null>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [editUserDialog, setEditUserDialog] = useState<AdminUser | null>(null);
+  const [editUserFirstName, setEditUserFirstName] = useState("");
+  const [editUserLastName, setEditUserLastName] = useState("");
+  const [editUserEmail, setEditUserEmail] = useState("");
+  const [editUserAccountType, setEditUserAccountType] = useState("customer");
 
   const { data, isLoading, isError, refetch } = useQuery<{ users: AdminUser[]; total: number; page: number; pages: number }>({
     queryKey: ["/api/admin/users", search, page],
@@ -814,6 +819,26 @@ function UsersTab() {
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, body }: { userId: string; body: any }) => {
+      await apiRequest("PATCH", `/api/admin/users/${userId}`, body);
+    },
+    onSuccess: () => {
+      toast({ title: "User Updated", description: "Account details saved." });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setEditUserDialog(null);
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const openEditUser = (u: AdminUser) => {
+    setEditUserDialog(u);
+    setEditUserFirstName(u.firstName || "");
+    setEditUserLastName(u.lastName || "");
+    setEditUserEmail(u.email || "");
+    setEditUserAccountType(u.accountType === "admin" ? "admin" : (u.accountType || "customer"));
+  };
 
   const handleSearch = () => {
     setPage(1);
@@ -931,6 +956,16 @@ function UsersTab() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-8 w-8 p-0 text-[#0a4a82] hover:text-[#083a6a] hover:bg-blue-50"
+                          title="Edit Account"
+                          onClick={() => openEditUser(u)}
+                          data-testid={`button-edit-user-${u.id}`}
+                        >
+                          <UserCog className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                           title="Reset Password"
                           onClick={() => { setResetDialog(u); setNewPassword(""); }}
@@ -981,6 +1016,103 @@ function UsersTab() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editUserDialog} onOpenChange={(open) => !open && setEditUserDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5 text-[#0a4a82]" />
+              Edit Account
+            </DialogTitle>
+            <DialogDescription>
+              Update the user's name, email, or account type. Changes are saved to their account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-user-first">First Name</Label>
+                <Input
+                  id="edit-user-first"
+                  value={editUserFirstName}
+                  onChange={(e) => setEditUserFirstName(e.target.value)}
+                  className="bg-white rounded-xl"
+                  style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                  data-testid="input-edit-user-first"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-user-last">Last Name</Label>
+                <Input
+                  id="edit-user-last"
+                  value={editUserLastName}
+                  onChange={(e) => setEditUserLastName(e.target.value)}
+                  className="bg-white rounded-xl"
+                  style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                  data-testid="input-edit-user-last"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-user-email">Email</Label>
+              <Input
+                id="edit-user-email"
+                type="email"
+                value={editUserEmail}
+                onChange={(e) => setEditUserEmail(e.target.value)}
+                className="bg-white rounded-xl"
+                style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+                data-testid="input-edit-user-email"
+              />
+              {editUserDialog?.googleId && (
+                <p className="text-[11px] text-amber-600">
+                  Heads up: this account signed in with Google. Changing the email here will not change their Google login — they'll still need to use their original Google account to sign in.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Account Type</Label>
+              <Select value={editUserAccountType} onValueChange={setEditUserAccountType}>
+                <SelectTrigger className="bg-white rounded-xl" data-testid="select-edit-user-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="business">Business</SelectItem>
+                  {editUserDialog?.accountType === "admin" && (
+                    <SelectItem value="admin" disabled>Admin (cannot change)</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {editUserDialog?.accountType === "admin" && (
+                <p className="text-[11px] text-slate-400">Admin role cannot be changed from this screen.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUserDialog(null)} className="rounded-xl">Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!editUserDialog) return;
+                const body: any = {
+                  firstName: editUserFirstName,
+                  lastName: editUserLastName,
+                  email: editUserEmail,
+                };
+                if (editUserDialog.accountType !== "admin") {
+                  body.accountType = editUserAccountType;
+                }
+                updateUserMutation.mutate({ userId: editUserDialog.id, body });
+              }}
+              disabled={updateUserMutation.isPending}
+              className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-xl"
+              data-testid="button-save-user"
+            >
+              {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!resetDialog} onOpenChange={(open) => !open && setResetDialog(null)}>
         <DialogContent className="max-w-sm">
@@ -1187,8 +1319,7 @@ function BusinessesTab() {
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
   const [editDialog, setEditDialog] = useState<AdminBusiness | null>(null);
-  const [editTier, setEditTier] = useState("");
-  const [editVerified, setEditVerified] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
   const [verifyDialog, setVerifyDialog] = useState<AdminBusiness | null>(null);
   const [docReviewNote, setDocReviewNote] = useState("");
   const [deleteBizDialog, setDeleteBizDialog] = useState<AdminBusiness | null>(null);
@@ -1205,8 +1336,8 @@ function BusinessesTab() {
   });
 
   const updateBizMutation = useMutation({
-    mutationFn: async ({ id, membershipTier, verified }: { id: number; membershipTier: string; verified: boolean }) => {
-      await apiRequest("PATCH", `/api/admin/businesses/${id}`, { membershipTier, verified });
+    mutationFn: async ({ id, body }: { id: number; body: any }) => {
+      await apiRequest("PATCH", `/api/admin/businesses/${id}`, body);
     },
     onSuccess: () => {
       toast({ title: "Updated", description: "Business updated successfully." });
@@ -1216,6 +1347,50 @@ function BusinessesTab() {
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  // Load full business data when the edit dialog opens
+  const editFullQuery = useQuery<any>({
+    queryKey: ["/api/admin/businesses", editDialog?.id, "full"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/businesses/${editDialog!.id}/full`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load business details");
+      return res.json();
+    },
+    enabled: !!editDialog,
+  });
+
+  useEffect(() => {
+    if (editFullQuery.data) {
+      setEditForm({
+        name: editFullQuery.data.name || "",
+        description: editFullQuery.data.description || "",
+        category: editFullQuery.data.category || "",
+        address: editFullQuery.data.address || "",
+        city: editFullQuery.data.city || "",
+        state: editFullQuery.data.state || "",
+        zipCode: editFullQuery.data.zipCode || "",
+        phone: editFullQuery.data.phone || "",
+        email: editFullQuery.data.email || "",
+        websiteUrl: editFullQuery.data.websiteUrl || "",
+        ownerName: editFullQuery.data.ownerName || "",
+        imageUrl: editFullQuery.data.imageUrl || "",
+        logoUrl: editFullQuery.data.logoUrl || "",
+        searchKeywords: editFullQuery.data.searchKeywords || "",
+        localOperationDescription: editFullQuery.data.localOperationDescription || "",
+        establishedYear: editFullQuery.data.establishedYear ?? "",
+        establishedZipCode: editFullQuery.data.establishedZipCode || "",
+        membershipTier: editFullQuery.data.membershipTier && editFullQuery.data.membershipTier !== "none" ? editFullQuery.data.membershipTier : "basic",
+        verified: !!editFullQuery.data.verified,
+        hasLLC: !!editFullQuery.data.hasLLC,
+        hasInsurance: !!editFullQuery.data.hasInsurance,
+        isLicensed: !!editFullQuery.data.isLicensed,
+        isVeteran: !!editFullQuery.data.isVeteran,
+        servicesCommercial: !!editFullQuery.data.servicesCommercial,
+        servicesResidential: !!editFullQuery.data.servicesResidential,
+        acceptsQuotes: editFullQuery.data.acceptsQuotes !== false,
+      });
+    }
+  }, [editFullQuery.data]);
 
   const handleSearch = () => {
     setPage(1);
@@ -1480,45 +1655,199 @@ function BusinessesTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editDialog} onOpenChange={(open) => !open && setEditDialog(null)}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={!!editDialog} onOpenChange={(open) => { if (!open) { setEditDialog(null); setEditForm({}); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-[#0a4a82]" />
-              Edit Business
+              Edit Business — {editDialog?.name}
             </DialogTitle>
+            <DialogDescription>
+              Update any field on this business listing on behalf of the owner. Stripe billing fields and trial dates are not editable here — use Sync from Stripe instead.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm font-semibold text-[#1a1a2e]">{editDialog?.name}</p>
-            <div className="space-y-2">
-              <Label>Membership Tier</Label>
-              <Select value={editTier} onValueChange={setEditTier}>
-                <SelectTrigger className="bg-white rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="basic">Bronze</SelectItem>
-                  <SelectItem value="standard">Silver</SelectItem>
-                  <SelectItem value="premium">Gold</SelectItem>
-                </SelectContent>
-              </Select>
+
+          {editFullQuery.isLoading ? (
+            <div className="space-y-3 py-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="biz-verified"
-                checked={editVerified}
-                onChange={(e) => setEditVerified(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-[#0a4a82] cursor-pointer"
-              />
-              <label htmlFor="biz-verified" className="text-sm text-slate-600 cursor-pointer">Verified Business</label>
+          ) : (
+            <div className="space-y-6 py-2">
+              {/* Basic Info */}
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold text-[#0a4a82] flex items-center gap-2">
+                  <Building2 className="h-4 w-4" /> Basic Info
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="biz-name">Business Name</Label>
+                    <Input id="biz-name" value={editForm.name || ""} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-name" />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="biz-desc">Description</Label>
+                    <Textarea id="biz-desc" value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="bg-white rounded-xl min-h-[80px]" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-desc" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-cat">Primary Category</Label>
+                    <Input id="biz-cat" value={editForm.category || ""} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-cat" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-owner">Owner Name</Label>
+                    <Input id="biz-owner" value={editForm.ownerName || ""} onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-owner" />
+                  </div>
+                </div>
+              </section>
+
+              {/* Address */}
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold text-[#0a4a82] flex items-center gap-2">
+                  <Search className="h-4 w-4" /> Address
+                </h4>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-4 space-y-2">
+                    <Label htmlFor="biz-addr">Street Address</Label>
+                    <Input id="biz-addr" value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-addr" />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="biz-city">City</Label>
+                    <Input id="biz-city" value={editForm.city || ""} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-city" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-state">State</Label>
+                    <Input id="biz-state" value={editForm.state || ""} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-state" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-zip">ZIP</Label>
+                    <Input id="biz-zip" value={editForm.zipCode || ""} onChange={(e) => setEditForm({ ...editForm, zipCode: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-zip" />
+                  </div>
+                </div>
+              </section>
+
+              {/* Contact */}
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold text-[#0a4a82] flex items-center gap-2">
+                  <Phone className="h-4 w-4" /> Contact
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-phone">Phone</Label>
+                    <Input id="biz-phone" value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-phone" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-email">Email</Label>
+                    <Input id="biz-email" type="email" value={editForm.email || ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-email" />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="biz-web">Website URL</Label>
+                    <Input id="biz-web" value={editForm.websiteUrl || ""} onChange={(e) => setEditForm({ ...editForm, websiteUrl: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-web" />
+                  </div>
+                </div>
+              </section>
+
+              {/* Media */}
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold text-[#0a4a82]">Media</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-img">Cover Image URL</Label>
+                    <Input id="biz-img" value={editForm.imageUrl || ""} onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-img" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-logo">Logo URL</Label>
+                    <Input id="biz-logo" value={editForm.logoUrl || ""} onChange={(e) => setEditForm({ ...editForm, logoUrl: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-logo" />
+                  </div>
+                </div>
+              </section>
+
+              {/* Credentials */}
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold text-[#0a4a82] flex items-center gap-2">
+                  <Shield className="h-4 w-4" /> Credentials & Local Status
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-est-year">Established Year</Label>
+                    <Input id="biz-est-year" type="number" value={editForm.establishedYear ?? ""} onChange={(e) => setEditForm({ ...editForm, establishedYear: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-est-year" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biz-est-zip">Established ZIP</Label>
+                    <Input id="biz-est-zip" value={editForm.establishedZipCode || ""} onChange={(e) => setEditForm({ ...editForm, establishedZipCode: e.target.value })} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-est-zip" />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="biz-local">Local Operation Description</Label>
+                    <Textarea id="biz-local" value={editForm.localOperationDescription || ""} onChange={(e) => setEditForm({ ...editForm, localOperationDescription: e.target.value })} className="bg-white rounded-xl min-h-[60px]" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-local" />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="biz-keywords">Search Keywords (comma-separated, max 250 chars)</Label>
+                    <Input id="biz-keywords" value={editForm.searchKeywords || ""} onChange={(e) => setEditForm({ ...editForm, searchKeywords: e.target.value })} maxLength={250} className="bg-white rounded-xl" style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }} data-testid="input-biz-keywords" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  {([
+                    ["hasLLC", "Has LLC"],
+                    ["hasInsurance", "Has Insurance"],
+                    ["isLicensed", "Licensed"],
+                    ["isVeteran", "Veteran-Owned"],
+                    ["servicesCommercial", "Services Commercial"],
+                    ["servicesResidential", "Services Residential"],
+                    ["acceptsQuotes", "Accepts Quote Requests"],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!editForm[key]}
+                        onChange={(e) => setEditForm({ ...editForm, [key]: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-[#0a4a82] cursor-pointer"
+                        data-testid={`checkbox-biz-${key}`}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              {/* Membership & Verification */}
+              <section className="space-y-3 pt-2 border-t border-gray-100">
+                <h4 className="text-sm font-semibold text-[#0a4a82]">Membership & Verification</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Membership Tier</Label>
+                    <Select value={editForm.membershipTier || "basic"} onValueChange={(v) => setEditForm({ ...editForm, membershipTier: v })}>
+                      <SelectTrigger className="bg-white rounded-xl" data-testid="select-biz-tier">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="basic">Bronze</SelectItem>
+                        <SelectItem value="standard">Silver</SelectItem>
+                        <SelectItem value="premium">Gold</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer pb-2">
+                      <input
+                        type="checkbox"
+                        checked={!!editForm.verified}
+                        onChange={(e) => setEditForm({ ...editForm, verified: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-[#0a4a82] cursor-pointer"
+                        data-testid="checkbox-biz-verified"
+                      />
+                      Verified Business
+                    </label>
+                  </div>
+                </div>
+              </section>
             </div>
-          </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialog(null)} className="rounded-xl">Cancel</Button>
             <Button
-              onClick={() => editDialog && updateBizMutation.mutate({ id: editDialog.id, membershipTier: editTier, verified: editVerified })}
-              disabled={updateBizMutation.isPending}
+              onClick={() => editDialog && updateBizMutation.mutate({ id: editDialog.id, body: editForm })}
+              disabled={updateBizMutation.isPending || editFullQuery.isLoading}
               className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-xl"
               data-testid="button-save-business"
             >

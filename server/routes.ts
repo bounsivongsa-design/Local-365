@@ -4045,13 +4045,36 @@ Respond in this exact JSON format:
       if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
 
       const targetId = req.params.userId;
-      const [target] = await pgDb.select({ id: users.id }).from(users).where(eq(users.id, targetId));
+      const [target] = await pgDb.select({ id: users.id, email: users.email, accountType: users.accountType, isAdmin: users.isAdmin }).from(users).where(eq(users.id, targetId));
       if (!target) return res.status(404).json({ message: "User not found" });
 
-      const { isValidated, accountType } = req.body;
+      // Prevent admins from editing OTHER admin accounts (self-edit allowed for name/email).
+      const targetIsAdmin = target.accountType === "admin" || target.isAdmin === true;
+      if (targetIsAdmin && targetId !== adminId) {
+        return res.status(403).json({ message: "Cannot edit another admin account from this screen" });
+      }
+
+      const { isValidated, accountType, firstName, lastName, email } = req.body;
       const updates: any = {};
       if (typeof isValidated === "boolean") updates.isValidated = isValidated;
       if (accountType && accountType !== "admin") updates.accountType = accountType;
+      if (typeof firstName === "string") updates.firstName = firstName.trim() || null;
+      if (typeof lastName === "string") updates.lastName = lastName.trim() || null;
+      if (typeof email === "string") {
+        const newEmail = email.trim().toLowerCase();
+        if (newEmail && newEmail !== (target.email || "").toLowerCase()) {
+          // Basic email shape check
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+            return res.status(400).json({ message: "Invalid email format" });
+          }
+          // Uniqueness check
+          const [existing] = await pgDb.select({ id: users.id }).from(users).where(eq(users.email, newEmail));
+          if (existing && existing.id !== targetId) {
+            return res.status(409).json({ message: "Another account already uses that email" });
+          }
+          updates.email = newEmail;
+        }
+      }
 
       if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No updates provided" });
 
@@ -4138,6 +4161,25 @@ Respond in this exact JSON format:
     }
   });
 
+  // Return ALL editable business fields for the admin Edit dialog.
+  app.get("/api/admin/businesses/:id/full", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, bizId));
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+      res.json(biz);
+    } catch (err) {
+      console.error("Admin get business full error:", err);
+      res.status(500).json({ message: "Failed to load business" });
+    }
+  });
+
   app.patch("/api/admin/businesses/:id", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
@@ -4150,10 +4192,59 @@ Respond in this exact JSON format:
       const [target] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, bizId));
       if (!target) return res.status(404).json({ message: "Business not found" });
 
-      const { membershipTier, verified } = req.body;
+      // Whitelist of fields admins may edit on a business (excludes Stripe IDs, dates, etc.)
+      const STRING_FIELDS = [
+        "name", "description", "address", "city", "state", "zipCode", "category",
+        "imageUrl", "logoUrl", "promoVideoUrl", "websiteUrl", "phone", "email",
+        "ownerName", "businessHours", "socialMediaUrls", "searchKeywords",
+        "localOperationDescription", "establishedZipCode",
+        "silverPerk", "goldPerk", "platinumPerk", "ambassadorPerk",
+        "membershipTier",
+      ] as const;
+      // These columns are NOT NULL in the schema — reject empty strings so the
+      // owner-facing listing doesn't end up with a blank required field.
+      const REQUIRED_NON_EMPTY = new Set([
+        "name", "description", "address", "category", "imageUrl",
+      ]);
+      const BOOL_FIELDS = [
+        "verified", "hasLLC", "hasInsurance", "isLicensed", "isVeteran",
+        "servicesCommercial", "servicesResidential", "acceptsQuotes",
+        "isLocal365Partner",
+      ] as const;
+      const INT_FIELDS = ["establishedYear"] as const;
+      const ARRAY_FIELDS = ["additionalCategories", "galleryPhotos"] as const;
+
       const updates: any = {};
-      if (membershipTier !== undefined) updates.membershipTier = membershipTier;
-      if (typeof verified === "boolean") updates.verified = verified;
+      for (const f of STRING_FIELDS) {
+        if (req.body[f] !== undefined) {
+          const v = req.body[f];
+          if (v === null || v === "") {
+            // Don't allow blanking out NOT NULL fields
+            if (REQUIRED_NON_EMPTY.has(f)) continue;
+            updates[f] = null;
+          } else {
+            updates[f] = String(v);
+          }
+        }
+      }
+      for (const f of BOOL_FIELDS) {
+        if (typeof req.body[f] === "boolean") updates[f] = req.body[f];
+      }
+      for (const f of INT_FIELDS) {
+        if (req.body[f] !== undefined) {
+          const v = req.body[f];
+          if (v === null || v === "") updates[f] = null;
+          else {
+            const n = parseInt(v);
+            if (!isNaN(n)) updates[f] = n;
+          }
+        }
+      }
+      for (const f of ARRAY_FIELDS) {
+        if (Array.isArray(req.body[f])) {
+          updates[f] = req.body[f].map((x: any) => String(x)).filter((x: string) => x.length > 0);
+        }
+      }
 
       if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No updates provided" });
 
