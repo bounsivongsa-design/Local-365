@@ -3618,6 +3618,33 @@ Respond in this exact JSON format:
         try {
           const stripe = new (await import("stripe")).default(process.env.Stripeintegration || "");
 
+          const isFullDiscount = promo.discountType === "percentage" && (promo.discountValue || 0) >= 100;
+          const freeDays = promo.durationDays && promo.durationDays > 0 ? promo.durationDays : null;
+
+          if (isFullDiscount && freeDays) {
+            const sub = await stripe.subscriptions.retrieve(biz.stripeSubscriptionId);
+            const nowSec = Math.floor(Date.now() / 1000);
+            const baseSec = (sub.trial_end && sub.trial_end > nowSec) ? sub.trial_end : nowSec;
+            const newTrialEnd = baseSec + freeDays * 86400;
+
+            await stripe.subscriptions.update(biz.stripeSubscriptionId, {
+              trial_end: newTrialEnd,
+              proration_behavior: "none",
+            });
+
+            await pgDb.update(promoCodes).set({ currentUses: sql`${promoCodes.currentUses} + 1` }).where(eq(promoCodes.id, promo.id));
+            await pgDb.insert(promoCodeUsages).values({ promoCodeId: promo.id, businessId: biz.id });
+
+            console.log(`Promo redeemed: business ${biz.id} (${biz.name}) free trial extended by ${freeDays} days, new trial_end=${new Date(newTrialEnd * 1000).toISOString()}`);
+
+            return res.json({
+              success: true,
+              message: `Free access activated for ${freeDays} more days!`,
+              freeDays,
+              trialEnd: new Date(newTrialEnd * 1000).toISOString(),
+            });
+          }
+
           let coupon;
           if (promo.discountType === "percentage") {
             coupon = await stripe.coupons.create({

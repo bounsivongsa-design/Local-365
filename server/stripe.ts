@@ -156,6 +156,7 @@ export function registerStripeRoutes(app: Express) {
       let goldTrialDays: number | null = null;
       let promoCouponId: string | null = null;
       let promoIsFullDiscount = false;
+      let promoFreeDays: number | null = null;
       if (promoCode) {
         const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase())).limit(1);
         if (!promo) {
@@ -190,7 +191,9 @@ export function registerStripeRoutes(app: Express) {
         } else if (promo.discountType === "percentage") {
           const pct = promo.discountValue || 0;
           promoIsFullDiscount = pct >= 100;
-          if (!promoIsFullDiscount && pct > 0) {
+          if (promoIsFullDiscount && promo.durationDays && promo.durationDays > 0) {
+            promoFreeDays = promo.durationDays;
+          } else if (!promoIsFullDiscount && pct > 0) {
             const coupon = await stripe.coupons.create({
               percent_off: pct,
               duration: "once",
@@ -313,10 +316,10 @@ export function registerStripeRoutes(app: Express) {
         },
       };
 
-      if (goldTrialDays) {
-        sessionParams.subscription_data.trial_period_days = goldTrialDays;
-      } else if (isNewMember) {
-        sessionParams.subscription_data.trial_period_days = 30;
+      const baselineTrialDays = goldTrialDays || (isNewMember ? 30 : 0);
+      const effectiveTrialDays = Math.max(baselineTrialDays, promoFreeDays || 0);
+      if (effectiveTrialDays > 0) {
+        sessionParams.subscription_data.trial_period_days = effectiveTrialDays;
       }
 
       if (promoCouponId) {

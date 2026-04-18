@@ -78,6 +78,19 @@ function getExpirationDate(period: string): string {
   return now.toISOString();
 }
 
+function getRedemptionDeadline(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 90);
+  d.setHours(23, 59, 59, 999);
+  return d.toISOString();
+}
+
+function periodToDays(period: string): number {
+  if (period === "1week") return 7;
+  if (period === "2months") return 60;
+  return 30;
+}
+
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
   bronze: { label: "Bronze", color: "bg-amber-700 text-white" },
   silver: { label: "Silver", color: "bg-slate-400 text-white" },
@@ -201,16 +214,17 @@ export default function AdminPromoCodes() {
     const autoDesc = editForm.description
       || (isGoldTrial
         ? `Gold trial - ${editingPromo.discountValue || 60} days`
-        : `Free ${tierLabel} membership - ${periodLabel}`);
+        : `Free ${tierLabel} membership - ${periodLabel} (90 days to redeem)`);
     const data: any = {
       description: autoDesc,
       maxUses: 1,
-      expiresAt: getExpirationDate(editForm.expiresPeriod),
+      expiresAt: getRedemptionDeadline(),
     };
     if (!isGoldTrial) {
       data.discountType = "percentage";
       data.discountValue = 100;
       data.applicableTiers = [editForm.membershipTier];
+      data.durationDays = periodToDays(editForm.expiresPeriod);
     }
     editMutation.mutate({ id: editingPromo.id, data });
   };
@@ -222,7 +236,7 @@ export default function AdminPromoCodes() {
     }
     const tierLabel = TIER_LABELS[newCode.membershipTier]?.label || "Bronze";
     const periodLabel = newCode.expiresPeriod === "1month" ? "1 month" : "2 months";
-    const autoDesc = newCode.description || `Free ${tierLabel} membership - ${periodLabel}`;
+    const autoDesc = newCode.description || `Free ${tierLabel} membership - ${periodLabel} (90 days to redeem)`;
     createMutation.mutate({
       code: newCode.code,
       description: autoDesc,
@@ -230,7 +244,8 @@ export default function AdminPromoCodes() {
       discountValue: 100,
       applicableTiers: [newCode.membershipTier],
       maxUses: 1,
-      expiresAt: getExpirationDate(newCode.expiresPeriod),
+      durationDays: periodToDays(newCode.expiresPeriod),
+      expiresAt: getRedemptionDeadline(),
     });
   };
 
@@ -241,7 +256,7 @@ export default function AdminPromoCodes() {
     }
     const tierLabel = TIER_LABELS[newMktCode.membershipTier]?.label || "Bronze";
     const periodLabel = newMktCode.expiresPeriod === "1month" ? "1 month" : "2 months";
-    const autoDesc = newMktCode.description || `Marketing ${tierLabel} membership - ${periodLabel}`;
+    const autoDesc = newMktCode.description || `Marketing ${tierLabel} membership - ${periodLabel} (90 days to redeem)`;
     createMutation.mutate({
       code: newMktCode.code,
       description: autoDesc,
@@ -249,7 +264,8 @@ export default function AdminPromoCodes() {
       discountValue: 100,
       applicableTiers: [newMktCode.membershipTier],
       maxUses: 1,
-      expiresAt: getExpirationDate(newMktCode.expiresPeriod),
+      durationDays: periodToDays(newMktCode.expiresPeriod),
+      expiresAt: getRedemptionDeadline(),
     });
     setMktDialogOpen(false);
     setNewMktCode({
