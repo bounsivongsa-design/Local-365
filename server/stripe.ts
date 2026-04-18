@@ -152,9 +152,10 @@ export function registerStripeRoutes(app: Express) {
         return res.json({ founderBypass: true, message: "Founder business — Gold membership activated for free!" });
       }
 
-      let promoDiscount = 0;
       let promoId: number | null = null;
       let goldTrialDays: number | null = null;
+      let promoCouponId: string | null = null;
+      let promoIsFullDiscount = false;
       if (promoCode) {
         const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase())).limit(1);
         if (!promo) {
@@ -185,12 +186,29 @@ export function registerStripeRoutes(app: Express) {
         }
         promoId = promo.id;
         if (promo.discountType === "gold_trial") {
-          promoDiscount = 0;
           goldTrialDays = promo.durationDays || 30;
         } else if (promo.discountType === "percentage") {
-          promoDiscount = promo.discountValue / 100;
-        } else {
-          promoDiscount = promo.discountValue;
+          const pct = promo.discountValue || 0;
+          promoIsFullDiscount = pct >= 100;
+          if (!promoIsFullDiscount && pct > 0) {
+            const coupon = await stripe.coupons.create({
+              percent_off: pct,
+              duration: "once",
+              name: `Promo: ${promo.code}`,
+            });
+            promoCouponId = coupon.id;
+          }
+        } else if (promo.discountType === "fixed_amount") {
+          const amt = promo.discountValue || 0;
+          if (amt > 0) {
+            const coupon = await stripe.coupons.create({
+              amount_off: Math.round(amt * 100),
+              currency: "usd",
+              duration: "once",
+              name: `Promo: ${promo.code}`,
+            });
+            promoCouponId = coupon.id;
+          }
         }
       }
 
@@ -224,14 +242,15 @@ export function registerStripeRoutes(app: Express) {
         }
       }
 
-      let priceAmount = TIER_PRICES[tier][frequency];
+      const priceAmount = TIER_PRICES[tier][frequency];
 
-      if (promoDiscount > 0 && promoId) {
-        if (promoDiscount <= 1) {
-          priceAmount = Math.round(priceAmount * (1 - promoDiscount));
-        } else {
-          priceAmount = Math.max(0, priceAmount - promoDiscount * 100);
-        }
+      if (promoIsFullDiscount && !promoCouponId) {
+        const fullCoupon = await stripe.coupons.create({
+          percent_off: 100,
+          duration: "once",
+          name: `Promo: 100% off`,
+        });
+        promoCouponId = fullCoupon.id;
       }
 
       const isNewMember = biz ? !biz.membershipTrialUsed : true;
@@ -298,6 +317,10 @@ export function registerStripeRoutes(app: Express) {
         sessionParams.subscription_data.trial_period_days = goldTrialDays;
       } else if (isNewMember) {
         sessionParams.subscription_data.trial_period_days = 30;
+      }
+
+      if (promoCouponId) {
+        sessionParams.discounts = [{ coupon: promoCouponId }];
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);

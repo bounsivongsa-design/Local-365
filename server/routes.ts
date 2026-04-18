@@ -3409,8 +3409,11 @@ Respond in this exact JSON format:
       if (discountType === "percentage" && (discountValue < 1 || discountValue > 100)) {
         return res.status(400).json({ message: "Percentage discount must be between 1 and 100" });
       }
-      if (discountType === "gold_trial" && durationDays && Number(durationDays) !== 60) {
-        return res.status(400).json({ message: "Gold trial duration must be 60 days" });
+      if (discountType === "gold_trial" && durationDays !== undefined && durationDays !== null) {
+        const d = Number(durationDays);
+        if (!Number.isFinite(d) || d < 1 || d > 365) {
+          return res.status(400).json({ message: "Gold trial duration must be between 1 and 365 days" });
+        }
       }
       const existing = await pgDb.select({ id: promoCodes.id }).from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
       if (existing.length > 0) {

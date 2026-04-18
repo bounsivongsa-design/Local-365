@@ -195,20 +195,24 @@ export default function AdminPromoCodes() {
 
   const handleEdit = () => {
     if (!editingPromo) return;
+    const isGoldTrial = editingPromo.discountType === "gold_trial";
     const tierLabel = TIER_LABELS[editForm.membershipTier]?.label || "Bronze";
     const periodLabel = editForm.expiresPeriod === "1month" ? "1 month" : "2 months";
-    const autoDesc = editForm.description || `Free ${tierLabel} membership - ${periodLabel}`;
-    editMutation.mutate({
-      id: editingPromo.id,
-      data: {
-        description: autoDesc,
-        discountType: "percentage",
-        discountValue: 100,
-        applicableTiers: [editForm.membershipTier],
-        maxUses: 1,
-        expiresAt: getExpirationDate(editForm.expiresPeriod),
-      },
-    });
+    const autoDesc = editForm.description
+      || (isGoldTrial
+        ? `Gold trial - ${editingPromo.discountValue || 60} days`
+        : `Free ${tierLabel} membership - ${periodLabel}`);
+    const data: any = {
+      description: autoDesc,
+      maxUses: 1,
+      expiresAt: getExpirationDate(editForm.expiresPeriod),
+    };
+    if (!isGoldTrial) {
+      data.discountType = "percentage";
+      data.discountValue = 100;
+      data.applicableTiers = [editForm.membershipTier];
+    }
+    editMutation.mutate({ id: editingPromo.id, data });
   };
 
   const handleCreate = () => {
