@@ -998,6 +998,25 @@ export function registerStripeRoutes(app: Express) {
                 stripeCustomerId: session.customer as string,
                 membershipTrialUsed: true,
               };
+
+              const isAutoUpgradeWh = session.metadata?.isAutoUpgrade === "true";
+              const originalTierWh = session.metadata?.originalTier;
+              if (session.subscription) {
+                try {
+                  const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+                  if (sub.trial_end && isAutoUpgradeWh && originalTierWh) {
+                    updates.goldTrialEndDate = new Date(sub.trial_end * 1000);
+                    updates.originalMembershipTier = originalTierWh;
+                  }
+                } catch (e) {
+                  console.error("Failed to retrieve subscription for trial info (linked business path):", e);
+                }
+              }
+              if (tier === "premium" && !isAutoUpgradeWh) {
+                updates.goldTrialEndDate = null;
+                updates.originalMembershipTier = null;
+              }
+
               await db.update(businesses).set(updates).where(eq(businesses.id, checkoutUser.linkedBusinessId));
               console.log(`Membership applied directly to business ${checkoutUser.linkedBusinessId} → ${tier} (user already had business)`);
 

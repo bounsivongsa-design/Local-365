@@ -4135,6 +4135,98 @@ Respond in this exact JSON format:
     }
   });
 
+  app.post("/api/admin/businesses/sync-stripe-tiers", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const stripe = (await import("stripe")).default;
+      const stripeClient = new stripe(process.env.Stripeintegration || "");
+
+      const allBiz = await pgDb.select({
+        id: businesses.id,
+        name: businesses.name,
+        membershipTier: businesses.membershipTier,
+        stripeSubscriptionId: businesses.stripeSubscriptionId,
+        goldTrialEndDate: businesses.goldTrialEndDate,
+        originalMembershipTier: businesses.originalMembershipTier,
+      }).from(businesses);
+
+      const results: Array<{ id: number; name: string; before: any; after: any; changed: boolean; note?: string }> = [];
+
+      for (const b of allBiz) {
+        if (!b.stripeSubscriptionId) {
+          results.push({ id: b.id, name: b.name, before: null, after: null, changed: false, note: "No Stripe subscription" });
+          continue;
+        }
+        try {
+          const sub = await stripeClient.subscriptions.retrieve(b.stripeSubscriptionId);
+          const isAutoUpgrade = sub.metadata?.isAutoUpgrade === "true";
+          const originalTier = sub.metadata?.originalTier as string | undefined;
+          const subTier = sub.metadata?.tier as string | undefined;
+
+          const updates: any = {};
+          let note = "";
+
+          if (subTier && subTier !== b.membershipTier && (sub.status === "active" || sub.status === "trialing")) {
+            updates.membershipTier = subTier;
+            note += `tier: ${b.membershipTier} → ${subTier}; `;
+          }
+
+          if (isAutoUpgrade && originalTier && sub.trial_end && sub.status === "trialing") {
+            const newTrialEnd = new Date(sub.trial_end * 1000);
+            const beforeTime = b.goldTrialEndDate ? new Date(b.goldTrialEndDate as any).getTime() : 0;
+            if (beforeTime !== newTrialEnd.getTime() || b.originalMembershipTier !== originalTier) {
+              updates.goldTrialEndDate = newTrialEnd;
+              updates.originalMembershipTier = originalTier;
+              note += `trial restored from Stripe: ${originalTier}→Gold ends ${newTrialEnd.toISOString().slice(0,10)}; `;
+            }
+          } else if (isAutoUpgrade && originalTier && sub.status === "active") {
+            const currentTier = updates.membershipTier ?? b.membershipTier;
+            if (currentTier === "premium") {
+              updates.membershipTier = originalTier;
+              updates.goldTrialEndDate = null;
+              updates.originalMembershipTier = null;
+              note += `trial ended → reverted to ${originalTier} (recovered from Stripe metadata); `;
+            } else if (b.goldTrialEndDate || b.originalMembershipTier) {
+              updates.goldTrialEndDate = null;
+              updates.originalMembershipTier = null;
+              note += "cleared post-trial fields; ";
+            }
+          } else if (!isAutoUpgrade && (b.goldTrialEndDate || b.originalMembershipTier)) {
+            updates.goldTrialEndDate = null;
+            updates.originalMembershipTier = null;
+            note += "cleared stale trial (sub not auto-upgrade); ";
+          }
+
+          if (Object.keys(updates).length > 0) {
+            await pgDb.update(businesses).set(updates).where(eq(businesses.id, b.id));
+            results.push({
+              id: b.id,
+              name: b.name,
+              before: { tier: b.membershipTier, trialEnd: b.goldTrialEndDate, originalTier: b.originalMembershipTier },
+              after: { ...updates },
+              changed: true,
+              note: note.trim(),
+            });
+          } else {
+            results.push({ id: b.id, name: b.name, before: null, after: null, changed: false, note: `synced (no changes), sub=${sub.status}, autoUpgrade=${isAutoUpgrade}` });
+          }
+        } catch (e: any) {
+          results.push({ id: b.id, name: b.name, before: null, after: null, changed: false, note: `Stripe error: ${e?.message}` });
+        }
+      }
+
+      const changedCount = results.filter(r => r.changed).length;
+      console.log(`[ADMIN-SYNC] Stripe tier sync: ${changedCount} businesses updated of ${results.length}`);
+      res.json({ total: results.length, changed: changedCount, results });
+    } catch (err: any) {
+      console.error("Admin sync Stripe tiers error:", err);
+      res.status(500).json({ message: err?.message || "Failed to sync Stripe tiers" });
+    }
+  });
+
   app.get("/api/admin/pending-counts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;

@@ -1172,6 +1172,25 @@ function BusinessesTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const syncStripeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/businesses/sync-stripe-tiers", {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      const changedRows = (data.results || []).filter((r: any) => r.changed);
+      const summary = changedRows.length === 0
+        ? "All businesses are already in sync with Stripe."
+        : changedRows.map((r: any) => `${r.name}: ${r.note}`).join("\n");
+      toast({
+        title: `Synced ${data.changed} of ${data.total} businesses`,
+        description: summary.slice(0, 400),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses"] });
+    },
+    onError: (err: Error) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+  });
+
   const openEdit = (b: AdminBusiness) => {
     setEditDialog(b);
     setEditTier(b.membershipTier && b.membershipTier !== "none" ? b.membershipTier : "basic");
@@ -1201,6 +1220,17 @@ function BusinessesTab() {
             Clear
           </Button>
         )}
+        <div className="flex-1" />
+        <Button
+          variant="outline"
+          onClick={() => syncStripeMutation.mutate()}
+          disabled={syncStripeMutation.isPending}
+          className="rounded-xl border-[#d4a373] text-[#0a4a82] hover:bg-[#fdf6ee] gap-2"
+          data-testid="button-sync-stripe-tiers"
+          title="Re-read every business's tier and trial state from Stripe and update the database"
+        >
+          {syncStripeMutation.isPending ? "Syncing…" : "Sync from Stripe"}
+        </Button>
       </div>
 
       {isError && (
