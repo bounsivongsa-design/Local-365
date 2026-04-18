@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 
@@ -931,7 +931,38 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
 function OwnerReplyForm({ reviewId, businessId }: { reviewId: number; businessId: number }) {
   const [isReplying, setIsReplying] = useState(false);
   const [response, setResponse] = useState("");
+  const [aiVariants, setAiVariants] = useState<Array<{ label: string; text: string }>>([]);
   const { toast } = useToast();
+
+  const credits = useQuery<{ balance: number; isFounder: boolean; eligible: boolean }>({
+    queryKey: ["/api/businesses", businessId, "ai-credits"],
+    enabled: isReplying,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const aiEligible = credits.data?.eligible === true;
+  const canAffordAi = credits.data?.isFounder || (credits.data?.balance ?? 0) >= 3;
+
+  const aiMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/ai/review-reply", { reviewId, tone: "warm" });
+      return (await res.json()) as { variants: Array<{ label: string; text: string }> };
+    },
+    onSuccess: (data) => {
+      setAiVariants(data.variants);
+      credits.refetch();
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "AI generation failed";
+      toast({
+        title: "AI assist unavailable",
+        description: msg.includes("Not enough credits")
+          ? "You're out of AI credits this cycle. Top up in your dashboard."
+          : msg,
+        variant: "destructive",
+      });
+    },
+  });
 
   const replyMutation = useMutation({
     mutationFn: async () => {
@@ -942,6 +973,7 @@ function OwnerReplyForm({ reviewId, businessId }: { reviewId: number; businessId
       toast({ title: "Response posted", description: "Your reply is now visible to everyone." });
       setIsReplying(false);
       setResponse("");
+      setAiVariants([]);
       queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId] });
     },
     onError: (err: any) => {
@@ -979,10 +1011,77 @@ function OwnerReplyForm({ reviewId, businessId }: { reviewId: number; businessId
         maxLength={1000}
         data-testid={`input-owner-response-${reviewId}`}
       />
+      {aiEligible && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+          {aiVariants.length === 0 ? (
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-xs text-amber-800">
+                <Sparkles className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+                Stuck? Let AI draft 2 reply options{" "}
+                <span className="opacity-70">
+                  ({credits.data?.isFounder ? "free" : "3 credits"}
+                  {!credits.data?.isFounder && credits.data && ` · balance: ${credits.data.balance}`})
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!canAffordAi || aiMutation.isPending}
+                onClick={() => aiMutation.mutate()}
+                className="border-amber-300 text-amber-700 hover:bg-amber-100 h-7 text-xs"
+                data-testid={`button-ai-suggest-reply-${reviewId}`}
+              >
+                {aiMutation.isPending ? "Drafting…" : "Suggest with AI"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-amber-800">
+                Pick a draft (you can edit after):
+              </div>
+              {aiVariants.map((v, i) => (
+                <div
+                  key={i}
+                  className="rounded-md border border-amber-200 bg-white p-2 space-y-1.5"
+                  data-testid={`card-reply-variant-${reviewId}-${i}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                      {v.label}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setResponse(v.text);
+                        setAiVariants([]);
+                      }}
+                      className="h-6 text-[11px] bg-amber-500 hover:bg-amber-600"
+                      data-testid={`button-use-reply-${reviewId}-${i}`}
+                    >
+                      Use this
+                    </Button>
+                  </div>
+                  <p className="text-xs text-[#4a4a5a] leading-relaxed">{v.text}</p>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="text-[11px] text-amber-700 underline hover:text-amber-800"
+                onClick={() => setAiVariants([])}
+                data-testid={`button-dismiss-ai-variants-${reviewId}`}
+              >
+                Dismiss suggestions
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <span className="text-xs text-slate-400">{response.length}/1000</span>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => { setIsReplying(false); setResponse(""); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setIsReplying(false); setResponse(""); setAiVariants([]); }}>
             Cancel
           </Button>
           <Button

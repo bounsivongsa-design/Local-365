@@ -18,6 +18,7 @@ import {
   aiCredits,
   aiCreditTransactions,
   businesses,
+  reviews,
   users,
 } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
@@ -366,4 +367,168 @@ export function registerAiFeatureRoutes(app: Express) {
       }
     },
   );
+
+  /* ─────────── Review reply generator ─────────── */
+  app.post("/api/ai/review-reply", isAuthenticated, async (req, res) => {
+    const ReplyRequestSchema = z.object({
+      reviewId: z.number().int().positive(),
+      tone: z
+        .enum(["professional", "warm", "apologetic"])
+        .optional()
+        .default("warm"),
+    });
+    const parsedBody = ReplyRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { reviewId, tone } = parsedBody.data;
+
+    // Initial load — used for ownership/eligibility resolution. Re-checked
+    // atomically below right before we spend credits to close a TOCTOU
+    // window where the owner could post a manual reply between the eligibility
+    // check and the AI call.
+    const [review] = await pgDb
+      .select()
+      .from(reviews)
+      .where(eq(reviews.id, reviewId));
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+    if (review.ownerResponse !== null) {
+      return res.status(400).json({
+        message: "This review already has an owner response.",
+        code: "ALREADY_REPLIED",
+      });
+    }
+
+    const auth = await authorizeOwnerOnGold(req, res, review.businessId);
+    if (!auth) return;
+
+    // Atomically re-verify the review is still unreplied. If something raced
+    // us, return 400 ALREADY_REPLIED without spending credits.
+    const [recheck] = await pgDb
+      .select({ ownerResponse: reviews.ownerResponse })
+      .from(reviews)
+      .where(eq(reviews.id, reviewId));
+    if (!recheck || recheck.ownerResponse !== null) {
+      return res.status(400).json({
+        message: "This review already has an owner response.",
+        code: "ALREADY_REPLIED",
+      });
+    }
+
+    const COST_CREDITS = 3;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      review.businessId,
+      "review_reply",
+      COST_CREDITS,
+      COST_CENTS,
+      { reviewId, tone },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const ratingLabel =
+        review.rating >= 4
+          ? "positive"
+          : review.rating === 3
+            ? "neutral"
+            : "negative";
+
+      const prompt = `You are helping a small-business owner reply to a customer
+review on a local directory. The reply should be 1-3 sentences, sound human,
+and never use AI clichés ("We are committed to...", "Thank you for your valuable
+feedback"). Generate TWO distinct reply options.
+
+Business name: ${auth.business.name}
+Category: ${auth.business.category}
+Review rating: ${review.rating}/5 (${ratingLabel})
+Review text: "${review.comment}"
+Tone: ${tone}
+
+Rules:
+- For ${ratingLabel} reviews: ${
+        ratingLabel === "negative"
+          ? "acknowledge the issue specifically, take ownership without making excuses, and invite the customer to follow up directly."
+          : ratingLabel === "neutral"
+            ? "thank them, address any specific concern they raised, and gently invite them back."
+            : "thank them by referencing something specific they mentioned. Don't be generic."
+      }
+- Address the reviewer naturally; don't say "Dear Customer".
+- Sign-offs are optional; if used, just the business name (no "Sincerely,").
+- Don't promise refunds, free service, or specific compensation.
+- Don't fabricate facts about the visit.
+
+Respond ONLY with this JSON shape (no prose):
+{
+  "variants": [
+    { "label": "Direct", "text": "..." },
+    { "label": "Empathetic", "text": "..." }
+  ]
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ReplyResponseSchema = z.object({
+        variants: z
+          .array(
+            z.object({
+              label: z.string().min(1).max(40),
+              text: z.string().min(10).max(800),
+            }),
+          )
+          .length(2),
+      });
+      const validated = ReplyResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] review-reply bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        variants: validated.data.variants,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "review_reply",
+      });
+    } catch (err: any) {
+      console.error("[ai] review-reply failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
 }
