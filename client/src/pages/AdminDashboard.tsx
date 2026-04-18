@@ -752,6 +752,9 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
         <Link to="/events" data-testid="link-admin-manage-events">
           <QuickActionCard icon={Calendar} label="Events" sub="Community calendar" color="bg-amber-500/10" iconColor="text-amber-500" />
         </Link>
+        <Link to="/admin/ai-lab" data-testid="link-admin-ai-lab">
+          <QuickActionCard icon={Star} label="AI Lab" sub="Pre-release sandbox" color="bg-[#d4a373]/10" iconColor="text-[#d4a373]" />
+        </Link>
       </div>
     </div>
   );

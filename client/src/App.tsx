@@ -20,6 +20,7 @@ import AdminAds from "@/pages/AdminAds";
 import AdminPromoCodes from "@/pages/AdminPromoCodes";
 import AdminEvents from "@/pages/AdminEvents";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AILab from "@/pages/AILab";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -59,6 +60,7 @@ function AppRouter() {
           <Route path="/admin/ads" element={<AdminAds />} />
           <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
           <Route path="/admin/events" element={<AdminEvents />} />
+          <Route path="/admin/ai-lab" element={<AILab />} />
           <Route path="/membership" element={<BusinessMembership />} />
           <Route path="/jobs" element={<HelpWanted />} />
           <Route path="/create-business" element={<CreateBusiness />} />
