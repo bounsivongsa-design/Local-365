@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   Tag,
 } from "lucide-react";
+import { AIListingWriter } from "@/components/AIListingWriter";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { getMembershipTier } from "@shared/config/membership";
 
@@ -643,7 +644,13 @@ function ProfileEditor({ business }: { business: Business }) {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-[#1a1a2e]">Description</label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-sm font-medium text-[#1a1a2e]">Description</label>
+              <AIListingWriter
+                businessId={business.id}
+                onApply={(text) => setForm({ ...form, description: text })}
+              />
+            </div>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
