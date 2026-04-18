@@ -100,7 +100,12 @@ export class DatabaseStorage implements IStorage {
       )!
     );
     if (category) {
-      conditions.push(eq(businesses.category, category));
+      conditions.push(
+        or(
+          eq(businesses.category, category),
+          sql`${category} = ANY(${businesses.additionalCategories})`
+        )!
+      );
     }
     if (search) {
       const searchPattern = `%${search}%`;
