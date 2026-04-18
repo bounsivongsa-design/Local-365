@@ -1104,6 +1104,26 @@ Respond in this exact JSON format:
     }
   });
 
+  // Public-safe counter for the homepage urgency banner.
+  // Exposes only the founding-member roster size — no PII, no auth.
+  app.get("/api/public/founding-stats", async (_req, res) => {
+    try {
+      const FOUNDING_LIMIT = 100;
+      const [{ claimed = 0 } = {}] = await pgDb
+        .select({ claimed: sql<number>`count(*)::int` })
+        .from(businesses)
+        .where(eq(businesses.isFoundingMember, true));
+      res.json({
+        limit: FOUNDING_LIMIT,
+        claimed,
+        remaining: Math.max(0, FOUNDING_LIMIT - (claimed as number)),
+      });
+    } catch (err) {
+      console.error("Public founding stats error:", err);
+      res.status(500).json({ message: "Failed to load founding stats" });
+    }
+  });
+
   // Refer-a-Business + Founding Member status for the dashboard widget.
   // Returns: { referralCode, isFoundingMember, foundingMemberNumber,
   //           goldDaysEarned, referrals: [...] }

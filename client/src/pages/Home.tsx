@@ -4,6 +4,7 @@ import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
 import { EventCard } from "@/components/EventCard";
 import { AdCarousel } from "@/components/AdCarousel";
+import { GrowthPromoSection } from "@/components/GrowthPromoSection";
 import { IntakeForm } from "@/components/IntakeForm";
 import { ItineraryBuilder } from "@/components/ItineraryBuilder";
 import { formatDistanceToNow } from "date-fns";
@@ -192,6 +193,9 @@ export default function Home() {
 
       {/* 3-Tier Ad Carousels */}
       <AdCarousel zipCode={locationZip} />
+
+      {/* Growth: Refer & Earn + Founding Member 100 */}
+      <GrowthPromoSection />
 
       {/* Browse by Category - Full Icon Grid */}
       <div className="bg-[#f5f0eb] py-12">

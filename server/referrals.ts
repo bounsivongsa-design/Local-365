@@ -21,7 +21,8 @@
  */
 import { db } from "./db";
 import { businesses, referrals } from "@shared/schema";
-import { and, eq, sql, isNull } from "drizzle-orm";
+import { and, eq, sql, isNull, inArray } from "drizzle-orm";
+import { notifyReferralRewarded } from "./email";
 
 const FOUNDING_MEMBER_LIMIT = 100;
 const REFERRAL_REWARD_DAYS = 30;
@@ -207,6 +208,7 @@ export async function processMembershipActivation(
   let foundingNumber: number | null = null;
   let referralRewarded = false;
   let referrerBusinessId: number | null = null;
+  let rewardedDays: number = REFERRAL_REWARD_DAYS;
 
   await db.transaction(async (tx) => {
     // 1. Founding member assignment (only if not already)
@@ -239,6 +241,7 @@ export async function processMembershipActivation(
         await addGoldDays(tx, pending.referredBusinessId, days);
         referralRewarded = true;
         referrerBusinessId = pending.referrerBusinessId;
+        rewardedDays = days;
       }
     }
   });
@@ -248,6 +251,36 @@ export async function processMembershipActivation(
       `[referrals] biz=${businessId} foundingNumber=${foundingNumber} referralRewarded=${referralRewarded} referrer=${referrerBusinessId}`,
     );
   }
+
+  // Send celebration emails to both parties AFTER the DB transaction commits.
+  // Failures here are logged but never rethrown — emails are best-effort and
+  // must not roll back a successful reward.
+  if (referralRewarded && referrerBusinessId) {
+    try {
+      const parties = await db
+        .select({
+          id: businesses.id,
+          name: businesses.name,
+          email: businesses.email,
+        })
+        .from(businesses)
+        .where(inArray(businesses.id, [referrerBusinessId, businessId]));
+      const referrer = parties.find((p) => p.id === referrerBusinessId);
+      const referred = parties.find((p) => p.id === businessId);
+      if (referrer && referred) {
+        await notifyReferralRewarded({
+          referrerEmail: referrer.email,
+          referrerBusinessName: referrer.name,
+          referredEmail: referred.email,
+          referredBusinessName: referred.name,
+          daysGranted: rewardedDays,
+        });
+      }
+    } catch (err) {
+      console.error("[referrals] reward email send failed (non-fatal):", err);
+    }
+  }
+
   return { foundingNumber, referralRewarded, referrerBusinessId };
 }
 

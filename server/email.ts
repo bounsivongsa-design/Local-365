@@ -159,6 +159,96 @@ export async function notifyAdminNewAd(adTitle: string, businessName: string, ad
   await sendAdminEmail(subject, html);
 }
 
+/**
+ * Tells both sides of a successful referral that they just earned 30 days of
+ * Gold features. Sent from server/referrals.ts:processMembershipActivation
+ * AFTER the rewards are committed to the DB.
+ */
+export async function notifyReferralRewarded(args: {
+  referrerEmail: string | null | undefined;
+  referrerBusinessName: string;
+  referredEmail: string | null | undefined;
+  referredBusinessName: string;
+  daysGranted: number;
+}) {
+  const resend = getResend();
+  if (!resend) {
+    console.log(
+      `[EMAIL SKIPPED] Referral reward (${args.referrerBusinessName} ↔ ${args.referredBusinessName}) — Resend not configured`,
+    );
+    return;
+  }
+
+  const dashboardUrl = "https://locallist365.replit.app/dashboard";
+
+  const buildHtml = (heading: string, body: string) => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #d4a373, #b8834f); color: white; padding: 28px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="font-size: 14px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85; margin-bottom: 8px;">Reward Unlocked</div>
+        <h1 style="margin: 0; font-size: 28px;">+${args.daysGranted} Days of Gold</h1>
+      </div>
+      <div style="background: #f9f9f9; padding: 28px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">${heading}</h2>
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">${body}</p>
+        <div style="margin: 24px 0; text-align: center;">
+          <a href="${dashboardUrl}" style="display: inline-block; background: #0a4a82; color: white; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">
+            View Your Dashboard
+          </a>
+        </div>
+        <p style="color: #666; font-size: 13px; line-height: 1.5;">
+          Your Gold features are active immediately and will remain so until your bonus window expires. Keep referring local businesses to keep stacking days — no limit.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;" />
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          Local List 365 — Your Moyock Community Directory
+        </p>
+      </div>
+    </div>
+  `;
+
+  const sends: Promise<unknown>[] = [];
+
+  if (args.referrerEmail) {
+    sends.push(
+      resend.emails
+        .send({
+          from: "Local List 365 <onboarding@resend.dev>",
+          to: [args.referrerEmail],
+          subject: `You earned +${args.daysGranted} days of Gold — thanks for the referral!`,
+          html: buildHtml(
+            `Thanks for bringing ${args.referredBusinessName} to LocalList365!`,
+            `Your referral just activated their paid membership. You both get <strong>${args.daysGranted} free days of Gold</strong> features added to your account, starting now.`,
+          ),
+        })
+        .then(() => console.log(`[EMAIL SENT] Referral reward → ${args.referrerEmail}`))
+        .catch((err: any) =>
+          console.error(`[EMAIL FAILED] Referral reward to referrer:`, err?.message),
+        ),
+    );
+  }
+
+  if (args.referredEmail) {
+    sends.push(
+      resend.emails
+        .send({
+          from: "Local List 365 <onboarding@resend.dev>",
+          to: [args.referredEmail],
+          subject: `Welcome bonus: +${args.daysGranted} days of Gold on us`,
+          html: buildHtml(
+            `Welcome to LocalList365, ${args.referredBusinessName}!`,
+            `You signed up using a referral code from <strong>${args.referrerBusinessName}</strong>, so we've added <strong>${args.daysGranted} free days of Gold</strong> features to your account on top of your plan. Enjoy.`,
+          ),
+        })
+        .then(() => console.log(`[EMAIL SENT] Referral welcome → ${args.referredEmail}`))
+        .catch((err: any) =>
+          console.error(`[EMAIL FAILED] Referral welcome to referred:`, err?.message),
+        ),
+    );
+  }
+
+  await Promise.allSettled(sends);
+}
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;
