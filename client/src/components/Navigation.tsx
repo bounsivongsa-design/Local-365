@@ -62,8 +62,6 @@ export function Navigation() {
   const authenticatedNavItems = [
     ...navItems,
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    ...(isBusinessOwner ? [{ href: "/newsletter", label: "Newsletter", icon: Mail }] : []),
-    ...(isBusinessOwner ? [{ href: "/social", label: "Social", icon: Share2 }] : []),
     ...(isAdminAccount ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 

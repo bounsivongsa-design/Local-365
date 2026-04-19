@@ -62,6 +62,7 @@ import {
   CheckCircle,
   Paintbrush,
   Crop,
+  Share2,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2036,6 +2037,26 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                     <span className="flex items-center gap-2 text-[#1a1a2e]">
                       <BarChart3 className="h-4 w-4 text-[#0a4a82]" />
                       Advertise Your Business
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
+                  </Button>
+                </Link>
+                <Link to="/newsletter" className="block">
+                  <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#0a4a82]/15 hover:bg-[#0a4a82]/5 hover:border-[#0a4a82]/30" data-testid="button-dash-newsletter">
+                    <span className="flex items-center gap-2 text-[#1a1a2e]">
+                      <Mail className="h-4 w-4 text-[#0a4a82]" />
+                      Email Newsletter
+                      <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Gold</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
+                  </Button>
+                </Link>
+                <Link to="/social" className="block">
+                  <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#0a4a82]/15 hover:bg-[#0a4a82]/5 hover:border-[#0a4a82]/30" data-testid="button-dash-social">
+                    <span className="flex items-center gap-2 text-[#1a1a2e]">
+                      <Share2 className="h-4 w-4 text-[#0a4a82]" />
+                      Social Composer
+                      <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Gold</span>
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
                   </Button>
