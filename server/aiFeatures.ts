@@ -994,6 +994,151 @@ Respond ONLY with this JSON shape (no prose):
     }
   });
 
+  /* ─────────── Event description writer ─────────── */
+  app.post("/api/ai/event-description", isAuthenticated, async (req, res) => {
+    const EventFactsSchema = z.object({
+      eventTitle: z.string().trim().min(2).max(160),
+      eventType: z.string().trim().max(80).optional(),
+      eventDate: z.string().trim().max(120).optional(),
+      location: z.string().trim().max(200).optional(),
+      audience: z.string().trim().max(200).optional(),
+      highlights: z.string().trim().max(800).optional(),
+      ticketInfo: z.string().trim().max(200).optional(),
+      tone: z
+        .enum(["friendly", "professional", "playful", "elegant"])
+        .optional()
+        .default("friendly"),
+    });
+    const EventBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      facts: EventFactsSchema,
+    });
+    const parsedBody = EventBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, facts } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 4;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      businessId,
+      "event_description",
+      COST_CREDITS,
+      COST_CENTS,
+      { eventTitle: facts.eventTitle, tone: facts.tone },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const prompt = `You are helping a small local business in Moyock, NC
+write a community event description for a local directory & calendar.
+Generate THREE distinct variants. Each should be 60-160 words, warm,
+specific, and inviting — written like a real neighbor announcing
+something fun, not a corporate marketer.
+
+Hosting business: ${auth.business.name}
+Business category: ${auth.business.category}
+Event title: ${facts.eventTitle}
+Event type: ${facts.eventType || "(not provided)"}
+When: ${facts.eventDate || "(not provided — do NOT invent a date or time)"}
+Where: ${facts.location || "(not provided — do NOT invent a venue)"}
+Who it's for: ${facts.audience || "(not provided)"}
+Highlights / what's happening: ${facts.highlights || "(not provided)"}
+Ticket / cost info: ${facts.ticketInfo || "(not provided — do NOT invent a price)"}
+Tone: ${facts.tone}
+
+Rules:
+- DO NOT invent a date, time, venue address, ticket price, or
+  performer/vendor names that weren't provided. Omit anything you
+  weren't told.
+- Lead with the experience the attendee will have, not "We are
+  hosting…".
+- Avoid generic clichés ("fun for the whole family", "don't miss out",
+  "a night to remember", "exciting event").
+- Mention Moyock or Currituck County naturally only if it fits.
+- End with a simple, warm call to action ("See you there", "Stop by",
+  "Bring a chair") — NOT marketing speak. Do NOT include fake links,
+  emails, phone numbers, or hashtags.
+- The three variants should differ meaningfully: one bullet-driven
+  (highlights list), one narrative paragraph, one brief & punchy.
+
+Respond ONLY with this JSON shape (no prose):
+{
+  "variants": [
+    { "label": "Highlights",   "text": "..." },
+    { "label": "Narrative",    "text": "..." },
+    { "label": "Brief & punchy", "text": "..." }
+  ]
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        variants: z
+          .array(
+            z.object({
+              label: z.string().min(1).max(40),
+              text: z.string().min(40).max(2000),
+            }),
+          )
+          .length(3),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] event-description bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        variants: validated.data.variants,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "event_description",
+      });
+    } catch (err: any) {
+      console.error("[ai] event-description failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
+
   /* ─────────── Quote response generator ─────────── */
   app.post("/api/ai/quote-response", isAuthenticated, async (req, res) => {
     const QuoteRequestBodySchema = z.object({

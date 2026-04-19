@@ -5,6 +5,7 @@ import { useLocation } from "@/context/LocationContext";
 import { useBusiness } from "@/hooks/use-businesses";
 import { useUpload } from "@/hooks/use-upload";
 import { EventCard } from "@/components/EventCard";
+import { AIEventWriter } from "@/components/AIEventWriter";
 import { ImageCropper } from "@/components/ImageCropper";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -56,6 +57,7 @@ const EVENT_TIER_DISCOUNTS = [
 function EditEventForm({ event, onSuccess }: { event: import("@shared/schema").Event; onSuccess: () => void }) {
   const { toast } = useToast();
   const updateMutation = useUpdateEvent();
+  const eventBusinessId = event.businessId ?? null;
   const [formData, setFormData] = useState({
     title: event.title,
     description: event.description || "",
@@ -93,7 +95,19 @@ function EditEventForm({ event, onSuccess }: { event: import("@shared/schema").E
         <Input id="edit-event-location" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} required data-testid="input-edit-event-location" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="edit-event-description">Description</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="edit-event-description">Description</Label>
+          {eventBusinessId && (
+            <AIEventWriter
+              businessId={eventBusinessId}
+              eventTitle={formData.title}
+              location={formData.location}
+              onApply={(text) =>
+                setFormData((prev) => ({ ...prev, description: text }))
+              }
+            />
+          )}
+        </div>
         <Textarea id="edit-event-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} data-testid="input-edit-event-description" />
       </div>
       <Button type="submit" disabled={updateMutation.isPending} className="w-full h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold" data-testid="button-save-edit-event">
@@ -1014,7 +1028,17 @@ function CreateEventForm({ onSuccess, linkedBusinessId, isAdmin }: { onSuccess: 
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Description</FormLabel>
+                <div className="flex items-center justify-between gap-2">
+                  <FormLabel>Description</FormLabel>
+                  {linkedBusinessId && (
+                    <AIEventWriter
+                      businessId={linkedBusinessId}
+                      eventTitle={form.watch("title") || ""}
+                      location={form.watch("location") || ""}
+                      onApply={(text) => form.setValue("description", text, { shouldDirty: true, shouldValidate: true })}
+                    />
+                  )}
+                </div>
                 <FormControl><Textarea placeholder="Describe your event..." className="bg-white text-[#1a1a2e] min-h-[80px]" {...field} data-testid="input-event-description" /></FormControl>
                 <FormMessage />
               </FormItem>
