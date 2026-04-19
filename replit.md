@@ -38,6 +38,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Growth Features**: Includes a "Founding Urgency Banner" and "Refer-a-Business" program with unique referral codes and Gold-tier rewards.
 - **AI Listing Description Writer**: Generates multiple description variants for Gold members.
 - **AI Review Reply Generator**: Generates two reply variants for customer reviews for Gold members.
+- **AI Credits Top-Up**: Gold owners can buy add-on credit packs (Starter 500/$10, Popular 1.5k/$25, Power 5k/$75, Pro 15k/$200) via Stripe one-time Checkout from the dashboard credits widget. Webhook applies credits with double-guarded idempotency (pre-check + UNIQUE on Stripe paymentIntent id). Founders are blocked at the API and don't see the button.
 
 ### UI/UX Decisions
 - **Design Theme**: Coastal color palette.

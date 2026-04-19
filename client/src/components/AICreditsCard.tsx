@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Zap, TrendingUp, InfinityIcon } from "lucide-react";
+import { Sparkles, Zap, TrendingUp, InfinityIcon, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AICreditTopUpModal } from "@/components/AICreditTopUpModal";
 
 interface MonthUsage {
   totalCredits: number;
@@ -29,6 +32,7 @@ interface Props {
 }
 
 export function AICreditsCard({ businessId }: Props) {
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const { data, isLoading } = useQuery<CreditsResponse>({
     queryKey: ["/api/businesses", businessId, "ai-credits"],
     retry: false,
@@ -167,15 +171,32 @@ export function AICreditsCard({ businessId }: Props) {
           )}
         </div>
 
-        {/* Soft tip */}
-        {!data.isFounder && usedPct >= 75 && (
-          <div className="rounded-lg bg-amber-100/70 border border-amber-300 px-3 py-2 text-xs text-amber-900 flex items-start gap-2">
-            <TrendingUp className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>
-              You've used {usedPct}% of this month's credits. Top-up packs
-              coming soon.
-            </span>
-          </div>
+        {/* Top-up CTA (hidden for founders — they have ∞) */}
+        {!data.isFounder && (
+          <>
+            {usedPct >= 75 && (
+              <div className="rounded-lg bg-amber-100/70 border border-amber-300 px-3 py-2 text-xs text-amber-900 flex items-start gap-2">
+                <TrendingUp className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>
+                  You've used {usedPct}% of this month's credits. Top up
+                  below to keep AI tools running.
+                </span>
+              </div>
+            )}
+            <Button
+              onClick={() => setTopUpOpen(true)}
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-0"
+              data-testid="button-topup-credits"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Buy more credits
+            </Button>
+            <AICreditTopUpModal
+              open={topUpOpen}
+              onOpenChange={setTopUpOpen}
+              businessId={businessId}
+            />
+          </>
         )}
       </CardContent>
     </Card>

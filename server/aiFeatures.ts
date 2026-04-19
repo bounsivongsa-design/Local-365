@@ -12,10 +12,12 @@
  *      the failure so admin can manually credit-back if it's our fault.)
  */
 import type { Express, Request, Response, NextFunction } from "express";
+import Stripe from "stripe";
 import OpenAI from "openai";
 import { db as pgDb } from "./db";
 import {
   aiCredits,
+  aiCreditPacks,
   aiCreditTransactions,
   businesses,
   reviews,
@@ -24,6 +26,14 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { isAuthenticated } from "./replit_integrations/auth";
+
+// Use the same env var as server/stripe.ts so checkout sessions are created
+// against the SAME Stripe account that processes the webhook. Mismatched
+// keys would silently break fulfillment.
+const stripeKey = process.env.Stripeintegration;
+const stripe = stripeKey
+  ? new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" as any })
+  : null;
 
 const FOUNDER_NAMES = new Set([
   "goat locker printing",
@@ -261,7 +271,268 @@ Respond ONLY with this JSON shape (no prose):
 }`;
 }
 
+/* ─────────── Credit pack catalog (top-up) ─────────── */
+
+interface PackDef {
+  sku: string;
+  name: string;
+  credits: number;
+  priceCents: number;
+  sortOrder: number;
+  badge?: string;
+}
+const DEFAULT_PACKS: PackDef[] = [
+  { sku: "starter", name: "Starter — 500 credits",  credits: 500,   priceCents: 1000,  sortOrder: 10 },
+  { sku: "popular", name: "Popular — 1,500 credits", credits: 1500,  priceCents: 2500,  sortOrder: 20, badge: "Best value" },
+  { sku: "power",   name: "Power — 5,000 credits",   credits: 5000,  priceCents: 7500,  sortOrder: 30 },
+  { sku: "pro",     name: "Pro — 15,000 credits",    credits: 15000, priceCents: 20000, sortOrder: 40 },
+];
+
+/**
+ * Idempotent: writes the canonical pack catalog into ai_credit_packs on boot.
+ * Existing rows are updated (price/credits adjustments take effect on next
+ * checkout) but stripePriceId and isActive are left untouched so admins can
+ * manage them in the AI Lab.
+ */
+export async function seedDefaultCreditPacks(): Promise<void> {
+  for (const p of DEFAULT_PACKS) {
+    await pgDb
+      .insert(aiCreditPacks)
+      .values({
+        sku: p.sku,
+        name: p.name,
+        credits: p.credits,
+        priceCents: p.priceCents,
+        sortOrder: p.sortOrder,
+        isActive: true,
+      })
+      .onConflictDoUpdate({
+        target: aiCreditPacks.sku,
+        set: {
+          name: p.name,
+          credits: p.credits,
+          priceCents: p.priceCents,
+          sortOrder: p.sortOrder,
+        },
+      });
+  }
+}
+
+/**
+ * Apply a successful Stripe credit-pack purchase to a business: increment
+ * balance + write a `purchase` ledger row. Idempotent on Stripe paymentIntent
+ * id (ai_credit_transactions.stripe_payment_intent_id is UNIQUE), so duplicate
+ * webhook deliveries can never double-credit.
+ *
+ * Exported so server/stripe.ts webhook handler can call it for sessions whose
+ * metadata.type === "credit_pack".
+ */
+export async function applyCreditPackPurchase(opts: {
+  businessId: number;
+  packSku: string;
+  credits: number;
+  revenueCents: number;
+  stripePaymentIntentId: string;
+  stripeSessionId?: string;
+}): Promise<{ ok: true; balance: number } | { ok: false; reason: string }> {
+  const { businessId, packSku, credits, revenueCents, stripePaymentIntentId } = opts;
+  if (!businessId || !credits || !stripePaymentIntentId) {
+    return { ok: false, reason: "missing fields" };
+  }
+  try {
+    // Idempotency pre-check: if a ledger row already exists for this Stripe
+    // payment intent, this is a duplicate webhook delivery — return current
+    // balance without re-crediting. Done OUTSIDE the transaction so a hit
+    // doesn't poison a tx with a unique-violation rollback.
+    const [existing] = await pgDb
+      .select({ id: aiCreditTransactions.id })
+      .from(aiCreditTransactions)
+      .where(eq(aiCreditTransactions.stripePaymentIntentId, stripePaymentIntentId));
+    if (existing) {
+      const [row] = await pgDb
+        .select({ balance: aiCredits.balance })
+        .from(aiCredits)
+        .where(eq(aiCredits.businessId, businessId));
+      return { ok: true as const, balance: row?.balance ?? 0 };
+    }
+
+    return await pgDb.transaction(async (tx) => {
+      // Insert ledger row first — UNIQUE(stripe_payment_intent_id) is the
+      // ultimate idempotency guard for the rare race where two webhook
+      // workers slip past the pre-check simultaneously.
+      try {
+        await tx.insert(aiCreditTransactions).values({
+          businessId,
+          type: "purchase",
+          feature: null,
+          creditsDelta: credits,
+          costCents: 0,
+          revenueCents,
+          metadata: JSON.stringify({
+            packSku,
+            stripeSessionId: opts.stripeSessionId,
+          }),
+          stripePaymentIntentId,
+        });
+      } catch (e: any) {
+        if (e?.code === "23505" || /unique/i.test(e?.message ?? "")) {
+          // Race lost — bail out of tx with a sentinel; the outer catch
+          // re-fetches the balance fresh after the rollback completes.
+          throw new Error("__DUPLICATE_PI__");
+        }
+        throw e;
+      }
+
+      // Ensure ai_credits row exists, then bump balance atomically
+      await tx
+        .insert(aiCredits)
+        .values({ businessId, balance: 0 })
+        .onConflictDoNothing({ target: aiCredits.businessId });
+      const [updated] = await tx
+        .update(aiCredits)
+        .set({
+          balance: sql`${aiCredits.balance} + ${credits}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(aiCredits.businessId, businessId))
+        .returning({ balance: aiCredits.balance });
+
+      return { ok: true as const, balance: updated.balance ?? 0 };
+    });
+  } catch (e: any) {
+    if (e?.message === "__DUPLICATE_PI__") {
+      const [row] = await pgDb
+        .select({ balance: aiCredits.balance })
+        .from(aiCredits)
+        .where(eq(aiCredits.businessId, businessId));
+      return { ok: true as const, balance: row?.balance ?? 0 };
+    }
+    console.error("[ai-credit-pack] applyCreditPackPurchase failed:", e);
+    return { ok: false, reason: e?.message ?? "unknown" };
+  }
+}
+
 export function registerAiFeatureRoutes(app: Express) {
+  // Best-effort seed on boot — never block route registration on a DB hiccup.
+  seedDefaultCreditPacks().catch((e) =>
+    console.error("[ai-credit-pack] seedDefaultCreditPacks failed:", e),
+  );
+
+  /* GET active credit pack catalog (for the top-up modal). Gated on Gold
+     owner — only owners who could actually buy a pack should see the
+     catalog. Required query param: ?businessId=N */
+  app.get("/api/ai/credit-packs", isAuthenticated, async (req, res) => {
+    const businessId = parseInt((req.query.businessId as string) ?? "", 10);
+    if (!Number.isInteger(businessId) || businessId <= 0) {
+      return res.status(400).json({ message: "businessId query param required" });
+    }
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+    const packs = await pgDb
+      .select({
+        sku: aiCreditPacks.sku,
+        name: aiCreditPacks.name,
+        credits: aiCreditPacks.credits,
+        priceCents: aiCreditPacks.priceCents,
+      })
+      .from(aiCreditPacks)
+      .where(eq(aiCreditPacks.isActive, true))
+      .orderBy(aiCreditPacks.sortOrder);
+    // Tag the "popular" SKU as the recommended one for the UI
+    const decorated = packs.map((p) => ({
+      ...p,
+      badge: p.sku === "popular" ? "Best value" : null,
+      pricePerCredit: +(p.priceCents / p.credits).toFixed(3),
+    }));
+    res.json({ packs: decorated });
+  });
+
+  /* POST create a Stripe Checkout session to buy a pack */
+  app.post("/api/ai/credit-packs/checkout", isAuthenticated, async (req, res) => {
+    const Schema = z.object({
+      businessId: z.number().int().positive(),
+      sku: z.string().min(1).max(50),
+    });
+    const parsed = Schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request", errors: parsed.error.flatten() });
+    }
+    const { businessId, sku } = parsed.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    // Founder businesses don't need to buy credits — silently refuse so the
+    // UI can hide the button entirely. (Defense in depth: button is hidden
+    // client-side too.)
+    const [creditRow] = await pgDb
+      .select({ isFounderComp: aiCredits.isFounderComp })
+      .from(aiCredits)
+      .where(eq(aiCredits.businessId, businessId));
+    if (creditRow?.isFounderComp || isFounderName(auth.business.name)) {
+      return res.status(400).json({
+        message: "Founder businesses have unlimited credits.",
+        code: "FOUNDER_NO_PURCHASE",
+      });
+    }
+
+    const [pack] = await pgDb
+      .select()
+      .from(aiCreditPacks)
+      .where(and(eq(aiCreditPacks.sku, sku), eq(aiCreditPacks.isActive, true)));
+    if (!pack) {
+      return res.status(404).json({ message: "Pack not found" });
+    }
+
+    if (!stripe) {
+      return res.status(503).json({
+        message: "Payments are not configured. Please contact support.",
+        code: "STRIPE_NOT_CONFIGURED",
+      });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Local List 365 — ${pack.name}`,
+                description: `${pack.credits.toLocaleString()} AI credits added to ${auth.business.name}`,
+              },
+              unit_amount: pack.priceCents,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/dashboard?credit_pack=success`,
+        cancel_url: `${baseUrl}/dashboard?credit_pack=canceled`,
+        metadata: {
+          type: "credit_pack",
+          businessId: String(businessId),
+          packSku: pack.sku,
+          credits: String(pack.credits),
+        },
+        payment_intent_data: {
+          metadata: {
+            type: "credit_pack",
+            businessId: String(businessId),
+            packSku: pack.sku,
+            credits: String(pack.credits),
+          },
+        },
+      });
+      res.json({ url: session.url });
+    } catch (e: any) {
+      console.error("[ai-credit-pack] checkout failed:", e);
+      res.status(500).json({ message: e?.message ?? "Checkout failed" });
+    }
+  });
+
   /* GET balance for the dashboard widget */
   app.get(
     "/api/businesses/:id/ai-credits",

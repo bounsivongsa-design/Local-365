@@ -6,6 +6,7 @@ import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { processMembershipActivation } from "./referrals";
+import { applyCreditPackPurchase } from "./aiFeatures";
 
 const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
 const FOUNDER_EMAILS = [
@@ -879,10 +880,12 @@ export function registerStripeRoutes(app: Express) {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     let event: Stripe.Event;
+    let sigVerified = false;
 
     if (webhookSecret && sig) {
       try {
         event = stripe.webhooks.constructEvent((req as any).rawBody, sig, webhookSecret);
+        sigVerified = true;
       } catch (err: any) {
         console.error("Webhook signature verification failed:", err.message);
         return res.status(400).json({ message: "Webhook signature verification failed" });
@@ -892,6 +895,22 @@ export function registerStripeRoutes(app: Express) {
       event = req.body as Stripe.Event;
     } else {
       return res.status(400).json({ message: "Missing stripe-signature header" });
+    }
+
+    // High-value write paths (anything that mints credits or money out of
+    // thin air) MUST require a verified signature in production. The
+    // unverified dev fallback above is convenient locally but lets an
+    // attacker forge `checkout.session.completed` events and grant
+    // themselves AI credits. Block that explicitly.
+    const isProd = process.env.NODE_ENV === "production";
+    if (
+      isProd &&
+      !sigVerified &&
+      event?.type === "checkout.session.completed" &&
+      (event.data?.object as any)?.metadata?.type === "credit_pack"
+    ) {
+      console.error("[security] refusing unverified credit_pack webhook in production");
+      return res.status(400).json({ message: "Signature required for this event" });
     }
 
     try {
@@ -938,6 +957,35 @@ export function registerStripeRoutes(app: Express) {
               if (paidAd?.businessId) {
                 const [biz] = await db.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, paidAd.businessId));
                 notifyAdminNewAd(paidAd.title || "Untitled", biz?.name || "Unknown", paidAd.adSize || "small", amountPaid).catch(() => {});
+              }
+            }
+            break;
+          }
+
+          if (session.metadata?.type === "credit_pack") {
+            if (session.payment_status !== "paid") {
+              console.log(`Credit pack checkout not yet paid (status: ${session.payment_status}), skipping`);
+              break;
+            }
+            const businessId = parseInt(session.metadata?.businessId || "0");
+            const packSku = session.metadata?.packSku || "";
+            const credits = parseInt(session.metadata?.credits || "0");
+            const paymentIntentId = (typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent?.id) || session.id;
+            if (businessId && credits && paymentIntentId) {
+              const result = await applyCreditPackPurchase({
+                businessId,
+                packSku,
+                credits,
+                revenueCents: session.amount_total || 0,
+                stripePaymentIntentId: paymentIntentId,
+                stripeSessionId: session.id,
+              });
+              if (result.ok) {
+                console.log(`Credit pack ${packSku} (+${credits}cr) applied to business ${businessId}, new balance ${result.balance}`);
+              } else {
+                console.error(`Credit pack apply FAILED for business ${businessId}: ${result.reason}`);
               }
             }
             break;
