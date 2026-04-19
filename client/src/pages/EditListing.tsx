@@ -32,6 +32,7 @@ import {
   Tag,
 } from "lucide-react";
 import { AIListingWriter } from "@/components/AIListingWriter";
+import { AIPhotoCaption } from "@/components/AIPhotoCaption";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { getMembershipTier } from "@shared/config/membership";
 
@@ -378,6 +379,11 @@ function GalleryManager({ business }: { business: Business }) {
                   src={photo.startsWith("/objects/") ? photo : `/objects/${photo}`}
                   alt={`Photo ${i + 1}`}
                   className="w-full h-full object-cover"
+                />
+                <AIPhotoCaption
+                  businessId={business.id}
+                  imageUrl={photo}
+                  photoKey={i}
                 />
                 <button
                   type="button"

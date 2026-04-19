@@ -1139,7 +1139,177 @@ Respond ONLY with this JSON shape (no prose):
     }
   });
 
-  /* ─────────── Quote response generator ─────────── */
+  /* ─────────── Photo caption + alt-text writer (vision) ─────────── */
+  app.post("/api/ai/photo-caption", isAuthenticated, async (req, res) => {
+    const PhotoBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      imageUrl: z.string().trim().min(1).max(2000),
+      hint: z.string().trim().max(300).optional(),
+    });
+    const parsedBody = PhotoBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, imageUrl, hint } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    // Resolve to absolute URL — gallery photos arrive as either
+    // "/objects/foo.jpg" or "foo.jpg". Always fetch via the local
+    // server so private/public bucket rules don't matter to OpenAI.
+    const path = imageUrl.startsWith("/")
+      ? imageUrl
+      : imageUrl.startsWith("http")
+        ? imageUrl
+        : `/objects/${imageUrl}`;
+    const absolute = path.startsWith("http")
+      ? path
+      : `http://127.0.0.1:${process.env.PORT || 5000}${path}`;
+
+    let dataUri: string;
+    try {
+      const imgRes = await fetch(absolute, {
+        headers: { cookie: req.headers.cookie || "" },
+      });
+      if (!imgRes.ok) throw new Error(`fetch image: ${imgRes.status}`);
+      const ctype = imgRes.headers.get("content-type") || "image/jpeg";
+      if (!ctype.startsWith("image/")) {
+        throw new Error(`not an image: ${ctype}`);
+      }
+      const buf = Buffer.from(await imgRes.arrayBuffer());
+      if (buf.byteLength > 8 * 1024 * 1024) {
+        return res.status(413).json({
+          message: "Image too large for AI captioning (max 8MB).",
+          code: "IMAGE_TOO_LARGE",
+        });
+      }
+      dataUri = `data:${ctype};base64,${buf.toString("base64")}`;
+    } catch (err: any) {
+      console.error("[ai] photo-caption fetch failed:", err?.message ?? err);
+      return res.status(400).json({
+        message: "Could not load that image. Try re-uploading it.",
+        code: "IMAGE_FETCH_FAILED",
+      });
+    }
+
+    const COST_CREDITS = 2;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      businessId,
+      "photo_caption",
+      COST_CREDITS,
+      COST_CENTS,
+      { imageUrl: imageUrl.slice(0, 200) },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const systemPrompt = `You write photo captions and accessibility
+alt-text for a small local business in Moyock, NC. Look at the image
+and describe what you actually see.
+
+Hosting business: ${auth.business.name}
+Business category: ${auth.business.category}
+Owner hint (may be empty): ${hint || "(none)"}
+
+Rules:
+- Alt-text must describe the visual content factually for a screen
+  reader: who/what is in frame, what they're doing, the setting. 8-25
+  words. No marketing language, no emojis, no business name unless it
+  is visibly in the photo. End without a period only if it reads
+  naturally.
+- Caption is for social media / a website gallery. 1-2 short sentences,
+  warm and human. May reference the business and Moyock if it fits
+  naturally. No hashtags inside the caption itself.
+- Hashtags: 5-7 short, relevant tags (no spaces, no #-symbol in the
+  string — just the word). Mix general and local (e.g. "moyocknc",
+  "currituckcounty") only when geographically relevant.
+- DO NOT invent prices, dates, names of people, or claim awards/
+  certifications you can't see in the image.
+- If the image is unclear, blank, or not a photo of the business's
+  work, still produce honest output describing what you literally see.
+
+Respond ONLY with this JSON shape:
+{
+  "altText": "...",
+  "caption": "...",
+  "hashtags": ["tag1","tag2","tag3","tag4","tag5"]
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: systemPrompt },
+              { type: "image_url", image_url: { url: dataUri } },
+            ],
+          },
+        ],
+        temperature: 0.6,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        altText: z.string().min(8).max(300),
+        caption: z.string().min(8).max(500),
+        hashtags: z.array(z.string().min(1).max(40)).min(3).max(10),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] photo-caption bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      // Strip any leading "#" the model may have added defensively.
+      const hashtags = validated.data.hashtags.map((t) =>
+        t.replace(/^#+/, "").trim(),
+      );
+      res.json({
+        altText: validated.data.altText,
+        caption: validated.data.caption,
+        hashtags,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "photo_caption",
+      });
+    } catch (err: any) {
+      console.error("[ai] photo-caption failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
+
   app.post("/api/ai/quote-response", isAuthenticated, async (req, res) => {
     const QuoteRequestBodySchema = z.object({
       businessId: z.number().int().positive(),
