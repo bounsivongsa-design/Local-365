@@ -17,6 +17,7 @@
  * contains "STOP" — we never strip what the owner wrote.
  */
 import type { Express, Request, Response } from "express";
+import crypto from "crypto";
 import { db as pgDb } from "./db";
 import {
   businesses,
@@ -527,10 +528,38 @@ export function registerSmsRoutes(app: Express) {
     });
   });
 
-  /* ---- Inbound webhook stub (Twilio will POST here on STOP/HELP) ---- */
+  /* ---- Inbound webhook (Twilio POSTs here on STOP/HELP) ----
+     SECURITY: validates X-Twilio-Signature so attackers can't mass-
+     unsubscribe by spoofing requests. Returns 403 on bad signature.
+     In stub mode the endpoint short-circuits with 404 since we never
+     legitimately receive inbound webhooks without a real provider. */
 
   app.post("/api/sms/inbound", async (req, res) => {
-    // Twilio inbound webhook format: From, To, Body
+    // Inert when not on Twilio
+    if (PROVIDER !== "twilio") {
+      return res.status(404).type("text/xml").send("<Response></Response>");
+    }
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const signature = req.header("X-Twilio-Signature") ?? "";
+    if (!authToken || !signature) {
+      return res.status(403).type("text/xml").send("<Response></Response>");
+    }
+    // Twilio signature: HMAC-SHA1(authToken, fullUrl + sortedKeyValueConcat)
+    // Reconstruct the full URL exactly as Twilio called it (proto + host + path).
+    const proto = (req.header("X-Forwarded-Proto") ?? req.protocol).split(",")[0].trim();
+    const host = req.header("X-Forwarded-Host") ?? req.header("Host") ?? "";
+    const fullUrl = `${proto}://${host}${req.originalUrl}`;
+    const params = req.body && typeof req.body === "object" ? (req.body as Record<string, string>) : {};
+    const sortedKeys = Object.keys(params).sort();
+    const data = fullUrl + sortedKeys.map((k) => k + String(params[k] ?? "")).join("");
+    const expected = crypto.createHmac("sha1", authToken).update(data, "utf-8").digest("base64");
+    // Constant-time compare (lengths must match for timingSafeEqual)
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return res.status(403).type("text/xml").send("<Response></Response>");
+    }
+
     const from = String(req.body?.From ?? "").trim();
     const body = String(req.body?.Body ?? "").trim().toUpperCase();
     if (!from || !body) {
