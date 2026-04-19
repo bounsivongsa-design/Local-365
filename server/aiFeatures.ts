@@ -22,6 +22,7 @@ import {
   businesses,
   reviews,
   users,
+  quoteRequests,
 } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -842,6 +843,161 @@ Respond ONLY with this JSON shape (no prose):
       });
     } catch (err: any) {
       console.error("[ai] review-reply failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
+
+  /* ─────────── Quote response generator ─────────── */
+  app.post("/api/ai/quote-response", isAuthenticated, async (req, res) => {
+    const QuoteRequestBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      quoteRequestId: z.number().int().positive(),
+      tone: z
+        .enum(["professional", "warm", "inquisitive"])
+        .optional()
+        .default("warm"),
+    });
+    const parsedBody = QuoteRequestBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, quoteRequestId, tone } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const [request] = await pgDb
+      .select()
+      .from(quoteRequests)
+      .where(eq(quoteRequests.id, quoteRequestId));
+    if (!request) {
+      return res.status(404).json({ message: "Quote request not found" });
+    }
+    if (request.status !== "open") {
+      return res.status(400).json({
+        message: "This quote request is no longer accepting responses.",
+        code: "REQUEST_CLOSED",
+      });
+    }
+
+    const COST_CREDITS = 3;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      businessId,
+      "quote_response",
+      COST_CREDITS,
+      COST_CENTS,
+      { quoteRequestId, tone },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const customerName =
+        (request.customerName || "").trim().split(/\s+/)[0] || "there";
+      const budget = request.budget?.trim() || "not specified";
+      const timeline = request.timeline?.trim() || "not specified";
+      const location = request.location?.trim() || "Moyock area";
+      const isEmergency = request.isEmergency === true;
+
+      const prompt = `You are helping a small-business owner draft an opening
+message in response to a customer's quote request on a local directory.
+Generate TWO distinct response options. Each should be 2-4 sentences, sound
+like a real human, and read as a warm but specific opener — not a sales pitch.
+
+Business: ${auth.business.name}
+Business category: ${auth.business.category}
+Customer first name: ${customerName}
+Project title: ${request.title}
+Customer description: "${request.description}"
+Project category: ${request.category}
+Customer budget: ${budget}
+Customer timeline: ${timeline}
+Customer location: ${location}
+Emergency: ${isEmergency ? "yes" : "no"}
+Tone: ${tone}
+
+Rules:
+- DO NOT quote a price, dollar amount, or commit to a specific cost. The
+  owner sets the price separately. Your job is the message text only.
+- Reference at least one specific detail the customer mentioned so it
+  doesn't feel templated.
+- Ask ONE clarifying question that would actually help the owner scope
+  the job (e.g., square footage, fixture brand, photos, access).
+- For emergencies, lead with availability and how fast you can respond.
+- Sign-offs are optional; if used, just the business name.
+- Avoid AI clichés ("We are committed to...", "valued customer", "Don't
+  hesitate to reach out").
+- One variant should be more direct/businesslike, the other more warm/
+  relational, regardless of the requested tone — give the owner a choice.
+
+Respond ONLY with this JSON shape (no prose):
+{
+  "variants": [
+    { "label": "Direct & specific", "text": "..." },
+    { "label": "Warm & relational", "text": "..." }
+  ]
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.75,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        variants: z
+          .array(
+            z.object({
+              label: z.string().min(1).max(40),
+              text: z.string().min(20).max(800),
+            }),
+          )
+          .length(2),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] quote-response bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        variants: validated.data.variants,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "quote_response",
+      });
+    } catch (err: any) {
+      console.error("[ai] quote-response failed:", err?.message ?? err);
       res.status(502).json({
         message: "AI generation failed. Please try again.",
         code: "AI_REQUEST_FAILED",

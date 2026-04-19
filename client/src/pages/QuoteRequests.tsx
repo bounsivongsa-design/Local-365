@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { AIQuoteResponder } from "@/components/AIQuoteResponder";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1144,7 +1145,18 @@ export default function QuoteRequests() {
           </DialogHeader>
           <form onSubmit={handleQuoteSubmit} className="space-y-5 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="quote-message">Message to Customer</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="quote-message">Message to Customer</Label>
+                {user?.linkedBusinessId && selectedRequestId && (
+                  <AIQuoteResponder
+                    businessId={user.linkedBusinessId}
+                    quoteRequestId={selectedRequestId}
+                    onApply={(text) =>
+                      setQuoteFormData((prev) => ({ ...prev, message: text }))
+                    }
+                  />
+                )}
+              </div>
               <Textarea
                 id="quote-message"
                 placeholder="Introduce yourself, ask questions about their project, or describe your services..."
