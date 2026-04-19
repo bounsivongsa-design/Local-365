@@ -525,6 +525,71 @@ export const socialDrafts = pgTable("social_drafts", {
 export type SocialDraft = typeof socialDrafts.$inferSelect;
 
 /* ────────────────────────────────────────────────────────────────────────
+   Marketing Suite #3: SMS Broadcast (Gold-only, charged in AI credits)
+   2 credits per SMS segment (160 chars GSM-7). Reuses the AI credit
+   system so owners top up via the same Stripe packs.
+
+   TCPA: every subscriber must have an explicit opt-in event. We do NOT
+   auto-backfill from quote_requests/reviews like the newsletter does —
+   SMS opt-in must be affirmative (a checkbox on the quote form, or
+   manual entry by the owner with a consent attestation).
+   ──────────────────────────────────────────────────────────────────────── */
+
+export const smsSubscribers = pgTable("sms_subscribers", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  // E.164: +15551234567
+  phone: text("phone").notNull(),
+  name: text("name"),
+  // 'manual' | 'quote_form_optin' | 'review_form_optin' | 'import'
+  source: text("source").notNull().default("manual"),
+  optedInAt: timestamp("opted_in_at").defaultNow(),
+  // STOP/UNSUBSCRIBE keyword received → set this and skip sends
+  optedOutAt: timestamp("opted_out_at"),
+  optOutKeyword: text("opt_out_keyword"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("sms_sub_business_phone_idx").on(t.businessId, t.phone),
+]);
+
+export const smsCampaigns = pgTable("sms_campaigns", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  // segments per message at send-time (160 chars GSM-7 = 1)
+  segmentsPerRecipient: integer("segments_per_recipient").notNull().default(1),
+  // 'draft' | 'sending' | 'sent' | 'failed'
+  status: text("status").notNull().default("draft"),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  successCount: integer("success_count").notNull().default(0),
+  failureCount: integer("failure_count").notNull().default(0),
+  creditsCharged: integer("credits_charged").notNull().default(0),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const smsSends = pgTable("sms_sends", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => smsCampaigns.id, { onDelete: "cascade" }),
+  subscriberId: integer("subscriber_id").notNull().references(() => smsSubscribers.id, { onDelete: "cascade" }),
+  // 'pending' | 'sent' | 'delivered' | 'failed' | 'skipped_optout'
+  status: text("status").notNull().default("pending"),
+  // Twilio Message SID for delivery callbacks; null in stub mode
+  providerMessageSid: text("provider_message_sid"),
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  segments: integer("segments").notNull().default(1),
+  creditsCharged: integer("credits_charged").notNull().default(0),
+  sentAt: timestamp("sent_at"),
+}, (t) => [
+  uniqueIndex("sms_send_campaign_sub_idx").on(t.campaignId, t.subscriberId),
+]);
+
+export type SmsSubscriber = typeof smsSubscribers.$inferSelect;
+export type SmsCampaign = typeof smsCampaigns.$inferSelect;
+export type SmsSend = typeof smsSends.$inferSelect;
+
+/* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the
    platform reads from or writes to them yet. They are populated and

@@ -1466,6 +1466,100 @@ Respond ONLY with this JSON shape (no prose):
     }
   });
 
+  /* ─────────── SMS Drafter (Marketing Suite #3) ───────────
+     Generates 3 SMS variants (≤140 char body so the appended STOP
+     footer keeps total ≤160 = 1 segment). 3 credits. Hard-constrained
+     on length and TCPA neutrality (no fake urgency). */
+  app.post("/api/ai/sms-draft", isAuthenticated, async (req, res) => {
+    const SmsBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      what: z.string().trim().min(5).max(500),
+      cta: z.string().trim().max(80).optional(),
+      tone: z.enum(["friendly", "urgent", "informative"]).optional().default("friendly"),
+    });
+    const parsed = SmsBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid input" });
+    const { businessId, what, cta, tone } = parsed.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 3;
+    const reservation = await reserveCredits(
+      businessId,
+      "sms_draft",
+      COST_CREDITS,
+      1,
+      { what: what.slice(0, 100) },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+      const prompt = `Write 3 SMS variants for a small local business in
+Moyock NC. Each must be ≤140 characters (the system appends "Reply STOP
+to opt out" automatically — don't include it).
+
+Business: ${auth.business.name}
+What's happening: ${what}
+${cta ? `Call to action: ${cta}` : ""}
+Tone: ${tone}
+
+Hard rules — apply to ALL three:
+- ≤140 characters EACH (count carefully)
+- DO NOT invent prices, dates, hours, addresses, or names that aren't
+  in the owner's notes
+- DO NOT use ALL CAPS shouting
+- DO NOT use emoji (forces unicode billing → 2x cost)
+- DO NOT add fake urgency ("only 2 left!", "expires today!") unless the
+  owner explicitly said so
+- Sound like a person texting, not a marketing bot
+- Include the business name once for context
+
+Variants:
+1. "concise" — bare facts, ≤90 chars
+2. "warm" — friendly framing, ≤140 chars
+3. "with_cta" — clear next step (call/visit/reply), ≤140 chars
+
+Respond ONLY with JSON: { "concise": "...", "warm": "...", "with_cta": "..." }`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let json: any = {};
+      try { json = JSON.parse(raw); } catch {}
+      const Resp = z.object({
+        concise: z.string().min(5).max(160),
+        warm: z.string().min(5).max(160),
+        with_cta: z.string().min(5).max(160),
+      });
+      const ok = Resp.safeParse(json);
+      if (!ok.success) {
+        return res.status(502).json({
+          message: "AI returned an unexpected response. Credits used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({ variants: ok.data, balance: reservation.balance, deducted: reservation.deducted });
+    } catch (err: any) {
+      console.error("[ai] sms-draft failed:", err?.message);
+      res.status(502).json({ message: "AI generation failed.", code: "AI_REQUEST_FAILED" });
+    }
+  });
+
   /* ─────────── Social Composer (Marketing Suite #2) ───────────
      One generation produces FOUR platform-tuned variants in a single
      OpenAI call. 5 credits — better value than running 4 separate

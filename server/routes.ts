@@ -11,6 +11,7 @@ import { registerAiLabRoutes } from "./aiLab";
 import { registerAiFeatureRoutes } from "./aiFeatures";
 import { registerNewsletterRoutes } from "./newsletter";
 import { registerSocialRoutes } from "./social";
+import { registerSmsRoutes } from "./sms";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
 import { getMembershipTier } from "@shared/config/membership";
 import db from "./lib/replitDb";
@@ -428,6 +429,7 @@ export async function registerRoutes(
   registerAiFeatureRoutes(app);
   registerNewsletterRoutes(app);
   registerSocialRoutes(app);
+  registerSmsRoutes(app);
 
   // ============ LOCATION ROUTES ============
   
