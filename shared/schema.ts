@@ -446,6 +446,60 @@ export { conversations, messages, insertConversationSchema, insertMessageSchema 
 export type { Conversation, Message, InsertConversation, InsertMessage } from "./models/chat";
 
 /* ────────────────────────────────────────────────────────────────────────
+   Newsletter — Marketing Suite Feature #1
+   Replaces Mailchimp/Constant Contact for Gold business owners. Subscriber
+   list auto-builds from past quote requesters & reviewers, plus manual adds.
+   Sends via Resend with CAN-SPAM-compliant unsubscribe link in every email.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name"),
+  // 'quote_request' | 'review' | 'manual' | 'import'
+  source: text("source").notNull().default("manual"),
+  optedInAt: timestamp("opted_in_at").defaultNow(),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+  unsubscribeToken: text("unsubscribe_token").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("newsletter_sub_business_email_idx").on(t.businessId, t.email),
+]);
+
+export const newsletterCampaigns = pgTable("newsletter_campaigns", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(),
+  bodyHtml: text("body_html").notNull(),
+  // 'draft' | 'sending' | 'sent' | 'failed'
+  status: text("status").notNull().default("draft"),
+  recipientCount: integer("recipient_count").default(0),
+  successCount: integer("success_count").default(0),
+  failureCount: integer("failure_count").default(0),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const newsletterSends = pgTable("newsletter_sends", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => newsletterCampaigns.id, { onDelete: "cascade" }),
+  subscriberId: integer("subscriber_id").notNull().references(() => newsletterSubscribers.id, { onDelete: "cascade" }),
+  // 'queued' | 'sent' | 'failed'
+  status: text("status").notNull().default("queued"),
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+}, (t) => [
+  uniqueIndex("newsletter_send_campaign_sub_idx").on(t.campaignId, t.subscriberId),
+]);
+
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+export type NewsletterCampaign = typeof newsletterCampaigns.$inferSelect;
+export type NewsletterSend = typeof newsletterSends.$inferSelect;
+
+/* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the
    platform reads from or writes to them yet. They are populated and

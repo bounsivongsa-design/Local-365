@@ -1463,4 +1463,130 @@ Respond ONLY with this JSON shape (no prose):
       });
     }
   });
+
+  /* ─────────── Newsletter draft writer (Marketing Suite #1) ─────────── */
+  app.post("/api/ai/newsletter-draft", isAuthenticated, async (req, res) => {
+    const NewsletterBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      audience: z.string().trim().max(200).optional(),
+      what: z.string().trim().min(3).max(800),
+      when: z.string().trim().max(120).optional(),
+      cta: z.string().trim().max(120).optional(),
+      tone: z
+        .enum(["friendly", "professional", "casual", "exciting"])
+        .optional()
+        .default("friendly"),
+    });
+    const parsedBody = NewsletterBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, audience, what, when, cta, tone } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 3;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      businessId,
+      "newsletter_draft",
+      COST_CREDITS,
+      COST_CENTS,
+      { what: what.slice(0, 200) },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const prompt = `You are drafting a customer-facing email newsletter for
+a small local business in Moyock, NC. Generate ONE subject line and ONE
+HTML email body.
+
+Business: ${auth.business.name}
+Business category: ${auth.business.category}
+Audience: ${audience || "past customers and people who've shown interest"}
+What this email is about (owner's notes): ${what}
+${when ? `When/date relevance: ${when}` : ""}
+${cta ? `Call to action: ${cta}` : ""}
+Tone: ${tone}
+
+Rules:
+- Subject line: 30-70 characters, no spammy words ("free", "act now", all caps).
+- Body: 80-220 words, broken into 2-4 short paragraphs. Use plain HTML
+  with <p> tags only — no <html>, <head>, <body>, no inline styles, no
+  images, no links beyond at most one CTA link wrapped in <a>.
+- Open with a real greeting (e.g. "Hi neighbor," or "Hey there,") — NOT
+  "Dear valued customer".
+- DO NOT invent prices, dates, hours, locations, or promises that the
+  owner did not provide in their notes. If a date or price isn't given,
+  speak generally instead.
+- DO NOT include an unsubscribe footer or sender address — those will be
+  added automatically when the email sends.
+- Sound human. Avoid AI clichés ("we are excited to announce", "stay
+  tuned", "valued community member").
+
+Respond ONLY with this JSON shape (no prose):
+{
+  "subject": "...",
+  "bodyHtml": "<p>...</p><p>...</p>"
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.75,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        subject: z.string().min(5).max(140),
+        bodyHtml: z.string().min(40).max(8000),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] newsletter-draft bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        subject: validated.data.subject,
+        bodyHtml: validated.data.bodyHtml,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "newsletter_draft",
+      });
+    } catch (err: any) {
+      console.error("[ai] newsletter-draft failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
 }

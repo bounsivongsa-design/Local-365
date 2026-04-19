@@ -9,6 +9,7 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { registerStripeRoutes } from "./stripe";
 import { registerAiLabRoutes } from "./aiLab";
 import { registerAiFeatureRoutes } from "./aiFeatures";
+import { registerNewsletterRoutes } from "./newsletter";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
 import { getMembershipTier } from "@shared/config/membership";
 import db from "./lib/replitDb";
@@ -424,6 +425,7 @@ export async function registerRoutes(
   // AI Lab (sandbox) — Phase 1A: credits + revenue dashboard
   registerAiLabRoutes(app);
   registerAiFeatureRoutes(app);
+  registerNewsletterRoutes(app);
 
   // ============ LOCATION ROUTES ============
   
