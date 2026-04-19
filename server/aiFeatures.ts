@@ -850,6 +850,150 @@ Respond ONLY with this JSON shape (no prose):
     }
   });
 
+  /* ─────────── Job (Help Wanted) description writer ─────────── */
+  app.post("/api/ai/job-description", isAuthenticated, async (req, res) => {
+    const JobFactsSchema = z.object({
+      jobTitle: z.string().trim().min(2).max(120),
+      role: z.string().trim().max(400).optional(),
+      responsibilities: z.string().trim().max(800).optional(),
+      requirements: z.string().trim().max(800).optional(),
+      payRange: z.string().trim().max(120).optional(),
+      hours: z.string().trim().max(120).optional(),
+      perks: z.string().trim().max(400).optional(),
+      tone: z
+        .enum(["professional", "friendly", "casual", "energetic"])
+        .optional()
+        .default("friendly"),
+    });
+    const JobBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      facts: JobFactsSchema,
+    });
+    const parsedBody = JobBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, facts } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 5;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      businessId,
+      "job_description",
+      COST_CREDITS,
+      COST_CENTS,
+      { jobTitle: facts.jobTitle, tone: facts.tone },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const prompt = `You are helping a small local business in Moyock, NC
+write a Help Wanted ad for a local directory. Generate THREE distinct
+ad variants. Each should be 80-180 words, scannable (use short
+paragraphs or 3-5 bullet points), and sound like a real small-business
+owner — not a corporate recruiter.
+
+Business: ${auth.business.name}
+Business category: ${auth.business.category}
+Job title: ${facts.jobTitle}
+Role summary: ${facts.role || "(not provided)"}
+Responsibilities: ${facts.responsibilities || "(not provided)"}
+Requirements: ${facts.requirements || "(not provided)"}
+Pay range: ${facts.payRange || "(not provided — do NOT invent a number)"}
+Hours: ${facts.hours || "(not provided)"}
+Perks: ${facts.perks || "(not provided)"}
+Tone: ${facts.tone}
+
+Rules:
+- DO NOT invent a pay rate, hours, or perks that weren't provided.
+  If pay isn't given, say "Pay based on experience" or omit entirely.
+- Each variant must lead with what's in it for the candidate, not a
+  generic "We're hiring" line.
+- Avoid AI / corporate clichés ("rockstar", "ninja", "fast-paced
+  environment", "synergy", "join our family").
+- Mention Moyock or Currituck County naturally if it fits.
+- End each variant with a simple call to action (e.g., "Apply through
+  the listing" or "Send a message via Local List 365"). Do NOT include
+  fake email addresses, phone numbers, or external URLs.
+- The three variants should differ meaningfully in structure: one
+  bullet-driven, one narrative, one brief/punchy.
+
+Respond ONLY with this JSON shape (no prose):
+{
+  "variants": [
+    { "label": "Bullet list", "text": "..." },
+    { "label": "Narrative",   "text": "..." },
+    { "label": "Brief & punchy", "text": "..." }
+  ]
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        variants: z
+          .array(
+            z.object({
+              label: z.string().min(1).max(40),
+              text: z.string().min(40).max(2000),
+            }),
+          )
+          .length(3),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] job-description bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        variants: validated.data.variants,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "job_description",
+      });
+    } catch (err: any) {
+      console.error("[ai] job-description failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
+
   /* ─────────── Quote response generator ─────────── */
   app.post("/api/ai/quote-response", isAuthenticated, async (req, res) => {
     const QuoteRequestBodySchema = z.object({

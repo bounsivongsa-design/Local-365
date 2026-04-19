@@ -39,6 +39,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **AI Listing Description Writer**: Generates multiple description variants for Gold members.
 - **AI Review Reply Generator**: Generates two reply variants for customer reviews for Gold members.
 - **AI Quote Responder**: Gold-only AI assist (3 credits) that drafts two opening message variants for businesses responding to a customer quote request. Mounted in the response dialog on `/quotes`. Prompt is constrained to never quote a price — owner sets that separately. Founders are unmetered.
+- **AI Help Wanted Writer**: Gold-only AI assist (5 credits) that drafts three Help Wanted ad variants (bullet, narrative, brief) from owner-supplied facts. Mounted in both the create and edit job-listing forms on `/jobs`. Prompt is constrained to never invent pay, hours, or perks not provided by the owner.
 - **AI Credits Top-Up**: Gold owners can buy add-on credit packs (Starter 500/$10, Popular 1.5k/$25, Power 5k/$75, Pro 15k/$200) via Stripe one-time Checkout from the dashboard credits widget. Webhook applies credits with double-guarded idempotency (pre-check + UNIQUE on Stripe paymentIntent id). Founders are blocked at the API and don't see the button.
 
 ### UI/UX Decisions

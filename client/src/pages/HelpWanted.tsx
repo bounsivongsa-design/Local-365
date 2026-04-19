@@ -3,6 +3,7 @@ import { useJobListings, useMyJobListings, useCreateJobListing, useUpdateJobList
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { AIJobWriter } from "@/components/AIJobWriter";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -148,6 +149,7 @@ function JobCard({ listing }: { listing: JobListingWithBusiness }) {
 
 function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const createMutation = useCreateJobListing();
   const checkoutMutation = useJobCheckout();
   const { data: pricing } = useJobPricing(true);
@@ -245,7 +247,18 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="job-description">Description *</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="job-description">Description *</Label>
+          {user?.linkedBusinessId && (
+            <AIJobWriter
+              businessId={user.linkedBusinessId}
+              jobTitle={formData.title}
+              onApply={(text) =>
+                setFormData((prev) => ({ ...prev, description: text }))
+              }
+            />
+          )}
+        </div>
         <Textarea
           id="job-description"
           placeholder="Describe the position, requirements, pay range, etc."
@@ -355,6 +368,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
 
 function EditJobForm({ listing, onSuccess }: { listing: import("@shared/schema").JobListing; onSuccess: () => void }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const updateMutation = useUpdateJobListing();
   const [formData, setFormData] = useState({
     title: listing.title,
@@ -422,7 +436,18 @@ function EditJobForm({ listing, onSuccess }: { listing: import("@shared/schema")
         <Input id="edit-job-title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required data-testid="input-edit-job-title" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="edit-job-description">Description *</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="edit-job-description">Description *</Label>
+          {user?.linkedBusinessId && (
+            <AIJobWriter
+              businessId={user.linkedBusinessId}
+              jobTitle={formData.title}
+              onApply={(text) =>
+                setFormData((prev) => ({ ...prev, description: text }))
+              }
+            />
+          )}
+        </div>
         <Textarea id="edit-job-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} required data-testid="input-edit-job-description" />
       </div>
       <div className="space-y-2">
