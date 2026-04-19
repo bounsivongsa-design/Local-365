@@ -34,6 +34,7 @@ import EditListing from "@/pages/EditListing";
 import NewsletterPage from "@/pages/Newsletter";
 import SocialPage from "@/pages/Social";
 import SmsPage from "@/pages/Sms";
+import DealsPage from "@/pages/Deals";
 import NotFound from "@/pages/not-found";
 import { DevModePanel } from "@/components/DevModePanel";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -75,6 +76,7 @@ function AppRouter() {
           <Route path="/newsletter" element={<NewsletterPage />} />
           <Route path="/social" element={<SocialPage />} />
           <Route path="/sms" element={<SmsPage />} />
+          <Route path="/deals" element={<DealsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

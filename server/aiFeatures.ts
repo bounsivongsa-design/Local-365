@@ -1466,6 +1466,102 @@ Respond ONLY with this JSON shape (no prose):
     }
   });
 
+  /* ─────────── Deal Writer (Marketing Suite #4) ───────────
+     Generates 3 deal variants (punchy/detailed/urgent) from owner facts.
+     3 credits. Prompt forbids inventing discount %s, dates, or terms
+     not supplied — only the owner can decide what they're discounting. */
+  app.post("/api/ai/deal-draft", isAuthenticated, async (req, res) => {
+    const DealAiSchema = z.object({
+      businessId: z.number().int().positive(),
+      offer: z.string().trim().min(5).max(300),
+      discountText: z.string().trim().min(2).max(60),
+      audience: z.string().trim().max(100).optional(),
+      validityWindow: z.string().trim().max(100).optional(),
+    });
+    const parsed = DealAiSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid input" });
+    const { businessId, offer, discountText, audience, validityWindow } = parsed.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 3;
+    const reservation = await reserveCredits(
+      businessId, "deal_draft", COST_CREDITS, 1,
+      { offer: offer.slice(0, 100), discountText },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS", required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+      const prompt = `Write 3 limited-time deal/offer variants for a small
+local business in Moyock NC. Each has a title (≤80 chars) and a
+description (≤350 chars).
+
+Business: ${auth.business.name}
+What's on offer: ${offer}
+Discount/Promo: ${discountText}
+${audience ? `Audience: ${audience}` : ""}
+${validityWindow ? `When: ${validityWindow}` : ""}
+
+Hard rules — apply to ALL three:
+- DO NOT invent a discount percentage, dollar amount, or freebie not
+  in "Discount/Promo" above
+- DO NOT invent dates, times, or quantities ("only 5 spots!") not in
+  the owner's notes
+- DO NOT invent terms, fine print, or exclusions
+- Stay specific to what was actually offered
+- Sound like a person, not a marketing template
+
+Variants:
+1. "punchy" — short headline-driven (title ≤50 chars, desc ≤120 chars)
+2. "detailed" — explains the value clearly (desc 200-300 chars)
+3. "urgent" — emphasizes the time-limited nature WITHOUT inventing
+   urgency (use only the validity window the owner gave you)
+
+Respond ONLY with JSON:
+{ "punchy":   { "title": "...", "description": "..." },
+  "detailed": { "title": "...", "description": "..." },
+  "urgent":   { "title": "...", "description": "..." } }`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let json: any = {};
+      try { json = JSON.parse(raw); } catch {}
+      const VarSchema = z.object({
+        title: z.string().trim().min(3).max(120),
+        description: z.string().trim().min(10).max(400),
+      });
+      const Resp = z.object({
+        punchy: VarSchema, detailed: VarSchema, urgent: VarSchema,
+      });
+      const ok = Resp.safeParse(json);
+      if (!ok.success) {
+        return res.status(502).json({
+          message: "AI returned an unexpected response. Credits used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({ variants: ok.data, balance: reservation.balance, deducted: reservation.deducted });
+    } catch (err: any) {
+      console.error("[ai] deal-draft failed:", err?.message);
+      res.status(502).json({ message: "AI generation failed.", code: "AI_REQUEST_FAILED" });
+    }
+  });
+
   /* ─────────── SMS Drafter (Marketing Suite #3) ───────────
      Generates 3 SMS variants (≤140 char body so the appended STOP
      footer keeps total ≤160 = 1 segment). 3 credits. Hard-constrained

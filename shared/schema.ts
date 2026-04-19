@@ -590,6 +590,33 @@ export type SmsCampaign = typeof smsCampaigns.$inferSelect;
 export type SmsSend = typeof smsSends.$inferSelect;
 
 /* ────────────────────────────────────────────────────────────────────────
+   Marketing Suite #4: Daily Deals / Limited-Time Offers (Gold-only)
+   Time-bound public offers shown on /deals and on the business listing.
+   No cron — "active" is computed at query time as
+     status='active' AND startsAt <= now() AND endsAt > now()
+   Click counter tracks redemption interest for owner analytics.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export const deals = pgTable("deals", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  // free-form so owner can write "20% off" or "BOGO" or "$5 off any service"
+  discountText: text("discount_text").notNull(),
+  redemptionInstructions: text("redemption_instructions").notNull(),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  // 'active' | 'paused' | 'archived' (soft delete)
+  status: text("status").notNull().default("active"),
+  clickCount: integer("click_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Deal = typeof deals.$inferSelect;
+
+/* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the
    platform reads from or writes to them yet. They are populated and

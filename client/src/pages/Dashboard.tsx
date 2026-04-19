@@ -2071,6 +2071,16 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                     <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
                   </Button>
                 </Link>
+                <Link to="/deals" className="block">
+                  <Button variant="outline" className="w-full justify-between h-12 rounded-xl border-[#0a4a82]/15 hover:bg-[#0a4a82]/5 hover:border-[#0a4a82]/30" data-testid="button-dash-deals">
+                    <span className="flex items-center gap-2 text-[#1a1a2e]">
+                      <Tag className="h-4 w-4 text-[#0a4a82]" />
+                      Daily Deals
+                      <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Gold</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-[#0a4a82]" />
+                  </Button>
+                </Link>
                 {tier && tier !== "none" && (
                   <QuotePreferenceToggle businessId={business.id} initialValue={(business as any).acceptsQuotes !== false} />
                 )}
