@@ -1,5 +1,6 @@
 export * from "./models/auth";
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -498,6 +499,30 @@ export const newsletterSends = pgTable("newsletter_sends", {
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 export type NewsletterCampaign = typeof newsletterCampaigns.$inferSelect;
 export type NewsletterSend = typeof newsletterSends.$inferSelect;
+
+/* ────────────────────────────────────────────────────────────────────────
+   Marketing Suite #2: Social Composer
+   Generates copy-paste-ready posts for Facebook / Instagram / Google
+   Business Profile / Nextdoor from one piece of owner notes. Drafts are
+   persisted so the owner can come back later. We do NOT auto-post — that
+   requires Meta/Google business app review and is a future feature.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export const socialDrafts = pgTable("social_drafts", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  sourceNotes: text("source_notes").notNull(),
+  imageUrl: text("image_url"),
+  // jsonb: { facebook?: string, instagram?: string, googleBusiness?: string, nextdoor?: string }
+  variants: jsonb("variants").notNull().default(sql`'{}'::jsonb`),
+  // 'draft' | 'posted' (owner self-marks after pasting)
+  status: text("status").notNull().default("draft"),
+  scheduledFor: timestamp("scheduled_for"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SocialDraft = typeof socialDrafts.$inferSelect;
 
 /* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System

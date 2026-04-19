@@ -36,12 +36,15 @@ const stripe = stripeKey
   ? new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" as any })
   : null;
 
-const FOUNDER_NAMES = new Set([
-  "goat locker printing",
-  "blackwater technology solutions",
-]);
-function isFounderName(name: string | null | undefined): boolean {
-  return !!name && FOUNDER_NAMES.has(name.trim().toLowerCase());
+/**
+ * Founder check uses the IMMUTABLE `businesses.isFoundingMember` column.
+ * (Originally we keyed off business name, but a name is editable by the
+ * owner — so a non-founder could rename their business and bypass Gold
+ * gating + free credits. The column is set once by the founding-member
+ * referral flow and never edited by owners.)
+ */
+function isFounderBiz(b: { isFoundingMember?: boolean | null } | null | undefined): boolean {
+  return b?.isFoundingMember === true;
 }
 
 /* Request + AI response schemas (runtime-validated) */
@@ -71,9 +74,9 @@ const AiResponseSchema = z.object({
 function effectiveTier(b: {
   membershipTier: string | null;
   goldTrialEndDate: Date | null;
-  name?: string | null;
+  isFoundingMember?: boolean | null;
 }): string {
-  if (isFounderName(b.name)) return "premium";
+  if (isFounderBiz(b)) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) {
     return "premium";
@@ -160,14 +163,13 @@ async function reserveCredits(
     // balance UNLESS this is a founder business (we'll backfill the row).
     if (!row) {
       const [biz] = await tx
-        .select({ name: businesses.name })
+        .select({ isFoundingMember: businesses.isFoundingMember })
         .from(businesses)
         .where(eq(businesses.id, businessId));
-      // Founder eligibility uses the canonical name allowlist (mirrors the
-      // monthly grant job in server/aiLab.ts which sets isFounderComp on row
-      // creation). Once the row exists, only ai_credits.is_founder_comp is
-      // consulted — the name check is a one-shot bootstrap.
-      const founder = isFounderName(biz?.name);
+      // Founder eligibility comes from the immutable isFoundingMember
+      // column. Once the row exists, only ai_credits.is_founder_comp is
+      // consulted — this is a one-shot bootstrap.
+      const founder = isFounderBiz(biz);
       await tx
         .insert(aiCredits)
         .values({ businessId, balance: 0, isFounderComp: founder })
@@ -470,7 +472,7 @@ export function registerAiFeatureRoutes(app: Express) {
       .select({ isFounderComp: aiCredits.isFounderComp })
       .from(aiCredits)
       .where(eq(aiCredits.businessId, businessId));
-    if (creditRow?.isFounderComp || isFounderName(auth.business.name)) {
+    if (creditRow?.isFounderComp || isFounderBiz(auth.business)) {
       return res.status(400).json({
         message: "Founder businesses have unlimited credits.",
         code: "FOUNDER_NO_PURCHASE",
@@ -593,7 +595,7 @@ export function registerAiFeatureRoutes(app: Express) {
         balance: row?.balance ?? 0,
         monthlyAllowance: row?.monthlyAllowance ?? 250,
         cycleResetsAt: row?.cycleResetsAt ?? null,
-        isFounder: row?.isFounderComp ?? isFounderName(auth.business.name),
+        isFounder: row?.isFounderComp ?? isFounderBiz(auth.business),
         eligible: true,
         monthUsage: {
           totalCredits,
@@ -1457,6 +1459,147 @@ Respond ONLY with this JSON shape (no prose):
       });
     } catch (err: any) {
       console.error("[ai] quote-response failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
+
+  /* ─────────── Social Composer (Marketing Suite #2) ───────────
+     One generation produces FOUR platform-tuned variants in a single
+     OpenAI call. 5 credits — better value than running 4 separate
+     features. Returns plain text per platform; the UI handles copy. */
+  app.post("/api/ai/social-composer", isAuthenticated, async (req, res) => {
+    const SocialBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      notes: z.string().trim().min(5).max(1500),
+      tone: z
+        .enum(["friendly", "professional", "casual", "exciting"])
+        .optional()
+        .default("friendly"),
+      includeEmoji: z.boolean().optional().default(true),
+    });
+    const parsedBody = SocialBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, notes, tone, includeEmoji } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 5;
+    const COST_CENTS = 2;
+    const reservation = await reserveCredits(
+      businessId,
+      "social_composer",
+      COST_CREDITS,
+      COST_CENTS,
+      { notes: notes.slice(0, 200) },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const prompt = `You are writing social-media posts for a small local
+business in Moyock, NC. Generate FOUR platform-tuned variants from the
+same source notes.
+
+Business: ${auth.business.name}
+Business category: ${auth.business.category}
+Owner notes: ${notes}
+Tone: ${tone}
+Emoji allowed: ${includeEmoji ? "yes, sparingly" : "no emojis"}
+
+Platform rules (each a separate JSON field):
+
+facebook (2-4 short sentences, conversational, ${includeEmoji ? "1-2 emoji ok" : "no emoji"},
+  hashtags inline at end, 3-5 max, max 600 chars total):
+
+instagram (Strong hook line, then 2-3 sentences, blank line, then
+  8-12 hashtags as a separate trailing block — ALL hashtags begin with
+  '#'. ${includeEmoji ? "Emoji ok in body, not in hashtags" : "No emoji"}.
+  max 1500 chars total):
+
+googleBusiness (100-150 words, NO hashtags, professional but warm, must
+  include one clear call to action like "Call us", "Book now", "Stop by".
+  no emoji.):
+
+nextdoor (Neighborly tone, 2-4 sentences, NO hashtags, NO emoji, must
+  reference the local area (Moyock, Currituck County, OBX area) when it
+  fits naturally. Avoids salesy language.):
+
+Hard rules — apply to ALL variants:
+- DO NOT invent prices, dates, hours, addresses, names of people, or
+  promises that aren't in the owner's notes. If a price/date isn't given,
+  say "DM us for details" or speak generally.
+- DO NOT claim awards, certifications, or "best in town" type
+  superlatives that aren't supported by the notes.
+- Sound human. Avoid AI clichés ("we are thrilled", "stay tuned",
+  "valued customer").
+- Never include the business's URL (we don't have one supplied).
+
+Respond ONLY with this JSON shape:
+{
+  "facebook": "...",
+  "instagram": "...",
+  "googleBusiness": "...",
+  "nextdoor": "..."
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        facebook: z.string().min(20).max(2000),
+        instagram: z.string().min(20).max(2200),
+        googleBusiness: z.string().min(40).max(1500),
+        nextdoor: z.string().min(20).max(2000),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] social-composer bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        variants: validated.data,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "social_composer",
+      });
+    } catch (err: any) {
+      console.error("[ai] social-composer failed:", err?.message ?? err);
       res.status(502).json({
         message: "AI generation failed. Please try again.",
         code: "AI_REQUEST_FAILED",
