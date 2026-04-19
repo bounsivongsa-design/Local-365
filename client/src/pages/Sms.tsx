@@ -184,7 +184,11 @@ export default function SmsPage() {
     );
   }
 
-  if (!credits.isLoading && !isEligible) {
+  // Only show the Gold paywall when we have a definitive answer that the
+  // business is NOT eligible. If the credits API errored, is still loading,
+  // or returned no data, fall through and let the page render — the server
+  // will enforce Gold on any mutating action anyway.
+  if (credits.data && credits.data.eligible === false) {
     return (
       <div className="container mx-auto p-8 max-w-2xl">
         <Card>
