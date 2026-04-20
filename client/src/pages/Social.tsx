@@ -239,7 +239,8 @@ export default function SocialPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-6xl">
-      <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
+     <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2 text-[#0a4a82]">
             <Share2 className="h-7 w-7" /> Social Composer
@@ -465,6 +466,7 @@ export default function SocialPage() {
           </Card>
         </TabsContent>
       </Tabs>
+     </div>
     </div>
   );
 }

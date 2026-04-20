@@ -66,7 +66,8 @@ export default function DealsPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-7xl">
-      <div className="mb-6">
+     <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+      <div>
         <h1 className="text-3xl font-bold flex items-center gap-2 text-[#0a4a82]">
           <Tag className="h-7 w-7" /> Local Deals & Offers
         </h1>
@@ -91,6 +92,7 @@ export default function DealsPage() {
           </TabsContent>
         )}
       </Tabs>
+     </div>
     </div>
   );
 }
