@@ -85,7 +85,7 @@ function CategoriesGrid() {
                 <p key={j} className="text-sm text-muted-foreground">{sub}</p>
               ))}
               <p className="text-sm mt-2 font-medium">Example: Smith {cat.name} Pros</p>
-              <p className="text-sm text-yellow-600">Rating: 4.8 ★</p>
+              <p className="text-sm text-amber-700 font-medium">Rating: 4.8 ★</p>
             </div>
           )}
         </div>

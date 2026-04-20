@@ -365,7 +365,7 @@ export default function SocialPage() {
               {!hasVariants && !generate.isPending && (
                 <Card className="border-dashed">
                   <CardContent className="py-12 text-center text-muted-foreground">
-                    <Sparkles className="h-10 w-10 mx-auto mb-3 text-amber-400" />
+                    <Sparkles className="h-10 w-10 mx-auto mb-3 text-amber-600" />
                     <p>Your four posts will appear here once generated.</p>
                   </CardContent>
                 </Card>
