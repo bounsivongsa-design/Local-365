@@ -125,9 +125,12 @@ interface ValidationStatus {
 
 function getTierDisplayName(tier: string | null | undefined): string {
   switch (tier) {
-    case "premium": return "Gold";
-    case "standard": return "Silver";
-    case "basic": return "Bronze";
+    case "premium":
+    case "gold": return "Gold";
+    case "standard":
+    case "silver": return "Silver";
+    case "basic":
+    case "bronze": return "Bronze";
     default: return "None";
   }
 }
