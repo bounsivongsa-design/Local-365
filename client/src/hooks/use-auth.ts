@@ -88,12 +88,6 @@ function getDevModeUser(): User | null {
 }
 
 async function fetchUser(): Promise<User | null> {
-  // Check for dev mode bypass first
-  const devUser = getDevModeUser();
-  if (devUser) {
-    return devUser;
-  }
-
   const response = await fetch("/api/auth/user", {
     credentials: "include",
   });
@@ -118,18 +112,27 @@ async function logout(): Promise<void> {
 }
 
 // Dev mode login helpers (only work in development)
-export function devModeLogin(userType: "customer" | "business") {
-  if (import.meta.env.DEV) {
-    localStorage.setItem("dev_mode_user", userType);
-    window.location.reload();
+export async function devModeLogin(userType: "customer" | "business") {
+  if (!import.meta.env.DEV) return;
+  localStorage.removeItem("dev_mode_user");
+  const r = await fetch("/api/auth/dev-login", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userType }),
+  });
+  if (!r.ok) {
+    alert("Dev login failed: " + r.status);
+    return;
   }
+  window.location.reload();
 }
 
-export function devModeLogout() {
-  if (import.meta.env.DEV) {
-    localStorage.removeItem("dev_mode_user");
-    window.location.reload();
-  }
+export async function devModeLogout() {
+  if (!import.meta.env.DEV) return;
+  localStorage.removeItem("dev_mode_user");
+  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  window.location.reload();
 }
 
 export function useAuth() {

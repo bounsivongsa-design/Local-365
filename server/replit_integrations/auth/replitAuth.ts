@@ -135,6 +135,44 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/auth/dev-login", async (req, res, next) => {
+      try {
+        const { userType } = req.body as { userType?: "business" | "customer" };
+        if (userType !== "business" && userType !== "customer") {
+          return res.status(400).json({ message: "userType must be 'business' or 'customer'" });
+        }
+        const email = userType === "business" ? "dev-business@locallist365.dev" : "dev-customer@locallist365.dev";
+        let user = await authStorage.getUserByEmail(email);
+        if (!user) {
+          user = await authStorage.createUser({
+            email,
+            passwordHash: await bcrypt.hash("DevModeOnly!" + Math.random(), 12),
+            firstName: userType === "business" ? "Local" : "Test",
+            lastName: userType === "business" ? "Business" : "Customer",
+            accountType: userType,
+            pendingBusinessName: null,
+          });
+        }
+        if (userType === "business" && user.linkedBusinessId !== 30) {
+          const { db: _db } = await import("../../db");
+          const { users: _users } = await import("@shared/models/auth");
+          const { eq: _eq } = await import("drizzle-orm");
+          await _db.update(_users).set({ linkedBusinessId: 30 }).where(_eq(_users.id, user.id));
+          user = (await authStorage.getUserByEmail(email))!;
+        }
+        req.login(user, (err) => {
+          if (err) return next(err);
+          const { passwordHash: _ph, ...safe } = user!;
+          res.json(safe);
+        });
+      } catch (err) {
+        console.error("Dev login error:", err);
+        res.status(500).json({ message: "Dev login failed" });
+      }
+    });
+  }
+
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
       req.session.destroy(() => {
