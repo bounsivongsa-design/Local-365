@@ -617,6 +617,39 @@ export const deals = pgTable("deals", {
 export type Deal = typeof deals.$inferSelect;
 
 /* ────────────────────────────────────────────────────────────────────────
+   Marketing Suite #5 — Review Request Blasts (Gold-only, 3 credits per AI draft)
+   Owner picks past customers (quote requesters or reviewers) and sends a
+   personalized "please leave us a review" via email and/or SMS, with a
+   click-tracked one-click link to the review form.
+   90-day per-customer cap is enforced at SEND time by querying this table.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export const reviewRequests = pgTable("review_requests", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  // Recipient identity (one of email/phone is required at send-time)
+  recipientUserId: varchar("recipient_user_id"),
+  recipientEmail: text("recipient_email"),
+  recipientPhone: text("recipient_phone"),
+  recipientName: text("recipient_name"),
+  // 'email' | 'sms' | 'both'
+  channel: text("channel").notNull(),
+  // 'queued' | 'sent' | 'failed' | 'clicked' | 'completed'
+  status: text("status").notNull().default("queued"),
+  token: text("token").notNull().unique(),
+  errorMsg: text("error_msg"),
+  sentAt: timestamp("sent_at"),
+  clickedAt: timestamp("clicked_at"),
+  completedReviewId: integer("completed_review_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("review_req_business_sent_idx").on(t.businessId, t.sentAt),
+]);
+
+export type ReviewRequest = typeof reviewRequests.$inferSelect;
+export type InsertReviewRequest = typeof reviewRequests.$inferInsert;
+
+/* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the
    platform reads from or writes to them yet. They are populated and

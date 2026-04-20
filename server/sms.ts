@@ -133,6 +133,16 @@ interface SendResult {
   errorMessage?: string;
 }
 
+export async function sendBroadcastSms(
+  toE164: string,
+  body: string,
+  businessName: string,
+  reviewUrl?: string,
+): Promise<SendResult> {
+  const finalBody = reviewUrl ? `${body}\n${reviewUrl}` : body;
+  return providerSend(toE164, finalBody, businessName);
+}
+
 async function providerSend(toE164: string, body: string, businessName: string): Promise<SendResult> {
   if (PROVIDER === "twilio") {
     const sid = process.env.TWILIO_ACCOUNT_SID;

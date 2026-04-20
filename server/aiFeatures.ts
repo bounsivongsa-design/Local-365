@@ -1922,4 +1922,124 @@ Respond ONLY with this JSON shape (no prose):
       });
     }
   });
+
+  /* ─────────── Review Request draft writer (Marketing Suite #5) ─────────── */
+  app.post("/api/ai/review-request-draft", isAuthenticated, async (req, res) => {
+    const ReviewReqBodySchema = z.object({
+      businessId: z.number().int().positive(),
+      ownerNotes: z.string().trim().min(3).max(800).optional(),
+      tone: z.enum(["friendly", "professional", "grateful"]).optional().default("friendly"),
+      channel: z.enum(["email", "sms", "both"]).default("both"),
+    });
+    const parsedBody = ReviewReqBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: parsedBody.error.flatten(),
+      });
+    }
+    const { businessId, ownerNotes, tone, channel } = parsedBody.data;
+
+    const auth = await authorizeOwnerOnGold(req, res, businessId);
+    if (!auth) return;
+
+    const COST_CREDITS = 3;
+    const COST_CENTS = 1;
+    const reservation = await reserveCredits(
+      businessId,
+      "review_request_draft",
+      COST_CREDITS,
+      COST_CENTS,
+      { channel },
+    );
+    if ("error" in reservation) {
+      return res.status(402).json({
+        message: `Not enough credits. This feature costs ${COST_CREDITS} credits.`,
+        code: "INSUFFICIENT_CREDITS",
+        required: COST_CREDITS,
+      });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const prompt = `You are drafting a "please leave us a review" message
+for a small local business in Moyock, NC. Generate THREE pieces:
+
+1. emailSubject — short subject line, 30-60 chars, no spammy words
+2. emailBody — plain text (NOT HTML), 60-130 words, 2-3 short paragraphs.
+   First sentence must thank the customer. Body must explain that a review
+   helps neighbors find them. Do NOT include a "[review link]" or URL — a
+   button is added automatically. Do NOT include a greeting like "Hi {name}"
+   — that's added automatically. Do NOT sign off with the business name.
+3. smsBody — single SMS, max 140 chars (so a link can be appended after).
+   Friendly, no emoji, no all-caps, no fake urgency. Do NOT include a URL.
+
+Business: ${auth.business.name}
+Business category: ${auth.business.category}
+Tone: ${tone}
+${ownerNotes ? `Owner notes about what to emphasize: ${ownerNotes}` : ""}
+
+Hard rules — do NOT invent any of these:
+- Specific dollar amounts, discounts, or rewards for leaving a review (illegal)
+- Specific dates, times, or service details
+- Awards, certifications, or accolades
+- Names of staff or other customers
+
+Respond ONLY with this JSON shape (no prose):
+{
+  "emailSubject": "...",
+  "emailBody": "...",
+  "smsBody": "..."
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices[0]?.message?.content || "{}";
+      let parsedJson: unknown = {};
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        parsedJson = {};
+      }
+      const ResponseSchema = z.object({
+        emailSubject: z.string().min(5).max(120),
+        emailBody: z.string().min(40).max(2000),
+        smsBody: z.string().min(20).max(160),
+      });
+      const validated = ResponseSchema.safeParse(parsedJson);
+      if (!validated.success) {
+        console.error(
+          "[ai] review-request-draft bad shape:",
+          validated.error.flatten(),
+        );
+        return res.status(502).json({
+          message:
+            "AI returned an unexpected response. Your credits have been used; please try again.",
+          code: "AI_BAD_RESPONSE",
+        });
+      }
+      res.json({
+        emailSubject: validated.data.emailSubject,
+        emailBody: validated.data.emailBody,
+        smsBody: validated.data.smsBody,
+        balance: reservation.balance,
+        deducted: reservation.deducted,
+        feature: "review_request_draft",
+      });
+    } catch (err: any) {
+      console.error("[ai] review-request-draft failed:", err?.message ?? err);
+      res.status(502).json({
+        message: "AI generation failed. Please try again.",
+        code: "AI_REQUEST_FAILED",
+      });
+    }
+  });
 }
