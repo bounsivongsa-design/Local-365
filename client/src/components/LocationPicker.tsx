@@ -17,12 +17,17 @@ interface PickerLocation {
   tagline: string;
 }
 
-// Used as a fallback only if the API fetch hasn't returned yet (so the dialog
-// is never empty). The full list lives in the database (see
-// server/locationSeed.ts) — 45 zips across NC OBX/Elizabeth City + VA
-// Chesapeake/Virginia Beach.
+// Shown only while /api/locations is loading or unavailable so the dialog
+// is never empty. The authoritative full list (41 zips across NC OBX/EC + VA
+// Chesapeake/Virginia Beach) is seeded into the DB by server/locationSeed.ts
+// and reaches the picker via /api/locations.
 const FALLBACK_LOCATIONS: PickerLocation[] = [
   { name: "Moyock, NC", city: "Moyock", state: "NC", zipCode: "27958", region: "Currituck County", tagline: "Heart of Currituck County" },
+  { name: "Elizabeth City, NC", city: "Elizabeth City", state: "NC", zipCode: "27909", region: "Pasquotank County", tagline: "Historic harbor of the Pasquotank" },
+  { name: "Kitty Hawk, NC", city: "Kitty Hawk", state: "NC", zipCode: "27949", region: "Outer Banks", tagline: "Where flight began" },
+  { name: "Nags Head, NC", city: "Nags Head", state: "NC", zipCode: "27959", region: "Outer Banks", tagline: "Classic Outer Banks beach town" },
+  { name: "Chesapeake, VA", city: "Chesapeake", state: "VA", zipCode: "23320", region: "Hampton Roads", tagline: "Greenbrier and central Chesapeake" },
+  { name: "Virginia Beach, VA", city: "Virginia Beach", state: "VA", zipCode: "23451", region: "Hampton Roads", tagline: "Oceanfront and resort district" },
 ];
 
 export function LocationPicker() {
