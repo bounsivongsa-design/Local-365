@@ -16,13 +16,17 @@ interface LocationContextType {
   isLocationSet: boolean;
 }
 
+// Neutral fallback — only used if a component reads `location` BEFORE the
+// user has chosen one. UI should branch on `isLocationSet` and show the
+// location picker first, but if it does fall through, this stays generic
+// and avoids hardcoding any single town as "the" location.
 const defaultLocation: SelectedLocation = {
-  name: "Moyock, NC",
-  city: "Moyock",
-  state: "NC",
-  zipCode: "27958",
-  region: "Moyock",
-  tagline: "Heart of Moyock"
+  name: "your area",
+  city: "your area",
+  state: "",
+  zipCode: "",
+  region: "",
+  tagline: "Choose your town to see local results",
 };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);

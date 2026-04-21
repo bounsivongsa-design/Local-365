@@ -43,10 +43,20 @@ export function LocationSearchInput({
 
   const { data: locations } = useQuery<Location[]>({ queryKey: ["/api/locations"] });
 
-  const matches = useMemo(() => {
+  // Each match also carries the BEST zip to route to — if the user typed a
+  // specific zip we keep that exact one (preserves zip-level fidelity for
+  // multi-zip cities); otherwise fall back to the location's primary zip.
+  const matches = useMemo<Array<{ loc: Location; zip: string }>>(() => {
     const q = query.trim().toLowerCase();
     const all = locations || [];
-    if (!q) return all.slice(0, 8);
+    const pickZip = (l: Location): string => {
+      if (q && /^\d/.test(q)) {
+        const exact = (l.zipCodes || []).find((z) => z.includes(q));
+        if (exact) return exact;
+      }
+      return l.zipCodes?.[0] || "";
+    };
+    if (!q) return all.slice(0, 8).map((l) => ({ loc: l, zip: pickZip(l) }));
     return all
       .filter(
         (l) =>
@@ -55,8 +65,19 @@ export function LocationSearchInput({
           (l.region || "").toLowerCase().includes(q) ||
           (l.zipCodes || []).some((z) => z.includes(q)),
       )
-      .slice(0, 12);
+      .slice(0, 12)
+      .map((l) => ({ loc: l, zip: pickZip(l) }));
   }, [locations, query]);
+
+  // Out-of-coverage state: set after Use-my-location resolves to a zip more
+  // than 60 miles away. Surfaces a visible CTA card (not just a toast) so
+  // users have an obvious next step.
+  const [outOfCoverage, setOutOfCoverage] = useState<{
+    nearestCity: string;
+    nearestState: string;
+    distance: number;
+    nearest: Location;
+  } | null>(null);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -81,6 +102,7 @@ export function LocationSearchInput({
 
   const selectLocation = (loc: Location, zipOverride?: string) => {
     const zip = zipOverride || loc.zipCodes?.[0] || "";
+    setOutOfCoverage(null);
     setLocation({
       id: loc.id,
       name: loc.name,
@@ -123,19 +145,22 @@ export function LocationSearchInput({
           return;
         }
         // If the user is more than ~60 miles from the nearest covered zip,
-        // surface a friendly "not covered yet" notice but still route them to
-        // the closest one so they can browse.
+        // raise a visible CTA card with "Browse the closest area we cover" —
+        // not just a toast — so the user has a clear next step.
         if (best.dist > 60) {
-          toast({
-            title: `${best.loc.city}, ${best.loc.state} is the closest area we cover`,
-            description: `That's about ${Math.round(best.dist)} miles from your location. We're expanding — check back soon!`,
+          setOutOfCoverage({
+            nearestCity: best.loc.city,
+            nearestState: best.loc.state,
+            distance: Math.round(best.dist),
+            nearest: best.loc,
           });
-        } else {
-          toast({
-            title: `Showing results for ${best.loc.city}, ${best.loc.state}`,
-            description: `~${Math.round(best.dist)} miles from your current location.`,
-          });
+          setOpen(false);
+          return;
         }
+        toast({
+          title: `Showing results for ${best.loc.city}, ${best.loc.state}`,
+          description: `~${Math.round(best.dist)} miles from your current location.`,
+        });
         selectLocation(best.loc);
       },
       () => {
@@ -157,7 +182,7 @@ export function LocationSearchInput({
     } else if (e.key === "Enter") {
       e.preventDefault();
       const pick = matches[activeIndex];
-      if (pick) selectLocation(pick);
+      if (pick) selectLocation(pick.loc, pick.zip);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -211,7 +236,57 @@ export function LocationSearchInput({
         </Button>
       </div>
 
-      {open && (matches.length > 0 || query.trim()) && (
+      {outOfCoverage && (
+        <div
+          className="mt-3 rounded-2xl bg-white/95 border border-amber-300 p-5 shadow-2xl text-left"
+          data-testid="banner-region-not-covered"
+        >
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 mt-0.5 h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center">
+              <MapPin className="h-5 w-5 text-amber-700" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-[#1a1a2e] text-base mb-1">
+                We don't cover your region yet
+              </h3>
+              <p className="text-sm text-slate-600 mb-3">
+                The closest area we serve is{" "}
+                <span className="font-medium text-[#0a4a82]">
+                  {outOfCoverage.nearestCity}, {outOfCoverage.nearestState}
+                </span>{" "}
+                — about {outOfCoverage.distance} miles from you. We're expanding fast — want to be notified when we launch in your area?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  className="bg-[#0a4a82] text-white hover:bg-[#083a6a]"
+                  onClick={() => selectLocation(outOfCoverage.nearest)}
+                  data-testid="button-browse-nearest-anyway"
+                >
+                  Browse {outOfCoverage.nearestCity} anyway
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setOutOfCoverage(null)}
+                  data-testid="button-dismiss-coverage-banner"
+                >
+                  Pick a different area
+                </Button>
+                <a
+                  href="mailto:support@locallist365.com?subject=Expand%20to%20my%20area"
+                  className="inline-flex items-center text-sm font-medium text-[#0a4a82] hover:underline px-2 py-1.5"
+                  data-testid="link-request-area-coverage"
+                >
+                  Request coverage
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {open && !outOfCoverage && (matches.length > 0 || query.trim()) && (
         <div
           className="absolute left-0 right-0 mt-2 max-h-[360px] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl z-30"
           data-testid="location-autocomplete-list"
@@ -222,15 +297,14 @@ export function LocationSearchInput({
               No covered areas match "{query}". We're expanding — check back soon!
             </div>
           ) : (
-            matches.map((loc, i) => {
-              const zip = loc.zipCodes?.[0] || "";
+            matches.map(({ loc, zip }, i) => {
               const isActive = i === activeIndex;
               return (
                 <button
-                  key={loc.id}
+                  key={`${loc.id}-${zip}`}
                   type="button"
                   onMouseEnter={() => setActiveIndex(i)}
-                  onClick={() => selectLocation(loc)}
+                  onClick={() => selectLocation(loc, zip)}
                   className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors ${
                     isActive ? "bg-[#0a4a82]/5" : "hover:bg-slate-50"
                   }`}

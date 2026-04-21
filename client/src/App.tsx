@@ -92,7 +92,7 @@ function AppRouter() {
         <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <h3 className="font-display text-xl font-bold text-white mb-4" data-testid="text-footer-brand">Local List 365</h3>
-            <p className="max-w-xs text-sm leading-relaxed">Your trusted community directory for Moyock, NC. Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
+            <p className="max-w-xs text-sm leading-relaxed">Your trusted community directory across NC's Outer Banks &amp; Elizabeth City and VA's Hampton Roads. Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
             <p className="mt-3 text-sm"><a href="mailto:support@locallist365.com" className="text-[#d4a373] hover:text-[#c49363] transition-colors" data-testid="link-footer-support-email">support@locallist365.com</a></p>
           </div>
           <div>

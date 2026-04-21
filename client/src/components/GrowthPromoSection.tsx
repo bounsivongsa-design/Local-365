@@ -46,7 +46,7 @@ export function GrowthPromoSection() {
             Two Perks. Zero Catches.
           </h2>
           <p className="text-white/70 text-lg max-w-2xl mx-auto">
-            Get rewarded for joining early — and for bringing other Moyock
+            Get rewarded for joining early — and for bringing other local
             businesses with you.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function GrowthPromoSection() {
               </h3>
             </div>
             <p className="text-white/80 text-sm mb-5">
-              Share your referral code with another Moyock business owner.
+              Share your referral code with another local business owner.
               When they sign up for any paid plan, you{" "}
               <span className="font-semibold text-emerald-200">both</span> get
               30 free days of Gold features added to your account. No limit on

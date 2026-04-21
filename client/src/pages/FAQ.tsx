@@ -50,7 +50,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I search for a local business?",
-        answer: "Use the search bar on the Home page or go to the Directory page. You can type a business name, service type (like \"plumber\" or \"landscaping\"), or keyword. Results show businesses in Moyock, NC (27958) sorted by relevance and membership tier. You can also filter by category using the category buttons at the top of the directory.",
+        answer: "Use the search bar on the Home page or go to the Directory page. You can type a business name, service type (like \"plumber\" or \"landscaping\"), or keyword. Results show businesses in the area you've selected (we currently serve 41 zip codes across NC's Outer Banks/Elizabeth City and VA's Hampton Roads), sorted by relevance and membership tier. You can also filter by category using the category buttons at the top of the directory.",
         links: [{ label: "Browse the directory", to: "/directory" }],
       },
       {
@@ -98,7 +98,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I find local events?",
-        answer: "Go to the Events page from the main navigation. You can view events in a Calendar view (monthly layout) or Card view (scrollable list). Events include community gatherings, business promotions, local markets, and seasonal activities happening in Currituck County.",
+        answer: "Go to the Events page from the main navigation. You can view events in a Calendar view (monthly layout) or Card view (scrollable list). Events include community gatherings, business promotions, local markets, and seasonal activities happening in your selected area.",
         links: [{ label: "View events", to: "/events" }],
       },
       {
@@ -162,7 +162,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I set up my business listing?",
-        answer: "After creating a business account, you'll be guided through a multi-step form. You'll enter your business name and description, owner contact info, established year and zip code (must be 27958 — Moyock, NC), category and services, business hours, and optional extras like photos, logo, and social media links. Take your time — you can always update your listing later from your Dashboard.",
+        answer: "After creating a business account, you'll be guided through a multi-step form. You'll enter your business name and description, owner contact info, established year and zip code (must be one of the 41 zip codes we currently serve across NC and VA), category and services, business hours, and optional extras like photos, logo, and social media links. Take your time — you can always update your listing later from your Dashboard.",
         links: [{ label: "Create a listing", to: "/create-business" }],
       },
       {
@@ -220,11 +220,11 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I know businesses are legitimate?",
-        answer: "Local List 365 is exclusively for businesses operating in Moyock, NC (27958). All businesses must verify their local presence during registration. Additionally, businesses can display verified credential badges (LLC, Licensed, Insured, Veteran-owned) and earn customer reviews. Higher-tier memberships indicate a greater investment in their online presence.",
+        answer: "Local List 365 is exclusively for businesses operating in the 41 zip codes we serve across NC's Outer Banks/Elizabeth City and VA's Hampton Roads. All businesses must verify their local presence during registration. Additionally, businesses can display verified credential badges (LLC, Licensed, Insured, Veteran-owned) and earn customer reviews. Higher-tier memberships indicate a greater investment in their online presence.",
       },
       {
         question: "How do I leave a review?",
-        answer: "Visit a business's listing page in the directory and scroll to the reviews section. You'll need to be signed in with a customer account and upload a receipt or proof of purchase to leave a review.\n\nWe ask that all reviews be respectful and constructive. Focus on your specific experience — what went well, what could be improved, and what others should know. Vague complaints or personal attacks without details are not helpful and may be removed.\n\nReviews are not a place for back-and-forth arguments. If you have a dispute with a business, please reach out to them directly or contact us at support@locallist365.com. Our goal is to keep the review space honest, fair, and useful for the entire Moyock community.\n\nLocal List 365 reserves the right to remove any review that does not adhere to our Terms of Service, at any time and without prior notice.",
+        answer: "Visit a business's listing page in the directory and scroll to the reviews section. You'll need to be signed in with a customer account and upload a receipt or proof of purchase to leave a review.\n\nWe ask that all reviews be respectful and constructive. Focus on your specific experience — what went well, what could be improved, and what others should know. Vague complaints or personal attacks without details are not helpful and may be removed.\n\nReviews are not a place for back-and-forth arguments. If you have a dispute with a business, please reach out to them directly or contact us at support@locallist365.com. Our goal is to keep the review space honest, fair, and useful for the entire Local List 365 community.\n\nLocal List 365 reserves the right to remove any review that does not adhere to our Terms of Service, at any time and without prior notice.",
       },
       {
         question: "How do I report a problem?",

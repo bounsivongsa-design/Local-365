@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { AdCarousel } from "@/components/AdCarousel";
+import { usePageMeta } from "@/hooks/use-page-meta";
+import { pageTitle, metaDescription } from "@/lib/regionCopy";
 
 export default function Directory() {
   const [searchParams] = useSearchParams();
@@ -38,6 +40,10 @@ export default function Directory() {
   const [category, setCategory] = useState(urlCategory || "All");
   const [radiusMiles, setRadiusMiles] = useState(0);
   const { location: selectedLocation, setLocation } = useLocation();
+  usePageMeta(
+    pageTitle(selectedLocation, selectedLocation.city && selectedLocation.state ? `${selectedLocation.city} Directory` : "Directory"),
+    metaDescription(selectedLocation),
+  );
   const hasCoords = selectedLocation.zipCode ? !!getZipCoords(selectedLocation.zipCode) : false;
 
   // Deep-link support: /directory?zip=27909 selects that location once we can
@@ -179,11 +185,15 @@ export default function Directory() {
                   <Waves className="h-8 w-8 text-white" />
                 </div>
                 <h1 className="font-display text-2xl sm:text-4xl font-bold tracking-tight text-white drop-shadow-lg">
-                  Local Directory
+                  {selectedLocation.city && selectedLocation.state
+                    ? `${selectedLocation.city} Directory`
+                    : "Local Directory"}
                 </h1>
               </div>
               <p className="text-white/90 text-base sm:text-lg max-w-md">
-                Discover trusted businesses and services across Moyock's beautiful coastal community.
+                {selectedLocation.city && selectedLocation.state
+                  ? `Discover trusted businesses and services across ${selectedLocation.city}, ${selectedLocation.state}${selectedLocation.region ? ` (${selectedLocation.region})` : ""}.`
+                  : "Discover trusted businesses and services in your community."}
               </p>
             </div>
             
