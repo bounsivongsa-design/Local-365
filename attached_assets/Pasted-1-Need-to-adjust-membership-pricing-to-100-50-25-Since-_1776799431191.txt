@@ -1,0 +1,62 @@
+1. Need to adjust membership pricing to $100, $50 & $25.  Since we are lowering the monthly fee, should we adjust the Semi-Annual and Annual payment discounts, remove them or keep them the same?
+
+2. Additional zip codes will reflect the membership level discount.  This will also need to be added to the membership perks section. Bronze: 10% off additional zip codes, Silver: 25% off additional zip codes, Gold: 50% off additional zip codes.
+
+3. Referral program: The Business dashboard should have a referral link section.  If someone uses the referral code to sign up and makes their first monthly payment (after the 30-day trial), the member who sent the referral code will receive one month of paid membership. Will the promo code be auto-generated, or will we have to add it manually?
+
+4. Discount Codes.  Admin account needs an option to set up or create a fully free Gold Membership.  Dan who is making the commercial videos, will take that for payment.  Dan has many connections and will be instrumental in spreading the word.  Also, my best friend in Chesapeake will need one when we expand to there..
+
+5. We may want to adjust the pricing on the local events page as well.  I think I may have set the launch pricing too high.  Maybe we should cut those prices by 50% as well.  Gold 30-Day Event would be $25 instead of $50 and so forth.
+
+6. Landing page. LocalList365.com's landing page probably needs to be a little different. Instead of defaulting to Moyock and having the services search bar, the current service search bar should probably be replaced with a location/town/zip search bar that includes a 'my current location' option.  It's kind of like what is in the top right corner where it currently says Moyock, NC.   Kind of like zillow.com landing page.
+
+7. Business Dashboards.  How can we add multiple zip codes for the business?  I think once a business creates a listing they should have the option to copy their listing and publish it to another zip code.  Essentially, one listing that can just be duplicated.  How will payment be made for additional zip codes? (No 30-day Gold trial for additional zip codes) How will analytics, reviews, help wanted ads, advertising, events, and quotes be displayed for each additional zip code in the dashboard?  Are reviews zip code specific or just general to the website? 
+
+8. Advertising.  I believe an Advertising tab should be added at the top next to "For Business" for easy access.  Currently, the advertising options are hidden within "For Business".  Perhaps it only appears after a business account is created, similar to how the dashboard tab currently behaves.  Or we can just leave it in the business dashboard.
+
+9. Zip Code Additions.  As we add zip codes we need to ensure that all the verbiage is either general or specific to each zip.  Currently Moyock's landing page at the bottom left states: "Your trusted community directory for Moyock, NC".  Should we make those all general for a simple copy and paste for each new zip code or will we have to retype all of them for each zip code?  Same for landing page statements like "Heart of Moyock." I'm sure there are still things within the Terms and Conditions, Privacy Policy, Vendor Disclaimers, and FAQ that speak specifically about Moyock.  If they are all general, perhaps a simple copy and paste for each zip will be faster and cheaper?
+
+10. Zip Code Additions: These zip codes cover Elizabeth City down to the OBX.  I also added zips for Chesapeake and Va Beach.
+NC:
+27909 Elizabeth City
+27949 Kitty Hawk
+27948 Kill Devil Hills
+27953 Manns Harbor
+27954 Manteo
+27959 Nags Head
+27981 Wanchese
+27916 Aydlett
+27917 Barco
+27921 Camden
+27923 Coinjock
+27927 Corolla
+27929 Currituck
+27939 Grandy
+27941 Harbinger
+27947 Jarvisburg
+27950 Knotts Island
+27956 Maple
+27964 Point Harbor
+27965 Poplar Branch
+27966 Powells Point
+27973 Shawboro
+
+VA
+23320 Chesapeake
+23321 Chesapeake
+23322 Chesapeake
+23323 Chesapeake
+23324 Chesapeake
+23325 Chesapeake
+23451 Va Beach
+23452 Va Beach
+23453 Va Beach
+23454 Va Beach
+23455 Va Beach
+23456 Va Beach
+23457 Va Beach
+23459 Va Beach
+23460 Va Beach
+23461 Va Beach
+23462 Va Beach
+23464 Va Beach
