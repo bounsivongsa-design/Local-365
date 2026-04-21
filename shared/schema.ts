@@ -103,14 +103,20 @@ export type VerificationDocument = typeof verificationDocuments.$inferSelect;
 
 export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(), // Display name e.g., "Currituck County, NC"
+  name: text("name").notNull(), // Display name e.g., "Kitty Hawk, NC"
   city: text("city").notNull(),
   state: text("state").notNull(),
-  zipCodes: text("zip_codes").array().default([]), // Array of zip codes in this location
-  region: text("region"), // e.g., "Outer Banks", "Piedmont"
+  zipCodes: text("zip_codes").array().default([]), // Array of zip codes in this location (typically one per row in the per-zip seed)
+  region: text("region"), // e.g., "Outer Banks", "Hampton Roads"
   heroImage: text("hero_image"),
   tagline: text("tagline"),
   isActive: boolean("is_active").default(true),
+  // Geo + slug fields added for the multi-zip rollout (Task #11). `latitude`/
+  // `longitude` are stored as text so the existing pg driver doesn't fight
+  // numeric precision; we parse to number on read.
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  slug: text("slug"),
 });
 
 export const events = pgTable("events", {
