@@ -26,6 +26,9 @@ import { apiRequest } from "@/lib/queryClient";
 import heroImage from "@assets/image_1773172681995.png";
 import { ExampleBanner } from "@/components/ExampleBanner";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
+import { LocationSearchInput } from "@/components/LocationSearchInput";
+import { usePageMeta } from "@/hooks/use-page-meta";
+import { pageTitle, metaDescription, regionLabel } from "@/lib/regionCopy";
 
 const ICON_MAP: Record<string, any> = {
   UtensilsCrossed, Home: HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark,
@@ -42,7 +45,8 @@ const DIRECTORY_CATEGORIES = BUSINESS_CATEGORIES.map(cat => ({
 
 
 export default function Home() {
-  const { location: selectedLocation } = useLocation();
+  const { location: selectedLocation, isLocationSet } = useLocation();
+  usePageMeta(pageTitle(selectedLocation), metaDescription(selectedLocation));
   const { data: recentReviews, isLoading: reviewsLoading } = useQuery<any[]>({ queryKey: ['/api/reviews/recent'] });
   const { data: businesses, isLoading: businessesLoading } = useBusinesses();
   const { data: events, isLoading: eventsLoading } = useEvents(selectedLocation?.zipCode);
@@ -119,13 +123,16 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section with Image Background */}
+      {/* Hero Section — Zillow-style: location-first, then services search.
+          When the user hasn't picked a location yet (`!isLocationSet`), the
+          location search is the only input. Once a location is set, the
+          services search appears with dynamic per-region copy. */}
       <section className="text-center py-20 relative overflow-hidden min-h-[650px] flex items-center">
-        <img 
+        <img
           src={heroImage}
-          alt="Moyock NC local business directory"
+          alt={`Local business directory for ${selectedLocation.city}, ${selectedLocation.state}`}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: 'center 55%' }}
+          style={{ objectPosition: "center 55%" }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
@@ -133,61 +140,90 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full mb-6">
             <MapPin className="h-4 w-4 text-white" />
             <span className="text-white text-sm font-medium">
-              {selectedLocation.tagline || `Your Local Connection to ${selectedLocation.city}`}
+              {isLocationSet
+                ? selectedLocation.tagline || `Your local connection to ${regionLabel(selectedLocation)}`
+                : "Now serving 41 zip codes across NC & VA"}
             </span>
           </div>
-          
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
-            Find Trusted Local Pros in<br />
-            <span className="text-[#d4a373]">{selectedLocation.name}</span>
-          </h1>
-          <p className="text-xl md:text-2xl mb-4 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
-            Connect with verified local businesses and discover events in {selectedLocation.city}.
-          </p>
-          <p className="text-base mb-8 text-white/90 max-w-xl mx-auto">
-            Post a project and get competitive quotes from local contractors. Join the community.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2 justify-center items-center max-w-2xl mx-auto">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder={`Search for services in ${selectedLocation.city}...`}
-                value={heroSearch}
-                onChange={(e) => setHeroSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleHeroSearch()}
-                className="pl-12 pr-6 py-4 rounded-l-xl sm:rounded-l-xl sm:rounded-r-none rounded-xl w-full border-0 bg-white focus:ring-2 focus:ring-sand outline-none shadow-lg text-gray-800"
-                data-testid="input-hero-search"
-              />
-            </div>
-            <Button 
-              size="lg" 
-              onClick={handleHeroSearch}
-              className="hidden sm:flex rounded-r-xl rounded-l-none bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold px-8 h-[56px] shadow-lg"
-              data-testid="button-hero-search"
-            >
-              <Search className="h-5 w-5 mr-2" />
-              Search
-            </Button>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
-            <Link to="/events">
-              <Button 
-                size="lg" 
-                className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-[shadow,transform] duration-200"
-                data-testid="button-local-events"
-              >
-                <Calendar className="mr-2 h-5 w-5" />
-                Local Events
-              </Button>
-            </Link>
-            <Link to="/directory">
-              <Button size="lg" className="rounded-full bg-white text-primary hover:bg-white/90 font-semibold px-8 h-12 shadow-lg" data-testid="button-explore-directory">
-                <Compass className="mr-2 h-5 w-5" />
-                Explore Directory
-              </Button>
-            </Link>
-          </div>
+
+          {!isLocationSet ? (
+            <>
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
+                Where do you need
+                <br />
+                <span className="text-[#d4a373]">a local pro?</span>
+              </h1>
+              <p className="text-xl md:text-2xl mb-8 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
+                Enter your town or zip to see verified businesses, events, and reviews near you.
+              </p>
+              <LocationSearchInput placeholder="Enter your town or zip…" autoFocus />
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white tracking-tight drop-shadow-lg">
+                Find Trusted Local Pros in
+                <br />
+                <span className="text-[#d4a373]">{selectedLocation.name}</span>
+              </h1>
+              <p className="text-xl md:text-2xl mb-4 text-white/95 font-medium drop-shadow-md max-w-2xl mx-auto">
+                Connect with verified local businesses and discover events in {selectedLocation.city}.
+              </p>
+              <p className="text-base mb-8 text-white/90 max-w-xl mx-auto">
+                Post a project and get competitive quotes from local contractors. Join the community.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center items-center max-w-2xl mx-auto">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder={`Search for services in ${selectedLocation.city}…`}
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleHeroSearch()}
+                    className="pl-12 pr-6 py-4 rounded-l-xl sm:rounded-l-xl sm:rounded-r-none rounded-xl w-full border-0 bg-white focus:ring-2 focus:ring-sand outline-none shadow-lg text-gray-800"
+                    data-testid="input-hero-search"
+                  />
+                </div>
+                <Button
+                  size="lg"
+                  onClick={handleHeroSearch}
+                  className="hidden sm:flex rounded-r-xl rounded-l-none bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold px-8 h-[56px] shadow-lg"
+                  data-testid="button-hero-search"
+                >
+                  <Search className="h-5 w-5 mr-2" />
+                  Search
+                </Button>
+              </div>
+              <div className="mt-4 max-w-2xl mx-auto">
+                <details className="group">
+                  <summary className="text-sm text-white/80 hover:text-white cursor-pointer inline-flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" /> Change location
+                  </summary>
+                  <div className="mt-3">
+                    <LocationSearchInput placeholder="Search another town or zip…" variant="hero" />
+                  </div>
+                </details>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+                <Link to="/events">
+                  <Button
+                    size="lg"
+                    className="rounded-full bg-sand text-primary-dark hover:bg-sand/90 font-semibold px-8 h-12 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-[shadow,transform] duration-200"
+                    data-testid="button-local-events"
+                  >
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Local Events
+                  </Button>
+                </Link>
+                <Link to="/directory">
+                  <Button size="lg" className="rounded-full bg-white text-primary hover:bg-white/90 font-semibold px-8 h-12 shadow-lg" data-testid="button-explore-directory">
+                    <Compass className="mr-2 h-5 w-5" />
+                    Explore Directory
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
