@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { BusinessCard } from "@/components/BusinessCard";
 import { Input } from "@/components/ui/input";
@@ -32,16 +33,41 @@ export default function Directory() {
   const [searchParams] = useSearchParams();
   const urlSearch = searchParams.get("search") || "";
   const urlCategory = searchParams.get("category") || "";
+  const urlZip = searchParams.get("zip") || "";
   const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [category, setCategory] = useState(urlCategory || "All");
   const [radiusMiles, setRadiusMiles] = useState(0);
-  const { location: selectedLocation } = useLocation();
+  const { location: selectedLocation, setLocation } = useLocation();
   const hasCoords = selectedLocation.zipCode ? !!getZipCoords(selectedLocation.zipCode) : false;
+
+  // Deep-link support: /directory?zip=27909 selects that location once we can
+  // resolve it against the seeded /api/locations list.
+  const { data: dbLocations } = useQuery<Array<{ id: number; name: string; city: string; state: string; zipCodes: string[] | null; region: string | null; tagline: string | null }>>({
+    queryKey: ["/api/locations"],
+    enabled: !!urlZip && /^\d{5}$/.test(urlZip) && selectedLocation.zipCode !== urlZip,
+  });
 
   useEffect(() => {
     if (urlSearch) setSearchTerm(urlSearch);
     if (urlCategory) setCategory(urlCategory);
   }, [urlSearch, urlCategory]);
+
+  useEffect(() => {
+    if (!urlZip || !/^\d{5}$/.test(urlZip)) return;
+    if (selectedLocation.zipCode === urlZip) return;
+    if (!dbLocations?.length) return;
+    const match = dbLocations.find((l) => l.zipCodes?.includes(urlZip));
+    if (!match) return;
+    setLocation({
+      id: match.id,
+      name: match.name,
+      city: match.city,
+      state: match.state,
+      zipCode: urlZip,
+      region: match.region || "",
+      tagline: match.tagline || "",
+    });
+  }, [urlZip, dbLocations, selectedLocation.zipCode, setLocation]);
   const { data: businesses, isLoading } = useBusinesses({ 
     search: searchTerm, 
     category: category === "All" ? undefined : category 

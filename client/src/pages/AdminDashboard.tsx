@@ -64,6 +64,7 @@ import {
   Receipt,
   CircleDollarSign,
   Sparkles,
+  MapPin,
   Copy,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -165,7 +166,7 @@ type AdminBusiness = {
   createdAt: string | null;
 };
 
-type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes" | "growth";
+type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes" | "growth" | "locations";
 
 function tierLabel(t: string | null | undefined) {
   if (!t || t === "none") return "No Plan";
@@ -220,6 +221,7 @@ export default function AdminDashboard() {
     { id: "ads", label: "Ads", icon: Megaphone },
     { id: "quotes", label: "Quotes", icon: MessageSquare },
     { id: "growth", label: "Growth", icon: Sparkles },
+    { id: "locations", label: "Locations", icon: MapPin },
   ];
 
   return (
@@ -266,6 +268,7 @@ export default function AdminDashboard() {
         {activeTab === "ads" && <AdsTab />}
         {activeTab === "quotes" && <QuotesTab />}
         {activeTab === "growth" && <GrowthTab />}
+        {activeTab === "locations" && <LocationsTab />}
       </div>
     </div>
   );
@@ -2741,6 +2744,137 @@ function GrowthTab() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface AdminLocation {
+  id: number;
+  name: string;
+  city: string;
+  state: string;
+  zipCodes: string[] | null;
+  region: string | null;
+  tagline: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  slug: string | null;
+  isActive: boolean | null;
+}
+
+function LocationsTab() {
+  const { data, isLoading } = useQuery<AdminLocation[]>({ queryKey: ["/api/locations"] });
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    const s = search.trim().toLowerCase();
+    if (!s) return data;
+    return data.filter(
+      (l) =>
+        l.city.toLowerCase().includes(s) ||
+        l.state.toLowerCase().includes(s) ||
+        (l.region || "").toLowerCase().includes(s) ||
+        (l.zipCodes || []).some((z) => z.includes(s)),
+    );
+  }, [data, search]);
+
+  const stateCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const l of data || []) counts[l.state] = (counts[l.state] || 0) + 1;
+    return counts;
+  }, [data]);
+
+  return (
+    <div className="space-y-4">
+      <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-[#1a1a2e] text-lg">
+            <MapPin className="h-5 w-5 text-[#0a4a82]" />
+            Service Area Coverage
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold text-[#1a1a2e]" data-testid="text-locations-total">
+                {data?.length ?? 0}
+              </span>
+              <span className="text-sm text-slate-500">total zip codes</span>
+            </div>
+            {Object.entries(stateCounts).map(([st, n]) => (
+              <Badge key={st} className="bg-slate-100 text-slate-700 text-xs">
+                {st}: {n}
+              </Badge>
+            ))}
+          </div>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by city, zip, region, or state..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+              data-testid="input-locations-search"
+            />
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-sm" data-testid="table-admin-locations">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold">Zip</th>
+                    <th className="text-left px-3 py-2 font-semibold">City</th>
+                    <th className="text-left px-3 py-2 font-semibold">State</th>
+                    <th className="text-left px-3 py-2 font-semibold">Region</th>
+                    <th className="text-left px-3 py-2 font-semibold">Slug</th>
+                    <th className="text-left px-3 py-2 font-semibold">Lat / Lng</th>
+                    <th className="text-left px-3 py-2 font-semibold">Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((l) => {
+                    const zip = l.zipCodes?.[0] || "—";
+                    return (
+                      <tr key={l.id} className="border-t border-slate-100" data-testid={`row-location-${zip}`}>
+                        <td className="px-3 py-2 tabular-nums font-medium text-[#1a1a2e]">{zip}</td>
+                        <td className="px-3 py-2">{l.city}</td>
+                        <td className="px-3 py-2">{l.state}</td>
+                        <td className="px-3 py-2 text-slate-600">{l.region || "—"}</td>
+                        <td className="px-3 py-2 text-slate-500 font-mono text-xs">{l.slug || "—"}</td>
+                        <td className="px-3 py-2 text-slate-500 tabular-nums text-xs">
+                          {l.latitude && l.longitude ? `${l.latitude}, ${l.longitude}` : "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {l.isActive ? (
+                            <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
+                          ) : (
+                            <Badge className="bg-slate-200 text-slate-600 text-xs">Off</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
+                        No locations match this search.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-slate-500">
+            Coverage is seeded from <code className="font-mono">server/locationSeed.ts</code> on each boot
+            (idempotent — only missing zips are added). To add or remove a service area, edit
+            <code className="font-mono"> SEED_ZIPS</code> and restart.
+          </p>
         </CardContent>
       </Card>
     </div>
