@@ -13,11 +13,12 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Framework**: React 18 with TypeScript
 - **Styling**: Tailwind CSS with shadcn/ui (New York style variant)
 - **State Management**: TanStack React Query
+- **UI/UX Decisions**: Coastal color palette, shadcn/ui components, Zillow-style location search with geolocation and radius filtering across 41 zip codes. Badges for business credentials and membership tiers.
 
 ### Backend
 - **Runtime**: Node.js with Express.js (TypeScript, ESM modules)
 - **API Pattern**: RESTful JSON APIs (`/api` prefix)
-- **Authentication**: Custom email/password + Google OAuth, supporting `customer`, `business`, and `admin` account types.
+- **Authentication**: Custom email/password + Google OAuth, supporting `customer`, `business`, and `admin` account types. Bcrypt for password hashing, PostgreSQL for session storage.
 - **File Uploads**: Uppy with AWS S3-compatible presigned URLs
 
 ### Data Storage
@@ -25,45 +26,30 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Key-Value Store**: Replit Database
 
 ### Core Features
-- **Business Listings**: Detailed profiles including credentials, operating hours, social media, keywords, categories, membership tiers, ratings, and media.
-- **Quote System**: Enables customers to request quotes and businesses to respond within the platform.
-- **Events Platform**: Local events calendar with Stripe payment integration for business-submitted event ads.
+- **Business Listings**: Detailed profiles, categories, ratings, and media.
+- **Quote System**: Facilitates customer quote requests and business responses.
+- **Events Platform**: Calendar with Stripe payment for event ads.
 - **Job Board**: Businesses can post help-wanted ads based on membership tier.
-- **Membership Tiers**: Bronze ($25/mo), Silver ($50/mo), Gold ($100/mo) tiers with varying features, managed via Stripe subscriptions. Prepay savings: 10% semi-annual / 22.5% annual. Founders ($0) and existing paid subs are grandfathered. Source of truth in `shared/config/membership.ts` (mirrored in `client/src/pages/BusinessMembership.tsx` `MEMBERSHIP_TIERS` for the tier-card UI). Stripe checkout creates `price_data` dynamically from these constants — no pre-created Stripe Price IDs to rotate.
-- **Additional Zip-Code Listings**: Owners can add extra business listings under additional zip codes at a base $20/mo with tier discount: Bronze 10% → $18, Silver 25% → $15, Gold 50% → $10. Helper `getAdditionalZipPrice(tierId)` lives in `shared/config/membership.ts`. Multi-zip listing engineering itself is a separate task.
-- **Advertising**: Carousel banner ads with tiered pricing and an in-browser ad designer tool.
-- **Business Analytics**: Tracks engagement metrics for business listings.
-- **Review System**: Allows customer reviews with optional proof of service, business confirmation/dispute, and owner responses.
-- **Admin Dashboard**: Comprehensive control center for platform management, user/business oversight, and content moderation.
+- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions. Includes additional zip-code listings with tiered discounts.
+- **Advertising**: Carousel banner ads with tiered pricing and an in-browser ad designer.
+- **Business Analytics**: Tracks engagement metrics for listings.
+- **Review System**: Customer reviews with optional proof of service and business responses.
+- **Admin Dashboard**: Control center for platform management, user/business oversight, and content moderation.
 - **AI Lab**: Admin-only sandbox for developing Gold-exclusive AI features, including an AI credit system.
-- **Growth Features**: Includes a "Founding Urgency Banner" and "Refer-a-Business" program with unique referral codes and Gold-tier rewards.
-- **AI Listing Description Writer**: Generates multiple description variants for Gold members.
-- **AI Review Reply Generator**: Generates two reply variants for customer reviews for Gold members.
-- **AI Quote Responder**: Gold-only AI assist (3 credits) that drafts two opening message variants for businesses responding to a customer quote request. Mounted in the response dialog on `/quotes`. Prompt is constrained to never quote a price — owner sets that separately. Founders are unmetered.
-- **AI Help Wanted Writer**: Gold-only AI assist (5 credits) that drafts three Help Wanted ad variants (bullet, narrative, brief) from owner-supplied facts. Mounted in both the create and edit job-listing forms on `/jobs`. Prompt is constrained to never invent pay, hours, or perks not provided by the owner.
-- **AI Event Description Writer**: Gold-only AI assist (4 credits) that drafts three event description variants (highlights/narrative/brief) from owner-supplied facts (title, type, when, where, highlights, audience, ticket info, tone). Mounted in both the create and edit event forms on `/events`. Prompt is constrained to never invent a date, venue, ticket price, or performer/vendor names not provided by the owner.
-- **AI Photo Caption & Alt-Text**: Gold-only AI assist (2 credits) that uses gpt-4o-mini vision to generate accessibility alt-text (8-25 words, factual), a social-media caption (1-2 sentences, warm), and 5-7 hashtags from a gallery photo. Mounted as a sparkles button on each gallery photo in the EditListing GalleryManager. Server fetches the image via local loopback (so private/public bucket rules don't matter), base64-encodes it, and validates content-type/size (max 8MB) BEFORE reserving credits — unreadable images don't burn credits. Prompt forbids inventing prices/dates/people-names/awards.
-- **AI Credits Top-Up**: Gold owners can buy add-on credit packs (Starter 500/$10, Popular 1.5k/$25, Power 5k/$75, Pro 15k/$200) via Stripe one-time Checkout from the dashboard credits widget. Webhook applies credits with double-guarded idempotency (pre-check + UNIQUE on Stripe paymentIntent id). Founders are blocked at the API and don't see the button.
-- **Marketing Suite #4 — Daily Deals / Limited-Time Offers** (Gold-only, replaces Groupon-style listing fees ~$0-25/mo): `/deals` page with public Browse tab + owner Manage tab. Owners post time-bound offers (title, description, free-form discount text like "20% off" or "BOGO" or "$5 off", redemption instructions, start/end dates). **No cron — "active" computed at query time** as `status='active' AND startsAt <= NOW() AND endsAt > NOW()`. Public deals appear in a grid with "Ends in Nh" urgency badges when <24h remaining. Click tracking on "View Business" CTA increments `clickCount` for owner analytics, fire-and-forget (request never blocks user). Owners can pause/resume/archive without deleting. Server-side validation enforces `endsAt > startsAt` and `endsAt > now()` on create. Status enum: `active|paused|archived`. **AI Deal Writer** (3 credits, `/api/ai/deal-draft`): generates 3 variants (punchy/detailed/urgent) with hard prompt rules — never invent discount %s, dates, quantities, or fine print not supplied by owner. Linked from dashboard Quick Actions with Gold badge. Single `deals` table (UNIQUE indexes on status+ends_at filtered partial index for active queries, and on business_id for owner queries).
-- **Marketing Suite #3 — SMS Broadcast** (Gold-only, charged in AI credits, replaces SimpleTexting/EZTexting ~$25-50/mo): `/sms` page with Compose / Subscribers / History tabs. **2 credits per SMS segment** (160 chars GSM-7, 70 chars Unicode) — reuses existing AI credit system + Stripe top-up packs (no separate billing). Provider adapter at `server/sms.ts#providerSend()`: defaults to **stub mode** (logs to server console, full UI/credit flow works for demos and dev), flips to live Twilio when `SMS_PROVIDER=twilio` + `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER` are set. **TCPA compliance**: every subscriber requires explicit `consentAttested: true` checkbox at add-time (no auto-backfill from quote_requests/reviews unlike Newsletter); STOP footer auto-appended unless owner already wrote "STOP"; inbound webhook at `/api/sms/inbound` handles STOP/STOPALL/UNSUBSCRIBE/CANCEL/END/QUIT (marks all subs with that phone unsubscribed) and HELP. **Atomic credit reservation** mirrors `aiFeatures.reserveCredits`: deduct upfront before sending, **per-recipient refund** for any failed send so owner only pays for delivered messages. Founders bypass charges via immutable `businesses.isFoundingMember`. **A2P 10DLC architecture**: ONE registration under platform's Twilio account covers all owners (~$4 + $1.50/mo, 1-3wk approval) — owners do NOT each register. **AI SMS Drafter** (3 credits, `/api/ai/sms-draft`): generates 3 variants (concise ≤90ch / warm ≤140ch / with_cta ≤140ch) using gpt-4o-mini, prompt forbids inventing prices/dates/promises, forbids emoji (forces unicode → 2x cost), forbids fake urgency. Tables: `sms_subscribers` (UNIQUE on business_id+phone, E.164 normalized), `sms_campaigns` (status/recipientCount/successCount/failureCount/creditsCharged), `sms_sends` (UNIQUE on campaign_id+subscriber_id for idempotency, tracks providerMessageSid + errorCode).
-- **Marketing Suite #2 — Social Composer** (Gold-only, replaces Hootsuite/Buffer ~$15-30/mo): `/social` page with Compose / Drafts tabs. One AI call (5 credits) generates FOUR platform-tuned post variants from a single piece of owner notes — Facebook (conversational, 3-5 inline hashtags, ≤600 chars), Instagram (hook + body + 8-12 hashtag block), Google Business Profile (100-150 words, no hashtags, must include CTA), Nextdoor (neighborly, no hashtags, references local area). Each variant is editable in-place with a per-platform character counter and copy-to-clipboard. We deliberately do NOT auto-post — auto-posting requires Meta/Google business app review (weeks of approval) and is a future feature; copy-paste captures 90% of value with 0% friction. Drafts persist (`social_drafts` table with jsonb `variants`). Owner-scoped CRUD, Gold required for create/edit, founder bypass uses immutable `businesses.isFoundingMember`. Prompt forbids inventing prices/dates/awards.
-- **Marketing Suite #5 — Review Request Blasts** (Gold-only, replaces Birdeye/Podium ~$200-400/mo): `/review-requests` page with Customers / Compose / History tabs. Eligible recipient list auto-built from past quote requesters (joined via `quote_requests` → `quotes.business_id`) and past reviewers (joined to `users.email`), deduped, sorted by recency. **90-day per-customer cooldown** enforced at SEND time by querying `review_requests` (also marked in the eligible list so the UI grays them out). Owner picks customers, picks channel (email / sms / both), composes message. Each send writes a `review_requests` row with a unique click-tracking `token`. Email uses Resend with a coastal-themed HTML wrapper + a "Leave a Review" CTA button. SMS reuses `sms.providerSend` (stub by default, Twilio when configured) via exported `sendBroadcastSms` — link is appended automatically. **Public click endpoint** `GET /api/r/:token` flips `clickedAt`/`status='clicked'` then 302s to `/directory/:businessId#leave-review`. **AI Review-Request Drafter** (3 credits, `/api/ai/review-request-draft`): single call returns `{emailSubject, emailBody, smsBody}` via gpt-4o-mini, prompt forbids inventing rewards/discounts (illegal under most platform ToS), dates, awards, or staff names; forbids URLs/greetings/sign-offs (added automatically). SMS sends are NOT charged per-segment in v1 — only the AI draft costs credits; bundled into Gold value vs. competitors. Single `review_requests` table (id, businessId, recipientUserId, recipientEmail, recipientPhone, recipientName, channel, status enum `queued|sent|failed|clicked|completed`, token UNIQUE, sentAt, clickedAt, completedReviewId, errorMsg). Indexes on (businessId, sentAt) for cooldown query, (businessId, recipientEmail) and (businessId, recipientPhone) for fast lookups. Linked from dashboard Quick Actions with Gold badge.
-- **Marketing Suite #1 — Email Newsletter** (Gold-only, replaces Mailchimp/Constant Contact ~$15-50/mo): `/newsletter` page with Compose / Subscribers / History tabs. Subscriber list auto-built from past quote-requesters (joined via `quotes.business_id`) and reviewers, plus manual add. Uses Resend with per-recipient `newsletter_sends` row (UNIQUE on `(campaign_id, subscriber_id)` for idempotency). Every email gets a CAN-SPAM-compliant footer (business address + one-click unsubscribe link) and `List-Unsubscribe` / `List-Unsubscribe-Post` headers. Public token-based unsubscribe endpoint (no auth). **AI Newsletter Draft** (3 credits) generates `subject + bodyHtml` via gpt-4o-mini, prompt forbids inventing prices/dates/promises and disallows including a footer (added at send-time).
-
-### UI/UX Decisions
-- **Design Theme**: Coastal color palette.
-- **Component Library**: shadcn/ui (New York style variant) for consistent design.
-- **Location Search**: Zillow-style search with geolocation and radius filtering.
-- **Badges**: Visual badges for business credentials and membership tiers.
-
-### Technical Implementations
-- **Distance Filtering**: Uses Haversine formula for location-based searches.
-- **Category Management**: Hierarchical categories with community suggestion and tier-based limits.
-- **Stripe Integration**: Handles subscriptions, payments, and webhooks.
-- **Authentication**: Bcrypt for password hashing, PostgreSQL for session storage, and Google OAuth.
-- **Gold Auto-Upgrade**: New Bronze/Silver members automatically receive 30 days of Gold-tier features.
-- **Image Cropper**: Reusable component for image cropping and resizing.
-- **Ad Designer**: In-browser tool for designing ads with customizable elements and size-matched canvases.
+- **Growth Features**: "Founding Urgency Banner" and "Refer-a-Business" program.
+- **AI-Powered Tools (Gold-exclusive)**:
+    - Listing Description Writer
+    - Review Reply Generator
+    - Quote Responder
+    - Help Wanted Writer
+    - Event Description Writer
+    - Photo Caption & Alt-Text Generator (using gpt-4o-mini vision)
+    - Daily Deals / Limited-Time Offers (with AI Deal Writer)
+    - SMS Broadcast (with AI SMS Drafter, Twilio integration planned)
+    - Social Composer (generates platform-tuned posts for Facebook, Instagram, Google Business Profile, Nextdoor)
+    - Review Request Blasts (email/SMS to past customers with AI Drafter)
+    - Email Newsletter (with AI Newsletter Draft)
+- **Technical Implementations**: Haversine formula for distance filtering, hierarchical category management, Stripe integration for subscriptions and payments, Gold auto-upgrade for new members, reusable image cropper.
 
 ## External Dependencies
 
@@ -73,6 +59,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Replit Object Storage**: For file uploads.
 - **Stripe**: Payment processing.
 - **Resend**: Email notifications.
+- **Twilio**: SMS service (planned integration).
 
 ### Key NPM Packages
 - **UI Components**: Radix UI primitives, FullCalendar.

@@ -116,7 +116,7 @@ export const locations = pgTable("locations", {
   // numeric precision; we parse to number on read.
   latitude: text("latitude"),
   longitude: text("longitude"),
-  slug: text("slug"),
+  slug: text("slug").unique(),
 });
 
 export const events = pgTable("events", {

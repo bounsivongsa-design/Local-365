@@ -76,6 +76,17 @@ app.use((req, res, next) => {
     console.error("Admin setup:", e);
   }
 
+  // Seed service-area zip rows (NC OBX/EC + VA Chesapeake/VB) — idempotent.
+  try {
+    const { seedServiceAreas } = await import("./locationSeed");
+    const result = await seedServiceAreas();
+    if (result.inserted > 0) {
+      log(`Seeded ${result.inserted} service-area zips (existing: ${result.existing})`, "locations");
+    }
+  } catch (e) {
+    console.error("Service-area seed:", e);
+  }
+
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

@@ -92,20 +92,26 @@ export async function seedServiceAreas(): Promise<{ inserted: number; existing: 
     return { inserted: 0, existing: existingSlugs.size };
   }
 
-  await pgDb.insert(locations).values(
-    toInsert.map((z) => ({
-      name: `${z.city}, ${z.state}`,
-      city: z.city,
-      state: z.state,
-      zipCodes: [z.zipCode],
-      region: z.region,
-      tagline: z.tagline,
-      latitude: String(z.latitude),
-      longitude: String(z.longitude),
-      slug: z.slug,
-      isActive: true,
-    })),
-  );
+  await pgDb
+    .insert(locations)
+    .values(
+      toInsert.map((z) => ({
+        name: `${z.city}, ${z.state}`,
+        city: z.city,
+        state: z.state,
+        zipCodes: [z.zipCode],
+        region: z.region,
+        tagline: z.tagline,
+        latitude: String(z.latitude),
+        longitude: String(z.longitude),
+        slug: z.slug,
+        isActive: true,
+      })),
+    )
+    // Race-safe against concurrent boots: the partial unique index on `slug`
+    // (locations_slug_unique) is the source of truth, so let Postgres ignore
+    // duplicates rather than throwing.
+    .onConflictDoNothing({ target: locations.slug });
 
   return { inserted: toInsert.length, existing: existingSlugs.size };
 }
