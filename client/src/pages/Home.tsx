@@ -77,7 +77,7 @@ export default function Home() {
   const featuredBusinesses = businesses?.slice(0, 3) || [];
   const upcomingEvents = events?.slice(0, 3) || [];
 
-  const locationZip = selectedLocation?.zipCode || "27958";
+  const locationZip = selectedLocation?.zipCode || "";
 
   const handleHeroSearch = () => {
     if (heroSearch.trim()) {

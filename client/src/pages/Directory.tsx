@@ -29,7 +29,7 @@ import {
 import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { AdCarousel } from "@/components/AdCarousel";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { pageTitle, metaDescription } from "@/lib/regionCopy";
+import { pageTitle, metaDescription, directoryTagline } from "@/lib/regionCopy";
 
 export default function Directory() {
   const [searchParams] = useSearchParams();
@@ -185,15 +185,11 @@ export default function Directory() {
                   <Waves className="h-8 w-8 text-white" />
                 </div>
                 <h1 className="font-display text-2xl sm:text-4xl font-bold tracking-tight text-white drop-shadow-lg">
-                  {selectedLocation.city && selectedLocation.state
-                    ? `${selectedLocation.city} Directory`
-                    : "Local Directory"}
+                  Local Directory
                 </h1>
               </div>
               <p className="text-white/90 text-base sm:text-lg max-w-md">
-                {selectedLocation.city && selectedLocation.state
-                  ? `Discover trusted businesses and services across ${selectedLocation.city}, ${selectedLocation.state}${selectedLocation.region ? ` (${selectedLocation.region})` : ""}.`
-                  : "Discover trusted businesses and services in your community."}
+                {directoryTagline(selectedLocation)}
               </p>
             </div>
             
@@ -249,7 +245,7 @@ export default function Directory() {
         </div>
       </div>
 
-      <AdCarousel zipCode={selectedLocation?.zipCode || "27958"} />
+      <AdCarousel zipCode={selectedLocation?.zipCode || ""} />
 
       <div className="bg-[#f5f0eb] min-h-screen">
       <div className="container py-6 sm:py-8">

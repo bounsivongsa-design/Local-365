@@ -5,7 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navigation } from "@/components/Navigation";
 import { FoundingUrgencyBanner } from "@/components/FoundingUrgencyBanner";
-import { LocationProvider } from "@/context/LocationContext";
+import { LocationProvider, useLocation } from "@/context/LocationContext";
+import { footerTagline } from "@/lib/regionCopy";
 
 import Home from "@/pages/Home";
 import Directory from "@/pages/Directory";
@@ -41,6 +42,15 @@ import { DevModePanel } from "@/components/DevModePanel";
 import { CookieConsent } from "@/components/CookieConsent";
 import { useReferralCapture } from "@/hooks/use-referral-capture";
 import backgroundImage from "@assets/image_1773172681995.png";
+
+function FooterTagline() {
+  const { location } = useLocation();
+  return (
+    <p className="max-w-xs text-sm leading-relaxed" data-testid="text-footer-tagline">
+      {footerTagline(location)}
+    </p>
+  );
+}
 
 function AppRouter() {
   useReferralCapture();
@@ -92,7 +102,7 @@ function AppRouter() {
         <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <h3 className="font-display text-xl font-bold text-white mb-4" data-testid="text-footer-brand">Local List 365</h3>
-            <p className="max-w-xs text-sm leading-relaxed">Your trusted community directory across NC's Outer Banks &amp; Elizabeth City and VA's Hampton Roads. Connecting neighbors, supporting local businesses, and celebrating community life every single day.</p>
+            <FooterTagline />
             <p className="mt-3 text-sm"><a href="mailto:support@locallist365.com" className="text-[#d4a373] hover:text-[#c49363] transition-colors" data-testid="link-footer-support-email">support@locallist365.com</a></p>
           </div>
           <div>
