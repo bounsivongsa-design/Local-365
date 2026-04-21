@@ -66,7 +66,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "bronze",
     dbId: "basic",
     name: "Bronze",
-    monthlyPrice: 50,
+    monthlyPrice: 25,
     description: "Perfect for getting started",
     features: [
       "Business listing in directory",
@@ -74,7 +74,8 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Customer reviews enabled",
       "Up to 4 categories",
       "Quote access: 3rd round (48+ hrs)",
-      "10% off advertising"
+      "10% off advertising",
+      "Add extra zip-code listings for $18/mo each (10% off)"
     ],
     icon: Medal,
     gradient: "from-amber-700 to-amber-900",
@@ -84,7 +85,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "silver",
     dbId: "standard",
     name: "Silver",
-    monthlyPrice: 100,
+    monthlyPrice: 50,
     description: "Most popular for growing businesses",
     features: [
       "Everything in Bronze",
@@ -94,7 +95,8 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Quote access: 2nd round (24–48 hrs)",
       "Verified business badge",
       "Social media links",
-      "25% off advertising"
+      "25% off advertising",
+      "Add extra zip-code listings for $15/mo each (25% off)"
     ],
     icon: Star,
     gradient: "from-slate-400 to-slate-600",
@@ -105,7 +107,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "gold",
     dbId: "premium",
     name: "Gold",
-    monthlyPrice: 200,
+    monthlyPrice: 100,
     description: "For businesses that want it all",
     features: [
       "Everything in Silver",
@@ -115,7 +117,8 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Quote access: 1st round (0–24 hrs exclusive)",
       "30-sec promo video upload",
       "Advanced analytics dashboard",
-      "50% off all advertising"
+      "50% off all advertising",
+      "Add extra zip-code listings for $10/mo each (50% off)"
     ],
     icon: Crown,
     gradient: "from-amber-500 to-amber-700",
@@ -125,8 +128,8 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
 
 const PAYMENT_DISCOUNTS: Record<PaymentFrequency, { label: string; discount: number; badge?: string }> = {
   monthly: { label: "Monthly", discount: 0 },
-  semi_annual: { label: "Semi-Annual", discount: 0.20, badge: "Save 20%" },
-  annual: { label: "Annual", discount: 0.45, badge: "Save 45%" }
+  semi_annual: { label: "Semi-Annual", discount: 0.10, badge: "Save 10%" },
+  annual: { label: "Annual", discount: 0.225, badge: "Save 22.5%" }
 };
 
 function calculatePrice(basePrice: number, frequency: PaymentFrequency, isNewMember: boolean = false): { 
@@ -142,9 +145,11 @@ function calculatePrice(basePrice: number, frequency: PaymentFrequency, isNewMem
   
   const discountedMonthlyPrice = basePrice * (1 - discount);
   const paidMonths = months - freeMonths;
-  const total = discountedMonthlyPrice * paidMonths;
+  // Round to whole dollars so the displayed total matches what Stripe charges
+  // (server stores annual prices rounded — e.g. Bronze annual is $233, not $232.50).
+  const total = Math.round(discountedMonthlyPrice * paidMonths);
   const savings = (basePrice * months) - total;
-  
+
   return { total, perMonth: discountedMonthlyPrice, savings, months, freeMonths };
 }
 

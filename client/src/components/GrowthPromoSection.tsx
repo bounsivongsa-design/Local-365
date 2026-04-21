@@ -136,7 +136,7 @@ export function GrowthPromoSection() {
             </Button>
           </Link>
           <p className="text-xs text-white/50 mt-3">
-            Memberships start at $50/mo · Cancel anytime
+            Memberships start at $25/mo · Cancel anytime
           </p>
         </div>
       </div>

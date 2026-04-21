@@ -29,7 +29,8 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
 - **Quote System**: Enables customers to request quotes and businesses to respond within the platform.
 - **Events Platform**: Local events calendar with Stripe payment integration for business-submitted event ads.
 - **Job Board**: Businesses can post help-wanted ads based on membership tier.
-- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions.
+- **Membership Tiers**: Bronze ($25/mo), Silver ($50/mo), Gold ($100/mo) tiers with varying features, managed via Stripe subscriptions. Prepay savings: 10% semi-annual / 22.5% annual. Founders ($0) and existing paid subs are grandfathered. Source of truth in `shared/config/membership.ts` (mirrored in `client/src/pages/BusinessMembership.tsx` `MEMBERSHIP_TIERS` for the tier-card UI). Stripe checkout creates `price_data` dynamically from these constants — no pre-created Stripe Price IDs to rotate.
+- **Additional Zip-Code Listings**: Owners can add extra business listings under additional zip codes at a base $20/mo with tier discount: Bronze 10% → $18, Silver 25% → $15, Gold 50% → $10. Helper `getAdditionalZipPrice(tierId)` lives in `shared/config/membership.ts`. Multi-zip listing engineering itself is a separate task.
 - **Advertising**: Carousel banner ads with tiered pricing and an in-browser ad designer tool.
 - **Business Analytics**: Tracks engagement metrics for business listings.
 - **Review System**: Allows customer reviews with optional proof of service, business confirmation/dispute, and owner responses.

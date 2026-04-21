@@ -27,9 +27,9 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "bronze",
     name: "Bronze",
-    monthlyPrice: 50,
-    semiAnnualPrice: 240,
-    annualPrice: 330,
+    monthlyPrice: 25,
+    semiAnnualPrice: 135,
+    annualPrice: 233,
     pricingBasis: "per_zip_code",
     color: "#cd7f32",
     badgeGradient: "from-amber-700 via-amber-500 to-amber-700",
@@ -43,6 +43,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Up to 4 categories",
       "Basic quote access (3rd round)",
       "Monthly performance email",
+      "Add extra zip-code listings for $18/mo each (10% off)",
     ],
     limits: {
       maxPhotos: 0,
@@ -60,9 +61,9 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "silver",
     name: "Silver",
-    monthlyPrice: 100,
-    semiAnnualPrice: 480,
-    annualPrice: 660,
+    monthlyPrice: 50,
+    semiAnnualPrice: 270,
+    annualPrice: 465,
     pricingBasis: "per_zip_code",
     color: "#c0c0c0",
     badgeGradient: "from-gray-400 via-gray-200 to-gray-400",
@@ -78,6 +79,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Basic analytics dashboard",
       "Create customer coupons",
       "Verified business badge",
+      "Add extra zip-code listings for $15/mo each (25% off)",
     ],
     limits: {
       maxPhotos: 6,
@@ -95,9 +97,9 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "gold",
     name: "Gold",
-    monthlyPrice: 200,
-    semiAnnualPrice: 960,
-    annualPrice: 1320,
+    monthlyPrice: 100,
+    semiAnnualPrice: 540,
+    annualPrice: 930,
     pricingBasis: "per_zip_code",
     color: "#ffd700",
     badgeGradient: "from-yellow-500 via-amber-300 to-yellow-500",
@@ -114,6 +116,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Custom business page branding",
       "Monthly spotlight in newsletter",
       "50% off advertising rates",
+      "Add extra zip-code listings for $10/mo each (50% off)",
     ],
     limits: {
       maxPhotos: 10,
@@ -152,16 +155,16 @@ export const PAYMENT_FREQUENCIES: PaymentFrequency[] = [
     id: "semi-annual",
     name: "Semi-Annual",
     label: "every 6 months",
-    discount: 0.20,
-    trialInfo: "Save 20% — billed every 6 months",
+    discount: 0.10,
+    trialInfo: "Save 10% — billed every 6 months",
     billingCycles: 6,
   },
   {
     id: "annual",
     name: "Annual",
     label: "per year",
-    discount: 0.45,
-    trialInfo: "Save 45% — best value, billed annually",
+    discount: 0.225,
+    trialInfo: "Save 22.5% — best value, billed annually",
     billingCycles: 12,
   },
 ];
@@ -326,16 +329,37 @@ export const MEMBER_AD_RATES = {
 } as const;
 
 export const EVENT_2WEEK_AD_RATES = {
-  small: { member: 13, nonMember: 25 },
-  medium: { member: 18, nonMember: 35 },
-  large: { member: 25, nonMember: 50 },
+  small: { member: 7, nonMember: 13 },
+  medium: { member: 9, nonMember: 18 },
+  large: { member: 13, nonMember: 25 },
 } as const;
 
 export const EVENT_MONTHLY_AD_RATES = {
-  small: { member: 25, nonMember: 50 },
-  medium: { member: 38, nonMember: 75 },
-  large: { member: 50, nonMember: 100 },
+  small: { member: 13, nonMember: 25 },
+  medium: { member: 19, nonMember: 38 },
+  large: { member: 25, nonMember: 50 },
 } as const;
+
+/**
+ * Pricing for additional zip-code listings (one extra business listing per zip).
+ * Base $20/mo, discounted by membership tier:
+ *   Bronze 10% → $18, Silver 25% → $15, Gold 50% → $10.
+ * Non-members and free founders not applicable (founders priced separately).
+ */
+export const ADDITIONAL_ZIP_BASE_PRICE = 20;
+
+export const ADDITIONAL_ZIP_TIER_DISCOUNTS: Record<string, number> = {
+  bronze: 0.10,
+  silver: 0.25,
+  gold: 0.50,
+};
+
+export function getAdditionalZipPrice(tierId: string | null | undefined): number {
+  if (!tierId) return ADDITIONAL_ZIP_BASE_PRICE;
+  const normalizedId = TIER_ID_MAP[tierId] || tierId;
+  const discount = ADDITIONAL_ZIP_TIER_DISCOUNTS[normalizedId] ?? 0;
+  return Math.round(ADDITIONAL_ZIP_BASE_PRICE * (1 - discount));
+}
 
 export type AdSize = keyof typeof MEMBER_AD_RATES;
 

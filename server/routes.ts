@@ -15,7 +15,7 @@ import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerDealRoutes } from "./deals";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
-import { getMembershipTier } from "@shared/config/membership";
+import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
@@ -2015,12 +2015,11 @@ Respond in this exact JSON format:
         return res.status(201).json({ ...event, status: "approved", paymentStatus: "paid" });
       }
 
-      const eventAdSize = clientAdSize || "small";
-      const EVENT_PRICING_2WEEK: Record<string, number> = { small: 2500, medium: 3500, large: 5000 };
-      const EVENT_PRICING_MONTHLY: Record<string, number> = { small: 5000, medium: 7500, large: 10000 };
-      const basePriceCents = adDurationVal === "2week"
-        ? (EVENT_PRICING_2WEEK[eventAdSize] || 2500)
-        : (EVENT_PRICING_MONTHLY[eventAdSize] || 5000);
+      const eventAdSize = (clientAdSize || "small") as "small" | "medium" | "large";
+      // Use the canonical event ad rates from shared/config/membership.ts
+      // (non-member dollar amounts × 100 → cents). Tier discount applied below.
+      const eventRates = adDurationVal === "2week" ? EVENT_2WEEK_AD_RATES : EVENT_MONTHLY_AD_RATES;
+      const basePriceCents = (eventRates[eventAdSize]?.nonMember ?? eventRates.small.nonMember) * 100;
 
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       let bizTier = "none";
@@ -4663,10 +4662,21 @@ Respond in this exact JSON format:
         }).from(adPlacements).orderBy(desc(adPlacements.createdAt)).limit(10);
       } catch {}
 
-      // Revenue breakdown data
-      const SUBSCRIPTION_MONTHLY: Record<string, number> = { basic: 5000, standard: 10000, premium: 20000 };
-      const SUBSCRIPTION_SEMI: Record<string, number> = { basic: 24000, standard: 48000, premium: 96000 };
-      const SUBSCRIPTION_ANNUAL: Record<string, number> = { basic: 33000, standard: 66000, premium: 132000 };
+      // Revenue breakdown — derive from shared/config/membership.ts so admin
+      // metrics stay in sync with what Stripe charges. Keys here use the DB
+      // tier ids (basic/standard/premium); MEMBERSHIP_TIERS uses display ids
+      // (bronze/silver/gold), so map them via DB_TIER_TO_DISPLAY.
+      const TIER_DB_KEYS: Record<string, string> = { bronze: "basic", silver: "standard", gold: "premium" };
+      const cents = (n: number) => Math.round(n * 100);
+      const SUBSCRIPTION_MONTHLY: Record<string, number> = Object.fromEntries(
+        MEMBERSHIP_TIERS.map((t) => [TIER_DB_KEYS[t.id] ?? t.id, cents(t.monthlyPrice)]),
+      );
+      const SUBSCRIPTION_SEMI: Record<string, number> = Object.fromEntries(
+        MEMBERSHIP_TIERS.map((t) => [TIER_DB_KEYS[t.id] ?? t.id, cents(t.semiAnnualPrice)]),
+      );
+      const SUBSCRIPTION_ANNUAL: Record<string, number> = Object.fromEntries(
+        MEMBERSHIP_TIERS.map((t) => [TIER_DB_KEYS[t.id] ?? t.id, cents(t.annualPrice)]),
+      );
 
       const blankTierBreakdown = () => ({
         bronze: { count: 0, monthly: 0 },

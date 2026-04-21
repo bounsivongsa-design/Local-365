@@ -61,11 +61,22 @@ const DB_TO_TIER: Record<string, string> = {
   premium: "gold",
 };
 
-const TIER_PRICES: Record<string, Record<string, number>> = {
-  bronze: { monthly: 5000, semi_annual: 24000, annual: 33000 },
-  silver: { monthly: 10000, semi_annual: 48000, annual: 66000 },
-  gold: { monthly: 20000, semi_annual: 96000, annual: 132000 },
-};
+// Derived from shared/config/membership.ts so there is one source of truth for
+// pricing. Stripe uses cents — multiply dollars by 100. Frequency keys use the
+// snake_case form ("semi_annual") to match the API contract; the config uses
+// "semi-annual".
+import { MEMBERSHIP_TIERS } from "@shared/config/membership";
+
+const TIER_PRICES: Record<string, Record<string, number>> = Object.fromEntries(
+  MEMBERSHIP_TIERS.map((t) => [
+    t.id,
+    {
+      monthly: Math.round(t.monthlyPrice * 100),
+      semi_annual: Math.round(t.semiAnnualPrice * 100),
+      annual: Math.round(t.annualPrice * 100),
+    },
+  ]),
+);
 
 const FREQUENCY_INTERVAL: Record<string, { interval: Stripe.Price.Recurring.Interval; interval_count: number }> = {
   monthly: { interval: "month", interval_count: 1 },

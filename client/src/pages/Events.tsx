@@ -42,9 +42,21 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 
+// Source of truth lives in shared/config/membership.ts; mirroring shape here
+// keeps the existing component code untouched while values stay in sync.
+import { EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES } from "@shared/config/membership";
+
 const EVENT_BASE_PRICING = {
-  event2Week: { small: 25, medium: 35, large: 50 },
-  eventMonthly: { small: 50, medium: 75, large: 100 },
+  event2Week: {
+    small: EVENT_2WEEK_AD_RATES.small.nonMember,
+    medium: EVENT_2WEEK_AD_RATES.medium.nonMember,
+    large: EVENT_2WEEK_AD_RATES.large.nonMember,
+  },
+  eventMonthly: {
+    small: EVENT_MONTHLY_AD_RATES.small.nonMember,
+    medium: EVENT_MONTHLY_AD_RATES.medium.nonMember,
+    large: EVENT_MONTHLY_AD_RATES.large.nonMember,
+  },
 };
 
 const EVENT_TIER_DISCOUNTS = [
