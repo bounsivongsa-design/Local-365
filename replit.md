@@ -6,6 +6,7 @@ Local List 365 is a community-focused platform for Currituck County, NC, connect
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dune green (#8a9a5b)
+Dev/prod parity: Anything verified in dev must also be verified in production. After deploys, re-check critical flows (auth, Stripe checkout, webhooks, AI features, impersonation, multi-zip, comp memberships) against the published app — production uses different env vars, real Stripe keys, real Resend, and a separate session store, so dev success does NOT guarantee prod success.
 
 ## System Architecture
 
