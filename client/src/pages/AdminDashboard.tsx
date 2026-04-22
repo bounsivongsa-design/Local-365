@@ -2550,6 +2550,7 @@ function CompHistoryRows({ businessId }: { businessId: number }) {
   const { data, isLoading, isError } = useQuery<{ history: CompHistoryEntry[] }>({
     queryKey: ["/api/admin/businesses", businessId, "comp-history"],
   });
+  const [actionFilter, setActionFilter] = useState<"all" | "grant" | "revoke" | "expire">("all");
 
   if (isLoading) {
     return <Skeleton className="h-12 w-full rounded-lg" />;
@@ -2569,14 +2570,47 @@ function CompHistoryRows({ businessId }: { businessId: number }) {
     return { label: action, className: "bg-slate-100 text-slate-700 border-slate-200" };
   };
 
+  const filtered = actionFilter === "all" ? entries : entries.filter((e) => e.action === actionFilter);
+
+  const chips: { key: typeof actionFilter; label: string; activeClass: string }[] = [
+    { key: "all", label: `All (${entries.length})`, activeClass: "bg-slate-800 text-white border-slate-800" },
+    { key: "grant", label: `Granted (${entries.filter((e) => e.action === "grant").length})`, activeClass: "bg-amber-500 text-white border-amber-500" },
+    { key: "revoke", label: `Revoked (${entries.filter((e) => e.action === "revoke").length})`, activeClass: "bg-red-500 text-white border-red-500" },
+    { key: "expire", label: `Expired (${entries.filter((e) => e.action === "expire").length})`, activeClass: "bg-slate-600 text-white border-slate-600" },
+  ];
+
   return (
     <div className="space-y-2" data-testid={`history-comp-${businessId}`}>
       <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
         <Clock className="h-3 w-3" />
         Comp history ({entries.length})
       </div>
+      <div className="flex flex-wrap gap-1.5" data-testid={`history-filters-${businessId}`}>
+        {chips.map((c) => {
+          const isActive = actionFilter === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setActionFilter(c.key)}
+              aria-pressed={isActive}
+              className={`text-[10px] font-medium px-2 py-1 rounded-full border transition-colors ${
+                isActive ? c.activeClass : "bg-white/70 text-slate-600 border-slate-200 hover:border-slate-300"
+              }`}
+              data-testid={`filter-history-${c.key}-${businessId}`}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-xs text-slate-500" data-testid={`history-empty-${businessId}`}>
+          No entries for this filter.
+        </p>
+      ) : (
       <ul className="space-y-1.5">
-        {entries.map((e) => {
+        {filtered.map((e) => {
           const tag = labelFor(e.action);
           return (
             <li
@@ -2605,6 +2639,7 @@ function CompHistoryRows({ businessId }: { businessId: number }) {
           );
         })}
       </ul>
+      )}
     </div>
   );
 }
