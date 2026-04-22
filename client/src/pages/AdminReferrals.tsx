@@ -38,6 +38,7 @@ interface AdminReferral {
   referrerTier: string | null;
   referredBusinessId: number;
   referredBusinessName: string;
+  creditAmountCents: number | null;
   estimatedCreditCents: number | null;
 }
 
@@ -203,7 +204,7 @@ export default function AdminReferrals() {
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Created</th>
                     <th className="px-4 py-3">Rewarded</th>
-                    <th className="px-4 py-3">Credit (est.)</th>
+                    <th className="px-4 py-3">Credit</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
@@ -226,7 +227,19 @@ export default function AdminReferrals() {
                       <td className="px-4 py-3">{statusBadge(r.status)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground" data-testid={`text-created-${r.id}`}>{formatDate(r.createdAt)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground" data-testid={`text-rewarded-${r.id}`}>{formatDate(r.rewardedAt)}</td>
-                      <td className="px-4 py-3" data-testid={`text-credit-${r.id}`}>{formatCents(r.estimatedCreditCents)}</td>
+                      <td className="px-4 py-3" data-testid={`text-credit-${r.id}`}>
+                        {r.creditAmountCents != null ? (
+                          <div>
+                            <div className="font-medium">{formatCents(r.creditAmountCents)}</div>
+                            <div className="text-xs text-muted-foreground">actual</div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div>{formatCents(r.estimatedCreditCents)}</div>
+                            <div className="text-xs text-amber-600" data-testid={`label-credit-estimate-${r.id}`}>estimate</div>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <Button
                           size="sm"
@@ -259,7 +272,8 @@ export default function AdminReferrals() {
               {confirmRow?.status === "rewarded" ? "Re-issue" : "Issue"} Stripe credit?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will apply an estimated {formatCents(confirmRow?.estimatedCreditCents ?? null)} credit
+              This will apply approximately{" "}
+              {formatCents(confirmRow?.creditAmountCents ?? confirmRow?.estimatedCreditCents ?? null)} credit
               to <strong>{confirmRow?.referrerBusinessName}</strong>'s Stripe customer balance for referring{" "}
               <strong>{confirmRow?.referredBusinessName}</strong>. The exact amount is recalculated from
               their current subscription at issue time. This action is logged.

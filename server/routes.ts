@@ -4885,6 +4885,9 @@ Respond in this exact JSON format:
           referrerTier: referrer?.tier ?? null,
           referredBusinessId: r.referredBusinessId,
           referredBusinessName: referred?.name ?? `Business #${r.referredBusinessId}`,
+          // Real cents persisted at issue-time. Null on legacy rows or rows
+          // that haven't been rewarded yet — UI falls back to estimate.
+          creditAmountCents: r.creditAmountCents ?? null,
           estimatedCreditCents,
         };
       });
@@ -4988,7 +4991,7 @@ Respond in this exact JSON format:
 
       await pgDb
         .update(referrals)
-        .set({ status: "rewarded", rewardedAt: new Date() })
+        .set({ status: "rewarded", rewardedAt: new Date(), creditAmountCents: creditCents })
         .where(eq(referrals.id, referralId));
 
       console.log(`[admin issue-credit] $${(creditCents / 100).toFixed(2)} credited to ${referrer.stripeCustomerId} for referral ${referralId} by admin ${userId}`);

@@ -382,6 +382,12 @@ export async function processReferralOnFirstPaidInvoice(args: {
       creditCents = TIER_PRICE_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
     }
 
+    // Whether we actually issued a Stripe credit. Only true if we hit the
+    // stripe.customers.createBalanceTransaction path below; the Gold-days
+    // fallback for founder/comp accounts is NOT a dollar credit and must
+    // leave creditAmountCents null so reporting stays honest.
+    let stripeCreditIssued = false;
+
     if (referrer.stripeCustomerId) {
       // Apply the Stripe credit BEFORE finalizing the row. Idempotency
       // key keyed on referralId means safe under retry — if we crashed
@@ -404,6 +410,7 @@ export async function processReferralOnFirstPaidInvoice(args: {
         },
         { idempotencyKey: `referral-credit-${pending.id}` },
       );
+      stripeCreditIssued = true;
       console.log(`[referrals] credited $${(creditCents / 100).toFixed(2)} to customer ${referrer.stripeCustomerId} for referral ${pending.id}`);
     } else {
       // Founder / comp account fallback: extend Gold trial by 30 days.
@@ -416,10 +423,17 @@ export async function processReferralOnFirstPaidInvoice(args: {
       console.log(`[referrals] no stripeCustomerId on referrer ${referrer.id}; granted +${REFERRAL_REWARD_DAYS} Gold days instead`);
     }
 
-    // Credit succeeded — finalize the row.
+    // Credit succeeded — finalize the row. Persist the exact cents we just
+    // issued so the admin UI can show the real number even if the referrer
+    // later changes tiers. For the Gold-days fallback (no Stripe customer)
+    // we leave creditAmountCents null since no dollar credit was issued.
     await db
       .update(referrals)
-      .set({ status: "rewarded", rewardedAt: new Date() })
+      .set({
+        status: "rewarded",
+        rewardedAt: new Date(),
+        creditAmountCents: stripeCreditIssued ? creditCents : null,
+      })
       .where(eq(referrals.id, pending.id));
 
     // Best-effort email — failures must not undo the reward.

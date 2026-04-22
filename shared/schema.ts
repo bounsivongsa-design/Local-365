@@ -367,6 +367,11 @@ export const referrals = pgTable("referrals", {
   // 'rewarded'   — credit applied to referrer; reward email sent
   status: text("status").notNull().default("pending"),
   rewardDays: integer("reward_days").notNull().default(30),
+  // Actual Stripe credit amount (in cents) issued to the referrer when the
+  // row was finalized. Null on legacy rows from before this column existed
+  // and on rows that haven't been rewarded yet — UI falls back to a
+  // tier-based estimate in that case.
+  creditAmountCents: integer("credit_amount_cents"),
   createdAt: timestamp("created_at").defaultNow(),
   rewardedAt: timestamp("rewarded_at"),
 });
