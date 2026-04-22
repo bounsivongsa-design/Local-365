@@ -65,6 +65,27 @@ npm test
 
 Test files live under `server/__tests__/**/*.test.ts` and are discovered/executed by `script/run-tests.ts`, which shells out to `tsx --test`. Drop a new `*.test.ts` file anywhere under that directory and it will be picked up automatically — no script changes needed. Tests share the workspace Postgres database, so make sure the schema is up to date (`npm run db:push`) before running.
 
+### Database schema sync
+
+`npm run db:push` should always complete non-interactively. If you ever see drizzle-kit prompting "Do you want to truncate <table>?", that means a unique constraint in the live DB is named differently from what `shared/schema.ts` would generate (drizzle treats it as a new constraint on a populated table). Fix it by renaming/aligning the existing constraint in the DB to match drizzle's `<table>_<column>_unique` naming, rather than answering the prompt. For an already-drifted DB the one-time alignment that was applied for task #53 was:
+
+```sql
+-- locations.slug had a partial unique INDEX; replace with a real UNIQUE constraint
+DROP INDEX locations_slug_unique;
+ALTER TABLE locations ADD CONSTRAINT locations_slug_unique UNIQUE (slug);
+
+-- legacy *_key constraint names → drizzle's *_unique names
+ALTER TABLE businesses RENAME CONSTRAINT businesses_referral_code_key TO businesses_referral_code_unique;
+ALTER TABLE businesses RENAME CONSTRAINT businesses_founding_member_number_key TO businesses_founding_member_number_unique;
+ALTER TABLE referrals RENAME CONSTRAINT referrals_referred_business_id_key TO referrals_referred_business_id_unique;
+
+-- redundant duplicates (the *_unique versions already exist)
+ALTER TABLE newsletter_subscribers DROP CONSTRAINT newsletter_subscribers_unsubscribe_token_key;
+ALTER TABLE review_requests DROP CONSTRAINT review_requests_token_key;
+```
+
+Fresh environments don't need any of this — drizzle creates everything from `shared/schema.ts` directly.
+
 ## External Dependencies
 
 ### Third-Party Services
