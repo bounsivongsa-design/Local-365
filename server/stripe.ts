@@ -6,7 +6,7 @@ import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { processMembershipActivation, processReferralOnFirstPaidInvoice } from "./referrals";
-import { invalidateStripeCreditCache } from "./stripeCreditCache";
+import { invalidateStripeCreditCache, refreshPersistedCreditFromStripe } from "./stripeCreditCache";
 import { applyCreditPackPurchase } from "./aiFeatures";
 import { handleAdditionalZipCheckoutCompleted, handleAdditionalZipSubscriptionDeleted } from "./multiZip";
 
@@ -1313,7 +1313,16 @@ export function registerStripeRoutes(app: Express) {
                 ? (invoice.customer as { id: string }).id
                 : null;
           if (invoiceCustomerId) {
-            invalidateStripeCreditCache(invoiceCustomerId);
+            // Drop the cache AND re-read the customer balance so the
+            // persisted last-known credit reflects whatever Stripe just
+            // consumed against this invoice. Without the persist step,
+            // an outage right after this webhook could leave the
+            // dashboard overstating the balance until the next live
+            // read succeeded. Best-effort: failures are logged inside
+            // the helper and never throw.
+            await refreshPersistedCreditFromStripe(invoiceCustomerId, stripe!).catch((e) =>
+              console.error("[referrals] refreshPersistedCreditFromStripe:", e),
+            );
           }
           const subId = invoice.subscription as string | null;
           if (subId) {

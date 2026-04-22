@@ -81,6 +81,14 @@ export const businesses = pgTable("businesses", {
   compedMembershipReminder7Sent: boolean("comped_membership_reminder_7_sent").default(false),
   compedMembershipReminder1Sent: boolean("comped_membership_reminder_1_sent").default(false),
   foundingMemberNumber: integer("founding_member_number").unique(),
+  // Last known Stripe customer-balance credit (cents, positive number) for
+  // this business, persisted so the owner dashboard can keep showing the
+  // real pending-credit dollar value across server restarts and Stripe
+  // outages instead of flashing a misleading $0. Refreshed whenever we
+  // successfully read the Stripe balance, when we issue a referral credit,
+  // and when an invoice consumes a credit. NULL means we've never read it
+  // (treat as unknown — UI falls back to its tier-based estimate).
+  lastKnownPendingCreditCents: integer("last_known_pending_credit_cents"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   phone: text("phone"),
