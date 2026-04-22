@@ -1,8 +1,45 @@
 import pg from "pg";
-import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
+import { getTableConfig, PgDialect, PgTable } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 import * as schema from "../shared/schema";
 
 const { Pool } = pg;
+const dialect = new PgDialect();
+
+// Normalize a SQL predicate for comparison between drizzle's `.where(sql\`…\`)`
+// declaration and Postgres's `pg_get_expr(indpred, indrelid)` output. Postgres
+// decompiles the predicate with extra outer parentheses (e.g.
+// `(grant_period IS NOT NULL)`) and may differ in whitespace/case. We
+// lowercase, collapse whitespace, and peel off *only* balanced outer
+// parentheses — interior parens are preserved so that precedence-sensitive
+// predicates like `(a AND b) OR c` aren't collapsed to the same string as
+// `a AND (b OR c)`. The drift message still prints both raw forms so the
+// human can adjudicate edge cases.
+function normalizePredicate(s: string | null | undefined): string {
+  if (!s) return "";
+  let out = s.toLowerCase().replace(/\s+/g, " ").trim();
+  // Repeatedly strip a single balanced pair of outer parens, e.g.
+  // "((a is not null))" -> "a is not null". A pair is "outer" only if
+  // the matching close paren is the very last character.
+  while (out.startsWith("(") && out.endsWith(")")) {
+    let depth = 0;
+    let matchedAtEnd = true;
+    for (let i = 0; i < out.length; i++) {
+      const ch = out[i];
+      if (ch === "(") depth++;
+      else if (ch === ")") {
+        depth--;
+        if (depth === 0 && i !== out.length - 1) {
+          matchedAtEnd = false;
+          break;
+        }
+      }
+    }
+    if (!matchedAtEnd || depth !== 0) break;
+    out = out.slice(1, -1).trim();
+  }
+  return out.replace(/\s+/g, "");
+}
 
 if (!process.env.DATABASE_URL) {
   console.error(
@@ -13,7 +50,16 @@ if (!process.env.DATABASE_URL) {
 
 type ExpectedColumn = { table: string; column: string };
 type ExpectedUnique = { table: string; name: string; columns: string[] };
-type ExpectedUniqueIndex = { table: string; name: string };
+type ExpectedUniqueIndex = {
+  table: string;
+  name: string;
+  // Normalized predicate text from `.where(sql\`…\`)`, or "" when the index
+  // is declared bare. Compared against pg_index.indpred decompiled via
+  // pg_get_expr — see "Partial unique indexes" in replit.md.
+  predicate: string;
+  // Raw predicate text (for error messages); "" when bare.
+  predicateRaw: string;
+};
 
 function collectExpected(): {
   columns: ExpectedColumn[];
@@ -49,10 +95,30 @@ function collectExpected(): {
     }
 
     for (const idx of cfg.indexes) {
-      const idxCfg = (idx as { config?: { name?: string; unique?: boolean } })
-        .config;
+      const idxCfg = (
+        idx as {
+          config?: { name?: string; unique?: boolean; where?: SQL };
+        }
+      ).config;
       if (idxCfg?.unique && idxCfg.name) {
-        uniqueIndexes.push({ table: tableName, name: idxCfg.name });
+        let predicateRaw = "";
+        if (idxCfg.where) {
+          try {
+            predicateRaw = dialect.sqlToQuery(idxCfg.where, "indexes").sql;
+          } catch (err) {
+            console.error(
+              `[schema-drift] Failed to render WHERE predicate for unique index "${idxCfg.name}":`,
+              err,
+            );
+            process.exit(1);
+          }
+        }
+        uniqueIndexes.push({
+          table: tableName,
+          name: idxCfg.name,
+          predicate: normalizePredicate(predicateRaw),
+          predicateRaw,
+        });
       }
     }
   }
@@ -79,9 +145,11 @@ async function main() {
   let actualColumns: Map<string, Set<string>> = new Map();
   // Map<tableName, Map<constraintName, columnList sorted>>
   let actualUniques: Map<string, Map<string, string[]>>;
-  // Map<tableName, Set<indexName>> — only true UNIQUE INDEXes that are NOT
-  // backing a UNIQUE/PRIMARY KEY constraint (those show up as constraints).
-  let actualUniqueIndexes: Map<string, Set<string>>;
+  // Map<tableName, Map<indexName, predicate>> — only true UNIQUE INDEXes
+  // that are NOT backing a UNIQUE/PRIMARY KEY constraint (those show up as
+  // constraints). `predicate` is pg_get_expr(indpred, indrelid) (decompiled
+  // partial-index WHERE clause) or "" for non-partial indexes.
+  let actualUniqueIndexes: Map<string, Map<string, string>>;
 
   try {
     // Always load column existence — needed for `absentTables` so that
@@ -139,8 +207,11 @@ async function main() {
     const idxRes = await pool.query<{
       table_name: string;
       indexname: string;
+      predicate: string | null;
     }>(
-      `SELECT cls.relname AS table_name, idx_cls.relname AS indexname
+      `SELECT cls.relname AS table_name,
+              idx_cls.relname AS indexname,
+              pg_get_expr(i.indpred, i.indrelid) AS predicate
          FROM pg_index i
          JOIN pg_class idx_cls ON idx_cls.oid = i.indexrelid
          JOIN pg_class cls ON cls.oid = i.indrelid
@@ -156,12 +227,12 @@ async function main() {
     );
     actualUniqueIndexes = new Map();
     for (const row of idxRes.rows) {
-      let set = actualUniqueIndexes.get(row.table_name);
-      if (!set) {
-        set = new Set();
-        actualUniqueIndexes.set(row.table_name, set);
+      let m = actualUniqueIndexes.get(row.table_name);
+      if (!m) {
+        m = new Map();
+        actualUniqueIndexes.set(row.table_name, m);
       }
-      set.add(row.indexname);
+      m.set(row.indexname, row.predicate ?? "");
     }
   } finally {
     await pool.end();
@@ -237,13 +308,36 @@ async function main() {
   // Unique-index name drift. Drizzle's `uniqueIndex("name")` declarations
   // become real CREATE UNIQUE INDEX statements (not constraints), so they
   // live in pg_index — not pg_constraint.
-  type IndexDrift = { table: string; name: string };
+  type IndexDrift =
+    | { kind: "missing"; table: string; name: string }
+    // Predicate drift on a partial unique index. drizzle-kit treats the
+    // WHERE clause as part of the index identity, so a mismatch causes
+    // drift on every push and may even prompt to recreate the index.
+    // See replit.md → "Partial unique indexes".
+    | {
+        kind: "predicate";
+        table: string;
+        name: string;
+        expected: string;
+        actual: string;
+      };
   const indexDrift: IndexDrift[] = [];
   for (const exp of expected.uniqueIndexes) {
     if (absentTables.has(exp.table)) continue;
-    const set = actualUniqueIndexes.get(exp.table) ?? new Set();
-    if (!set.has(exp.name)) {
-      indexDrift.push({ table: exp.table, name: exp.name });
+    const m = actualUniqueIndexes.get(exp.table) ?? new Map<string, string>();
+    if (!m.has(exp.name)) {
+      indexDrift.push({ kind: "missing", table: exp.table, name: exp.name });
+      continue;
+    }
+    const actualPredicate = m.get(exp.name) ?? "";
+    if (normalizePredicate(actualPredicate) !== exp.predicate) {
+      indexDrift.push({
+        kind: "predicate",
+        table: exp.table,
+        name: exp.name,
+        expected: exp.predicateRaw,
+        actual: actualPredicate,
+      });
     }
   }
 
@@ -297,9 +391,21 @@ async function main() {
     console.error("");
   }
   if (indexDrift.length > 0) {
-    console.error("Unique index name drift:");
+    console.error("Unique index drift:");
     for (const d of indexDrift) {
-      console.error(`  - ${d.table}: missing UNIQUE INDEX "${d.name}"`);
+      if (d.kind === "missing") {
+        console.error(`  - ${d.table}: missing UNIQUE INDEX "${d.name}"`);
+      } else {
+        const expected = d.expected ? `WHERE ${d.expected}` : "(no WHERE)";
+        const actual = d.actual ? `WHERE ${d.actual}` : "(no WHERE)";
+        console.error(
+          `  - ${d.table}: partial-index predicate drift on "${d.name}"\n` +
+            `      schema declares: ${expected}\n` +
+            `      database has:    ${actual}\n` +
+            `      Update either shared/schema.ts (the .where(sql\`…\`) clause) or the live index so they match. ` +
+            `See replit.md → "Partial unique indexes".`,
+        );
+      }
     }
     console.error("");
   }
