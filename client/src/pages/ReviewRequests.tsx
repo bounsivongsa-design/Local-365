@@ -325,6 +325,34 @@ export default function ReviewRequestsPage() {
     },
   });
 
+  const sendTestBounceAlert = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/businesses/${businessId}/review-requests/bounce-alert-prefs/test`,
+      );
+      return (await res.json()) as {
+        ok: boolean;
+        recipientEmail: string;
+        bounceCount: number;
+        windowHours: number;
+      };
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Test alert sent",
+        description: `Sent to ${data.recipientEmail}. Check your inbox (and spam folder) for the heads-up email.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Couldn't send test alert",
+        description: err?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const clearAllWebhookBounces = useMutation({
     mutationFn: async () => {
       const res = await apiRequest(
@@ -753,7 +781,23 @@ export default function ReviewRequestsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={sendTestBounceAlert.isPending}
+                  onClick={() => sendTestBounceAlert.mutate()}
+                  data-testid="button-bounce-alert-test"
+                >
+                  {sendTestBounceAlert.isPending ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Send className="h-3 w-3 mr-1" />
+                  )}
+                  Send test alert
+                </Button>
+                <div className="flex items-center gap-2 ml-auto">
                 {hasChanges && (
                   <Button
                     variant="ghost"
@@ -794,6 +838,7 @@ export default function ReviewRequestsPage() {
                   ) : null}
                   Save preferences
                 </Button>
+                </div>
               </div>
               {(!thresholdValid || !cadenceValid) && (
                 <p className="text-xs text-destructive" data-testid="text-bounce-alert-error">

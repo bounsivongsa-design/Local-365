@@ -30,6 +30,15 @@ import { and, eq, sql, desc, or, gte, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { normalizePhone } from "./sms";
+import { notifyOwnerBounceSpike } from "./email";
+
+// In-memory per-business rate limiter for the "Send test alert" button on
+// the Bounce alerts card. One test send per hour per business is plenty for
+// owners to verify deliverability/copy without giving them a way to spam
+// themselves (or burn our Resend quota). Cleared on process restart, which
+// is fine — the limit is purely defensive UX, not a security boundary.
+const bounceAlertTestLastSentAt = new Map<number, number>();
+const BOUNCE_ALERT_TEST_COOLDOWN_MS = 60 * 60 * 1000;
 
 const COOLDOWN_DAYS = 90;
 
@@ -818,6 +827,90 @@ export function registerReviewRequestRoutes(app: Express) {
         console.error("[review-requests] bounce-spike-alerts failed:", err?.message);
         res.status(500).json({ message: "Failed to load bounce alert history" });
       }
+    },
+  );
+
+  // Owner-triggered "Send test alert" — fires the same `notifyOwnerBounceSpike`
+  // email the cron uses, with synthetic numbers, so owners can verify the
+  // copy and that it lands at the right inbox before a real spike happens.
+  // Deliberately does NOT insert into `bounce_spike_alerts` so the test
+  // can't accidentally cause the next real-spike cron to skip this business
+  // due to the cooldown row. Rate-limited in-memory to one send per hour
+  // per business.
+  app.post(
+    "/api/businesses/:id/review-requests/bounce-alert-prefs/test",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId);
+      if (!auth) return;
+      const biz = auth.business;
+
+      const last = bounceAlertTestLastSentAt.get(businessId);
+      const now = Date.now();
+      if (last && now - last < BOUNCE_ALERT_TEST_COOLDOWN_MS) {
+        const retryInMs = BOUNCE_ALERT_TEST_COOLDOWN_MS - (now - last);
+        const retryInMinutes = Math.max(1, Math.ceil(retryInMs / 60_000));
+        return res.status(429).json({
+          message: `You can only send one test alert per hour. Try again in about ${retryInMinutes} minute${retryInMinutes === 1 ? "" : "s"}.`,
+          retryInMinutes,
+        });
+      }
+
+      // Resolve the same recipient the cron would use: prefer the listing's
+      // contact email, fall back to the linked user's account email.
+      let recipientEmail: string | null = biz.email ?? null;
+      if (!recipientEmail && biz.ownerUserId) {
+        const [owner] = await pgDb
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, biz.ownerUserId));
+        recipientEmail = owner?.email ?? null;
+      }
+      if (!recipientEmail) {
+        return res.status(400).json({
+          message:
+            "We don't have an email address for this business. Add a contact email to the listing first.",
+        });
+      }
+
+      const lookbackHours = readPosIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
+      const effectiveThreshold = biz.bounceSpikeThreshold ?? readPosIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
+      // Synthetic count: just over the configured threshold so the email
+      // reads like a real spike alert (not "1 bounce") regardless of how
+      // owners have tuned their threshold.
+      const syntheticBounceCount = effectiveThreshold + 2;
+
+      let sent = false;
+      try {
+        sent = await notifyOwnerBounceSpike({
+          recipientEmail,
+          businessName: biz.name,
+          bounceCount: syntheticBounceCount,
+          windowHours: lookbackHours,
+        });
+      } catch (err: any) {
+        console.error("[review-requests] test bounce alert failed:", err?.message);
+        return res.status(500).json({ message: "Failed to send test alert" });
+      }
+
+      if (!sent) {
+        return res.status(502).json({
+          message:
+            "We couldn't send the test email. Email may not be configured on the server — check with an admin.",
+        });
+      }
+
+      bounceAlertTestLastSentAt.set(businessId, now);
+      res.json({
+        ok: true,
+        recipientEmail,
+        bounceCount: syntheticBounceCount,
+        windowHours: lookbackHours,
+      });
     },
   );
 
