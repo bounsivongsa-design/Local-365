@@ -23,6 +23,7 @@ import { db } from "./db";
 import { businesses, referrals } from "@shared/schema";
 import { and, eq, sql, isNull, inArray } from "drizzle-orm";
 import { notifyReferralInvoiceCredit, notifyAdminReferralPayoutFailed } from "./email";
+import { invalidateStripeCreditCache } from "./stripeCreditCache";
 import Stripe from "stripe";
 
 const FOUNDING_MEMBER_LIMIT = 100;
@@ -412,6 +413,9 @@ export async function processReferralOnFirstPaidInvoice(args: {
       );
       stripeCreditIssued = true;
       console.log(`[referrals] credited $${(creditCents / 100).toFixed(2)} to customer ${referrer.stripeCustomerId} for referral ${pending.id}`);
+      // Drop the cached pending-credit so the next dashboard load reflects
+      // the new balance immediately instead of waiting for the TTL.
+      invalidateStripeCreditCache(referrer.stripeCustomerId);
     } else {
       // Founder / comp account fallback: extend Gold trial by 30 days.
       // This DB write is itself idempotent at the day-extension level via

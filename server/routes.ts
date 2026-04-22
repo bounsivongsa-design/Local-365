@@ -1181,18 +1181,10 @@ Respond in this exact JSON format:
       // failures: degrade silently to 0.
       let pendingCreditCents = 0;
       if (biz.stripeCustomerId) {
-        try {
-          const { stripe } = await import("./stripe");
-          if (stripe) {
-            const customer = await stripe.customers.retrieve(biz.stripeCustomerId);
-            if (!customer.deleted) {
-              const balance = customer.balance ?? 0;
-              if (balance < 0) pendingCreditCents = -balance;
-            }
-          }
-        } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : String(err);
-          console.warn(`[referrals] could not fetch Stripe balance for ${biz.stripeCustomerId}:`, message);
+        const { stripe } = await import("./stripe");
+        if (stripe) {
+          const { getPendingCreditCents } = await import("./stripeCreditCache");
+          pendingCreditCents = await getPendingCreditCents(biz.stripeCustomerId, stripe);
         }
       }
 

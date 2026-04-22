@@ -6,6 +6,7 @@ import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { processMembershipActivation, processReferralOnFirstPaidInvoice } from "./referrals";
+import { invalidateStripeCreditCache } from "./stripeCreditCache";
 import { applyCreditPackPurchase } from "./aiFeatures";
 import { handleAdditionalZipCheckoutCompleted, handleAdditionalZipSubscriptionDeleted } from "./multiZip";
 
@@ -1302,6 +1303,18 @@ export function registerStripeRoutes(app: Express) {
           //      membership invoice and we bail out.
           //   3. amount_paid > 0 (enforced inside the processor).
           const invoice = event.data.object as Stripe.Invoice;
+          // Any paid invoice may have consumed pending credit on this
+          // customer's balance, so drop the cached value regardless of
+          // which subscription type fired the event.
+          const invoiceCustomerId =
+            typeof invoice.customer === "string"
+              ? invoice.customer
+              : invoice.customer && typeof invoice.customer === "object" && "id" in invoice.customer
+                ? (invoice.customer as { id: string }).id
+                : null;
+          if (invoiceCustomerId) {
+            invalidateStripeCreditCache(invoiceCustomerId);
+          }
           const subId = invoice.subscription as string | null;
           if (subId) {
             try {
