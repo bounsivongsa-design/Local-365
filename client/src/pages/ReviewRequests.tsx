@@ -171,15 +171,35 @@ export default function ReviewRequestsPage() {
         emailBody: channel !== "sms" ? emailBody : undefined,
         smsBody: channel !== "email" ? smsBody : undefined,
       });
-      return (await res.json()) as { success: number; failure: number; cooldownExcluded: number };
+      return (await res.json()) as {
+        success: number;
+        failure: number;
+        cooldownExcluded: number;
+        failures?: Array<{
+          key: string;
+          name: string | null;
+          contact: string | null;
+          channel: string;
+          errorMsg: string;
+        }>;
+      };
     },
     onSuccess: (data) => {
+      const failures = data.failures ?? [];
+      const previewLines = failures
+        .slice(0, 3)
+        .map((f) => `• ${f.name || f.contact || f.key}: ${f.errorMsg}`);
+      const more = failures.length > 3 ? `\n…and ${failures.length - 3} more (see History tab)` : "";
+      const cooldownLine =
+        data.cooldownExcluded > 0 ? `${data.cooldownExcluded} skipped for cooldown.` : "";
       toast({
         title: `Sent ${data.success} review request${data.success === 1 ? "" : "s"}`,
         description:
           data.failure > 0
-            ? `${data.failure} failed. ${data.cooldownExcluded} skipped for 90-day cooldown.`
-            : `${data.cooldownExcluded > 0 ? data.cooldownExcluded + " skipped for cooldown." : "All recipients reached."}`,
+            ? `${data.failure} failed${cooldownLine ? " · " + cooldownLine : ""}\n${previewLines.join("\n")}${more}`
+            : cooldownLine || "All recipients reached.",
+        variant: data.failure > 0 ? "destructive" : "default",
+        duration: data.failure > 0 ? 10000 : 5000,
       });
       setSelected(new Set());
       queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests/eligible"] });

@@ -668,6 +668,83 @@ test("[both] mixed: when SMS fails but email succeeds, the row is still marked '
 
 // ── Input validation ─────────────────────────────────────────────────
 
+// Regression for the eligible-customers sort crash. Previously the
+// comparator called `.getTime()` directly on `lastInteractionAt`, which
+// arrived as a string in some code paths (raw `pgDb.execute(sql\`…\`)`
+// hands back string timestamps under certain pg setups). Two or more
+// eligible customers crashed the route. With the toMs() coercion the
+// route should sort and send to all of them, AND the response should
+// include per-recipient `failures` for any that the transport rejected.
+test("regression: 2+ eligible customers do not crash the sort, and per-recipient failures are returned", async () => {
+  const biz = await seedBusiness("Multi Eligible Co", { tier: "premium" });
+  const owner = await seedUser({ linkedBusinessId: biz.id });
+  const { customerEmail: e1 } = await seedEligibleCustomer({ businessId: biz.id, customerName: "Alpha" });
+  const { customerEmail: e2 } = await seedEligibleCustomer({ businessId: biz.id, customerName: "Bravo" });
+  const { customerEmail: e3 } = await seedEligibleCustomer({ businessId: biz.id, customerName: "Charlie" });
+
+  // Make Bravo's send fail by toggling the resend stub mid-loop is
+  // brittle; simpler: send all three with stub OK, then verify all
+  // succeed and `failures` is empty (proves the sort worked + response
+  // shape includes the new field).
+  resendOutcome = "ok";
+  const { url, close } = await start(makeApp(owner.id));
+  try {
+    const res = await postSend(url, biz.id, {
+      customerKeys: [e1, e2, e3],
+      channel: "email",
+      emailSubject: "We'd love your review",
+      emailBody: "Thanks for working with us — would you mind leaving a quick review?",
+    });
+    assert.equal(res.status, 200, "endpoint must not crash with multiple eligible customers");
+    const body = (await res.json()) as {
+      success: number;
+      failure: number;
+      failures: Array<{ key: string; errorMsg: string }>;
+    };
+    assert.equal(body.success, 3, "all three sends should succeed");
+    assert.equal(body.failure, 0);
+    assert.deepEqual(body.failures, [], "no failures expected on all-OK transport");
+  } finally {
+    await close();
+  }
+});
+
+test("regression: failed sends are itemized in the response with errorMsg per recipient", async () => {
+  const biz = await seedBusiness("Itemized Failures Co", { tier: "premium" });
+  const owner = await seedUser({ linkedBusinessId: biz.id });
+  const { customerEmail: e1 } = await seedEligibleCustomer({ businessId: biz.id, customerName: "Alpha" });
+  const { customerEmail: e2 } = await seedEligibleCustomer({ businessId: biz.id, customerName: "Bravo" });
+
+  resendOutcome = "fail"; // every email send returns Resend HTTP 422
+  const { url, close } = await start(makeApp(owner.id));
+  try {
+    const res = await postSend(url, biz.id, {
+      customerKeys: [e1, e2],
+      channel: "email",
+      emailSubject: "We'd love your review",
+      emailBody: "Thanks for working with us — please leave a quick review.",
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as {
+      success: number;
+      failure: number;
+      failures: Array<{ key: string; contact: string | null; channel: string; errorMsg: string }>;
+    };
+    assert.equal(body.success, 0);
+    assert.equal(body.failure, 2);
+    assert.equal(body.failures.length, 2, "every failed recipient is in the failures array");
+    for (const f of body.failures) {
+      assert.ok(f.contact, "contact (email/phone) is reported");
+      assert.equal(f.channel, "email");
+      assert.match(f.errorMsg, /email:.*stubbed resend HTTP 422/);
+    }
+    const reportedKeys = new Set(body.failures.map((f) => f.key));
+    assert.ok(reportedKeys.has(e1) && reportedKeys.has(e2));
+  } finally {
+    await close();
+  }
+});
+
 test("invalid channel value is rejected by the input schema (400)", async () => {
   const biz = await seedBusiness("Gold Validation Co", { tier: "premium" });
   const owner = await seedUser({ linkedBusinessId: biz.id });

@@ -206,10 +206,21 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
   }
 
   return Array.from(map.values()).sort((a, b) => {
-    const ta = a.lastInteractionAt?.getTime() ?? 0;
-    const tb = b.lastInteractionAt?.getTime() ?? 0;
+    const ta = toMs(a.lastInteractionAt);
+    const tb = toMs(b.lastInteractionAt);
     return tb - ta;
   });
+}
+
+// Defensive timestamp coercion. node-postgres normally hydrates timestamps
+// to Date, but some code paths (raw `pgDb.execute(sql\`…\`)`) and proxies
+// can hand back a string instead. Calling `.getTime()` on a string crashed
+// the eligible-customers list whenever it returned more than one row.
+function toMs(v: Date | string | null | undefined): number {
+  if (!v) return 0;
+  if (v instanceof Date) return v.getTime();
+  const t = new Date(v).getTime();
+  return Number.isFinite(t) ? t : 0;
 }
 
 function buildEmailHtml(opts: {
@@ -356,6 +367,13 @@ export function registerReviewRequestRoutes(app: Express) {
       let success = 0;
       let failure = 0;
       const skipped: string[] = [];
+      const failures: Array<{
+        key: string;
+        name: string | null;
+        contact: string | null;
+        channel: "email" | "sms" | "both";
+        errorMsg: string;
+      }> = [];
 
       // Lazy import to avoid circular concerns
       const { sendBroadcastSms } = await import("./sms");
@@ -446,8 +464,18 @@ export function registerReviewRequestRoutes(app: Express) {
           })
           .where(eq(reviewRequests.id, row.id));
 
-        if (ok) success++;
-        else failure++;
+        if (ok) {
+          success++;
+        } else {
+          failure++;
+          failures.push({
+            key: c.key,
+            name: c.name,
+            contact: c.email ?? c.phone ?? null,
+            channel,
+            errorMsg: lastErr ?? "send failed",
+          });
+        }
       }
 
       res.json({
@@ -456,6 +484,7 @@ export function registerReviewRequestRoutes(app: Express) {
         failure,
         skipped: skipped.length,
         cooldownExcluded: customerKeys.length - targets.length - skipped.length,
+        failures,
       });
     },
   );
