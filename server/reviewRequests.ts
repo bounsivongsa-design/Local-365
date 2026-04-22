@@ -625,6 +625,45 @@ export function registerReviewRequestRoutes(app: Express) {
     },
   );
 
+  // List recent webhook-driven auto-suppressions (Resend bounces / spam
+  // complaints) for this business. Powers the "Recently auto-suppressed"
+  // panel — gives owners a single place to see what bounced lately and
+  // why, instead of scanning individual review_requests rows.
+  app.get(
+    "/api/businesses/:id/review-requests/recent-bounces",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId);
+      if (!auth) return;
+      try {
+        const LIMIT = 50;
+        const whereExpr = and(
+          eq(recipientSuppressions.businessId, businessId),
+          sql`${recipientSuppressions.reason} LIKE 'webhook:%'`,
+        );
+        const rows = await pgDb
+          .select()
+          .from(recipientSuppressions)
+          .where(whereExpr)
+          .orderBy(desc(recipientSuppressions.createdAt))
+          .limit(LIMIT);
+        const [countRow] = await pgDb
+          .select({ n: sql<number>`COUNT(*)::int` })
+          .from(recipientSuppressions)
+          .where(whereExpr);
+        const total = Number(countRow?.n ?? rows.length);
+        res.json({ bounces: rows, total, hasMore: total > rows.length });
+      } catch (err: any) {
+        console.error("[review-requests] recent-bounces failed:", err?.message);
+        res.status(500).json({ message: "Failed to load recent bounces" });
+      }
+    },
+  );
+
   // Clear a suppression so the owner can retry after fixing the address.
   // Body: { contactType: 'email' | 'phone', contact: string }
   app.post(

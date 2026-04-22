@@ -59,6 +59,20 @@ interface EligibleCustomer {
   suppressionReason: string | null;
 }
 
+interface RecentBouncesResponse {
+  bounces: RecentBounce[];
+  total: number;
+  hasMore?: boolean;
+}
+
+interface RecentBounce {
+  id: number;
+  contactType: string;
+  contact: string;
+  reason: string;
+  createdAt: string | null;
+}
+
 interface ReviewRequestRow {
   id: number;
   recipientEmail: string | null;
@@ -153,6 +167,10 @@ export default function ReviewRequestsPage() {
     queryKey: ["/api/businesses", businessId, "review-requests"],
     enabled: !!businessId,
   });
+  const recentBouncesQuery = useQuery<RecentBouncesResponse>({
+    queryKey: ["/api/businesses", businessId, "review-requests/recent-bounces"],
+    enabled: !!businessId,
+  });
   const credits = useQuery<AICreditsInfo>({
     queryKey: ["/api/businesses", businessId, "ai-credits"],
     enabled: !!businessId,
@@ -223,6 +241,7 @@ export default function ReviewRequestsPage() {
     onSuccess: (data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests/eligible"] });
       queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests/recent-bounces"] });
       toast({
         title: data.cleared > 0 ? "Suppression cleared" : "Nothing to clear",
         description:
@@ -381,6 +400,71 @@ export default function ReviewRequestsPage() {
           </div>
         )}
       </div>
+
+      {(recentBouncesQuery.data?.bounces.length ?? 0) > 0 && (
+        <Card className="border-red-200 bg-red-50/30" data-testid="card-rr-recent-bounces">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2 text-red-900">
+                  <ShieldAlert className="h-4 w-4" /> Recently auto-suppressed
+                </CardTitle>
+                <CardDescription className="text-red-800/80">
+                  These addresses were flagged by the email provider as permanently undeliverable
+                  (hard bounce or spam complaint) after a recent send. We've stopped sending to
+                  them. Fix the address with the customer, then clear the entry to retry.
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="border-red-300 text-red-800">
+                {recentBouncesQuery.data!.total} total
+                {recentBouncesQuery.data!.hasMore ? ` (showing ${recentBouncesQuery.data!.bounces.length})` : ""}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="border border-red-200 rounded-lg divide-y divide-red-100 bg-white max-h-[280px] overflow-y-auto">
+              {recentBouncesQuery.data!.bounces.map((b) => (
+                <div
+                  key={b.id}
+                  className="p-3 flex items-start gap-3"
+                  data-testid={`row-rr-bounce-${b.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate" data-testid={`text-bounce-contact-${b.id}`}>
+                      {b.contact}
+                    </div>
+                    <div className="text-xs text-red-700 mt-0.5 break-words" data-testid={`text-bounce-reason-${b.id}`}>
+                      {b.reason.replace(/^webhook:\s*/, "")}
+                    </div>
+                    {b.createdAt && (
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {new Date(b.createdAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                  <Badge variant="outline" className="text-xs">{b.contactType}</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-red-300 text-red-800 hover:bg-red-100"
+                    disabled={clearSuppression.isPending}
+                    onClick={() =>
+                      clearSuppression.mutate({
+                        contactType: b.contactType === "phone" ? "phone" : "email",
+                        contact: b.contact,
+                      })
+                    }
+                    data-testid={`button-clear-bounce-${b.id}`}
+                  >
+                    {clearSuppression.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                    Clear
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
