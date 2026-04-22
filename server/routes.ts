@@ -15,12 +15,12 @@ import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
-import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike } from "./email";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts, recipientSuppressions, bounceSpikeAlerts } from "@shared/schema";
 import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte, gte } from "drizzle-orm";
 
@@ -5758,12 +5758,18 @@ Respond in this exact JSON format:
     } catch (e) {
       console.error("Bounce-rate alert check error:", e);
     }
+    try {
+      await checkBounceSpikeAlerts();
+    } catch (e) {
+      console.error("Bounce-spike owner alert check error:", e);
+    }
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
   setTimeout(() => sendCompExpiryReminders().catch(e => console.error("Initial comp expiry reminder error:", e)), 12000);
   setTimeout(() => checkExpiredCompMemberships().catch(e => console.error("Initial comp expiry check error:", e)), 13000);
   setTimeout(() => checkBounceRateAlerts().catch(e => console.error("Initial bounce-rate alert check error:", e)), 14000);
+  setTimeout(() => checkBounceSpikeAlerts().catch(e => console.error("Initial bounce-spike owner alert check error:", e)), 15000);
 
   setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
@@ -6137,6 +6143,128 @@ export async function checkBounceRateAlerts(
       });
       console.log(
         `[bounce-rate-alert] business ${biz.id} (${biz.name}) — ${c.bounces}/${c.total} = ${(c.rateBp / 100).toFixed(2)}%`,
+      );
+    }
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Owner-facing bounce-spike heads-up
+   ----------------------------------
+   The in-app Review Requests panel only helps owners who happen to visit it.
+   When an imported list lands a sudden cluster of webhook-confirmed permanent
+   bounces (`recipient_suppressions.reason LIKE 'webhook:%'`), this job emails
+   the owner directly with a link to clean things up.
+
+   This is intentionally separate from `checkBounceRateAlerts`:
+     - `bounce_rate_alerts`  → admin-only, %-based, sender-reputation guard
+     - `bounce_spike_alerts` → owner-only, raw-count based, list-hygiene nudge
+   so changing one doesn't quietly retune the other.
+
+   Knobs (env-overridable so we can tighten without a deploy):
+     BOUNCE_SPIKE_THRESHOLD        default 5    (alert when count >= this)
+     BOUNCE_SPIKE_LOOKBACK_HOURS   default 24
+     BOUNCE_SPIKE_COOLDOWN_HOURS   default 24   (re-alert cooldown per biz)
+
+   Idempotency: each successful send writes a row to `bounce_spike_alerts`.
+   A business is skipped if its newest row there is younger than the cooldown
+   window, so the hourly cron never spams the same owner about the same spike.
+   ────────────────────────────────────────────────────────────────────────── */
+export type BounceSpikeOwnerNotifier = typeof notifyOwnerBounceSpike;
+
+export async function checkBounceSpikeAlerts(
+  notifier: BounceSpikeOwnerNotifier = notifyOwnerBounceSpike,
+) {
+  const threshold = readIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
+  const lookbackHours = readIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
+  const cooldownHours = readIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
+  const cooldownStart = new Date(now.getTime() - cooldownHours * 60 * 60 * 1000);
+
+  // Per-business: how many webhook-confirmed permanent bounces landed in the
+  // lookback window? Only `webhook:%` rows count — we don't want owner-driven
+  // manual suppressions or admin sweeps to trigger a panic email.
+  const grouped = await pgDb
+    .select({
+      businessId: recipientSuppressions.businessId,
+      bounceCount: sql<number>`count(*)::int`,
+    })
+    .from(recipientSuppressions)
+    .where(
+      and(
+        // Belt-and-suspenders: today only the email Resend webhook ever
+        // writes `webhook:%` rows, but pinning contactType makes sure a
+        // future SMS/voice webhook with the same `webhook:` prefix can't
+        // accidentally trip the email-only owner alert.
+        eq(recipientSuppressions.contactType, "email"),
+        sql`${recipientSuppressions.reason} LIKE 'webhook:%'`,
+        gte(recipientSuppressions.createdAt, windowStart),
+      ),
+    )
+    .groupBy(recipientSuppressions.businessId);
+
+  const candidates = grouped.filter((g) => g.bounceCount >= threshold);
+  if (candidates.length === 0) return;
+
+  for (const c of candidates) {
+    // Cooldown — skip if we already pinged this owner inside the window.
+    const recent = await pgDb
+      .select({ id: bounceSpikeAlerts.id })
+      .from(bounceSpikeAlerts)
+      .where(
+        and(
+          eq(bounceSpikeAlerts.businessId, c.businessId),
+          gte(bounceSpikeAlerts.alertedAt, cooldownStart),
+        ),
+      )
+      .limit(1);
+    if (recent.length > 0) continue;
+
+    const [biz] = await pgDb
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        ownerUserId: businesses.ownerUserId,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, c.businessId));
+    if (!biz) continue;
+
+    // Resolve owner email — prefer the listing's contact email, fall back to
+    // the linked user's account email so legacy rows without `email` still
+    // get the heads-up.
+    let recipientEmail: string | null = biz.email ?? null;
+    if (!recipientEmail && biz.ownerUserId) {
+      const [owner] = await pgDb
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, biz.ownerUserId));
+      recipientEmail = owner?.email ?? null;
+    }
+
+    let sent = false;
+    try {
+      sent = await notifier({
+        recipientEmail,
+        businessName: biz.name,
+        bounceCount: c.bounceCount,
+        windowHours: lookbackHours,
+      });
+    } catch (e) {
+      console.error(`Bounce-spike owner notify failed for business ${biz.id}:`, e);
+      continue;
+    }
+
+    if (sent) {
+      await pgDb.insert(bounceSpikeAlerts).values({
+        businessId: biz.id,
+        bounceCount: c.bounceCount,
+      });
+      console.log(
+        `[bounce-spike-alert] business ${biz.id} (${biz.name}) — ${c.bounceCount} bounces in last ${lookbackHours}h`,
       );
     }
   }

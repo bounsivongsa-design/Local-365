@@ -772,6 +772,22 @@ export const bounceRateAlerts = pgTable("bounce_rate_alerts", {
 });
 export type BounceRateAlert = typeof bounceRateAlerts.$inferSelect;
 
+/* Per-business audit of "owner heads-up" emails sent when their review-request
+   blasts produce a sudden cluster of webhook-confirmed permanent bounces.
+   Distinct from `bounce_rate_alerts` (admin-facing, %-based, sender-reputation
+   warning). This one is owner-facing, raw-count based, and only fires when N+
+   new webhook suppressions land for one business inside the lookback window.
+   We persist one row per successful send so the daily cron can detect a fresh
+   spike without spamming the owner — a business is skipped if its newest row
+   here is younger than the cooldown window. */
+export const bounceSpikeAlerts = pgTable("bounce_spike_alerts", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  alertedAt: timestamp("alerted_at").notNull().defaultNow(),
+  bounceCount: integer("bounce_count").notNull(),
+});
+export type BounceSpikeAlert = typeof bounceSpikeAlerts.$inferSelect;
+
 /* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the

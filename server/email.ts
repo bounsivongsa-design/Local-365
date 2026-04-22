@@ -636,6 +636,77 @@ export async function notifyAdminBounceRateSpike(args: {
   }
 }
 
+/**
+ * Heads-up email to a business owner when their review-request blast
+ * produced a sudden cluster of webhook-confirmed permanent bounces in the
+ * last 24h. Distinct from `notifyAdminBounceRateSpike` (admin-only,
+ * %-based, sender-reputation warning) — this one tells the OWNER that the
+ * specific imported list they just sent was full of stale addresses, with a
+ * direct link to clean things up. Returns true on a successful send so the
+ * caller can persist a cooldown row and avoid re-alerting tomorrow.
+ */
+export async function notifyOwnerBounceSpike(args: {
+  recipientEmail: string | null | undefined;
+  businessName: string;
+  bounceCount: number;
+  windowHours: number;
+}): Promise<boolean> {
+  if (!args.recipientEmail) {
+    console.log(
+      `[EMAIL SKIPPED] Bounce spike for ${args.businessName} — no owner email on file`,
+    );
+    return false;
+  }
+  const resend = getResend();
+  if (!resend) {
+    console.log(
+      `[EMAIL SKIPPED] Bounce spike for ${args.businessName} — Resend not configured`,
+    );
+    return false;
+  }
+
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const reviewRequestsUrl = "https://locallist365.replit.app/review-requests";
+  const subject = `Heads up: ${args.bounceCount} review-request bounces in the last ${args.windowHours}h`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #b45309, #92400e); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 20px;">Bounce spike on your review requests</h1>
+        <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">A cluster of recent sends came back undeliverable.</p>
+      </div>
+      <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <p style="color: #333; font-size: 15px; line-height: 1.6; margin-top: 0;">
+          Hi ${escape(args.businessName)},
+        </p>
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          We noticed <strong>${args.bounceCount} permanent bounces</strong> on your review-request blasts in the last ${args.windowHours} hours. That usually means an imported customer list has stale or mistyped email addresses — those recipients won't get your follow-up, and continuing to send to them can hurt deliverability for the addresses that <em>are</em> good.
+        </p>
+        <div style="margin-top: 16px; padding: 12px 14px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; font-size: 13px; color: #78350f;">
+          Open the Review Requests page to see which addresses bounced and clean them up before your next send.
+        </div>
+        <div style="margin-top: 24px; text-align: center;">
+          <a href="${reviewRequestsUrl}" style="display: inline-block; background: #b45309; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">View Review Requests</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "Local List 365 <onboarding@resend.dev>",
+      to: [args.recipientEmail],
+      subject,
+      html,
+    });
+    console.log(`[EMAIL SENT] ${subject} -> ${args.recipientEmail}`);
+    return true;
+  } catch (err: any) {
+    console.error(`[EMAIL FAILED] ${subject}:`, err?.message);
+    return false;
+  }
+}
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;
