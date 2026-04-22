@@ -33,6 +33,14 @@ const ADMIN_EMAILS = ["boun.sivongsa@gmail.com", "locallist365@gmail.com"];
 
 const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
 
+// In-process throttle for the admin "Resend comp welcome" action. One send
+// per business per minute is plenty for typo/spam-folder rescues and stops
+// the button from being used to hammer a recipient. Cleared on process
+// restart, which is fine — the worst case is a single duplicate after a
+// deploy.
+const COMP_RESEND_COOLDOWN_MS = 60_000;
+const compResendThrottle = new Map<number, number>();
+
 function normalizeBusinessName(name: string): string {
   return name.toLowerCase().replace(/\b(llc|inc|corp|ltd|co)\b\.?/gi, '').trim().replace(/\s+/g, ' ');
 }
@@ -4675,6 +4683,77 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Admin comp membership error:", err);
       res.status(500).json({ message: "Failed to update comp membership" });
+    }
+  });
+
+  // Re-trigger the comp welcome email without revoking/re-granting. Useful
+  // when the recipient says it never showed up (typo, spam folder, etc.).
+  // Throttled per-business so a stuck button or curious admin can't spam
+  // the recipient's inbox.
+  app.post("/api/admin/businesses/:id/comp/resend-welcome", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const last = compResendThrottle.get(bizId);
+      const now = Date.now();
+      if (last && now - last < COMP_RESEND_COOLDOWN_MS) {
+        const retryAfter = Math.ceil((COMP_RESEND_COOLDOWN_MS - (now - last)) / 1000);
+        res.setHeader("Retry-After", String(retryAfter));
+        return res.status(429).json({
+          message: `Please wait ${retryAfter}s before resending again.`,
+          retryAfter,
+        });
+      }
+
+      const [target] = await pgDb
+        .select({
+          id: businesses.id,
+          name: businesses.name,
+          email: businesses.email,
+          ownerUserId: businesses.ownerUserId,
+          isCompedMembership: businesses.isCompedMembership,
+          compedMembershipNote: businesses.compedMembershipNote,
+          compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+        })
+        .from(businesses)
+        .where(eq(businesses.id, bizId));
+      if (!target) return res.status(404).json({ message: "Business not found" });
+      if (!target.isCompedMembership) {
+        return res.status(400).json({ message: "Business is not currently comped" });
+      }
+
+      let recipientEmail: string | null = target.email ?? null;
+      if (!recipientEmail && target.ownerUserId) {
+        const [owner] = await pgDb
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, target.ownerUserId));
+        recipientEmail = owner?.email ?? null;
+      }
+      if (!recipientEmail) {
+        return res.status(400).json({ message: "No recipient email on file for this business" });
+      }
+
+      // Reserve the throttle slot before sending so a slow Resend call can't
+      // be hammered with parallel clicks.
+      compResendThrottle.set(bizId, now);
+
+      const sent = await notifyCompGranted({
+        recipientEmail,
+        businessName: target.name,
+        expiresAt: target.compedMembershipExpiresAt,
+        note: target.compedMembershipNote,
+      });
+
+      res.json({ ok: true, sent, recipientEmail });
+    } catch (err) {
+      console.error("Admin comp resend welcome error:", err);
+      res.status(500).json({ message: "Failed to resend welcome email" });
     }
   });
 

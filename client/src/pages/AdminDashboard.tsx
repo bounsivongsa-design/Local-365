@@ -68,6 +68,7 @@ import {
   Copy,
   Gift,
   LogIn,
+  Send,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
@@ -1443,6 +1444,26 @@ function BusinessesTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  // Re-trigger the comp welcome email for a single business. Backend throttles
+  // to one send per minute per business, so the toast surfaces both "sent" and
+  // "wait a bit" cases distinctly.
+  const resendCompWelcomeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/admin/businesses/${id}/comp/resend-welcome`, {});
+      return (await res.json()) as { ok: boolean; sent: boolean; recipientEmail: string };
+    },
+    onSuccess: (data) => {
+      toast({
+        title: data.sent ? "Welcome email resent" : "Email not sent",
+        description: data.sent
+          ? `Re-sent the comp welcome to ${data.recipientEmail}.`
+          : `Email service is not configured — nothing was sent.`,
+        variant: data.sent ? undefined : "destructive",
+      });
+    },
+    onError: (err: Error) => toast({ title: "Couldn't resend", description: err.message, variant: "destructive" }),
+  });
+
   // Load full business data when the edit dialog opens
   const editFullQuery = useQuery<any>({
     queryKey: ["/api/admin/businesses", editDialog?.id, "full"],
@@ -1616,6 +1637,8 @@ function BusinessesTab() {
       )}
 
       <CompMembershipsPanel
+        onResend={(id) => resendCompWelcomeMutation.mutate(id)}
+        resendingId={resendCompWelcomeMutation.isPending ? resendCompWelcomeMutation.variables ?? null : null}
         onRevoke={(id) => compMutation.mutate({ id, active: false })}
         onEdit={(b) => setCompDialog({
           biz: {
@@ -2313,11 +2336,15 @@ function BusinessesTab() {
 function CompMembershipsPanel({
   onRevoke,
   onEdit,
+  onResend,
   revoking,
+  resendingId,
 }: {
   onRevoke: (id: number) => void;
   onEdit: (b: CompRosterRow) => void;
+  onResend: (id: number) => void;
   revoking: boolean;
+  resendingId: number | null;
 }) {
   const { data, isLoading } = useQuery<{ businesses: CompRosterRow[] }>({
     queryKey: ["/api/admin/comp-memberships"],
@@ -2388,6 +2415,20 @@ function CompMembershipsPanel({
                           <UserCog className="h-3 w-3" />
                           Edit
                         </Button>
+                        {r.compActive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-amber-700 hover:bg-amber-100 rounded-lg gap-1 text-xs"
+                            disabled={resendingId === r.id}
+                            title="Re-send the comp welcome email (rate-limited to once per minute)"
+                            onClick={() => onResend(r.id)}
+                            data-testid={`button-comp-resend-${r.id}`}
+                          >
+                            <Send className="h-3 w-3" />
+                            {resendingId === r.id ? "Sending…" : "Resend welcome"}
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
