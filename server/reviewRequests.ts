@@ -165,10 +165,10 @@ async function recordSuppression(opts: {
   contactType: "email" | "phone";
   contact: string;
   reason: string;
-}): Promise<void> {
+}): Promise<boolean> {
   const contact = opts.contactType === "email" ? opts.contact.toLowerCase() : opts.contact;
   try {
-    await pgDb
+    const inserted = await pgDb
       .insert(recipientSuppressions)
       .values({
         businessId: opts.businessId,
@@ -176,9 +176,12 @@ async function recordSuppression(opts: {
         contact,
         reason: opts.reason.slice(0, 500),
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ id: recipientSuppressions.id });
+    return inserted.length > 0;
   } catch (err: any) {
     console.error("[review-requests] failed to record suppression:", err?.message);
+    return false;
   }
 }
 
@@ -659,6 +662,148 @@ export function registerReviewRequestRoutes(app: Express) {
       res.json({ ok: true, cleared: result.length });
     },
   );
+
+  // ──────────────────────────────────────────────────────────────────
+  // Resend webhook — auto-suppress addresses Resend reports as bouncing
+  // asynchronously (after our send call already returned 200 OK). Many
+  // real bounces don't surface synchronously; without listening here the
+  // same dead address slips through on the next blast and dings sender
+  // reputation. Signature verification is REQUIRED (svix-compatible
+  // headers — Resend signs webhooks with the same scheme as Svix).
+  //
+  // Event types we act on:
+  //   - email.bounced   (only when bounce.type indicates a HARD/permanent
+  //                      bounce; transient bounces are ignored)
+  //   - email.complained (always treated as permanent — recipient marked
+  //                       us as spam, never send to them again)
+  //
+  // For each suppressed (businessId, email) pair we:
+  //   1. Insert into recipient_suppressions (per-business scope; one
+  //      tenant's bounce never leaks into another tenant's eligibility).
+  //   2. Flip the most recent non-terminal review_requests row for that
+  //      (business, email) to status='failed' with an `email[permanent]:`
+  //      errorMsg so the existing FE classifier renders the right hint.
+  // ──────────────────────────────────────────────────────────────────
+  app.post("/api/webhooks/resend", async (req, res) => {
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    if (!secret) {
+      console.error("[resend-webhook] RESEND_WEBHOOK_SECRET is not configured — rejecting webhook");
+      return res.status(503).json({ message: "Webhook not configured" });
+    }
+    const rawBody = (req as any).rawBody as Buffer | string | undefined;
+    if (!rawBody) {
+      return res.status(400).json({ message: "Missing raw body" });
+    }
+    const payload = Buffer.isBuffer(rawBody) ? rawBody.toString("utf8") : rawBody;
+
+    let event: any;
+    try {
+      const { Webhook } = await import("svix");
+      const wh = new Webhook(secret);
+      event = wh.verify(payload, {
+        "svix-id": String(req.headers["svix-id"] ?? ""),
+        "svix-timestamp": String(req.headers["svix-timestamp"] ?? ""),
+        "svix-signature": String(req.headers["svix-signature"] ?? ""),
+      });
+    } catch (err: any) {
+      console.error("[resend-webhook] signature verification failed:", err?.message);
+      return res.status(401).json({ message: "Invalid signature" });
+    }
+
+    const type: string = event?.type ?? "";
+    const data: any = event?.data ?? {};
+    const recipients: string[] = Array.isArray(data.to)
+      ? data.to.filter((x: unknown): x is string => typeof x === "string")
+      : typeof data.to === "string"
+      ? [data.to]
+      : [];
+
+    let permanent = false;
+    let reason = "";
+    if (type === "email.bounced") {
+      const bounceType = String(data?.bounce?.type ?? data?.bounce_type ?? "").toLowerCase();
+      const bounceSub = String(data?.bounce?.subType ?? data?.bounce_subtype ?? "");
+      // Resend / SES classify hard bounces as "Permanent" or "hard"; soft
+      // bounces ("Transient", "Undetermined") are ignored — they may
+      // recover on retry and we don't want to suppress on a tempfail.
+      permanent = bounceType.includes("hard") || bounceType.includes("permanent");
+      const msg = data?.bounce?.message ?? bounceSub ?? "hard bounce";
+      reason = `bounced[${data?.bounce?.type ?? bounceType ?? "unknown"}]: ${msg}`;
+    } else if (type === "email.complained") {
+      permanent = true;
+      reason = "complained: recipient reported as spam";
+    } else {
+      // Delivery / opened / clicked / etc — acknowledge so Resend stops
+      // retrying, but do nothing.
+      return res.json({ ok: true, ignored: type || "unknown" });
+    }
+
+    if (!permanent || recipients.length === 0) {
+      return res.json({ ok: true, ignored: true, type });
+    }
+
+    let suppressedCount = 0;
+    let updatedRequests = 0;
+
+    for (const rawAddr of recipients) {
+      const email = String(rawAddr).toLowerCase().trim();
+      if (!email) continue;
+      const rows = await pgDb
+        .select({
+          id: reviewRequests.id,
+          businessId: reviewRequests.businessId,
+          status: reviewRequests.status,
+          sentAt: reviewRequests.sentAt,
+          createdAt: reviewRequests.createdAt,
+        })
+        .from(reviewRequests)
+        .where(sql`LOWER(${reviewRequests.recipientEmail}) = ${email}`);
+      if (rows.length === 0) {
+        // We never sent to this address from any business — record nothing.
+        // (Could happen for cross-product Resend tenants sharing a webhook.)
+        continue;
+      }
+      const businessIds = Array.from(new Set<number>(rows.map((r) => r.businessId)));
+      for (const businessId of businessIds) {
+        const newlySuppressed = await recordSuppression({
+          businessId,
+          contactType: "email",
+          contact: email,
+          reason: `webhook: ${reason}`,
+        });
+        if (newlySuppressed) suppressedCount++;
+        // Pick the most recent non-terminal row for this business — that's
+        // the send the bounce most likely relates to. We deliberately leave
+        // 'clicked' and 'completed' rows alone; those represent successful
+        // human engagement and shouldn't be retroactively rewritten.
+        const candidates = rows
+          .filter(
+            (r) =>
+              r.businessId === businessId &&
+              (r.status === "sent" || r.status === "queued"),
+          )
+          .sort((a, b) => toMs(b.sentAt ?? b.createdAt) - toMs(a.sentAt ?? a.createdAt));
+        const target = candidates[0];
+        if (target) {
+          await pgDb
+            .update(reviewRequests)
+            .set({
+              status: "failed",
+              errorMsg: `email[permanent]: ${reason}`,
+            })
+            .where(eq(reviewRequests.id, target.id));
+          updatedRequests++;
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      type,
+      suppressed: suppressedCount,
+      updated: updatedRequests,
+    });
+  });
 
   // Public click tracker — marks clicked, redirects to business page
   app.get("/api/r/:token", async (req, res) => {
