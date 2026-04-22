@@ -73,6 +73,13 @@ export const businesses = pgTable("businesses", {
   // current time passes this value, every effectiveTier() helper treats
   // the business as if it were not comped (falls back to its real tier).
   compedMembershipExpiresAt: timestamp("comped_membership_expires_at"),
+  // Tracks which auto-expiry warning emails have already been sent for the
+  // CURRENT `compedMembershipExpiresAt` window. Reset to false whenever a
+  // new comp grant is issued (or expiry date changes) so re-grants get a
+  // fresh round of warnings. Cleared on revoke alongside the other comp
+  // fields so a future grant starts clean.
+  compedMembershipReminder7Sent: boolean("comped_membership_reminder_7_sent").default(false),
+  compedMembershipReminder1Sent: boolean("comped_membership_reminder_1_sent").default(false),
   foundingMemberNumber: integer("founding_member_number").unique(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),

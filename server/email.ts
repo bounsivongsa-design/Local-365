@@ -362,6 +362,154 @@ export async function notifyReferralRewarded(args: {
   await Promise.allSettled(sends);
 }
 
+/**
+ * Comp-membership notifications. Sent from the admin grant/revoke endpoint
+ * and from the periodic expiry sweep so recipients aren't surprised when
+ * their free Gold access toggles. All four flows reuse the same Resend
+ * sender as every other transactional email here.
+ */
+function formatExpiryDate(d: Date | string): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+const COMP_DASHBOARD_URL = "https://locallist365.replit.app/dashboard";
+
+function buildCompShell(headerLabel: string, heading: string, bodyHtml: string, ctaLabel = "View Your Dashboard") {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #d4a373, #b8834f); color: white; padding: 28px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="font-size: 14px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85; margin-bottom: 8px;">${headerLabel}</div>
+        <h1 style="margin: 0; font-size: 26px;">${heading}</h1>
+      </div>
+      <div style="background: #f9f9f9; padding: 28px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        ${bodyHtml}
+        <div style="margin: 24px 0; text-align: center;">
+          <a href="${COMP_DASHBOARD_URL}" style="display: inline-block; background: #0a4a82; color: white; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">
+            ${ctaLabel}
+          </a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;" />
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          Local List 365 — Your Moyock Community Directory
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+async function sendCompEmail(args: { to: string; subject: string; html: string; logLabel: string }) {
+  const resend = getResend();
+  if (!resend) {
+    console.log(`[EMAIL SKIPPED] ${args.logLabel} → ${args.to} — Resend not configured`);
+    return false;
+  }
+  try {
+    await resend.emails.send({
+      from: "Local List 365 <onboarding@resend.dev>",
+      to: [args.to],
+      subject: args.subject,
+      html: args.html,
+    });
+    console.log(`[EMAIL SENT] ${args.logLabel} → ${args.to}`);
+    return true;
+  } catch (err: any) {
+    console.error(`[EMAIL FAILED] ${args.logLabel} → ${args.to}:`, err?.message);
+    return false;
+  }
+}
+
+export async function notifyCompGranted(args: {
+  recipientEmail: string | null | undefined;
+  businessName: string;
+  expiresAt: Date | string | null;
+  note?: string | null;
+}): Promise<boolean> {
+  if (!args.recipientEmail) {
+    console.log(`[EMAIL SKIPPED] Comp grant — no recipient email for ${args.businessName}`);
+    return false;
+  }
+  const expiryLine = args.expiresAt
+    ? `<p style="color: #333; font-size: 15px; line-height: 1.6;">Your free Gold access is active through <strong>${formatExpiryDate(args.expiresAt)}</strong>. We'll send you a friendly reminder before it ends so nothing changes silently.</p>`
+    : `<p style="color: #333; font-size: 15px; line-height: 1.6;">Your free Gold access has no expiration date — enjoy it for as long as we keep the lights on.</p>`;
+  const body = `
+    <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">${args.businessName}, you've been comped a free Gold membership!</h2>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      Our team just unlocked Gold-tier features on your listing — featured placement, extra photos, the newsletter tool, AI helpers, and the rest of the Gold lineup. There's nothing to pay and no card required.
+    </p>
+    ${expiryLine}
+  `;
+  return sendCompEmail({
+    to: args.recipientEmail,
+    subject: `You've been given a free Gold membership on Local List 365`,
+    html: buildCompShell("Gold Unlocked", "Free Gold Membership Activated", body),
+    logLabel: "Comp grant",
+  });
+}
+
+export async function notifyCompExpiring(args: {
+  recipientEmail: string | null | undefined;
+  businessName: string;
+  expiresAt: Date | string;
+  daysRemaining: 7 | 1;
+}): Promise<boolean> {
+  if (!args.recipientEmail) {
+    console.log(`[EMAIL SKIPPED] Comp expiring ${args.daysRemaining}d — no recipient email for ${args.businessName}`);
+    return false;
+  }
+  const dayWord = args.daysRemaining === 1 ? "tomorrow" : `in ${args.daysRemaining} days`;
+  const body = `
+    <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">Heads up, ${args.businessName} — your free Gold ends ${dayWord}.</h2>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      Your complimentary Gold membership is scheduled to expire on <strong>${formatExpiryDate(args.expiresAt)}</strong>. After that, your listing will go back to its normal tier and Gold-only features (featured placement, newsletter, extra photos, AI tools) will switch off.
+    </p>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      Want to keep Gold? You can upgrade from your dashboard in a couple of clicks, or reply to this email and we'll help you out.
+    </p>
+  `;
+  return sendCompEmail({
+    to: args.recipientEmail,
+    subject: `Your free Gold membership ends ${dayWord} — ${args.businessName}`,
+    html: buildCompShell(
+      args.daysRemaining === 1 ? "Final Reminder" : "Friendly Reminder",
+      args.daysRemaining === 1 ? "Free Gold Ends Tomorrow" : "Free Gold Ends in 7 Days",
+      body,
+      "Upgrade or Manage Membership",
+    ),
+    logLabel: `Comp expiring ${args.daysRemaining}d`,
+  });
+}
+
+export async function notifyCompRevoked(args: {
+  recipientEmail: string | null | undefined;
+  businessName: string;
+}): Promise<boolean> {
+  if (!args.recipientEmail) {
+    console.log(`[EMAIL SKIPPED] Comp revoke — no recipient email for ${args.businessName}`);
+    return false;
+  }
+  const body = `
+    <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">Your free Gold access on ${args.businessName} has ended.</h2>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      We wanted to let you know our team has ended the complimentary Gold membership on your listing. Your business is still live — it just goes back to its regular plan and Gold-only features will turn off.
+    </p>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      If you'd like to keep Gold features, you can upgrade anytime from your dashboard. Questions? Just reply to this email.
+    </p>
+  `;
+  return sendCompEmail({
+    to: args.recipientEmail,
+    subject: `Update on your Local List 365 membership — ${args.businessName}`,
+    html: buildCompShell("Membership Update", "Comp Gold Membership Ended", body, "Manage Your Membership"),
+    logLabel: "Comp revoke",
+  });
+}
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;

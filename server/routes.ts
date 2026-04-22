@@ -15,7 +15,7 @@ import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
-import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
@@ -4600,7 +4600,10 @@ Respond in this exact JSON format:
         expiresAt = parsed;
       }
 
-      const [target] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, bizId));
+      const [target] = await pgDb
+        .select({ id: businesses.id, name: businesses.name, email: businesses.email, ownerUserId: businesses.ownerUserId })
+        .from(businesses)
+        .where(eq(businesses.id, bizId));
       if (!target) return res.status(404).json({ message: "Business not found" });
 
       await pgDb
@@ -4613,6 +4616,10 @@ Respond in this exact JSON format:
                 compedMembershipGrantedAt: new Date(),
                 compedMembershipGrantedBy: adminId,
                 compedMembershipExpiresAt: expiresAt,
+                // Reset reminder flags so a re-grant or expiry-date change
+                // gets a fresh round of 7d/1d warning emails.
+                compedMembershipReminder7Sent: false,
+                compedMembershipReminder1Sent: false,
               }
             : {
                 isCompedMembership: false,
@@ -4620,9 +4627,39 @@ Respond in this exact JSON format:
                 compedMembershipGrantedAt: null,
                 compedMembershipGrantedBy: null,
                 compedMembershipExpiresAt: null,
+                compedMembershipReminder7Sent: false,
+                compedMembershipReminder1Sent: false,
               },
         )
         .where(eq(businesses.id, bizId));
+
+      // Resolve a recipient address: prefer the business's own contact email
+      // and fall back to the linked owner user's email so a missing
+      // business.email still gets the notice through.
+      let recipientEmail: string | null = target.email ?? null;
+      if (!recipientEmail && target.ownerUserId) {
+        const [owner] = await pgDb
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, target.ownerUserId));
+        recipientEmail = owner?.email ?? null;
+      }
+
+      // Fire-and-forget so a slow/failing Resend call never blocks the
+      // admin response or the audit insert below.
+      if (active) {
+        notifyCompGranted({
+          recipientEmail,
+          businessName: target.name,
+          expiresAt,
+          note,
+        }).catch((e) => console.error("notifyCompGranted error:", e));
+      } else {
+        notifyCompRevoked({
+          recipientEmail,
+          businessName: target.name,
+        }).catch((e) => console.error("notifyCompRevoked error:", e));
+      }
 
       // Append-only audit row so the historical "who/when/why" survives even
       // after revoke wipes the live columns on `businesses`.
@@ -5563,13 +5600,116 @@ Respond in this exact JSON format:
     } catch (e) {
       console.error("Gold trial check error:", e);
     }
+    try {
+      await sendCompExpiryReminders();
+    } catch (e) {
+      console.error("Comp expiry reminder error:", e);
+    }
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
+  setTimeout(() => sendCompExpiryReminders().catch(e => console.error("Initial comp expiry reminder error:", e)), 12000);
 
   setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
   return httpServer;
+}
+
+// Periodic sweep that emails comp recipients before their free Gold expires.
+// Hourly cadence is fine — each business has two boolean flags
+// (`compedMembershipReminder7Sent`/`...Reminder1Sent`) that gate sending
+// so the same warning never fires twice for the same expiry window.
+// Flags reset on grant/revoke so a re-grant or expiry change earns a fresh
+// round of reminders.
+async function sendCompExpiryReminders() {
+  const now = new Date();
+  const in7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const in1d = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+
+  // Pull every active comp grant with a future expiry — small set, single
+  // query is cheaper than two windowed queries with extra filters.
+  const candidates = await pgDb
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      email: businesses.email,
+      ownerUserId: businesses.ownerUserId,
+      expiresAt: businesses.compedMembershipExpiresAt,
+      reminder7Sent: businesses.compedMembershipReminder7Sent,
+      reminder1Sent: businesses.compedMembershipReminder1Sent,
+    })
+    .from(businesses)
+    .where(
+      and(
+        eq(businesses.isCompedMembership, true),
+        sql`${businesses.compedMembershipExpiresAt} IS NOT NULL`,
+        sql`${businesses.compedMembershipExpiresAt} > ${now}`,
+      ),
+    );
+
+  for (const biz of candidates) {
+    if (!biz.expiresAt) continue;
+    const exp = new Date(biz.expiresAt).getTime();
+
+    // Resolve recipient lazily — only look up user.email when business.email
+    // is missing AND we actually need to send something this pass.
+    const needs1d = !biz.reminder1Sent && exp <= in1d.getTime();
+    const needs7d = !needs1d && !biz.reminder7Sent && exp <= in7d.getTime();
+    if (!needs1d && !needs7d) continue;
+
+    let recipientEmail: string | null = biz.email ?? null;
+    if (!recipientEmail && biz.ownerUserId) {
+      const [owner] = await pgDb
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, biz.ownerUserId));
+      recipientEmail = owner?.email ?? null;
+    }
+
+    if (needs1d) {
+      // 1-day window also implies the 7-day window has passed; flip both
+      // flags so a business that was granted with <7d remaining doesn't
+      // get a stale "ends in 7 days" email next hour.
+      // Only persist the "sent" flags when delivery actually succeeds so a
+      // transient Resend outage (or a missing recipient that gets fixed
+      // later) doesn't permanently suppress the warning.
+      let sent = false;
+      try {
+        sent = await notifyCompExpiring({
+          recipientEmail,
+          businessName: biz.name,
+          expiresAt: biz.expiresAt,
+          daysRemaining: 1,
+        });
+      } catch (e) {
+        console.error("notifyCompExpiring(1d) error:", e);
+      }
+      if (sent) {
+        await pgDb
+          .update(businesses)
+          .set({ compedMembershipReminder1Sent: true, compedMembershipReminder7Sent: true })
+          .where(eq(businesses.id, biz.id));
+      }
+    } else if (needs7d) {
+      let sent = false;
+      try {
+        sent = await notifyCompExpiring({
+          recipientEmail,
+          businessName: biz.name,
+          expiresAt: biz.expiresAt,
+          daysRemaining: 7,
+        });
+      } catch (e) {
+        console.error("notifyCompExpiring(7d) error:", e);
+      }
+      if (sent) {
+        await pgDb
+          .update(businesses)
+          .set({ compedMembershipReminder7Sent: true })
+          .where(eq(businesses.id, biz.id));
+      }
+    }
+  }
 }
 
 async function checkExpiredGoldTrials() {
