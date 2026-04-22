@@ -5852,7 +5852,7 @@ async function sendCompExpiryReminders() {
  * Idempotent — re-running the job after the columns have been cleared finds
  * nothing to do because the WHERE clause requires `isCompedMembership=true`.
  */
-async function checkExpiredCompMemberships() {
+export async function checkExpiredCompMemberships() {
   const now = new Date();
   const expired = await pgDb
     .select({
