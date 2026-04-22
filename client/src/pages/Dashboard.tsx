@@ -71,7 +71,7 @@ import { Label } from "@/components/ui/label";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
-import { getMembershipTier } from "@shared/config/membership";
+import { getMembershipTier, isCompActive } from "@shared/config/membership";
 import { DashboardInbox } from "@/components/DashboardInbox";
 import { ListingZipSwitcher } from "@/components/ListingZipSwitcher";
 import { apiRequest } from "@/lib/queryClient";
@@ -426,6 +426,42 @@ function GoldTrialBanner() {
           </Button>
         </Link>
       </div>
+    </div>
+  );
+}
+
+function CompActiveBadge({ business }: { business: Business | null }) {
+  if (!business) return null;
+  if (!isCompActive({
+    isCompedMembership: business.isCompedMembership,
+    compedMembershipExpiresAt: business.compedMembershipExpiresAt,
+  })) {
+    return null;
+  }
+
+  const exp: Business["compedMembershipExpiresAt"] = business.compedMembershipExpiresAt;
+  let label = "Free Gold active — no expiration";
+  if (exp !== undefined && exp !== null) {
+    const endDate = exp instanceof Date ? exp : new Date(exp);
+    if (!isNaN(endDate.getTime())) {
+      const dateLabel = endDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      label = `Free Gold active — ends ${dateLabel}`;
+    }
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-amber-900 shadow-sm"
+      data-testid="badge-comp-active"
+    >
+      <Crown className="h-4 w-4 text-amber-600" />
+      <span className="text-sm font-medium" data-testid="text-comp-active-label">
+        {label}
+      </span>
     </div>
   );
 }
@@ -1913,6 +1949,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
   return (
     <div className="container py-8 space-y-6">
       <GoldTrialBanner />
+      <CompActiveBadge business={business} />
       <CompExpirationBanner />
       <MembershipExpirationBanner />
       <MembershipCancellationBanner />
