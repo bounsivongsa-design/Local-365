@@ -339,6 +339,18 @@ export async function processReferralOnFirstPaidInvoice(args: {
       throw new Error(`missing party row(s) referrer=${pending.referrerBusinessId} referred=${referredBusinessId}`);
     }
 
+    // Defense in depth: even though the webhook gate filters by
+    // `businesses.stripeSubscriptionId`, double-check here so any
+    // future caller of this function can't accidentally reward off a
+    // job-listing or additional-zip invoice. The referee's MEMBERSHIP
+    // subscription id must match the invoice's subscription id.
+    const invoiceSubId = (invoice.subscription as string | null) ?? null;
+    if (!invoiceSubId || !referred.stripeSubscriptionId || referred.stripeSubscriptionId !== invoiceSubId) {
+      throw new Error(
+        `invoice subscription ${invoiceSubId} is not the membership sub for biz ${referredBusinessId} (membership=${referred.stripeSubscriptionId})`,
+      );
+    }
+
     // One-month credit calculation. Always normalize to monthly equivalent
     // so an annual sub doesn't over-credit by 12x.
     let creditCents = 0;

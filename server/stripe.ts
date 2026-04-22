@@ -1281,32 +1281,37 @@ export function registerStripeRoutes(app: Express) {
         }
 
         case "invoice.payment_succeeded": {
-          // Referral reward: when a referee converts trial → paid, credit
-          // the referrer with one month on their next invoice. Strictly
-          // gated on amount_paid > 0 inside processReferralOnFirstPaidInvoice
-          // so $0 setup invoices never trigger payout.
+          // Referral reward: when a referee converts trial → paid on their
+          // MEMBERSHIP subscription, credit the referrer with one month
+          // on their next invoice. Job-listing, additional-zip, and other
+          // non-membership invoices for the same customer must NEVER
+          // consume the pending referral.
+          //
+          // Gating layers (all required):
+          //   1. `sub.metadata.type` — skip known non-membership types.
+          //   2. `businesses.stripeSubscriptionId === sub.id` — the
+          //      membership subscription is tracked exclusively in this
+          //      column. Job listings and additional zips track theirs in
+          //      `jobListings.stripeSubscriptionId` and child business
+          //      rows respectively, so a mismatch here means it isn't a
+          //      membership invoice and we bail out.
+          //   3. amount_paid > 0 (enforced inside the processor).
           const invoice = event.data.object as Stripe.Invoice;
           const subId = invoice.subscription as string | null;
           if (subId) {
             try {
-              let businessId = 0;
               const sub = await stripe!.subscriptions.retrieve(subId);
-              businessId = parseInt(sub.metadata?.businessId || "0");
-              if (!businessId && invoice.customer) {
-                const [biz] = await db.select({ id: businesses.id })
-                  .from(businesses)
-                  .where(eq(businesses.stripeCustomerId, invoice.customer as string));
-                businessId = biz?.id || 0;
+              const subType = sub.metadata?.type;
+              if (subType && subType !== "membership") {
+                // Job listing, additional zip, etc.
+                break;
               }
-              if (!businessId) {
-                const [biz] = await db.select({ id: businesses.id })
-                  .from(businesses)
-                  .where(eq(businesses.stripeSubscriptionId, subId));
-                businessId = biz?.id || 0;
-              }
-              if (businessId) {
+              const [biz] = await db.select({ id: businesses.id })
+                .from(businesses)
+                .where(eq(businesses.stripeSubscriptionId, subId));
+              if (biz?.id) {
                 await processReferralOnFirstPaidInvoice({
-                  referredBusinessId: businessId,
+                  referredBusinessId: biz.id,
                   invoice,
                   stripe: stripe!,
                 }).catch((e) => console.error("[referrals] invoice.payment_succeeded:", e));
