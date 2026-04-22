@@ -166,8 +166,32 @@ type AdminBusiness = {
   verified: boolean | null;
   acceptsQuotes: boolean | null;
   isCompedMembership: boolean | null;
+  compedMembershipExpiresAt: string | null;
+  compedMembershipNote: string | null;
   createdAt: string | null;
 };
+
+type CompRosterRow = {
+  id: number;
+  name: string;
+  email: string | null;
+  zipCode: string | null;
+  membershipTier: string | null;
+  isCompedMembership: boolean | null;
+  compedMembershipNote: string | null;
+  compedMembershipGrantedAt: string | null;
+  compedMembershipGrantedBy: string | null;
+  compedMembershipExpiresAt: string | null;
+  compActive: boolean;
+};
+
+// Returns true when an admin-granted comp Gold flag is currently in effect
+// (no expiry, or expiry still in the future). Mirrors server-side isCompActive.
+function compIsActive(b: { isCompedMembership?: boolean | null; compedMembershipExpiresAt?: string | null }): boolean {
+  if (!b?.isCompedMembership) return false;
+  if (!b.compedMembershipExpiresAt) return true;
+  return new Date(b.compedMembershipExpiresAt).getTime() > Date.now();
+}
 
 type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes" | "growth" | "locations";
 
@@ -1364,6 +1388,10 @@ function BusinessesTab() {
   const [verifyDialog, setVerifyDialog] = useState<AdminBusiness | null>(null);
   const [docReviewNote, setDocReviewNote] = useState("");
   const [deleteBizDialog, setDeleteBizDialog] = useState<AdminBusiness | null>(null);
+  // Comp-grant dialog: holds the target business + form state. `null` when
+  // closed. We pre-fill with the row's existing comp values so editing an
+  // active grant feels like an Edit, not a re-grant from scratch.
+  const [compDialog, setCompDialog] = useState<{ biz: AdminBusiness; note: string; expiresAt: string } | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<{ businesses: AdminBusiness[]; total: number; page: number; pages: number }>({
     queryKey: ["/api/admin/businesses", search, page],
@@ -1389,16 +1417,17 @@ function BusinessesTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  // Grant/revoke comp Gold access. Confirmation prompt on grant only,
-  // since revoking is a no-op for any business that wasn't comped to begin with.
+  // Grant comp Gold via a structured dialog (note + optional expiry). Revoke
+  // is a one-click no-op since wiping the flag is non-destructive: any active
+  // paid tier or trial on the same row is preserved untouched.
   const compMutation = useMutation({
-    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
-      if (active) {
-        const note = window.prompt("Optional internal note for this comp Gold grant (e.g. 'partner agreement', 'support credit'):", "") ?? undefined;
-        await apiRequest("POST", `/api/admin/businesses/${id}/comp`, { active: true, note });
-      } else {
-        await apiRequest("POST", `/api/admin/businesses/${id}/comp`, { active: false });
+    mutationFn: async (vars: { id: number; active: boolean; note?: string; expiresAt?: string | null }) => {
+      const body: { active: boolean; note?: string | null; expiresAt?: string } = { active: vars.active };
+      if (vars.active) {
+        body.note = vars.note ?? null;
+        if (vars.expiresAt) body.expiresAt = vars.expiresAt;
       }
+      await apiRequest("POST", `/api/admin/businesses/${vars.id}/comp`, body);
     },
     onSuccess: (_, vars) => {
       toast({
@@ -1408,6 +1437,8 @@ function BusinessesTab() {
           : "Comp access removed; the business reverts to its actual paid tier.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/comp-memberships"] });
+      setCompDialog(null);
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -1584,6 +1615,22 @@ function BusinessesTab() {
         </Card>
       )}
 
+      <CompMembershipsPanel
+        onRevoke={(id) => compMutation.mutate({ id, active: false })}
+        onEdit={(b) => setCompDialog({
+          biz: {
+            id: b.id, name: b.name, email: b.email, phone: null, zipCode: b.zipCode,
+            membershipTier: b.membershipTier, membershipStartDate: null, membershipEndDate: null,
+            originalMembershipTier: null, goldTrialEndDate: null, verified: null, acceptsQuotes: null,
+            isCompedMembership: b.isCompedMembership, compedMembershipExpiresAt: b.compedMembershipExpiresAt,
+            compedMembershipNote: b.compedMembershipNote, createdAt: null,
+          },
+          note: b.compedMembershipNote ?? "",
+          expiresAt: b.compedMembershipExpiresAt ? b.compedMembershipExpiresAt.slice(0, 10) : "",
+        })}
+        revoking={compMutation.isPending}
+      />
+
       <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -1622,6 +1669,11 @@ function BusinessesTab() {
                     </td>
                     <td className="p-4">
                       <Badge className={`text-xs ${tierColor(b.membershipTier)}`} data-testid={`badge-tier-${b.id}`}>{tierLabel(b.membershipTier)}</Badge>
+                      {compIsActive(b) && (
+                        <Badge className="ml-1 text-[10px] bg-amber-100 text-amber-800 border border-amber-300" data-testid={`badge-comp-${b.id}`}>
+                          Gold (Comp){b.compedMembershipExpiresAt ? ` · until ${format(new Date(b.compedMembershipExpiresAt), "MMM d")}` : ""}
+                        </Badge>
+                      )}
                       {b.goldTrialEndDate && b.originalMembershipTier && b.originalMembershipTier !== b.membershipTier && (
                         <p className="text-[10px] text-amber-700 mt-1 font-medium" data-testid={`text-trial-${b.id}`}>
                           Gold trial · signed up: {tierLabel(b.originalMembershipTier)}
@@ -1689,7 +1741,19 @@ function BusinessesTab() {
                           variant="ghost"
                           size="sm"
                           className={`h-8 px-2 rounded-lg gap-1 ${b.isCompedMembership ? "text-amber-700 hover:bg-amber-50" : "text-emerald-700 hover:bg-emerald-50"}`}
-                          onClick={() => compMutation.mutate({ id: b.id, active: !b.isCompedMembership })}
+                          onClick={() => {
+                            if (b.isCompedMembership) {
+                              if (window.confirm(`Revoke comp Gold for "${b.name}"?\n\nThe business reverts to its real paid tier (no Stripe change).`)) {
+                                compMutation.mutate({ id: b.id, active: false });
+                              }
+                            } else {
+                              setCompDialog({
+                                biz: b,
+                                note: b.compedMembershipNote ?? "",
+                                expiresAt: b.compedMembershipExpiresAt ? b.compedMembershipExpiresAt.slice(0, 10) : "",
+                              });
+                            }
+                          }}
                           disabled={compMutation.isPending}
                           title={b.isCompedMembership ? "Revoke comp Gold access" : "Grant comp Gold access (no Stripe charge)"}
                           data-testid={`button-comp-biz-${b.id}`}
@@ -2178,7 +2242,177 @@ function BusinessesTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!compDialog} onOpenChange={(open) => { if (!open) setCompDialog(null); }}>
+        <DialogContent className="bg-white rounded-2xl max-w-md" data-testid="dialog-comp-grant">
+          <DialogHeader>
+            <DialogTitle className="text-[#1a1a2e] flex items-center gap-2">
+              <Gift className="h-5 w-5 text-amber-600" />
+              Grant comp Gold
+            </DialogTitle>
+            <DialogDescription>
+              {compDialog?.biz.name} will get full Gold access (AI Suite, Marketing Suite, multi-zip discounts) without any Stripe charge. Leave expiry blank for indefinite.
+            </DialogDescription>
+          </DialogHeader>
+          {compDialog && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="comp-note" className="text-xs text-slate-600">Internal note</Label>
+                <Input
+                  id="comp-note"
+                  placeholder="e.g. Dan — commercial video partnership"
+                  value={compDialog.note}
+                  onChange={(e) => setCompDialog({ ...compDialog, note: e.target.value })}
+                  maxLength={500}
+                  data-testid="input-comp-note"
+                />
+              </div>
+              <div>
+                <Label htmlFor="comp-expiry" className="text-xs text-slate-600">Expires (optional)</Label>
+                <Input
+                  id="comp-expiry"
+                  type="date"
+                  value={compDialog.expiresAt}
+                  min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                  onChange={(e) => setCompDialog({ ...compDialog, expiresAt: e.target.value })}
+                  data-testid="input-comp-expires"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Leave blank for an indefinite grant. Comp auto-revokes the day after this date.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompDialog(null)} className="rounded-xl" data-testid="button-cancel-comp">Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!compDialog) return;
+                compMutation.mutate({
+                  id: compDialog.biz.id,
+                  active: true,
+                  note: compDialog.note.trim() || undefined,
+                  expiresAt: compDialog.expiresAt || null,
+                });
+              }}
+              disabled={compMutation.isPending}
+              className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-1"
+              data-testid="button-confirm-comp"
+            >
+              <Gift className="h-4 w-4" />
+              {compMutation.isPending ? "Granting…" : "Grant comp Gold"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Roster of every business with the comp Gold flag, including expired grants.
+// Lives above the main businesses table on the Businesses tab so admins can
+// see partnership comps at a glance without scrolling/searching for them.
+function CompMembershipsPanel({
+  onRevoke,
+  onEdit,
+  revoking,
+}: {
+  onRevoke: (id: number) => void;
+  onEdit: (b: CompRosterRow) => void;
+  revoking: boolean;
+}) {
+  const { data, isLoading } = useQuery<{ businesses: CompRosterRow[] }>({
+    queryKey: ["/api/admin/comp-memberships"],
+  });
+
+  const rows = data?.businesses ?? [];
+  if (!isLoading && rows.length === 0) return null;
+
+  return (
+    <Card className="bg-amber-50/50 border border-amber-200 rounded-2xl" data-testid="panel-comp-memberships">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base text-[#1a1a2e] flex items-center gap-2">
+          <Gift className="h-4 w-4 text-amber-600" />
+          Comp Memberships
+          {rows.length > 0 && (
+            <Badge className="bg-amber-100 text-amber-800 border border-amber-300 text-[10px]">{rows.length}</Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <Skeleton className="h-16 w-full rounded-xl" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-slate-500 border-b border-amber-200/60">
+                  <th className="py-2 pr-3 font-medium">Business</th>
+                  <th className="py-2 pr-3 font-medium">Note</th>
+                  <th className="py-2 pr-3 font-medium">Granted</th>
+                  <th className="py-2 pr-3 font-medium">Expires</th>
+                  <th className="py-2 pr-3 font-medium">Status</th>
+                  <th className="py-2 pr-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-amber-100/60 last:border-0" data-testid={`row-comp-${r.id}`}>
+                    <td className="py-2 pr-3">
+                      <Link to={`/directory/${r.id}`} className="text-[#0a4a82] hover:underline font-medium">{r.name}</Link>
+                      <div className="text-xs text-slate-500">{r.email || "—"}{r.zipCode ? ` · ${r.zipCode}` : ""}</div>
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-slate-600 max-w-xs truncate" title={r.compedMembershipNote || ""}>
+                      {r.compedMembershipNote || <span className="text-slate-400">—</span>}
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-slate-500 whitespace-nowrap">
+                      {r.compedMembershipGrantedAt ? format(new Date(r.compedMembershipGrantedAt), "MMM d, yyyy") : "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-slate-500 whitespace-nowrap">
+                      {r.compedMembershipExpiresAt ? format(new Date(r.compedMembershipExpiresAt), "MMM d, yyyy") : <span className="text-slate-400">Indefinite</span>}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {r.compActive ? (
+                        <Badge className="bg-amber-100 text-amber-800 border border-amber-300 text-[10px]">Gold (Comp)</Badge>
+                      ) : (
+                        <Badge className="bg-slate-100 text-slate-600 text-[10px]">Expired</Badge>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[#0a4a82] hover:bg-blue-50 rounded-lg gap-1 text-xs"
+                          onClick={() => onEdit(r)}
+                          data-testid={`button-comp-edit-${r.id}`}
+                        >
+                          <UserCog className="h-3 w-3" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-red-600 hover:bg-red-50 rounded-lg gap-1 text-xs"
+                          disabled={revoking}
+                          onClick={() => {
+                            if (window.confirm(`Revoke comp Gold for "${r.name}"?\n\nThe business reverts to its real paid tier (no Stripe change).`)) {
+                              onRevoke(r.id);
+                            }
+                          }}
+                          data-testid={`button-comp-revoke-${r.id}`}
+                        >
+                          <XCircle className="h-3 w-3" />
+                          Revoke
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

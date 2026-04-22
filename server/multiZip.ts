@@ -4,15 +4,15 @@ import { db as pgDb } from "./db";
 import { businesses, locations, users, type Business } from "@shared/schema";
 import { eq, and, ne, isNull, or, sql, inArray } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
-import { getAdditionalZipPrice, ADDITIONAL_ZIP_BASE_PRICE } from "@shared/config/membership";
+import { getAdditionalZipPrice, ADDITIONAL_ZIP_BASE_PRICE, isCompActive } from "@shared/config/membership";
 
 const STRIPE_KEY = process.env.Stripeintegration || process.env.STRIPE_SECRET_KEY;
 const stripe: Stripe | null = STRIPE_KEY
   ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion })
   : null;
 
-function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDate" | "isCompedMembership">): string {
-  if (biz.isCompedMembership === true) return "premium";
+function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDate" | "isCompedMembership" | "compedMembershipExpiresAt">): string {
+  if (isCompActive(biz)) return "premium";
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) return "premium";
   return biz.membershipTier || "none";
 }

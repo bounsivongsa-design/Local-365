@@ -15,6 +15,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import Stripe from "stripe";
 import OpenAI from "openai";
 import { db as pgDb } from "./db";
+import { isCompActive } from "@shared/config/membership";
 import {
   aiCredits,
   aiCreditPacks,
@@ -76,9 +77,10 @@ function effectiveTier(b: {
   goldTrialEndDate: Date | null;
   isFoundingMember?: boolean | null;
   isCompedMembership?: boolean | null;
+  compedMembershipExpiresAt?: Date | string | null;
 }): string {
   if (isFounderBiz(b)) return "premium";
-  if (b.isCompedMembership === true) return "premium";
+  if (isCompActive(b)) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) {
     return "premium";

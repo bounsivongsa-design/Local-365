@@ -18,6 +18,7 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { db as pgDb } from "./db";
+import { isCompActive } from "@shared/config/membership";
 import {
   businesses,
   users,
@@ -43,7 +44,7 @@ function effectiveTier(b: {
   isFoundingMember?: boolean | null;
 }): string {
   if (b.isFoundingMember === true) return "premium";
-  if (b.isCompedMembership === true) return "premium";
+  if (isCompActive(b)) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) {
     return "premium";

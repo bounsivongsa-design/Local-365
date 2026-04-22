@@ -16,11 +16,11 @@ import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
-import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES } from "@shared/config/membership";
+import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit } from "@shared/schema";
 import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte } from "drizzle-orm";
 
@@ -43,8 +43,11 @@ function isFounderBusiness(name: string | null | undefined): boolean {
   return FOUNDER_BUSINESSES.some(fb => normalizeBusinessName(fb) === normalized);
 }
 
-function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null }): string {
+function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null; isCompedMembership?: boolean | null; compedMembershipExpiresAt?: Date | string | null }): string {
   if (biz.name && isFounderBusiness(biz.name)) {
+    return "premium";
+  }
+  if (isCompActive(biz)) {
     return "premium";
   }
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) {
@@ -2053,7 +2056,7 @@ Respond in this exact JSON format:
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       let bizTier = "none";
       if (serverBusinessId) {
-        const [bizData] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
+        const [bizData] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
           .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
         bizTier = bizData ? getEffectiveTier(bizData) : "none";
       }
@@ -2415,7 +2418,7 @@ Respond in this exact JSON format:
         let accessRound: string | null = null;
         
         if (isBusinessUser && linkedBusinessId) {
-          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership })
+          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
             .from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
           
           const bizTier = linkedBusiness ? getEffectiveTier(linkedBusiness) : "none";
@@ -3077,7 +3080,7 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
-      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
+      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
       const businessZip = biz?.zipCode || "27958";
       const effectiveTier = biz ? getEffectiveTier(biz) : "none";
@@ -3190,7 +3193,7 @@ Respond in this exact JSON format:
       if (adSize && ["small", "medium", "large"].includes(adSize)) {
         updates.adSize = adSize;
         const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-        const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
+        const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
           .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
         const adEffectiveTier = biz ? getEffectiveTier(biz) : "none";
         const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
@@ -4342,6 +4345,8 @@ Respond in this exact JSON format:
           verified: businesses.verified,
           acceptsQuotes: businesses.acceptsQuotes,
           isCompedMembership: businesses.isCompedMembership,
+          compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+          compedMembershipNote: businesses.compedMembershipNote,
           createdAt: businesses.createdAt,
         }).from(businesses);
 
@@ -4493,6 +4498,45 @@ Respond in this exact JSON format:
   // orthogonal to billing so it can never collide with a real subscription
   // or trial. Audit fields (`compedMembershipGrantedAt/By`, `compedMembershipNote`)
   // are stamped on grant and cleared on revoke.
+  // Roster of every business currently flagged as comped (active or expired).
+  // The admin "Comp Memberships" panel uses this for the at-a-glance view that
+  // doesn't require paginating through the full business table.
+  app.get("/api/admin/comp-memberships", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const rows = await pgDb
+        .select({
+          id: businesses.id,
+          name: businesses.name,
+          email: businesses.email,
+          zipCode: businesses.zipCode,
+          membershipTier: businesses.membershipTier,
+          isCompedMembership: businesses.isCompedMembership,
+          compedMembershipNote: businesses.compedMembershipNote,
+          compedMembershipGrantedAt: businesses.compedMembershipGrantedAt,
+          compedMembershipGrantedBy: businesses.compedMembershipGrantedBy,
+          compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+        })
+        .from(businesses)
+        .where(eq(businesses.isCompedMembership, true))
+        .orderBy(desc(businesses.compedMembershipGrantedAt));
+
+      const now = Date.now();
+      const enriched = rows.map((r) => ({
+        ...r,
+        compActive: !r.compedMembershipExpiresAt || new Date(r.compedMembershipExpiresAt).getTime() > now,
+      }));
+
+      res.json({ businesses: enriched });
+    } catch (err) {
+      console.error("Admin comp roster error:", err);
+      res.status(500).json({ message: "Failed to load comp roster" });
+    }
+  });
+
   app.post("/api/admin/businesses/:id/comp", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
@@ -4504,6 +4548,20 @@ Respond in this exact JSON format:
 
       const active = req.body?.active === true;
       const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : null;
+
+      // Optional expiry (ISO string or null). Reject malformed/past dates so a
+      // typo can't auto-revoke the grant the moment it's saved.
+      let expiresAt: Date | null = null;
+      if (active && req.body?.expiresAt) {
+        const parsed = new Date(req.body.expiresAt);
+        if (isNaN(parsed.getTime())) {
+          return res.status(400).json({ message: "Invalid expiresAt date" });
+        }
+        if (parsed.getTime() <= Date.now()) {
+          return res.status(400).json({ message: "Expiry must be in the future" });
+        }
+        expiresAt = parsed;
+      }
 
       const [target] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, bizId));
       if (!target) return res.status(404).json({ message: "Business not found" });
@@ -4517,17 +4575,29 @@ Respond in this exact JSON format:
                 compedMembershipNote: note,
                 compedMembershipGrantedAt: new Date(),
                 compedMembershipGrantedBy: adminId,
+                compedMembershipExpiresAt: expiresAt,
               }
             : {
                 isCompedMembership: false,
                 compedMembershipNote: null,
                 compedMembershipGrantedAt: null,
                 compedMembershipGrantedBy: null,
+                compedMembershipExpiresAt: null,
               },
         )
         .where(eq(businesses.id, bizId));
 
-      res.json({ ok: true, isCompedMembership: active });
+      // Append-only audit row so the historical "who/when/why" survives even
+      // after revoke wipes the live columns on `businesses`.
+      await pgDb.insert(compMembershipAudit).values({
+        businessId: bizId,
+        action: active ? "grant" : "revoke",
+        actorUserId: adminId,
+        note,
+        expiresAt,
+      });
+
+      res.json({ ok: true, isCompedMembership: active, compedMembershipExpiresAt: expiresAt });
     } catch (err) {
       console.error("Admin comp membership error:", err);
       res.status(500).json({ message: "Failed to update comp membership" });

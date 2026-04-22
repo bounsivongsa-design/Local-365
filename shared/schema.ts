@@ -69,6 +69,10 @@ export const businesses = pgTable("businesses", {
   compedMembershipNote: text("comped_membership_note"),
   compedMembershipGrantedAt: timestamp("comped_membership_granted_at"),
   compedMembershipGrantedBy: varchar("comped_membership_granted_by"),
+  // Optional auto-expiry for comp grants. NULL = indefinite. Once the
+  // current time passes this value, every effectiveTier() helper treats
+  // the business as if it were not comped (falls back to its real tier).
+  compedMembershipExpiresAt: timestamp("comped_membership_expires_at"),
   foundingMemberNumber: integer("founding_member_number").unique(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
@@ -207,6 +211,22 @@ export const jobListings = pgTable("job_listings", {
   paidThroughDate: timestamp("paid_through_date"),
   stripeSubscriptionId: text("stripe_subscription_id"),
 });
+
+// Durable audit trail for admin comp-membership grants and revocations.
+// One row per action (grant OR revoke), append-only — revoking a comp does
+// NOT delete the grant rows so the historical "who/when/why" is preserved
+// even after `businesses.compedMembership*` columns get cleared.
+export const compMembershipAudit = pgTable("comp_membership_audit", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
+  action: text("action").notNull(), // 'grant' | 'revoke'
+  actorUserId: varchar("actor_user_id"),
+  note: text("note"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CompMembershipAuditEntry = typeof compMembershipAudit.$inferSelect;
 
 // Relations
 export const businessesRelations = relations(businesses, ({ many }) => ({

@@ -1,3 +1,19 @@
+// Returns true when a business currently has an admin-granted comp Gold
+// membership that has not expired. Indefinite grants (no expiry) are always
+// active. Used by every effectiveTier() helper across the server.
+export function isCompActive(b: {
+  isCompedMembership?: boolean | null;
+  compedMembershipExpiresAt?: Date | string | null;
+}): boolean {
+  if (b?.isCompedMembership !== true) return false;
+  const exp = b.compedMembershipExpiresAt;
+  if (exp === undefined || exp === null) return true;
+  const expDate = exp instanceof Date ? exp : new Date(exp);
+  // Fail-closed: a corrupt/unparseable expiry must NOT grant premium access.
+  if (isNaN(expDate.getTime())) return false;
+  return expDate.getTime() > Date.now();
+}
+
 export interface MembershipTier {
   id: string;
   name: string;

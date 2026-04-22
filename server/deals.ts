@@ -10,6 +10,7 @@
  */
 import type { Express } from "express";
 import { db as pgDb } from "./db";
+import { isCompActive } from "@shared/config/membership";
 import { businesses, users, deals } from "@shared/schema";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -21,7 +22,7 @@ function effectiveTier(b: {
   isFoundingMember?: boolean | null;
 }): string {
   if (b.isFoundingMember === true) return "premium";
-  if (b.isCompedMembership === true) return "premium";
+  if (isCompActive(b)) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) return "premium";
   return b.membershipTier ?? "none";
