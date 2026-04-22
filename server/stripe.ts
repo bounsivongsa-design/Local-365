@@ -28,6 +28,60 @@ function isFounderBusiness(name: string | null | undefined): boolean {
   return FOUNDER_BUSINESSES.some(fb => normalizeBusinessName(fb) === normalized);
 }
 
+/**
+ * Process a `customer.subscription.deleted` webhook for a MEMBERSHIP
+ * subscription (i.e. not job_listing or additional_zip — those are handled
+ * separately by their own helpers). Flips the business off the paid tier,
+ * records a `membership_downgrades` row capturing the previous tier and the
+ * win-back eligibility window (now + 2 months), and clears the Stripe
+ * subscription pointer so a future signup re-attaches cleanly.
+ *
+ * Resolves the business via metadata.businessId, then by stripeSubscriptionId,
+ * then by stripeCustomerId — exported so it can be unit-tested without
+ * spinning up the Express webhook endpoint.
+ */
+export async function handleMembershipSubscriptionDeleted(
+  subscription: Stripe.Subscription,
+): Promise<{ businessId: number | null; previousTier: string | null }> {
+  let businessId = parseInt(subscription.metadata?.businessId || "0");
+
+  if (!businessId) {
+    const [biz] = await db.select().from(businesses).where(eq(businesses.stripeSubscriptionId, subscription.id));
+    businessId = biz?.id || 0;
+  }
+  if (!businessId && subscription.customer) {
+    const [biz] = await db.select().from(businesses).where(eq(businesses.stripeCustomerId, subscription.customer as string));
+    businessId = biz?.id || 0;
+  }
+
+  if (!businessId) {
+    return { businessId: null, previousTier: null };
+  }
+
+  const [currentBiz] = await db.select({ membershipTier: businesses.membershipTier }).from(businesses).where(eq(businesses.id, businessId));
+  const oldTier = currentBiz?.membershipTier ?? null;
+
+  if (oldTier && oldTier !== "none") {
+    const winBackDate = new Date();
+    winBackDate.setMonth(winBackDate.getMonth() + 2);
+    await db.insert(membershipDowngrades).values({
+      businessId,
+      previousTier: oldTier,
+      newTier: "none",
+      winBackEligibleAt: winBackDate,
+    });
+  }
+
+  await db.update(businesses).set({
+    membershipTier: "none",
+    membershipPaymentFrequency: null,
+    membershipEndDate: new Date(),
+    stripeSubscriptionId: null,
+  }).where(eq(businesses.id, businessId));
+  console.log(`Membership canceled: business ${businessId}`);
+  return { businessId, previousTier: oldTier };
+}
+
 function isFounderEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return FOUNDER_EMAILS.some(fe => fe.toLowerCase() === email.toLowerCase());
@@ -1249,40 +1303,7 @@ export function registerStripeRoutes(app: Express) {
             break;
           }
 
-          let businessId = parseInt(subscription.metadata?.businessId || "0");
-
-          if (!businessId) {
-            const [biz] = await db.select().from(businesses).where(eq(businesses.stripeSubscriptionId, subscription.id));
-            businessId = biz?.id || 0;
-          }
-          if (!businessId && subscription.customer) {
-            const [biz] = await db.select().from(businesses).where(eq(businesses.stripeCustomerId, subscription.customer as string));
-            businessId = biz?.id || 0;
-          }
-
-          if (businessId) {
-            const [currentBiz] = await db.select({ membershipTier: businesses.membershipTier }).from(businesses).where(eq(businesses.id, businessId));
-            const oldTier = currentBiz?.membershipTier;
-
-            if (oldTier && oldTier !== "none") {
-              const winBackDate = new Date();
-              winBackDate.setMonth(winBackDate.getMonth() + 2);
-              await db.insert(membershipDowngrades).values({
-                businessId,
-                previousTier: oldTier,
-                newTier: "none",
-                winBackEligibleAt: winBackDate,
-              });
-            }
-
-            await db.update(businesses).set({
-              membershipTier: "none",
-              membershipPaymentFrequency: null,
-              membershipEndDate: new Date(),
-              stripeSubscriptionId: null,
-            }).where(eq(businesses.id, businessId));
-            console.log(`Membership canceled: business ${businessId}`);
-          }
+          await handleMembershipSubscriptionDeleted(subscription);
           break;
         }
 
