@@ -3894,6 +3894,51 @@ Respond in this exact JSON format:
     }
   });
 
+  app.get("/api/user/comp-expiration", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const user = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length || !user[0].linkedBusinessId) {
+        return res.json({ active: false });
+      }
+      const [biz] = await pgDb
+        .select({
+          isCompedMembership: businesses.isCompedMembership,
+          compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+        })
+        .from(businesses)
+        .where(eq(businesses.id, user[0].linkedBusinessId))
+        .limit(1);
+
+      if (!biz || !biz.isCompedMembership || !biz.compedMembershipExpiresAt) {
+        return res.json({ active: false });
+      }
+
+      const now = new Date();
+      const endDate = new Date(biz.compedMembershipExpiresAt);
+      const msLeft = endDate.getTime() - now.getTime();
+
+      if (msLeft <= 0) {
+        return res.json({ active: false });
+      }
+
+      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
+      if (daysLeft > 14) {
+        return res.json({ active: false });
+      }
+
+      res.json({
+        active: true,
+        daysLeft,
+        endDate: endDate.toISOString(),
+      });
+    } catch (err) {
+      console.error("Error checking comp membership expiration:", err);
+      res.json({ active: false });
+    }
+  });
+
   app.get("/api/membership-downgrades", isAuthenticated, async (req: any, res) => {
     try {
       const user = await pgDb.select().from(users).where(eq(users.id, req.user?.id)).limit(1);

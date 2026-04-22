@@ -430,6 +430,58 @@ function GoldTrialBanner() {
   );
 }
 
+function CompExpirationBanner() {
+  const { data } = useQuery<{
+    active: boolean;
+    daysLeft?: number;
+    endDate?: string;
+  }>({
+    queryKey: ["/api/user/comp-expiration"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/user/comp-expiration", { credentials: "include" });
+        if (!res.ok) return { active: false };
+        return await res.json();
+      } catch {
+        return { active: false };
+      }
+    },
+    staleTime: 60000,
+  });
+
+  if (!data?.active || !data.endDate) return null;
+
+  const endDate = new Date(data.endDate);
+  const dateLabel = endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const daysLeft = data.daysLeft ?? 0;
+
+  return (
+    <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-5 text-white shadow-lg" data-testid="banner-comp-expiration">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <Crown className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg" data-testid="text-comp-expiration-title">
+            Your complimentary Gold access ends {dateLabel}
+          </h3>
+          <p className="text-white/90 text-sm mt-0.5" data-testid="text-comp-expiration-body">
+            {daysLeft <= 1
+              ? "Less than a day left — pick a paid plan to keep your AI Suite, Marketing Suite, and other Gold features active."
+              : `${daysLeft} days left — pick a paid plan to keep your AI Suite, Marketing Suite, and other Gold features active.`}
+          </p>
+        </div>
+        <Link to="/membership">
+          <Button className="bg-white text-amber-700 hover:bg-white/90 font-semibold" data-testid="button-comp-keep-gold">
+            <Crown className="h-4 w-4 mr-2" />
+            Keep Gold
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function MembershipCancellationBanner() {
   const { data } = useQuery<{
     active: boolean;
@@ -1861,6 +1913,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
   return (
     <div className="container py-8 space-y-6">
       <GoldTrialBanner />
+      <CompExpirationBanner />
       <MembershipExpirationBanner />
       <MembershipCancellationBanner />
       {hasBusiness && business && (
