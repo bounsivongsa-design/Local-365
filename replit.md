@@ -56,6 +56,15 @@ Dev/prod parity: Anything verified in dev must also be verified in production. A
 - **Admin "Sign in as" (Impersonation)**: Admin can impersonate any non-admin user from the AdminDashboard users table (amber LogIn icon between Reset Password and Verify). `POST /api/admin/impersonate/:userId` stashes the original admin id on `req.session.impersonatorId` then `req.login()`s the target. `POST /api/admin/stop-impersonating` restores the admin via that stashed id and clears it. Guards: admin-only, can't impersonate self, can't impersonate another admin (`accountType==='admin' || isAdmin===true`). `GET /api/auth/user` surfaces an `impersonator: {id,email,firstName,lastName} | null` field so the global `ImpersonationBanner` (mounted in `App.tsx` above `FoundingUrgencyBanner`) renders an amber bar with "Return to admin" on every page during a session.
 - **Review-Request Funnel Linking**: `/api/r/:token` redirects to `/directory/:bizId?reviewToken=…#leave-review` so the review form auto-opens. The `ReviewDialog` captures the token from URL on mount and passes it on submit; the review POST best-effort-updates the originating `review_requests` row to `status='completed'` with `completedReviewId` set (scoped by both `token` AND `businessId` to prevent cross-business tagging). The owner's `/review-requests` History tab shows a "View review" link on completed rows.
 
+## Running Tests
+Run the full automated test suite with:
+
+```
+npm test
+```
+
+Test files live under `server/__tests__/**/*.test.ts` and are discovered/executed by `script/run-tests.ts`, which shells out to `tsx --test`. Drop a new `*.test.ts` file anywhere under that directory and it will be picked up automatically — no script changes needed. Tests share the workspace Postgres database, so make sure the schema is up to date (`npm run db:push`) before running.
+
 ## External Dependencies
 
 ### Third-Party Services
