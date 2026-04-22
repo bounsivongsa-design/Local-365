@@ -80,6 +80,12 @@ export const businesses = pgTable("businesses", {
   // fields so a future grant starts clean.
   compedMembershipReminder7Sent: boolean("comped_membership_reminder_7_sent").default(false),
   compedMembershipReminder1Sent: boolean("comped_membership_reminder_1_sent").default(false),
+  // Timestamp of the most recent successful comp welcome email send for this
+  // business — set on initial grant and on every successful "resend welcome"
+  // from the admin panel. Cleared on revoke alongside the other comp fields
+  // so a future grant starts clean. Powers the "last welcome sent" column +
+  // cooldown countdown in the admin Comp Memberships panel.
+  compedWelcomeEmailSentAt: timestamp("comped_welcome_email_sent_at"),
   foundingMemberNumber: integer("founding_member_number").unique(),
   // Last known Stripe customer-balance credit (cents, positive number) for
   // this business, persisted so the owner dashboard can keep showing the

@@ -4564,6 +4564,7 @@ Respond in this exact JSON format:
           compedMembershipGrantedAt: businesses.compedMembershipGrantedAt,
           compedMembershipGrantedBy: businesses.compedMembershipGrantedBy,
           compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+          compedWelcomeEmailSentAt: businesses.compedWelcomeEmailSentAt,
         })
         .from(businesses)
         .where(eq(businesses.isCompedMembership, true))
@@ -4575,7 +4576,10 @@ Respond in this exact JSON format:
         compActive: !r.compedMembershipExpiresAt || new Date(r.compedMembershipExpiresAt).getTime() > now,
       }));
 
-      res.json({ businesses: enriched });
+      res.json({
+        businesses: enriched,
+        welcomeResendCooldownSeconds: Math.round(COMP_RESEND_COOLDOWN_MS / 1000),
+      });
     } catch (err) {
       console.error("Admin comp roster error:", err);
       res.status(500).json({ message: "Failed to load comp roster" });
@@ -4663,6 +4667,10 @@ Respond in this exact JSON format:
                 // gets a fresh round of 7d/1d warning emails.
                 compedMembershipReminder7Sent: false,
                 compedMembershipReminder1Sent: false,
+                // Clear the welcome-sent stamp on grant; the fire-and-forget
+                // notifyCompGranted below will re-stamp it iff the email
+                // actually goes out.
+                compedWelcomeEmailSentAt: null,
               }
             : {
                 isCompedMembership: false,
@@ -4672,6 +4680,7 @@ Respond in this exact JSON format:
                 compedMembershipExpiresAt: null,
                 compedMembershipReminder7Sent: false,
                 compedMembershipReminder1Sent: false,
+                compedWelcomeEmailSentAt: null,
               },
         )
         .where(eq(businesses.id, bizId));
@@ -4696,7 +4705,16 @@ Respond in this exact JSON format:
           businessName: target.name,
           expiresAt,
           note,
-        }).catch((e) => console.error("notifyCompGranted error:", e));
+        })
+          .then(async (sent) => {
+            if (sent) {
+              await pgDb
+                .update(businesses)
+                .set({ compedWelcomeEmailSentAt: new Date() })
+                .where(eq(businesses.id, bizId));
+            }
+          })
+          .catch((e) => console.error("notifyCompGranted error:", e));
       } else {
         notifyCompRevoked({
           recipientEmail,
@@ -4785,7 +4803,18 @@ Respond in this exact JSON format:
         note: target.compedMembershipNote,
       });
 
-      res.json({ ok: true, sent, recipientEmail });
+      // Stamp the last-sent time so the admin panel can show "5m ago" and
+      // visually disable the resend button during the cooldown window.
+      let sentAt: Date | null = null;
+      if (sent) {
+        sentAt = new Date();
+        await pgDb
+          .update(businesses)
+          .set({ compedWelcomeEmailSentAt: sentAt })
+          .where(eq(businesses.id, bizId));
+      }
+
+      res.json({ ok: true, sent, recipientEmail, sentAt });
     } catch (err) {
       console.error("Admin comp resend welcome error:", err);
       res.status(500).json({ message: "Failed to resend welcome email" });

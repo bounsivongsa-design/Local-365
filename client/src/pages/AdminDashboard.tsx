@@ -187,6 +187,7 @@ type CompRosterRow = {
   compedMembershipGrantedAt: string | null;
   compedMembershipGrantedBy: string | null;
   compedMembershipExpiresAt: string | null;
+  compedWelcomeEmailSentAt: string | null;
   compActive: boolean;
 };
 
@@ -1454,7 +1455,7 @@ function BusinessesTab() {
   const resendCompWelcomeMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("POST", `/api/admin/businesses/${id}/comp/resend-welcome`, {});
-      return (await res.json()) as { ok: boolean; sent: boolean; recipientEmail: string };
+      return (await res.json()) as { ok: boolean; sent: boolean; recipientEmail: string; sentAt: string | null };
     },
     onSuccess: (data) => {
       toast({
@@ -1464,6 +1465,9 @@ function BusinessesTab() {
           : `Email service is not configured — nothing was sent.`,
         variant: data.sent ? undefined : "destructive",
       });
+      // Refresh the roster so the new "last sent" stamp + cooldown countdown
+      // appear immediately without a page reload.
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/comp-memberships"] });
     },
     onError: (err: Error) => toast({ title: "Couldn't resend", description: err.message, variant: "destructive" }),
   });
@@ -2350,10 +2354,20 @@ function CompMembershipsPanel({
   revoking: boolean;
   resendingId: number | null;
 }) {
-  const { data, isLoading } = useQuery<{ businesses: CompRosterRow[] }>({
+  const { data, isLoading } = useQuery<{ businesses: CompRosterRow[]; welcomeResendCooldownSeconds?: number }>({
     queryKey: ["/api/admin/comp-memberships"],
   });
 
+  // 1Hz tick that drives the visual cooldown countdown + "5m ago" label
+  // freshness without re-querying the server. Cheap; only runs while the
+  // panel is mounted on the Businesses tab.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const cooldownSec = data?.welcomeResendCooldownSeconds ?? 60;
   const rows = data?.businesses ?? [];
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
   if (!isLoading && rows.length === 0) return null;
@@ -2381,6 +2395,7 @@ function CompMembershipsPanel({
                   <th className="py-2 pr-3 font-medium">Note</th>
                   <th className="py-2 pr-3 font-medium">Granted</th>
                   <th className="py-2 pr-3 font-medium">Expires</th>
+                  <th className="py-2 pr-3 font-medium">Welcome sent</th>
                   <th className="py-2 pr-3 font-medium">Status</th>
                   <th className="py-2 pr-3 font-medium text-right">Actions</th>
                 </tr>
@@ -2401,6 +2416,15 @@ function CompMembershipsPanel({
                     </td>
                     <td className="py-2 pr-3 text-xs text-slate-500 whitespace-nowrap">
                       {r.compedMembershipExpiresAt ? format(new Date(r.compedMembershipExpiresAt), "MMM d, yyyy") : <span className="text-slate-400">Indefinite</span>}
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-slate-500 whitespace-nowrap" data-testid={`text-comp-welcome-sent-${r.id}`}>
+                      {r.compedWelcomeEmailSentAt ? (
+                        <span title={format(new Date(r.compedWelcomeEmailSentAt), "PPpp")}>
+                          {formatDistanceToNow(new Date(r.compedWelcomeEmailSentAt), { addSuffix: true })}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Never</span>
+                      )}
                     </td>
                     <td className="py-2 pr-3">
                       {r.compActive ? (
@@ -2432,20 +2456,36 @@ function CompMembershipsPanel({
                           <UserCog className="h-3 w-3" />
                           Edit
                         </Button>
-                        {r.compActive && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-amber-700 hover:bg-amber-100 rounded-lg gap-1 text-xs"
-                            disabled={resendingId === r.id}
-                            title="Re-send the comp welcome email (rate-limited to once per minute)"
-                            onClick={() => onResend(r.id)}
-                            data-testid={`button-comp-resend-${r.id}`}
-                          >
-                            <Send className="h-3 w-3" />
-                            {resendingId === r.id ? "Sending…" : "Resend welcome"}
-                          </Button>
-                        )}
+                        {r.compActive && (() => {
+                          // Compute remaining cooldown from the last successful
+                          // send so the button surfaces the throttle visually
+                          // instead of letting admins discover it via 429 toast.
+                          const lastSentMs = r.compedWelcomeEmailSentAt ? new Date(r.compedWelcomeEmailSentAt).getTime() : 0;
+                          const elapsedSec = lastSentMs ? Math.floor((nowMs - lastSentMs) / 1000) : Infinity;
+                          const remainingSec = Math.max(0, cooldownSec - elapsedSec);
+                          const inCooldown = remainingSec > 0;
+                          const isSending = resendingId === r.id;
+                          return (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-amber-700 hover:bg-amber-100 rounded-lg gap-1 text-xs"
+                              disabled={isSending || inCooldown}
+                              title={inCooldown
+                                ? `Cooldown — please wait ${remainingSec}s before resending again`
+                                : `Re-send the comp welcome email (rate-limited to once per ${cooldownSec}s)`}
+                              onClick={() => onResend(r.id)}
+                              data-testid={`button-comp-resend-${r.id}`}
+                            >
+                              <Send className="h-3 w-3" />
+                              {isSending
+                                ? "Sending…"
+                                : inCooldown
+                                  ? `Wait ${remainingSec}s`
+                                  : "Resend welcome"}
+                            </Button>
+                          );
+                        })()}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -2466,7 +2506,7 @@ function CompMembershipsPanel({
                   </tr>
                   {expandedHistory === r.id && (
                     <tr className="bg-amber-50/40 border-b border-amber-100/60">
-                      <td colSpan={6} className="py-3 px-3">
+                      <td colSpan={7} className="py-3 px-3">
                         <CompHistoryRows businessId={r.id} />
                       </td>
                     </tr>
