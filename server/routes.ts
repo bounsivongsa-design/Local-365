@@ -1162,6 +1162,7 @@ Respond in this exact JSON format:
           referralCode: businesses.referralCode,
           isFoundingMember: businesses.isFoundingMember,
           foundingMemberNumber: businesses.foundingMemberNumber,
+          stripeCustomerId: businesses.stripeCustomerId,
         })
         .from(businesses)
         .where(eq(businesses.id, businessId));
@@ -1169,6 +1170,28 @@ Respond in this exact JSON format:
 
       // Lazy-issue a code if somehow missing
       const code = biz.referralCode ?? (await ensureReferralCode(businessId));
+
+      // Pull current Stripe customer-balance credit so the dashboard can
+      // surface "Pending credit: $X" — referral rewards land here as a
+      // negative balance that auto-applies to the next invoice. Tolerant
+      // of missing Stripe customer (founders/comp accounts) and API
+      // failures: degrade silently to 0.
+      let pendingCreditCents = 0;
+      if (biz.stripeCustomerId) {
+        try {
+          const { stripe } = await import("./stripe");
+          if (stripe) {
+            const customer = await stripe.customers.retrieve(biz.stripeCustomerId);
+            if (!customer.deleted) {
+              const balance = customer.balance ?? 0;
+              if (balance < 0) pendingCreditCents = -balance;
+            }
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn(`[referrals] could not fetch Stripe balance for ${biz.stripeCustomerId}:`, message);
+        }
+      }
 
       const { referrals } = await import("@shared/schema");
       const refs = await pgDb
@@ -1195,6 +1218,7 @@ Respond in this exact JSON format:
         isFoundingMember: biz.isFoundingMember,
         foundingMemberNumber: biz.foundingMemberNumber,
         goldDaysEarned,
+        pendingCreditCents,
         referrals: refs,
       });
     } catch (err) {

@@ -53,6 +53,8 @@ const stripe = process.env.Stripeintegration
   ? new Stripe(process.env.Stripeintegration, { apiVersion: "2025-02-24.acacia" as any })
   : null;
 
+export { stripe };
+
 const TIER_TO_DB: Record<string, string> = {
   bronze: "basic",
   silver: "standard",

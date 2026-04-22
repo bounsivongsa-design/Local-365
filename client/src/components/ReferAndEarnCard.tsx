@@ -21,6 +21,7 @@ interface ReferralData {
   isFoundingMember: boolean;
   foundingMemberNumber: number | null;
   goldDaysEarned: number;
+  pendingCreditCents: number;
   referrals: ReferralRow[];
 }
 
@@ -41,6 +42,9 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
 
   const rewardedCount = data?.referrals.filter((r) => r.status === "rewarded").length ?? 0;
   const pendingCount = data?.referrals.filter((r) => r.status === "pending").length ?? 0;
+  const pendingCreditCents = data?.pendingCreditCents ?? 0;
+  const pendingCreditDollars =
+    pendingCreditCents > 0 ? (pendingCreditCents / 100).toFixed(2) : null;
 
   const copyShareLink = async () => {
     if (!shareUrl) return;
@@ -111,6 +115,21 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
               When another business signs up with your code and activates a paid plan, you both
               get <span className="font-semibold text-amber-200">30 days of Gold</span>.
             </p>
+
+            {pendingCreditDollars && (
+              <div
+                className="mb-3 rounded-lg bg-emerald-400/15 border border-emerald-300/40 px-3 py-2"
+                data-testid="banner-pending-credit"
+              >
+                <div className="text-[10px] uppercase tracking-wide text-emerald-200/80">
+                  Pending credit
+                </div>
+                <div className="text-sm font-semibold text-emerald-100">
+                  Your next invoice will be reduced by{" "}
+                  <span data-testid="text-pending-credit-amount">${pendingCreditDollars}</span>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2 mb-3 text-center">
               <div className="bg-white/10 rounded-lg py-2">
