@@ -1,0 +1,395 @@
+// Tests for startAddZipCheckoutForOwner — the function the
+// POST /api/businesses/:id/add-zip-checkout route delegates to. These cover
+// the *pre-Stripe* validation that gates whether we ever create a Stripe
+// Checkout session at all (a regression here would silently let a buyer
+// duplicate a listing in a zip they already own, or let someone start
+// checkout for a listing they don't own), plus the happy-path verification
+// that the session metadata we hand to Stripe is shaped correctly.
+process.env.RESEND_API_KEY = "";
+
+import test, { before, after, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { eq, inArray, sql } from "drizzle-orm";
+import type Stripe from "stripe";
+
+import { db as pgDb } from "../db";
+import { businesses, locations, users } from "@shared/schema";
+import { startAddZipCheckoutForOwner, __setStripeForTesting } from "../multiZip";
+
+const TEST_TAG = "__addzip_checkout_route_test__";
+const TEST_LOC_NAME = "__addzip_checkout_route_test_loc__";
+
+// Zip codes used by these tests. We pick values unlikely to collide with the
+// real seed data and mark our seeded `locations` row with a TEST_LOC_NAME so
+// cleanup is trivial.
+const COVERED_ZIP_A = "20991";
+const COVERED_ZIP_B = "20992";
+const UNCOVERED_ZIP = "20993";
+
+let createdBusinessIds: number[] = [];
+let createdUserIds: string[] = [];
+let createdLocationIds: number[] = [];
+
+async function seedBusiness(opts: {
+  name: string;
+  ownerUserId?: string | null;
+  parentBusinessId?: number | null;
+  isAdditionalZip?: boolean;
+  zipCode?: string;
+  status?: string;
+  stripeCustomerId?: string | null;
+}) {
+  const [row] = await pgDb
+    .insert(businesses)
+    .values({
+      name: opts.name,
+      description: TEST_TAG,
+      address: "1 Test Way",
+      category: "Service",
+      imageUrl: "https://example.com/x.png",
+      email: `${opts.name.replace(/\s+/g, "").toLowerCase()}-${Math.random()
+        .toString(36)
+        .slice(2, 7)}@example.com`,
+      city: "Moyock",
+      state: "NC",
+      zipCode: opts.zipCode ?? COVERED_ZIP_A,
+      membershipTier: "premium",
+      stripeCustomerId: opts.stripeCustomerId ?? "cus_test_" + Math.random().toString(36).slice(2, 8),
+      stripeSubscriptionId: null,
+      ownerUserId: opts.ownerUserId ?? null,
+      parentBusinessId: opts.parentBusinessId ?? null,
+      isAdditionalZip: opts.isAdditionalZip ?? false,
+      status: opts.status ?? "active",
+      referralCode: `ADDZIPCHK-${Math.random().toString(36).slice(2, 10)}`,
+      foundingMemberNumber: null,
+    })
+    .returning();
+  createdBusinessIds.push(row.id);
+  return row;
+}
+
+async function seedUser(opts: { linkedBusinessId?: number | null } = {}) {
+  const id = "user-addzip-checkout-" + Math.random().toString(36).slice(2, 10);
+  await pgDb.insert(users).values({
+    id,
+    email: `${id}@example.com`,
+    accountType: "business",
+    linkedBusinessId: opts.linkedBusinessId ?? null,
+  });
+  createdUserIds.push(id);
+  return id;
+}
+
+async function seedCoveredLocation(zips: string[]) {
+  const [row] = await pgDb
+    .insert(locations)
+    .values({
+      name: TEST_LOC_NAME,
+      city: "Currituck",
+      state: "NC",
+      zipCodes: zips,
+      region: "Outer Banks",
+    })
+    .returning();
+  createdLocationIds.push(row.id);
+  return row;
+}
+
+async function cleanup() {
+  if (createdUserIds.length) {
+    await pgDb.delete(users).where(inArray(users.id, createdUserIds));
+    createdUserIds = [];
+  }
+  if (createdBusinessIds.length) {
+    const children = await pgDb
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(inArray(businesses.parentBusinessId, createdBusinessIds));
+    const all = Array.from(new Set([...createdBusinessIds, ...children.map((c) => c.id)]));
+    await pgDb.delete(businesses).where(inArray(businesses.id, all));
+    createdBusinessIds = [];
+  }
+  if (createdLocationIds.length) {
+    await pgDb.delete(locations).where(inArray(locations.id, createdLocationIds));
+    createdLocationIds = [];
+  }
+}
+
+before(async () => {
+  // Sweep stragglers from prior failed runs.
+  const bizStragglers = await pgDb
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(eq(businesses.description, TEST_TAG));
+  if (bizStragglers.length) {
+    const ids = bizStragglers.map((s) => s.id);
+    const children = await pgDb
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(inArray(businesses.parentBusinessId, ids));
+    const all = Array.from(new Set([...ids, ...children.map((c) => c.id)]));
+    await pgDb.delete(businesses).where(inArray(businesses.id, all));
+  }
+  await pgDb.delete(locations).where(eq(locations.name, TEST_LOC_NAME));
+  // Make sure none of our test zip codes are present in any other row's
+  // zipCodes array — would otherwise make ownership/coverage checks ambiguous.
+  for (const zc of [COVERED_ZIP_A, COVERED_ZIP_B, UNCOVERED_ZIP]) {
+    await pgDb
+      .update(locations)
+      .set({ zipCodes: sql`array_remove(${locations.zipCodes}, ${zc})` })
+      .where(sql`${zc} = ANY(COALESCE(${locations.zipCodes}, ARRAY[]::text[]))`);
+  }
+});
+
+beforeEach(async () => {
+  await cleanup();
+  __setStripeForTesting(null);
+});
+
+after(async () => {
+  await cleanup();
+  __setStripeForTesting(null);
+});
+
+interface StripeStub {
+  client: Stripe;
+  createCalls: Stripe.Checkout.SessionCreateParams[];
+}
+
+function makeStripeStub(returnUrl = "https://stripe.test/checkout/abc123"): StripeStub {
+  const stub: StripeStub = {
+    client: undefined as unknown as Stripe,
+    createCalls: [],
+  };
+  stub.client = {
+    checkout: {
+      sessions: {
+        create: async (params: Stripe.Checkout.SessionCreateParams) => {
+          stub.createCalls.push(params);
+          return { id: "cs_test_stub", url: returnUrl } as Stripe.Checkout.Session;
+        },
+      },
+    },
+  } as unknown as Stripe;
+  return stub;
+}
+
+// ---------------------------------------------------------------------------
+// Pre-Stripe validation
+// ---------------------------------------------------------------------------
+
+test("add-zip-checkout: 400 when zipCode is missing from the body", async () => {
+  const userId = await seedUser();
+  const biz = await seedBusiness({ name: "AddZip Missing Zip", ownerUserId: userId });
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(userId, biz.id, "", "example.test");
+
+  assert.equal(result.status, 400);
+  assert.match(String(result.body.message), /zipcode/i);
+  assert.equal(stub.createCalls.length, 0, "Stripe must not be called when zip is missing");
+});
+
+test("add-zip-checkout: 403 when the caller does not own the listing", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const ownerId = await seedUser();
+  const owned = await seedBusiness({ name: "AddZip Owned By Other", ownerUserId: ownerId });
+  const intruderId = await seedUser();
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(intruderId, owned.id, COVERED_ZIP_B, "example.test");
+
+  assert.equal(result.status, 403);
+  assert.match(String(result.body.message), /not your listing/i);
+  assert.equal(stub.createCalls.length, 0, "Stripe must not be called for non-owners");
+});
+
+test("add-zip-checkout: 400 when the requested zip is not in any covered location", async () => {
+  // Note: deliberately do NOT seed a location that contains UNCOVERED_ZIP.
+  const userId = await seedUser();
+  const biz = await seedBusiness({ name: "AddZip Uncovered", ownerUserId: userId });
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(userId, biz.id, UNCOVERED_ZIP, "example.test");
+
+  assert.equal(result.status, 400);
+  assert.match(String(result.body.message), /coverage/i);
+  assert.equal(stub.createCalls.length, 0, "Stripe must not be called for uncovered zips");
+});
+
+test("add-zip-checkout: 409 when the caller already owns an active listing in that zip (root listing)", async () => {
+  await seedCoveredLocation([COVERED_ZIP_A]);
+  const userId = await seedUser();
+  // The owner's primary listing IS in COVERED_ZIP_A — must refuse to sell it again.
+  const biz = await seedBusiness({ name: "AddZip Dup Root", ownerUserId: userId, zipCode: COVERED_ZIP_A });
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(userId, biz.id, COVERED_ZIP_A, "example.test");
+
+  assert.equal(result.status, 409);
+  assert.match(String(result.body.message), /already have a listing/i);
+  assert.equal(stub.createCalls.length, 0, "Stripe must not be called for duplicate zips");
+});
+
+test("add-zip-checkout: 409 when a child listing under the same parent already covers that zip", async () => {
+  await seedCoveredLocation([COVERED_ZIP_A, COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const parent = await seedBusiness({ name: "AddZip Dup Parent", ownerUserId: userId, zipCode: COVERED_ZIP_A });
+  // Existing additional-zip child already covers COVERED_ZIP_B.
+  await seedBusiness({
+    name: "AddZip Dup Existing Child",
+    ownerUserId: userId,
+    parentBusinessId: parent.id,
+    isAdditionalZip: true,
+    zipCode: COVERED_ZIP_B,
+  });
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(userId, parent.id, COVERED_ZIP_B, "example.test");
+
+  assert.equal(result.status, 409);
+  assert.equal(stub.createCalls.length, 0, "Stripe must not be called when a sibling already owns that zip");
+});
+
+test("add-zip-checkout: 409 also fires when the caller targets the child listing rather than the root", async () => {
+  // Defends the bug shape where switching to a child as the active listing
+  // bypassed the duplicate check. The root walker should normalize to the
+  // root before the existing-listing query runs.
+  await seedCoveredLocation([COVERED_ZIP_A, COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const parent = await seedBusiness({ name: "AddZip Dup Via Child Parent", ownerUserId: userId, zipCode: COVERED_ZIP_A });
+  const child = await seedBusiness({
+    name: "AddZip Dup Via Child",
+    ownerUserId: userId,
+    parentBusinessId: parent.id,
+    isAdditionalZip: true,
+    zipCode: COVERED_ZIP_B,
+  });
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  // Target the child id, but the duplicate is in COVERED_ZIP_A (root's own zip).
+  const result = await startAddZipCheckoutForOwner(userId, child.id, COVERED_ZIP_A, "example.test");
+
+  assert.equal(result.status, 409);
+  assert.equal(stub.createCalls.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Happy path: builds the Stripe Checkout session correctly
+// ---------------------------------------------------------------------------
+
+test("add-zip-checkout: happy path builds a Stripe Checkout session with the right metadata, customer, and price", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const parent = await seedBusiness({
+    name: "AddZip Happy Parent",
+    ownerUserId: userId,
+    zipCode: COVERED_ZIP_A,
+    stripeCustomerId: "cus_happy_parent",
+  });
+
+  const stub = makeStripeStub("https://stripe.test/checkout/happy");
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(userId, parent.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.url, "https://stripe.test/checkout/happy");
+  assert.ok(typeof result.body.priceMonthly === "number" && (result.body.priceMonthly as number) > 0,
+    "must report a positive monthly price to the frontend");
+
+  assert.equal(stub.createCalls.length, 1, "Stripe.checkout.sessions.create called exactly once");
+  const params = stub.createCalls[0];
+
+  assert.equal(params.mode, "subscription");
+  assert.equal(params.customer, "cus_happy_parent", "must reuse the parent's Stripe customer");
+
+  // success/cancel URLs use the host we passed in.
+  assert.ok(String(params.success_url).startsWith("https://myhost.example/dashboard"));
+  assert.ok(String(params.success_url).includes(`addedZip=${COVERED_ZIP_B}`));
+  assert.ok(String(params.cancel_url).includes(`canceledZip=${COVERED_ZIP_B}`));
+
+  // Top-level metadata — every field the webhook will read.
+  assert.equal(params.metadata?.type, "additional_zip");
+  assert.equal(params.metadata?.parentBusinessId, String(parent.id), "parentBusinessId must be the ROOT listing id");
+  assert.equal(params.metadata?.ownerUserId, userId);
+  assert.equal(params.metadata?.zipCode, COVERED_ZIP_B);
+  assert.equal(params.metadata?.city, "Currituck");
+  assert.equal(params.metadata?.state, "NC");
+
+  // Subscription metadata mirrors the top-level metadata (used on
+  // subsequent invoice/subscription events).
+  assert.equal(params.subscription_data?.metadata?.type, "additional_zip");
+  assert.equal(params.subscription_data?.metadata?.parentBusinessId, String(parent.id));
+  assert.equal(params.subscription_data?.metadata?.ownerUserId, userId);
+  assert.equal(params.subscription_data?.metadata?.zipCode, COVERED_ZIP_B);
+
+  // Line item: priced per the parent's effective tier, billed monthly in USD.
+  const line = params.line_items?.[0];
+  assert.ok(line, "must include exactly one line item");
+  assert.equal(line.quantity, 1);
+  assert.equal(line.price_data?.currency, "usd");
+  assert.equal(line.price_data?.recurring?.interval, "month");
+  assert.equal(
+    line.price_data?.unit_amount,
+    (result.body.priceMonthly as number) * 100,
+    "unit_amount (cents) must equal priceMonthly (dollars) * 100",
+  );
+});
+
+test("add-zip-checkout: when the caller targets a CHILD listing, parentBusinessId in metadata is the ROOT, and the root's Stripe customer is used", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const root = await seedBusiness({
+    name: "AddZip Root For Child Test",
+    ownerUserId: userId,
+    zipCode: COVERED_ZIP_A,
+    stripeCustomerId: "cus_root_for_child",
+  });
+  const child = await seedBusiness({
+    name: "AddZip Child For Child Test",
+    ownerUserId: userId,
+    parentBusinessId: root.id,
+    isAdditionalZip: true,
+    zipCode: "20999",
+    stripeCustomerId: "cus_child_should_not_be_used",
+  });
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(userId, child.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.equal(stub.createCalls.length, 1);
+  const params = stub.createCalls[0];
+  assert.equal(params.metadata?.parentBusinessId, String(root.id),
+    "metadata.parentBusinessId must point at the root, not the targeted child");
+  assert.equal(params.customer, "cus_root_for_child",
+    "must use the ROOT's Stripe customer even when checkout was started from a child");
+});
+
+test("add-zip-checkout: 503 when Stripe isn't configured (and zip/owner checks all pass)", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const parent = await seedBusiness({ name: "AddZip No Stripe", ownerUserId: userId, zipCode: COVERED_ZIP_A });
+
+  __setStripeForTesting(null);
+
+  const result = await startAddZipCheckoutForOwner(userId, parent.id, COVERED_ZIP_B, "example.test");
+
+  assert.equal(result.status, 503);
+  assert.match(String(result.body.message), /stripe/i);
+});

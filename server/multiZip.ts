@@ -204,89 +204,9 @@ export function registerMultiZipRoutes(app: Express) {
       const userId = req.user?.id;
       const parentId = Number(req.params.id);
       const { zipCode } = req.body || {};
-      if (!zipCode) return res.status(400).json({ message: "zipCode required" });
-
-      const callerBiz = await loadOwnedBusiness(userId, parentId);
-      if (!callerBiz) return res.status(403).json({ message: "Not your listing" });
-
-      // Always attach the new zip to the root listing so the graph stays flat
-      // (root → children) regardless of which listing the user currently has
-      // active in their dashboard.
-      const root = await resolveListingRoot(callerBiz.id);
-      const parent = root || callerBiz;
-      const rootId = parent.id;
-
-      // Validate zip is covered + not already owned
-      const [loc] = await pgDb
-        .select()
-        .from(locations)
-        .where(sql`${zipCode} = ANY(COALESCE(${locations.zipCodes}, ARRAY[]::text[]))`)
-        .limit(1);
-      if (!loc) return res.status(400).json({ message: "Zip not in coverage area" });
-
-      const existing = await pgDb
-        .select({ id: businesses.id })
-        .from(businesses)
-        .where(
-          and(
-            or(
-              eq(businesses.ownerUserId, userId),
-              eq(businesses.id, rootId),
-              eq(businesses.parentBusinessId, rootId),
-            ),
-            eq(businesses.zipCode, zipCode),
-            ne(businesses.status, "archived"),
-          ),
-        )
-        .limit(1);
-      if (existing.length) {
-        return res.status(409).json({ message: "You already have a listing in this zip" });
-      }
-
-      if (!stripe) return res.status(503).json({ message: "Stripe not configured" });
-
-      const tier = getEffectiveTier(parent);
-      const dollars = getAdditionalZipPrice(tier);
-      const baseUrl = `https://${req.get("host")}`;
-
-      const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        customer: parent.stripeCustomerId || undefined,
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: `Local List 365 — Additional Zip Listing (${loc.city}, ${loc.state} ${zipCode})`,
-                description: `Adds ${parent.name} as a separate listing in zip ${zipCode}. Billed monthly. No trial.`,
-              },
-              unit_amount: dollars * 100,
-              recurring: { interval: "month" },
-            },
-            quantity: 1,
-          },
-        ],
-        success_url: `${baseUrl}/dashboard?addedZip=${zipCode}`,
-        cancel_url: `${baseUrl}/dashboard?canceledZip=${zipCode}`,
-        metadata: {
-          type: "additional_zip",
-          parentBusinessId: String(rootId),
-          ownerUserId: userId,
-          zipCode,
-          city: loc.city,
-          state: loc.state,
-        },
-        subscription_data: {
-          metadata: {
-            type: "additional_zip",
-            parentBusinessId: String(rootId),
-            ownerUserId: userId,
-            zipCode,
-          },
-        },
-      });
-
-      res.json({ url: session.url, priceMonthly: dollars });
+      const host = req.get("host") || "";
+      const result = await startAddZipCheckoutForOwner(userId, parentId, zipCode, host);
+      res.status(result.status).json(result.body);
     } catch (err: unknown) {
       console.error("[multiZip] add-zip-checkout:", err);
       res.status(500).json({ message: errMsg(err) || "Failed to start checkout" });
@@ -305,6 +225,106 @@ export function registerMultiZipRoutes(app: Express) {
       res.status(500).json({ message: "Failed to cancel" });
     }
   });
+}
+
+/**
+ * Pre-Stripe validation + Stripe Checkout session creation for a buyer who
+ * wants to add another zip to their listing graph. Exported for testing —
+ * the route handler delegates to this function.
+ *
+ * Returns { status, body } in the same shape as the route's response so the
+ * route can stay a thin wrapper. The body for the happy path matches what
+ * the frontend already consumes: `{ url, priceMonthly }`.
+ */
+export async function startAddZipCheckoutForOwner(
+  userId: string,
+  parentId: number,
+  zipCode: string,
+  host: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  if (!zipCode) return { status: 400, body: { message: "zipCode required" } };
+
+  const callerBiz = await loadOwnedBusiness(userId, parentId);
+  if (!callerBiz) return { status: 403, body: { message: "Not your listing" } };
+
+  // Always attach the new zip to the root listing so the graph stays flat
+  // (root → children) regardless of which listing the user currently has
+  // active in their dashboard.
+  const root = await resolveListingRoot(callerBiz.id);
+  const parent = root || callerBiz;
+  const rootId = parent.id;
+
+  // Validate zip is covered + not already owned
+  const [loc] = await pgDb
+    .select()
+    .from(locations)
+    .where(sql`${zipCode} = ANY(COALESCE(${locations.zipCodes}, ARRAY[]::text[]))`)
+    .limit(1);
+  if (!loc) return { status: 400, body: { message: "Zip not in coverage area" } };
+
+  const existing = await pgDb
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(
+      and(
+        or(
+          eq(businesses.ownerUserId, userId),
+          eq(businesses.id, rootId),
+          eq(businesses.parentBusinessId, rootId),
+        ),
+        eq(businesses.zipCode, zipCode),
+        ne(businesses.status, "archived"),
+      ),
+    )
+    .limit(1);
+  if (existing.length) {
+    return { status: 409, body: { message: "You already have a listing in this zip" } };
+  }
+
+  if (!stripe) return { status: 503, body: { message: "Stripe not configured" } };
+
+  const tier = getEffectiveTier(parent);
+  const dollars = getAdditionalZipPrice(tier);
+  const baseUrl = `https://${host}`;
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: parent.stripeCustomerId || undefined,
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `Local List 365 — Additional Zip Listing (${loc.city}, ${loc.state} ${zipCode})`,
+            description: `Adds ${parent.name} as a separate listing in zip ${zipCode}. Billed monthly. No trial.`,
+          },
+          unit_amount: dollars * 100,
+          recurring: { interval: "month" },
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${baseUrl}/dashboard?addedZip=${zipCode}`,
+    cancel_url: `${baseUrl}/dashboard?canceledZip=${zipCode}`,
+    metadata: {
+      type: "additional_zip",
+      parentBusinessId: String(rootId),
+      ownerUserId: userId,
+      zipCode,
+      city: loc.city,
+      state: loc.state,
+    },
+    subscription_data: {
+      metadata: {
+        type: "additional_zip",
+        parentBusinessId: String(rootId),
+        ownerUserId: userId,
+        zipCode,
+      },
+    },
+  });
+
+  return { status: 200, body: { url: session.url, priceMonthly: dollars } };
 }
 
 /**
