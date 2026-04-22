@@ -76,6 +76,15 @@ app.use((req, res, next) => {
     console.error("Admin setup:", e);
   }
 
+  // Recover any referral rows stuck in the 'processing' state from a
+  // crash mid-credit during a previous boot. Safe + idempotent.
+  try {
+    const { requeueStuckProcessingReferrals } = await import("./referrals");
+    await requeueStuckProcessingReferrals();
+  } catch (e) {
+    console.error("Referral requeue on boot:", e);
+  }
+
   // Seed service-area zip rows (NC OBX/EC + VA Chesapeake/VB) — idempotent.
   try {
     const { seedServiceAreas } = await import("./locationSeed");

@@ -207,9 +207,14 @@ async function tryAssignFoundingNumber(
  *
  * Side effects:
  *   - Assigns founding member number if eligible (first 100 paid)
- *   - Rewards a pending referral (extends both parties +30d Gold)
  *
- * Returns a small report object for logging.
+ * NOTE: Referral payout no longer happens here. It moved to
+ * `processReferralOnFirstPaidInvoice`, which fires from the
+ * `invoice.payment_succeeded` webhook so we only reward when actual
+ * money has been collected (i.e. the trial converted to a real paid
+ * month). The `referralRewarded`/`referrerBusinessId` fields on the
+ * return value are kept for callers' backwards compat and are now
+ * always false/null.
  */
 export async function processMembershipActivation(
   businessId: number,
