@@ -38,6 +38,27 @@ const TIER_PRICE_CENTS_FALLBACK: Record<string, number> = {
   premium: 10000,
 };
 
+/**
+ * Convert a Stripe sub item's full billing-period unit_amount into the
+ * monthly-equivalent amount in cents. We must reward exactly ONE month —
+ * not one billing period — so an annual sub at $1,200/yr becomes a
+ * $100 credit, a semiannual at $600/6mo becomes $100, etc.
+ */
+function monthlyEquivalentCents(item: Stripe.SubscriptionItem | undefined): number {
+  const unit = item?.price?.unit_amount;
+  const recurring = item?.price?.recurring;
+  if (typeof unit !== "number" || unit <= 0 || !recurring) return 0;
+  const intervalCount = recurring.interval_count || 1;
+  const monthsPerInterval =
+    recurring.interval === "year" ? 12 :
+    recurring.interval === "month" ? 1 :
+    recurring.interval === "week" ? 1 / 4 :
+    recurring.interval === "day" ? 1 / 30 : 1;
+  const totalMonths = intervalCount * monthsPerInterval;
+  if (totalMonths <= 0) return unit;
+  return Math.round(unit / totalMonths);
+}
+
 /** Generates a friendly referral code like "REF-XK4Q9P". */
 export function generateReferralCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I confusion
@@ -286,92 +307,138 @@ export async function processReferralOnFirstPaidInvoice(args: {
     return { rewarded: false, reason: "no pending referral" };
   }
 
-  // Atomic transition — only one caller wins.
+  // Atomically transition pending → processing so concurrent webhooks
+  // can't both attempt the credit. If we crash before finalizing, a
+  // safety net (`requeueStuckProcessingReferrals`) flips the row back
+  // to 'pending' so the next webhook delivery can retry.
   const [claimed] = await db
     .update(referrals)
-    .set({ status: "rewarded", rewardedAt: new Date() })
+    .set({ status: "processing" })
     .where(and(eq(referrals.id, pending.id), eq(referrals.status, "pending")))
     .returning({ id: referrals.id });
   if (!claimed) {
     return { rewarded: false, reason: "lost race to concurrent caller" };
   }
 
-  // Look up both parties (we already won the row, so even if any of
-  // this fails the referral stays marked rewarded — operator can
-  // manually retry crediting via Stripe dashboard).
-  const parties = await db
-    .select({
-      id: businesses.id,
-      name: businesses.name,
-      email: businesses.email,
-      membershipTier: businesses.membershipTier,
-      stripeCustomerId: businesses.stripeCustomerId,
-      stripeSubscriptionId: businesses.stripeSubscriptionId,
-    })
-    .from(businesses)
-    .where(inArray(businesses.id, [pending.referrerBusinessId, referredBusinessId]));
-
-  const referrer = parties.find((p) => p.id === pending.referrerBusinessId);
-  const referred = parties.find((p) => p.id === referredBusinessId);
-  if (!referrer || !referred) {
-    console.warn(`[referrals] reward: missing party row(s) referrer=${pending.referrerBusinessId} referred=${referredBusinessId}`);
-    return { rewarded: true, reason: "marked rewarded but party row(s) missing" };
-  }
-
-  // Determine credit amount: prefer the referrer's actual current
-  // monthly subscription price; fall back to tier price table.
-  let creditCents = 0;
-  if (referrer.stripeSubscriptionId) {
-    try {
-      const sub = await stripe.subscriptions.retrieve(referrer.stripeSubscriptionId);
-      const item = sub.items?.data?.[0];
-      const unit = item?.price?.unit_amount;
-      if (typeof unit === "number" && unit > 0) creditCents = unit;
-    } catch (err: any) {
-      console.warn(`[referrals] could not fetch referrer sub ${referrer.stripeSubscriptionId}:`, err?.message);
-    }
-  }
-  if (!creditCents) {
-    creditCents = TIER_PRICE_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
-  }
-
-  if (referrer.stripeCustomerId) {
-    try {
-      // Negative amount = credit applied to NEXT invoice automatically.
-      await stripe.customers.createBalanceTransaction(referrer.stripeCustomerId, {
-        amount: -creditCents,
-        currency: "usd",
-        description: `Referral reward: ${referred.name} (referral #${pending.id})`,
-        metadata: {
-          referralId: String(pending.id),
-          referredBusinessId: String(referredBusinessId),
-          referrerBusinessId: String(pending.referrerBusinessId),
-          source: "locallist365_referral",
-        },
-      });
-      console.log(`[referrals] credited $${(creditCents / 100).toFixed(2)} to customer ${referrer.stripeCustomerId} for referral ${pending.id}`);
-    } catch (err: any) {
-      console.error(`[referrals] Stripe credit failed for referral ${pending.id}:`, err?.message);
-    }
-  } else {
-    // Founder / comp account fallback: extend Gold trial by 30 days.
-    await addGoldDays(db, referrer.id, REFERRAL_REWARD_DAYS);
-    console.log(`[referrals] no stripeCustomerId on referrer ${referrer.id}; granted +${REFERRAL_REWARD_DAYS} Gold days instead`);
-  }
-
-  // Best-effort email — failures must not roll back the reward.
   try {
-    await notifyReferralInvoiceCredit({
-      referrerEmail: referrer.email,
-      referrerBusinessName: referrer.name,
-      referredBusinessName: referred.name,
-      creditAmountCents: creditCents,
-    });
-  } catch (err) {
-    console.error("[referrals] reward email send failed (non-fatal):", err);
-  }
+    const parties = await db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        membershipTier: businesses.membershipTier,
+        stripeCustomerId: businesses.stripeCustomerId,
+        stripeSubscriptionId: businesses.stripeSubscriptionId,
+      })
+      .from(businesses)
+      .where(inArray(businesses.id, [pending.referrerBusinessId, referredBusinessId]));
 
-  return { rewarded: true, creditCents };
+    const referrer = parties.find((p) => p.id === pending.referrerBusinessId);
+    const referred = parties.find((p) => p.id === referredBusinessId);
+    if (!referrer || !referred) {
+      throw new Error(`missing party row(s) referrer=${pending.referrerBusinessId} referred=${referredBusinessId}`);
+    }
+
+    // One-month credit calculation. Always normalize to monthly equivalent
+    // so an annual sub doesn't over-credit by 12x.
+    let creditCents = 0;
+    if (referrer.stripeSubscriptionId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(referrer.stripeSubscriptionId);
+        creditCents = monthlyEquivalentCents(sub.items?.data?.[0]);
+      } catch (err: any) {
+        console.warn(`[referrals] could not fetch referrer sub ${referrer.stripeSubscriptionId}:`, err?.message);
+      }
+    }
+    if (!creditCents) {
+      creditCents = TIER_PRICE_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
+    }
+
+    if (referrer.stripeCustomerId) {
+      // Apply the Stripe credit BEFORE finalizing the row. Idempotency
+      // key keyed on referralId means safe under retry — if we crashed
+      // after the API call but before the DB write, a future call with
+      // the same key returns the original transaction instead of
+      // double-crediting. Failure here throws and falls into the catch
+      // below which flips the row back to 'pending' for retry.
+      await stripe.customers.createBalanceTransaction(
+        referrer.stripeCustomerId,
+        {
+          amount: -creditCents,
+          currency: "usd",
+          description: `Referral reward: ${referred.name} (referral #${pending.id})`,
+          metadata: {
+            referralId: String(pending.id),
+            referredBusinessId: String(referredBusinessId),
+            referrerBusinessId: String(pending.referrerBusinessId),
+            source: "locallist365_referral",
+          },
+        },
+        { idempotencyKey: `referral-credit-${pending.id}` },
+      );
+      console.log(`[referrals] credited $${(creditCents / 100).toFixed(2)} to customer ${referrer.stripeCustomerId} for referral ${pending.id}`);
+    } else {
+      // Founder / comp account fallback: extend Gold trial by 30 days.
+      // This DB write is itself idempotent at the day-extension level via
+      // GREATEST(...), so a retry would extend twice. We accept that risk
+      // because (a) only founders/comps hit this branch, (b) the row
+      // flips to 'rewarded' immediately below so retries shouldn't
+      // happen.
+      await addGoldDays(db, referrer.id, REFERRAL_REWARD_DAYS);
+      console.log(`[referrals] no stripeCustomerId on referrer ${referrer.id}; granted +${REFERRAL_REWARD_DAYS} Gold days instead`);
+    }
+
+    // Credit succeeded — finalize the row.
+    await db
+      .update(referrals)
+      .set({ status: "rewarded", rewardedAt: new Date() })
+      .where(eq(referrals.id, pending.id));
+
+    // Best-effort email — failures must not undo the reward.
+    try {
+      await notifyReferralInvoiceCredit({
+        referrerEmail: referrer.email,
+        referrerBusinessName: referrer.name,
+        referredBusinessName: referred.name,
+        creditAmountCents: creditCents,
+      });
+    } catch (err) {
+      console.error("[referrals] reward email send failed (non-fatal):", err);
+    }
+
+    return { rewarded: true, creditCents };
+  } catch (err: any) {
+    // Roll the row back to pending so the next webhook delivery (or
+    // a manual replay) can retry.
+    await db
+      .update(referrals)
+      .set({ status: "pending" })
+      .where(and(eq(referrals.id, pending.id), eq(referrals.status, "processing")));
+    console.error(`[referrals] reward FAILED for referral ${pending.id}, rolled back to pending:`, err?.message ?? err);
+    return { rewarded: false, reason: `error: ${err?.message ?? "unknown"}` };
+  }
+}
+
+/**
+ * Safety net for rows stuck in 'processing' (e.g. server crashed
+ * mid-webhook before finalize). Flips them back to 'pending' so the
+ * next invoice delivery — or an admin replay — can complete the
+ * reward. Safe to call on app boot.
+ */
+export async function requeueStuckProcessingReferrals(maxAgeMinutes = 15): Promise<number> {
+  const result = await db.execute(sql`
+    UPDATE referrals
+    SET status = 'pending'
+    WHERE status = 'processing'
+      AND COALESCE(created_at, NOW()) < NOW() - (${maxAgeMinutes}::int || ' minutes')::interval
+    RETURNING id
+  `);
+  const rows = (result as any).rows ?? result;
+  const count = Array.isArray(rows) ? rows.length : 0;
+  if (count > 0) {
+    console.log(`[referrals] requeued ${count} stuck 'processing' referral row(s)`);
+  }
+  return count;
 }
 
 /**
