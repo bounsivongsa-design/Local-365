@@ -86,6 +86,27 @@ ALTER TABLE review_requests DROP CONSTRAINT review_requests_token_key;
 
 Fresh environments don't need any of this — drizzle creates everything from `shared/schema.ts` directly.
 
+#### Partial unique indexes
+
+Postgres lets a `UNIQUE INDEX` carry a `WHERE …` predicate so the uniqueness check only applies to a subset of rows. drizzle-kit treats the predicate as part of the index identity: if the database has `WHERE x IS NOT NULL` and the schema declares a bare `uniqueIndex(...)` (or vice-versa), it will report drift on every push and may even prompt to truncate the table. **Whenever you add a partial unique index in Postgres (or discover an existing one), declare it in `shared/schema.ts` with the matching `.where(sql\`…\`)` clause — and conversely, do NOT add a `.where(…)` clause to a bare uniqueIndex unless the live DB actually carries that predicate, because that would itself create drift.**
+
+The audit at the time of writing (task #58) confirmed exactly one partial unique index in the live DB:
+
+| Index | Table | Predicate |
+| --- | --- | --- |
+| `ai_credit_txn_unique_grant_per_period` | `ai_credit_transactions` | `WHERE grant_period IS NOT NULL` |
+
+Other `uniqueIndex(...)` declarations the task description called out (`newsletter_sub_business_email_idx`, `newsletter_send_campaign_sub_idx`, `sms_sub_business_phone_idx`, `sms_send_campaign_sub_idx`) were verified to be **plain (non-partial) unique indexes** in Postgres — every column they cover is `NOT NULL`, so a `WHERE … IS NOT NULL` predicate would be a no-op and adding one would only create drift. Each of those four declarations carries an inline comment in `shared/schema.ts` documenting that finding so future schema work doesn't get talked into adding a phantom predicate.
+
+To re-run the audit yourself:
+
+```sql
+SELECT indexname, indexdef
+  FROM pg_indexes
+ WHERE indexdef ILIKE '%WHERE%'
+   AND schemaname = 'public';
+```
+
 ## External Dependencies
 
 ### Third-Party Services

@@ -540,6 +540,10 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   unsubscribeToken: text("unsubscribe_token").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (t) => [
+  // Full unique index (no .where(...) predicate) — both columns are NOT NULL,
+  // so a `WHERE … IS NOT NULL` partial predicate would be a no-op. Verified
+  // against pg_indexes: this index has no WHERE clause in the live DB. See
+  // replit.md → "Partial unique indexes" before adding a predicate here.
   uniqueIndex("newsletter_sub_business_email_idx").on(t.businessId, t.email),
 ]);
 
@@ -567,6 +571,10 @@ export const newsletterSends = pgTable("newsletter_sends", {
   errorMessage: text("error_message"),
   sentAt: timestamp("sent_at"),
 }, (t) => [
+  // Full unique index (no .where(...) predicate) — both columns are NOT NULL,
+  // so a `WHERE … IS NOT NULL` partial predicate would be a no-op. Verified
+  // against pg_indexes: this index has no WHERE clause in the live DB. See
+  // replit.md → "Partial unique indexes" before adding a predicate here.
   uniqueIndex("newsletter_send_campaign_sub_idx").on(t.campaignId, t.subscriberId),
 ]);
 
@@ -623,6 +631,10 @@ export const smsSubscribers = pgTable("sms_subscribers", {
   optOutKeyword: text("opt_out_keyword"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (t) => [
+  // Full unique index (no .where(...) predicate) — both columns are NOT NULL,
+  // so a `WHERE … IS NOT NULL` partial predicate would be a no-op. Verified
+  // against pg_indexes: this index has no WHERE clause in the live DB. See
+  // replit.md → "Partial unique indexes" before adding a predicate here.
   uniqueIndex("sms_sub_business_phone_idx").on(t.businessId, t.phone),
 ]);
 
@@ -656,6 +668,10 @@ export const smsSends = pgTable("sms_sends", {
   creditsCharged: integer("credits_charged").notNull().default(0),
   sentAt: timestamp("sent_at"),
 }, (t) => [
+  // Full unique index (no .where(...) predicate) — both columns are NOT NULL,
+  // so a `WHERE … IS NOT NULL` partial predicate would be a no-op. Verified
+  // against pg_indexes: this index has no WHERE clause in the live DB. See
+  // replit.md → "Partial unique indexes" before adding a predicate here.
   uniqueIndex("sms_send_campaign_sub_idx").on(t.campaignId, t.subscriberId),
 ]);
 
@@ -788,9 +804,14 @@ export const aiCreditTransactions = pgTable("ai_credit_transactions", {
   stripePaymentIntentId: text("stripe_payment_intent_id").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (t) => ({
-  // Exactly-once grants per (business, type, period) — partial-style index works in Postgres
+  // Exactly-once grants per (business, type, period). Declared as a PARTIAL
+  // unique index so that non-grant rows (where grantPeriod is NULL) don't
+  // collide with each other. The `.where(...)` must mirror the index in
+  // Postgres exactly, otherwise drizzle-kit will see drift and prompt to
+  // recreate the index on every push. See replit.md → "Partial unique indexes".
   uniqGrantPerPeriod: uniqueIndex("ai_credit_txn_unique_grant_per_period")
-    .on(t.businessId, t.type, t.grantPeriod),
+    .on(t.businessId, t.type, t.grantPeriod)
+    .where(sql`grant_period IS NOT NULL`),
 }));
 
 export const insertAiCreditPackSchema = createInsertSchema(aiCreditPacks).omit({ id: true, createdAt: true });
