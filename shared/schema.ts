@@ -739,6 +739,23 @@ export const reviewRequests = pgTable("review_requests", {
 export type ReviewRequest = typeof reviewRequests.$inferSelect;
 export type InsertReviewRequest = typeof reviewRequests.$inferInsert;
 
+/* Recipient suppressions — addresses Resend has marked permanently
+   undeliverable (hard bounce, on the suppression list, or otherwise
+   unsendable). We refuse to retry these until the owner clears the
+   suppression after fixing the contact info. Scoped per business so
+   one tenant's clear doesn't leak to another. */
+export const recipientSuppressions = pgTable("recipient_suppressions", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  contactType: text("contact_type").notNull(), // 'email' | 'phone'
+  contact: text("contact").notNull(),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("recipient_supp_unique_idx").on(t.businessId, t.contactType, t.contact),
+]);
+export type RecipientSuppression = typeof recipientSuppressions.$inferSelect;
+
 /* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the

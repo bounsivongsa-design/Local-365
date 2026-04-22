@@ -22,6 +22,7 @@ import {
   users,
   reviews,
   reviewRequests,
+  recipientSuppressions,
 } from "@shared/schema";
 import { quoteRequests } from "@shared/models/auth";
 import { and, eq, sql, desc, or, gte, isNotNull } from "drizzle-orm";
@@ -111,6 +112,74 @@ interface EligibleCustomer {
   lastInteractionAt: Date | null;
   askedRecently: boolean;
   lastAskedAt: Date | null;
+  suppressed: boolean;
+  suppressionReason: string | null;
+}
+
+/**
+ * Recognize Resend errors that mean "this address will never accept mail
+ * again — stop trying." These come back from `resend.emails.send` either
+ * as `invalid_to_address`/`validation_error` with messages mentioning
+ * suppression or hard bounces. We deliberately match on a broad keyword
+ * set so unknown future error codes still get suppressed if they look
+ * permanent rather than burning more send attempts.
+ */
+function isPermanentEmailFailure(err: { name?: string | null; message?: string | null } | null | undefined): boolean {
+  if (!err) return false;
+  const blob = `${err.name ?? ""} ${err.message ?? ""}`.toLowerCase();
+  return (
+    blob.includes("suppress") ||
+    blob.includes("bounce") ||
+    blob.includes("invalid_to_address") ||
+    blob.includes("invalid_recipient") ||
+    blob.includes("invalid email") ||
+    blob.includes("does not exist") ||
+    blob.includes("no such user") ||
+    blob.includes("user unknown") ||
+    blob.includes("mailbox unavailable") ||
+    blob.includes("mailbox does not exist") ||
+    blob.includes("recipient address rejected") ||
+    blob.includes("permanent")
+  );
+}
+
+async function loadSuppressions(businessId: number): Promise<{
+  emails: Map<string, string>;
+  phones: Map<string, string>;
+}> {
+  const rows = await pgDb
+    .select()
+    .from(recipientSuppressions)
+    .where(eq(recipientSuppressions.businessId, businessId));
+  const emails = new Map<string, string>();
+  const phones = new Map<string, string>();
+  for (const r of rows) {
+    if (r.contactType === "email") emails.set(r.contact.toLowerCase(), r.reason);
+    else if (r.contactType === "phone") phones.set(r.contact, r.reason);
+  }
+  return { emails, phones };
+}
+
+async function recordSuppression(opts: {
+  businessId: number;
+  contactType: "email" | "phone";
+  contact: string;
+  reason: string;
+}): Promise<void> {
+  const contact = opts.contactType === "email" ? opts.contact.toLowerCase() : opts.contact;
+  try {
+    await pgDb
+      .insert(recipientSuppressions)
+      .values({
+        businessId: opts.businessId,
+        contactType: opts.contactType,
+        contact,
+        reason: opts.reason.slice(0, 500),
+      })
+      .onConflictDoNothing();
+  } catch (err: any) {
+    console.error("[review-requests] failed to record suppression:", err?.message);
+  }
 }
 
 async function getEligibleCustomers(businessId: number): Promise<EligibleCustomer[]> {
@@ -172,6 +241,8 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
     if (r.phone && r.sentAt) recentByPhone.set(r.phone, r.sentAt);
   }
 
+  const suppressions = await loadSuppressions(businessId);
+
   const map = new Map<string, EligibleCustomer>();
 
   for (const row of fromQuotes.rows ?? []) {
@@ -180,6 +251,10 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
     const key = email ?? phone;
     if (!key) continue;
     const lastAskedAt = (email && recentByEmail.get(email)) || (phone && recentByPhone.get(phone)) || null;
+    const suppReason =
+      (email && suppressions.emails.get(email)) ||
+      (phone && suppressions.phones.get(phone)) ||
+      null;
     map.set(key, {
       key,
       userId: row.user_id,
@@ -190,6 +265,8 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
       lastInteractionAt: toDateOrNull(row.last_interaction),
       askedRecently: !!lastAskedAt,
       lastAskedAt,
+      suppressed: !!suppReason,
+      suppressionReason: suppReason ?? null,
     });
   }
 
@@ -199,6 +276,7 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
     const key = email;
     if (map.has(key)) continue; // dedupe — quote_request takes precedence
     const lastAskedAt = recentByEmail.get(email) || null;
+    const suppReason = suppressions.emails.get(email) || null;
     map.set(key, {
       key,
       userId: row.userId,
@@ -209,6 +287,8 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
       lastInteractionAt: toDateOrNull(row.lastInteractionAt),
       askedRecently: !!lastAskedAt,
       lastAskedAt,
+      suppressed: !!suppReason,
+      suppressionReason: suppReason,
     });
   }
 
@@ -385,6 +465,10 @@ export function registerReviewRequestRoutes(app: Express) {
       // Lazy import to avoid circular concerns
       const { sendBroadcastSms } = await import("./sms");
 
+      // Load suppressions once for the whole blast so we don't even
+      // attempt sends to addresses Resend has already rejected.
+      const suppressions = await loadSuppressions(businessId);
+
       for (const c of targets) {
         const wantEmail = (channel === "email" || channel === "both") && !!c.email;
         const wantSms = (channel === "sms" || channel === "both") && !!c.phone;
@@ -392,6 +476,11 @@ export function registerReviewRequestRoutes(app: Express) {
           skipped.push(c.key);
           continue;
         }
+
+        const emailSuppressed =
+          wantEmail && c.email ? suppressions.emails.get(c.email.toLowerCase()) ?? null : null;
+        const phoneSuppressed =
+          wantSms && c.phone ? suppressions.phones.get(c.phone) ?? null : null;
 
         const token = makeToken();
         const reviewUrl = `${baseUrl}/api/r/${token}`;
@@ -413,7 +502,12 @@ export function registerReviewRequestRoutes(app: Express) {
         let smsOk = !wantSms;
         let lastErr: string | null = null;
 
-        if (wantEmail && resend && c.email) {
+        if (wantEmail && emailSuppressed) {
+          // Don't waste a Resend call on a known-dead address. The
+          // `email[suppressed]` marker tells the FE to render the
+          // permanent-undeliverable hint and exclude the row from retry.
+          lastErr = `email[suppressed]: previously marked permanently undeliverable — ${emailSuppressed}`;
+        } else if (wantEmail && resend && c.email) {
           try {
             const result = await resend.emails.send({
               from: `${business.name} via Local List 365 <onboarding@resend.dev>`,
@@ -435,21 +529,45 @@ export function registerReviewRequestRoutes(app: Express) {
               result?.error ?? null;
             if (sendError) {
               const msg = sendError.message ?? sendError.name ?? "send failed";
-              lastErr = `email: ${msg}`;
-              console.error("[review-requests] email failed:", msg);
+              const permanent = isPermanentEmailFailure(sendError);
+              lastErr = permanent
+                ? `email[permanent]: ${sendError.name ? sendError.name + " — " : ""}${msg}`
+                : `email: ${msg}`;
+              console.error("[review-requests] email failed:", msg, permanent ? "(permanent)" : "");
+              if (permanent && c.email) {
+                await recordSuppression({
+                  businessId,
+                  contactType: "email",
+                  contact: c.email,
+                  reason: `${sendError.name ?? "resend_error"}: ${msg}`,
+                });
+              }
             } else {
               emailOk = true;
             }
           } catch (err: any) {
-            lastErr = `email: ${err?.message ?? "send failed"}`;
-            console.error("[review-requests] email failed:", err?.message);
+            const msg = err?.message ?? "send failed";
+            const permanent = isPermanentEmailFailure({ message: msg, name: err?.name });
+            lastErr = permanent ? `email[permanent]: ${msg}` : `email: ${msg}`;
+            console.error("[review-requests] email failed:", msg);
+            if (permanent && c.email) {
+              await recordSuppression({
+                businessId,
+                contactType: "email",
+                contact: c.email,
+                reason: msg,
+              });
+            }
           }
         } else if (wantEmail && !resend) {
           lastErr = "email: RESEND_API_KEY not configured";
           console.warn("[review-requests] email skipped — Resend not configured");
         }
 
-        if (wantSms && c.phone) {
+        if (wantSms && phoneSuppressed) {
+          smsOk = false;
+          lastErr = `sms[suppressed]: previously marked permanently undeliverable — ${phoneSuppressed}`;
+        } else if (wantSms && c.phone) {
           try {
             const result = await sendBroadcastSms(c.phone, smsBody!, business.name, reviewUrl);
             if (result.success) smsOk = true;
@@ -493,6 +611,44 @@ export function registerReviewRequestRoutes(app: Express) {
         cooldownExcluded: customerKeys.length - targets.length - skipped.length,
         failures,
       });
+    },
+  );
+
+  // Clear a suppression so the owner can retry after fixing the address.
+  // Body: { contactType: 'email' | 'phone', contact: string }
+  app.post(
+    "/api/businesses/:id/review-requests/suppressions/clear",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId);
+      if (!auth) return;
+      const schema = z.object({
+        contactType: z.enum(["email", "phone"]),
+        contact: z.string().min(1).max(320),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
+      }
+      const contact =
+        parsed.data.contactType === "email"
+          ? parsed.data.contact.toLowerCase().trim()
+          : parsed.data.contact.trim();
+      const result = await pgDb
+        .delete(recipientSuppressions)
+        .where(
+          and(
+            eq(recipientSuppressions.businessId, businessId),
+            eq(recipientSuppressions.contactType, parsed.data.contactType),
+            eq(recipientSuppressions.contact, contact),
+          ),
+        )
+        .returning({ id: recipientSuppressions.id });
+      res.json({ ok: true, cleared: result.length });
     },
   );
 

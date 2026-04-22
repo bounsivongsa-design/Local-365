@@ -54,6 +54,8 @@ interface EligibleCustomer {
   lastInteractionAt: string | null;
   askedRecently: boolean;
   lastAskedAt: string | null;
+  suppressed: boolean;
+  suppressionReason: string | null;
 }
 
 interface ReviewRequestRow {
@@ -70,7 +72,7 @@ interface ReviewRequestRow {
   createdAt: string;
 }
 
-type FailureCategory = "no_transport" | "rejected" | "sms" | "other";
+type FailureCategory = "no_transport" | "rejected" | "permanent" | "sms" | "sms_permanent" | "other";
 
 function classifyError(msg: string | null): { category: FailureCategory; label: string; hint: string } {
   if (!msg) {
@@ -84,6 +86,20 @@ function classifyError(msg: string | null): { category: FailureCategory; label: 
       hint: "The Resend API key is missing on the server. Nothing was actually sent — contact support to enable email.",
     };
   }
+  if (lower.startsWith("email[suppressed]") || lower.startsWith("email[permanent]")) {
+    return {
+      category: "permanent",
+      label: "Permanently undeliverable — fix the address",
+      hint: "Resend has marked this email address as permanently unsendable (hard bounce or on its suppression list). Retrying will fail. Update the customer's email, then clear the suppression to send again.",
+    };
+  }
+  if (lower.startsWith("sms[suppressed]") || lower.startsWith("sms[permanent]")) {
+    return {
+      category: "sms_permanent",
+      label: "Permanently undeliverable — fix the number",
+      hint: "This phone number was flagged unsendable. Update the number and clear the suppression before retrying.",
+    };
+  }
   if (lower.startsWith("sms:")) {
     return {
       category: "sms",
@@ -95,10 +111,14 @@ function classifyError(msg: string | null): { category: FailureCategory; label: 
     return {
       category: "rejected",
       label: "Email provider rejected this address",
-      hint: "Usually a typo, a suppressed/bounced address, or a temporary Resend outage. Fix the address (or wait, then retry).",
+      hint: "Usually a typo or a temporary Resend outage. Fix the address (or wait, then retry).",
     };
   }
   return { category: "other", label: "Failed", hint: msg };
+}
+
+function isPermanentCategory(c: FailureCategory): boolean {
+  return c === "permanent" || c === "sms_permanent";
 }
 
 interface AICreditsInfo {
@@ -178,13 +198,46 @@ export default function ReviewRequestsPage() {
     }
     const keys = new Set<string>();
     for (const r of failedRows) {
+      // Skip permanently undeliverable rows — re-blasting them would
+      // just burn another Resend call and ding our sender reputation.
+      const cls = classifyError(r.errorMsg);
+      if (isPermanentCategory(cls.category)) continue;
       const email = r.recipientEmail?.toLowerCase() ?? null;
       const phone = r.recipientPhone ?? null;
       const match = (email && byEmail.get(email)) || (phone && byPhone.get(phone)) || null;
-      if (match && !match.askedRecently) keys.add(match.key);
+      if (match && !match.askedRecently && !match.suppressed) keys.add(match.key);
     }
     return keys;
   }, [failedRows, eligibleQuery.data]);
+
+  const clearSuppression = useMutation({
+    mutationFn: async (vars: { contactType: "email" | "phone"; contact: string }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/businesses/${businessId}/review-requests/suppressions/clear`,
+        vars,
+      );
+      return (await res.json()) as { ok: boolean; cleared: number };
+    },
+    onSuccess: (data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests/eligible"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests"] });
+      toast({
+        title: data.cleared > 0 ? "Suppression cleared" : "Nothing to clear",
+        description:
+          data.cleared > 0
+            ? `${vars.contact} can be retried now.`
+            : `${vars.contact} was not on the suppression list.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Couldn't clear suppression",
+        description: err?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const retryFailed = () => {
     if (retryableKeys.size === 0) {
@@ -637,6 +690,27 @@ export default function ReviewRequestsPage() {
                                 >
                                   {r.errorMsg}
                                 </div>
+                              )}
+                              {isPermanentCategory(failure.category) && (failure.category === "permanent" ? r.recipientEmail : r.recipientPhone) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-2 h-7 text-xs border-red-300 text-red-800 hover:bg-red-100"
+                                  disabled={clearSuppression.isPending}
+                                  onClick={() =>
+                                    clearSuppression.mutate(
+                                      failure.category === "permanent"
+                                        ? { contactType: "email", contact: r.recipientEmail! }
+                                        : { contactType: "phone", contact: r.recipientPhone! },
+                                    )
+                                  }
+                                  data-testid={`button-clear-suppression-${r.id}`}
+                                >
+                                  {clearSuppression.isPending ? (
+                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                  ) : null}
+                                  I fixed the address — clear suppression
+                                </Button>
                               )}
                             </div>
                           )}
