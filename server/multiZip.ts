@@ -2,12 +2,13 @@ import type { Express, Request, Response } from "express";
 import Stripe from "stripe";
 import { db as pgDb } from "./db";
 import { businesses, locations, users } from "@shared/schema";
-import { eq, and, ne, isNull, or } from "drizzle-orm";
+import { eq, and, ne, isNull, or, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { getAdditionalZipPrice, ADDITIONAL_ZIP_BASE_PRICE } from "@shared/config/membership";
 
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" as any })
+const STRIPE_KEY = process.env.Stripeintegration || process.env.STRIPE_SECRET_KEY;
+const stripe = STRIPE_KEY
+  ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as any })
   : null;
 
 function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null }): string {
@@ -86,7 +87,7 @@ export function registerMultiZipRoutes(app: Express) {
       const biz = await loadOwnedBusiness(userId, id);
       if (!biz) return res.status(403).json({ message: "Not your listing" });
 
-      const allZips = await pgDb.select().from(locations);
+      const allLocs = await pgDb.select().from(locations);
       const owned = await pgDb
         .select({ zipCode: businesses.zipCode })
         .from(businesses)
@@ -97,10 +98,16 @@ export function registerMultiZipRoutes(app: Express) {
           ),
         );
       const ownedSet = new Set(owned.map((o) => o.zipCode).filter(Boolean));
-      const available = allZips
-        .filter((z) => !ownedSet.has(z.zipCode))
-        .map((z) => ({ zipCode: z.zipCode, city: z.city, state: z.state, region: z.region }));
-      res.json(available);
+      const flat: Array<{ zipCode: string; city: string; state: string; region: string | null }> = [];
+      const seen = new Set<string>();
+      for (const loc of allLocs) {
+        for (const zc of loc.zipCodes || []) {
+          if (!zc || seen.has(zc) || ownedSet.has(zc)) continue;
+          seen.add(zc);
+          flat.push({ zipCode: zc, city: loc.city, state: loc.state, region: loc.region });
+        }
+      }
+      res.json(flat);
     } catch (err: any) {
       console.error("[multiZip] available-zips:", err);
       res.status(500).json({ message: "Failed to load zips" });
@@ -119,7 +126,11 @@ export function registerMultiZipRoutes(app: Express) {
       if (!parent) return res.status(403).json({ message: "Not your listing" });
 
       // Validate zip is covered + not already owned
-      const [loc] = await pgDb.select().from(locations).where(eq(locations.zipCode, zipCode)).limit(1);
+      const [loc] = await pgDb
+        .select()
+        .from(locations)
+        .where(sql`${zipCode} = ANY(${locations.zipCodes})`)
+        .limit(1);
       if (!loc) return res.status(400).json({ message: "Zip not in coverage area" });
 
       const existing = await pgDb

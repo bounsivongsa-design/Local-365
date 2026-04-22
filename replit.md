@@ -50,6 +50,7 @@ Design theme: Coastal - ocean blue (#0a4a82), sandy beige (#d4a373/#f5f5dc), dun
     - Review Request Blasts (email/SMS to past customers with AI Drafter)
     - Email Newsletter (with AI Newsletter Draft)
 - **Technical Implementations**: Haversine formula for distance filtering, hierarchical category management, Stripe integration for subscriptions and payments, Gold auto-upgrade for new members, reusable image cropper.
+- **Multi-Zip Listings**: Owners can run separate listings in additional covered zips. Schema adds `ownerUserId`, `parentBusinessId`, `isAdditionalZip`, `status` to `businesses`. Routes in `server/multiZip.ts` cover my-businesses, switch, available-zips, add-zip-checkout, cancel-additional-zip. Stripe webhook (`type=additional_zip`) creates the child listing with no trial. Dashboard `ListingZipSwitcher` lets owners flip between locations and add a new zip. Archived child listings are filtered out of public reads in `server/storage.ts`.
 
 ## External Dependencies
 

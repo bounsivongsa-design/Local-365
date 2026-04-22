@@ -95,6 +95,7 @@ export class DatabaseStorage implements IStorage {
     .groupBy(businesses.id);
 
     const conditions = [];
+    conditions.push(sql`COALESCE(${businesses.status}, 'active') != 'archived'`);
     conditions.push(
       or(
         sql`${businesses.membershipTier} != 'none'`,
@@ -145,7 +146,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBusiness(id: number): Promise<Business | undefined> {
-    const [business] = await db.select().from(businesses).where(eq(businesses.id, id));
+    const [business] = await db
+      .select()
+      .from(businesses)
+      .where(and(eq(businesses.id, id), sql`COALESCE(${businesses.status}, 'active') != 'archived'`));
     return business;
   }
 
