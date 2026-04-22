@@ -112,6 +112,16 @@ export const businesses = pgTable("businesses", {
   parentBusinessId: integer("parent_business_id"), // null for primary, set for additional-zip dups
   isAdditionalZip: boolean("is_additional_zip").default(false), // skips Gold trial logic
   status: text("status").default("active"), // 'active' | 'archived'
+  // Per-business overrides for the owner-facing webhook bounce-spike heads-up
+  // job (`checkBounceSpikeAlerts`). NULL = use the global env defaults
+  // (BOUNCE_SPIKE_THRESHOLD / BOUNCE_SPIKE_COOLDOWN_HOURS). A high-volume
+  // Gold business may want a higher floor (e.g. 25) and a slower cadence
+  // (e.g. weekly = 168h); a small business may want to hear about even 1
+  // bounce. `bounceSpikeMuted = true` fully silences the email — the owner
+  // still sees the in-app "Recently auto-suppressed" panel.
+  bounceSpikeThreshold: integer("bounce_spike_threshold"),
+  bounceSpikeCadenceHours: integer("bounce_spike_cadence_hours"),
+  bounceSpikeMuted: boolean("bounce_spike_muted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

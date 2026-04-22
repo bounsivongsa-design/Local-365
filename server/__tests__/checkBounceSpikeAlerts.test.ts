@@ -280,6 +280,114 @@ test("scopes counts per business — one tenant's spike doesn't trip another", a
   );
 });
 
+test("per-business threshold override: a higher floor suppresses an alert that would otherwise fire under the env default", async () => {
+  // env BOUNCE_SPIKE_THRESHOLD = 3 in this suite. A business that picks 25
+  // (the "high-volume Gold" example from the task) should NOT alert at 6
+  // bounces, even though the env default would have triggered.
+  const biz = await seedBusiness("HighVolumeGold Co");
+  createdBusinessIds.push(biz.id);
+  await pgDb
+    .update(businesses)
+    .set({ bounceSpikeThreshold: 25 })
+    .where(eq(businesses.id, biz.id));
+
+  for (let i = 0; i < 6; i++)
+    await seedSuppression({ businessId: biz.id, reason: "webhook: bounced[hard]: x" });
+
+  const { notifier, calls } = makeNotifier();
+  await checkBounceSpikeAlerts(notifier);
+
+  assert.equal(
+    calls.filter((c) => c.businessName === "HighVolumeGold Co").length,
+    0,
+    "per-business floor of 25 should swallow a 6-bounce spike",
+  );
+
+  const cooldownRows = await pgDb
+    .select()
+    .from(bounceSpikeAlerts)
+    .where(eq(bounceSpikeAlerts.businessId, biz.id));
+  assert.equal(cooldownRows.length, 0);
+});
+
+test("per-business threshold override: a lower floor (1) lets a single bounce trigger the heads-up", async () => {
+  // The "small business that wants to hear about even 1 bounce" path.
+  const biz = await seedBusiness("Tiny Shop");
+  createdBusinessIds.push(biz.id);
+  await pgDb
+    .update(businesses)
+    .set({ bounceSpikeThreshold: 1 })
+    .where(eq(businesses.id, biz.id));
+
+  await seedSuppression({ businessId: biz.id, reason: "webhook: bounced[hard]: x" });
+
+  const { notifier, calls } = makeNotifier();
+  await checkBounceSpikeAlerts(notifier);
+
+  const ours = calls.filter((c) => c.businessName === "Tiny Shop");
+  assert.equal(ours.length, 1, "threshold=1 should fire on a single bounce");
+  assert.equal(ours[0].bounceCount, 1);
+});
+
+test("per-business cadence override: a slow weekly cadence keeps the second-day run silent even past the global cooldown", async () => {
+  // env BOUNCE_SPIKE_COOLDOWN_HOURS = 24. Business picks 168h (weekly) —
+  // an alert sent ~25h ago must NOT re-fire today.
+  const biz = await seedBusiness("WeeklyDigest Co");
+  createdBusinessIds.push(biz.id);
+  await pgDb
+    .update(businesses)
+    .set({ bounceSpikeCadenceHours: 168 })
+    .where(eq(businesses.id, biz.id));
+
+  for (let i = 0; i < 5; i++)
+    await seedSuppression({ businessId: biz.id, reason: "webhook: bounced[hard]: x" });
+
+  // Pretend we already pinged this owner ~25h ago — past the env default
+  // cooldown, but well inside the per-business 168h window.
+  await pgDb.insert(bounceSpikeAlerts).values({
+    businessId: biz.id,
+    bounceCount: 5,
+    alertedAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+  });
+
+  const { notifier, calls } = makeNotifier();
+  await checkBounceSpikeAlerts(notifier);
+
+  assert.equal(
+    calls.filter((c) => c.businessName === "WeeklyDigest Co").length,
+    0,
+    "weekly-cadence override should keep the daily cron silent",
+  );
+});
+
+test("per-business mute: muted owners get NO email and NO cooldown row, regardless of bounce count", async () => {
+  const biz = await seedBusiness("MutedAlerts Co");
+  createdBusinessIds.push(biz.id);
+  await pgDb
+    .update(businesses)
+    .set({ bounceSpikeMuted: true })
+    .where(eq(businesses.id, biz.id));
+
+  // Way above any reasonable threshold — must still be silent.
+  for (let i = 0; i < 50; i++)
+    await seedSuppression({ businessId: biz.id, reason: "webhook: bounced[hard]: x" });
+
+  const { notifier, calls } = makeNotifier();
+  await checkBounceSpikeAlerts(notifier);
+
+  assert.equal(calls.filter((c) => c.businessName === "MutedAlerts Co").length, 0);
+
+  const cooldownRows = await pgDb
+    .select()
+    .from(bounceSpikeAlerts)
+    .where(eq(bounceSpikeAlerts.businessId, biz.id));
+  assert.equal(
+    cooldownRows.length,
+    0,
+    "muted businesses should not write cooldown rows so unmuting resumes alerts immediately",
+  );
+});
+
 test("a business with no owner email on file is skipped (notifier returns false; no cooldown row written)", async () => {
   const biz = await seedBusiness("NoEmail Co", null);
   createdBusinessIds.push(biz.id);

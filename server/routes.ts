@@ -6175,13 +6175,12 @@ export type BounceSpikeOwnerNotifier = typeof notifyOwnerBounceSpike;
 export async function checkBounceSpikeAlerts(
   notifier: BounceSpikeOwnerNotifier = notifyOwnerBounceSpike,
 ) {
-  const threshold = readIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
+  const defaultThreshold = readIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
   const lookbackHours = readIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
-  const cooldownHours = readIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
+  const defaultCooldownHours = readIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
 
   const now = new Date();
   const windowStart = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
-  const cooldownStart = new Date(now.getTime() - cooldownHours * 60 * 60 * 1000);
 
   // Per-business: how many webhook-confirmed permanent bounces landed in the
   // lookback window? Only `webhook:%` rows count — we don't want owner-driven
@@ -6205,10 +6204,39 @@ export async function checkBounceSpikeAlerts(
     )
     .groupBy(recipientSuppressions.businessId);
 
-  const candidates = grouped.filter((g) => g.bounceCount >= threshold);
-  if (candidates.length === 0) return;
+  // We can't pre-filter by the global threshold anymore — a small business
+  // may have lowered its `bounceSpikeThreshold` to 1, while a Gold high-
+  // volume business may have raised it to 25. Decide per row below using
+  // each business's own override (falling back to the env default).
+  if (grouped.length === 0) return;
 
-  for (const c of candidates) {
+  for (const c of grouped) {
+    const [biz] = await pgDb
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        ownerUserId: businesses.ownerUserId,
+        bounceSpikeThreshold: businesses.bounceSpikeThreshold,
+        bounceSpikeCadenceHours: businesses.bounceSpikeCadenceHours,
+        bounceSpikeMuted: businesses.bounceSpikeMuted,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, c.businessId));
+    if (!biz) continue;
+
+    // Owner explicitly muted email heads-ups — they still get the in-app
+    // Recently-auto-suppressed panel on the Review Requests page, so they
+    // can self-serve when they next log in. Skip without writing a
+    // cooldown row so unmuting later resumes alerts immediately.
+    if (biz.bounceSpikeMuted === true) continue;
+
+    const effectiveThreshold = biz.bounceSpikeThreshold ?? defaultThreshold;
+    if (c.bounceCount < effectiveThreshold) continue;
+
+    const effectiveCooldownHours = biz.bounceSpikeCadenceHours ?? defaultCooldownHours;
+    const cooldownStart = new Date(now.getTime() - effectiveCooldownHours * 60 * 60 * 1000);
+
     // Cooldown — skip if we already pinged this owner inside the window.
     const recent = await pgDb
       .select({ id: bounceSpikeAlerts.id })
@@ -6221,17 +6249,6 @@ export async function checkBounceSpikeAlerts(
       )
       .limit(1);
     if (recent.length > 0) continue;
-
-    const [biz] = await pgDb
-      .select({
-        id: businesses.id,
-        name: businesses.name,
-        email: businesses.email,
-        ownerUserId: businesses.ownerUserId,
-      })
-      .from(businesses)
-      .where(eq(businesses.id, c.businessId));
-    if (!biz) continue;
 
     // Resolve owner email — prefer the listing's contact email, fall back to
     // the linked user's account email so legacy rows without `email` still

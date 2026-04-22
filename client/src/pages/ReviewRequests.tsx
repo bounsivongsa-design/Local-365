@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Search,
   ShieldAlert,
+  BellOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +150,13 @@ function isPermanentCategory(c: FailureCategory): boolean {
   return c === "permanent" || c === "sms_permanent";
 }
 
+interface BounceAlertPrefs {
+  threshold: number | null;
+  cadenceHours: number | null;
+  muted: boolean;
+  defaults: { threshold: number; cadenceHours: number; lookbackHours: number };
+}
+
 interface AICreditsInfo {
   balance: number;
   isFounder: boolean;
@@ -182,6 +190,10 @@ export default function ReviewRequestsPage() {
   });
   const recentBouncesQuery = useQuery<RecentBouncesResponse>({
     queryKey: ["/api/businesses", businessId, "review-requests/recent-bounces"],
+    enabled: !!businessId,
+  });
+  const bounceAlertPrefsQuery = useQuery<BounceAlertPrefs>({
+    queryKey: ["/api/businesses", businessId, "review-requests/bounce-alert-prefs"],
     enabled: !!businessId,
   });
   const credits = useQuery<AICreditsInfo>({
@@ -241,6 +253,61 @@ export default function ReviewRequestsPage() {
     }
     return keys;
   }, [failedRows, eligibleQuery.data]);
+
+  // Local edit buffer so threshold/cadence inputs stay editable while
+  // the user is mid-type (instead of being stomped by the query payload
+  // on every cache update). Synced from the query in `useEffect`-ish
+  // fashion via `useMemo` keyed by the response identity.
+  const [prefsDraft, setPrefsDraft] = useState<{
+    threshold: string;
+    cadenceHours: string;
+  }>({ threshold: "", cadenceHours: "" });
+  // Re-hydrate the draft whenever the server payload changes (initial
+  // load, after a successful save, or on background refetch). Empty
+  // string in the input means "use the default" which serializes to
+  // null on save.
+  useEffect(() => {
+    const data = bounceAlertPrefsQuery.data;
+    if (!data) return;
+    setPrefsDraft({
+      threshold: data.threshold == null ? "" : String(data.threshold),
+      cadenceHours: data.cadenceHours == null ? "" : String(data.cadenceHours),
+    });
+  }, [bounceAlertPrefsQuery.data]);
+
+  const saveBounceAlertPrefs = useMutation({
+    mutationFn: async (vars: {
+      threshold?: number | null;
+      cadenceHours?: number | null;
+      muted?: boolean;
+    }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/businesses/${businessId}/review-requests/bounce-alert-prefs`,
+        vars,
+      );
+      return (await res.json()) as BounceAlertPrefs;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ["/api/businesses", businessId, "review-requests/bounce-alert-prefs"],
+        data,
+      );
+      toast({
+        title: "Bounce alert preferences saved",
+        description: data.muted
+          ? "Email heads-ups are muted. You'll still see the panel here."
+          : `We'll email you when this listing logs ${data.threshold ?? data.defaults.threshold}+ bounces in ${data.defaults.lookbackHours}h, no more often than every ${data.cadenceHours ?? data.defaults.cadenceHours}h.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Couldn't save preferences",
+        description: err?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const clearAllWebhookBounces = useMutation({
     mutationFn: async () => {
@@ -573,6 +640,154 @@ export default function ReviewRequestsPage() {
           </CardContent>
         </Card>
       )}
+
+      {bounceAlertPrefsQuery.data && (() => {
+        const prefs = bounceAlertPrefsQuery.data;
+        const effectiveThreshold = prefs.threshold ?? prefs.defaults.threshold;
+        const effectiveCadence = prefs.cadenceHours ?? prefs.defaults.cadenceHours;
+        const parsedThreshold = prefsDraft.threshold === "" ? null : Number(prefsDraft.threshold);
+        const parsedCadence = prefsDraft.cadenceHours === "" ? null : Number(prefsDraft.cadenceHours);
+        const thresholdValid =
+          parsedThreshold === null ||
+          (Number.isInteger(parsedThreshold) && parsedThreshold >= 1 && parsedThreshold <= 10000);
+        const cadenceValid =
+          parsedCadence === null ||
+          (Number.isInteger(parsedCadence) && parsedCadence >= 1 && parsedCadence <= 720);
+        const hasChanges =
+          (prefs.threshold ?? null) !== parsedThreshold ||
+          (prefs.cadenceHours ?? null) !== parsedCadence;
+        return (
+          <Card data-testid="card-bounce-alert-prefs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BellOff className="h-4 w-4" /> Bounce alerts
+              </CardTitle>
+              <CardDescription>
+                When this listing logs <strong>{effectiveThreshold}+</strong> webhook bounces in the last
+                {" "}
+                {prefs.defaults.lookbackHours}h, we email you a heads-up. We won't ping you again for
+                {" "}
+                <strong>{effectiveCadence}h</strong>. Tune these for your volume — high-volume
+                businesses usually want a higher floor and a slower cadence.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <label
+                className="flex items-start gap-3 cursor-pointer"
+                data-testid="row-bounce-alert-mute"
+              >
+                <Checkbox
+                  checked={prefs.muted}
+                  disabled={saveBounceAlertPrefs.isPending}
+                  onCheckedChange={(checked) =>
+                    saveBounceAlertPrefs.mutate({ muted: checked === true })
+                  }
+                  data-testid="checkbox-bounce-alert-mute"
+                />
+                <div className="text-sm">
+                  <div className="font-medium">Mute the email heads-up</div>
+                  <div className="text-muted-foreground">
+                    The "Recently auto-suppressed" panel above still shows everything — you just
+                    won't get an email about it.
+                  </div>
+                </div>
+              </label>
+
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${prefs.muted ? "opacity-60" : ""}`}>
+                <div className="space-y-1">
+                  <Label htmlFor="input-bounce-alert-threshold">Bounce threshold</Label>
+                  <Input
+                    id="input-bounce-alert-threshold"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    inputMode="numeric"
+                    placeholder={`Default: ${prefs.defaults.threshold}`}
+                    value={prefsDraft.threshold}
+                    disabled={prefs.muted || saveBounceAlertPrefs.isPending}
+                    onChange={(e) =>
+                      setPrefsDraft((d) => ({ ...d, threshold: e.target.value.replace(/[^0-9]/g, "") }))
+                    }
+                    data-testid="input-bounce-alert-threshold"
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Bounces per {prefs.defaults.lookbackHours}h before we ping you. Leave blank to use
+                    the default ({prefs.defaults.threshold}).
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="input-bounce-alert-cadence">Cadence (hours between emails)</Label>
+                  <Input
+                    id="input-bounce-alert-cadence"
+                    type="number"
+                    min={1}
+                    max={720}
+                    inputMode="numeric"
+                    placeholder={`Default: ${prefs.defaults.cadenceHours}`}
+                    value={prefsDraft.cadenceHours}
+                    disabled={prefs.muted || saveBounceAlertPrefs.isPending}
+                    onChange={(e) =>
+                      setPrefsDraft((d) => ({ ...d, cadenceHours: e.target.value.replace(/[^0-9]/g, "") }))
+                    }
+                    data-testid="input-bounce-alert-cadence"
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Common picks: 24 (daily), 168 (weekly digest). Range 1–720.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                {hasChanges && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    disabled={saveBounceAlertPrefs.isPending}
+                    onClick={() =>
+                      setPrefsDraft({
+                        threshold: prefs.threshold == null ? "" : String(prefs.threshold),
+                        cadenceHours: prefs.cadenceHours == null ? "" : String(prefs.cadenceHours),
+                      })
+                    }
+                    data-testid="button-bounce-alert-reset"
+                  >
+                    Discard changes
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  type="button"
+                  disabled={
+                    prefs.muted ||
+                    saveBounceAlertPrefs.isPending ||
+                    !thresholdValid ||
+                    !cadenceValid ||
+                    !hasChanges
+                  }
+                  onClick={() =>
+                    saveBounceAlertPrefs.mutate({
+                      threshold: parsedThreshold,
+                      cadenceHours: parsedCadence,
+                    })
+                  }
+                  data-testid="button-bounce-alert-save"
+                >
+                  {saveBounceAlertPrefs.isPending ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : null}
+                  Save preferences
+                </Button>
+              </div>
+              {(!thresholdValid || !cadenceValid) && (
+                <p className="text-xs text-destructive" data-testid="text-bounce-alert-error">
+                  Threshold must be 1–10000 and cadence must be 1–720 hours.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList className="grid w-full grid-cols-3 max-w-lg">

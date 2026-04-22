@@ -32,6 +32,17 @@ import { normalizePhone } from "./sms";
 
 const COOLDOWN_DAYS = 90;
 
+// Tiny mirror of `readIntEnv` over in routes.ts — kept local so the
+// bounce-alert preferences endpoint and `checkBounceSpikeAlerts` always
+// resolve the same defaults from the same env variables. Returns the
+// fallback when the env value is missing, non-numeric, or non-positive.
+function readPosIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 function effectiveTier(b: {
   membershipTier: string | null;
   goldTrialEndDate: Date | null;
@@ -673,6 +684,97 @@ export function registerReviewRequestRoutes(app: Express) {
         console.error("[review-requests] recent-bounces failed:", err?.message);
         res.status(500).json({ message: "Failed to load recent bounces" });
       }
+    },
+  );
+
+  // Per-business preferences for the owner-facing bounce-spike heads-up
+  // email (see `checkBounceSpikeAlerts` in routes.ts). NULL on either knob
+  // means "use the global env default", so the response always includes the
+  // current defaults too — that lets the FE show a placeholder like
+  // "Default: 5" instead of an empty input.
+  app.get(
+    "/api/businesses/:id/review-requests/bounce-alert-prefs",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId);
+      if (!auth) return;
+      const biz = auth.business;
+      const defaultThreshold = readPosIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
+      const defaultCadenceHours = readPosIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
+      const defaultLookbackHours = readPosIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
+      res.json({
+        threshold: biz.bounceSpikeThreshold ?? null,
+        cadenceHours: biz.bounceSpikeCadenceHours ?? null,
+        muted: biz.bounceSpikeMuted === true,
+        defaults: {
+          threshold: defaultThreshold,
+          cadenceHours: defaultCadenceHours,
+          lookbackHours: defaultLookbackHours,
+        },
+      });
+    },
+  );
+
+  app.patch(
+    "/api/businesses/:id/review-requests/bounce-alert-prefs",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId);
+      if (!auth) return;
+      // Threshold is a raw bounce count over the global lookback window
+      // (24h by default). Keep the upper bound generous but finite so a
+      // typo can't render the alert effectively-disabled by accident.
+      // Cadence is the cooldown in hours between successive emails — 1h
+      // floor (the cron itself runs hourly) up to 720h (30 days), which
+      // covers the "weekly digest" use-case called out in the task.
+      const schema = z.object({
+        threshold: z.union([z.number().int().min(1).max(10_000), z.null()]).optional(),
+        cadenceHours: z.union([z.number().int().min(1).max(720), z.null()]).optional(),
+        muted: z.boolean().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res
+          .status(400)
+          .json({ message: "Invalid input", errors: parsed.error.flatten() });
+      }
+      const updates: Record<string, unknown> = {};
+      if ("threshold" in parsed.data) updates.bounceSpikeThreshold = parsed.data.threshold ?? null;
+      if ("cadenceHours" in parsed.data) updates.bounceSpikeCadenceHours = parsed.data.cadenceHours ?? null;
+      if ("muted" in parsed.data) updates.bounceSpikeMuted = parsed.data.muted === true;
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No preference fields provided" });
+      }
+      const [updated] = await pgDb
+        .update(businesses)
+        .set(updates)
+        .where(eq(businesses.id, businessId))
+        .returning({
+          threshold: businesses.bounceSpikeThreshold,
+          cadenceHours: businesses.bounceSpikeCadenceHours,
+          muted: businesses.bounceSpikeMuted,
+        });
+      const defaultThreshold = readPosIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
+      const defaultCadenceHours = readPosIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
+      const defaultLookbackHours = readPosIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
+      res.json({
+        threshold: updated?.threshold ?? null,
+        cadenceHours: updated?.cadenceHours ?? null,
+        muted: updated?.muted === true,
+        defaults: {
+          threshold: defaultThreshold,
+          cadenceHours: defaultCadenceHours,
+          lookbackHours: defaultLookbackHours,
+        },
+      });
     },
   );
 
