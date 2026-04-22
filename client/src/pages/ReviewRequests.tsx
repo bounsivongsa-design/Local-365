@@ -66,7 +66,39 @@ interface ReviewRequestRow {
   sentAt: string | null;
   clickedAt: string | null;
   errorMsg: string | null;
+  completedReviewId: number | null;
   createdAt: string;
+}
+
+type FailureCategory = "no_transport" | "rejected" | "sms" | "other";
+
+function classifyError(msg: string | null): { category: FailureCategory; label: string; hint: string } {
+  if (!msg) {
+    return { category: "other", label: "Failed", hint: "No additional detail was captured." };
+  }
+  const lower = msg.toLowerCase();
+  if (lower.includes("not configured") || lower.includes("no transport")) {
+    return {
+      category: "no_transport",
+      label: "Email service not configured",
+      hint: "The Resend API key is missing on the server. Nothing was actually sent — contact support to enable email.",
+    };
+  }
+  if (lower.startsWith("sms:")) {
+    return {
+      category: "sms",
+      label: "Carrier rejected the text",
+      hint: "Double-check the phone number, or have the recipient text START to your number to opt back in.",
+    };
+  }
+  if (lower.startsWith("email:")) {
+    return {
+      category: "rejected",
+      label: "Email provider rejected this address",
+      hint: "Usually a typo, a suppressed/bounced address, or a temporary Resend outage. Fix the address (or wait, then retry).",
+    };
+  }
+  return { category: "other", label: "Failed", hint: msg };
 }
 
 interface AICreditsInfo {
@@ -130,6 +162,48 @@ export default function ReviewRequestsPage() {
       .map((k) => map.get(k))
       .filter((c): c is EligibleCustomer => !!c && !c.askedRecently);
   }, [selected, eligibleQuery.data]);
+
+  const failedRows = useMemo(
+    () => (historyQuery.data?.requests ?? []).filter((r) => r.status === "failed"),
+    [historyQuery.data],
+  );
+
+  const retryableKeys = useMemo(() => {
+    const all = eligibleQuery.data?.customers ?? [];
+    const byEmail = new Map<string, EligibleCustomer>();
+    const byPhone = new Map<string, EligibleCustomer>();
+    for (const c of all) {
+      if (c.email) byEmail.set(c.email.toLowerCase(), c);
+      if (c.phone) byPhone.set(c.phone, c);
+    }
+    const keys = new Set<string>();
+    for (const r of failedRows) {
+      const email = r.recipientEmail?.toLowerCase() ?? null;
+      const phone = r.recipientPhone ?? null;
+      const match = (email && byEmail.get(email)) || (phone && byPhone.get(phone)) || null;
+      if (match && !match.askedRecently) keys.add(match.key);
+    }
+    return keys;
+  }, [failedRows, eligibleQuery.data]);
+
+  const retryFailed = () => {
+    if (retryableKeys.size === 0) {
+      toast({
+        title: "Nothing to retry",
+        description:
+          failedRows.length === 0
+            ? "There are no failed sends in your history."
+            : "Failed recipients are no longer in your eligible list (or are within the 90-day cooldown).",
+      });
+      return;
+    }
+    setSelected(new Set(retryableKeys));
+    setTab("compose");
+    toast({
+      title: `Retrying ${retryableKeys.size} failed recipient${retryableKeys.size === 1 ? "" : "s"}`,
+      description: "Review or tweak your message, then send.",
+    });
+  };
 
   const aiDraft = useMutation({
     mutationFn: async () => {
@@ -495,12 +569,28 @@ export default function ReviewRequestsPage() {
         <TabsContent value="history" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Sent requests</CardTitle>
-              {historyQuery.data?.summary && (
-                <CardDescription>
-                  {historyQuery.data.summary.sent} sent · {historyQuery.data.summary.clicked} clicked · {historyQuery.data.summary.completed} completed · {historyQuery.data.summary.failed} failed
-                </CardDescription>
-              )}
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <CardTitle className="text-lg">Sent requests</CardTitle>
+                  {historyQuery.data?.summary && (
+                    <CardDescription>
+                      {historyQuery.data.summary.sent} sent · {historyQuery.data.summary.clicked} clicked · {historyQuery.data.summary.completed} completed · {historyQuery.data.summary.failed} failed
+                    </CardDescription>
+                  )}
+                </div>
+                {failedRows.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={retryFailed}
+                    className="border-red-200 text-red-700 hover:bg-red-50"
+                    data-testid="button-rr-retry-failed"
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Retry failed ({retryableKeys.size}/{failedRows.length})
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {historyQuery.isLoading ? (
@@ -511,33 +601,62 @@ export default function ReviewRequestsPage() {
                 <p className="text-center text-muted-foreground py-8">No requests sent yet.</p>
               ) : (
                 <div className="border rounded-lg divide-y max-h-[480px] overflow-y-auto">
-                  {historyQuery.data.requests.map((r) => (
-                    <div key={r.id} className="p-3 flex items-center gap-3" data-testid={`row-rr-history-${r.id}`}>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {r.recipientName || r.recipientEmail || r.recipientPhone}
+                  {historyQuery.data.requests.map((r) => {
+                    const isFailed = r.status === "failed";
+                    const failure = isFailed ? classifyError(r.errorMsg) : null;
+                    return (
+                      <div
+                        key={r.id}
+                        className={`p-3 flex items-start gap-3 ${isFailed ? "bg-red-50/40" : ""}`}
+                        data-testid={`row-rr-history-${r.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">
+                            {r.recipientName || r.recipientEmail || r.recipientPhone}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {r.recipientEmail && <span>{r.recipientEmail}</span>}
+                            {r.recipientEmail && r.recipientPhone && <span> · </span>}
+                            {r.recipientPhone && <span>{r.recipientPhone}</span>}
+                            <span> · {new Date(r.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          {failure && (
+                            <div
+                              className="mt-2 rounded border border-red-200 bg-red-50 p-2"
+                              data-testid={`error-rr-history-${r.id}`}
+                            >
+                              <div className="flex items-center gap-1.5 text-xs font-medium text-red-800">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                <span data-testid={`error-rr-label-${r.id}`}>{failure.label}</span>
+                              </div>
+                              <div className="mt-1 text-xs text-red-700">{failure.hint}</div>
+                              {r.errorMsg && (
+                                <div
+                                  className="mt-1 text-[11px] text-red-600/80 font-mono break-all"
+                                  data-testid={`error-rr-raw-${r.id}`}
+                                >
+                                  {r.errorMsg}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {r.recipientEmail && <span>{r.recipientEmail}</span>}
-                          {r.recipientEmail && r.recipientPhone && <span> · </span>}
-                          {r.recipientPhone && <span>{r.recipientPhone}</span>}
-                          <span> · {new Date(r.createdAt).toLocaleDateString()}</span>
+                        <Badge variant="outline" className="text-xs mt-0.5">{r.channel}</Badge>
+                        <div className="mt-0.5">
+                          <StatusBadge status={r.status} />
                         </div>
-                        {r.errorMsg && <div className="text-xs text-destructive mt-1">{r.errorMsg}</div>}
+                        {r.status === "completed" && r.completedReviewId && (
+                          <a
+                            href={`/directory/${businessId}#review-${r.completedReviewId}`}
+                            className="text-xs text-[#0a4a82] hover:underline whitespace-nowrap mt-1"
+                            data-testid={`link-view-review-${r.id}`}
+                          >
+                            View review
+                          </a>
+                        )}
                       </div>
-                      <Badge variant="outline" className="text-xs">{r.channel}</Badge>
-                      <StatusBadge status={r.status} />
-                      {r.status === "completed" && r.completedReviewId && (
-                        <a
-                          href={`/directory/${businessId}#review-${r.completedReviewId}`}
-                          className="text-xs text-[#0a4a82] hover:underline whitespace-nowrap"
-                          data-testid={`link-view-review-${r.id}`}
-                        >
-                          View review
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
