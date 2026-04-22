@@ -214,7 +214,7 @@ export function registerMultiZipRoutes(app: Express) {
       const [loc] = await pgDb
         .select()
         .from(locations)
-        .where(sql`${zipCode} = ANY(${locations.zipCodes})`)
+        .where(sql`${zipCode} = ANY(COALESCE(${locations.zipCodes}, ARRAY[]::text[]))`)
         .limit(1);
       if (!loc) return res.status(400).json({ message: "Zip not in coverage area" });
 

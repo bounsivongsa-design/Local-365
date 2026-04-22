@@ -67,6 +67,7 @@ import {
   MapPin,
   Copy,
   Gift,
+  LogIn,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
@@ -844,6 +845,18 @@ function UsersTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest("POST", `/api/admin/impersonate/${userId}`);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Signed in as user", description: "An amber banner is shown so you can return to admin anytime." });
+      window.location.href = "/dashboard";
+    },
+    onError: (err: Error) => toast({ title: "Sign in as failed", description: err.message, variant: "destructive" }),
+  });
+
   const openEditUser = (u: AdminUser) => {
     setEditUserDialog(u);
     setEditUserFirstName(u.firstName || "");
@@ -985,6 +998,19 @@ function UsersTab() {
                         >
                           <KeyRound className="h-4 w-4" />
                         </Button>
+                        {u.accountType !== "admin" && !u.isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                            title="Sign in as this user"
+                            disabled={impersonateMutation.isPending}
+                            onClick={() => impersonateMutation.mutate(u.id)}
+                            data-testid={`button-impersonate-${u.id}`}
+                          >
+                            <LogIn className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

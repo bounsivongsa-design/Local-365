@@ -4231,6 +4231,63 @@ Respond in this exact JSON format:
     }
   });
 
+  // Admin "sign in as" — start impersonating a non-admin user. The original
+  // admin id is stashed on the session so /stop-impersonating can restore it.
+  app.post("/api/admin/impersonate/:userId", isAuthenticated, async (req: any, res, next) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const targetId = req.params.userId;
+      if (targetId === adminId) {
+        return res.status(400).json({ message: "Cannot impersonate yourself" });
+      }
+
+      const [target] = await pgDb.select().from(users).where(eq(users.id, targetId));
+      if (!target) return res.status(404).json({ message: "User not found" });
+      if (target.accountType === "admin" || target.isAdmin === true) {
+        return res.status(403).json({ message: "Cannot impersonate another admin" });
+      }
+
+      // Preserve the original admin across nested impersonations.
+      const originalAdminId = (req.session as any).impersonatorId || adminId;
+
+      req.login(target, (err: any) => {
+        if (err) return next(err);
+        (req.session as any).impersonatorId = originalAdminId;
+        const { passwordHash: _ph, ...safe } = target as any;
+        res.json({ ...safe, impersonatedBy: originalAdminId });
+      });
+    } catch (err) {
+      console.error("[admin] impersonate error:", err);
+      res.status(500).json({ message: "Impersonation failed" });
+    }
+  });
+
+  app.post("/api/admin/stop-impersonating", isAuthenticated, async (req: any, res, next) => {
+    try {
+      const originalAdminId = (req.session as any).impersonatorId;
+      if (!originalAdminId) return res.status(400).json({ message: "Not impersonating" });
+
+      const [admin] = await pgDb.select().from(users).where(eq(users.id, originalAdminId));
+      if (!admin) {
+        delete (req.session as any).impersonatorId;
+        return res.status(404).json({ message: "Original admin user not found" });
+      }
+
+      req.login(admin, (err: any) => {
+        if (err) return next(err);
+        delete (req.session as any).impersonatorId;
+        const { passwordHash: _ph, ...safe } = admin as any;
+        res.json(safe);
+      });
+    } catch (err) {
+      console.error("[admin] stop-impersonate error:", err);
+      res.status(500).json({ message: "Failed to stop impersonating" });
+    }
+  });
+
   app.get("/api/admin/businesses", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;

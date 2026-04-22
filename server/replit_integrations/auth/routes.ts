@@ -11,7 +11,15 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(404).json({ message: "User not found" });
       }
       const { passwordHash: _, ...safeUser } = user;
-      res.json(safeUser);
+      const impersonatorId = (req.session as any)?.impersonatorId;
+      let impersonator: { id: string; email: string | null; firstName: string | null; lastName: string | null } | null = null;
+      if (impersonatorId && impersonatorId !== userId) {
+        const admin = await authStorage.getUser(impersonatorId);
+        if (admin) {
+          impersonator = { id: admin.id, email: admin.email, firstName: admin.firstName, lastName: admin.lastName };
+        }
+      }
+      res.json({ ...safeUser, impersonator });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

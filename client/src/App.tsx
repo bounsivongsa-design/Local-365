@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navigation } from "@/components/Navigation";
 import { FoundingUrgencyBanner } from "@/components/FoundingUrgencyBanner";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { LocationProvider, useLocation } from "@/context/LocationContext";
 import { footerTagline } from "@/lib/regionCopy";
 
@@ -61,6 +62,7 @@ function AppRouter() {
         className="fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat -z-10"
         style={{ backgroundImage: `url(${backgroundImage})` }}
       />
+      <ImpersonationBanner />
       <FoundingUrgencyBanner />
       <Navigation />
       <main className="flex-1">
