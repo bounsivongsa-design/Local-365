@@ -330,7 +330,13 @@ export const referrals = pgTable("referrals", {
   referrerBusinessId: integer("referrer_business_id").notNull().references(() => businesses.id),
   referredBusinessId: integer("referred_business_id").notNull().unique().references(() => businesses.id),
   code: text("code").notNull(),
-  status: text("status").notNull().default("pending"), // 'pending' | 'rewarded'
+  // 'pending'    — linked at signup, awaiting referee's first paid invoice
+  // 'processing' — webhook is currently issuing the Stripe credit (interim
+  //                lock; rolled back to 'pending' on failure or by
+  //                requeueStuckProcessingReferrals() at app boot if a crash
+  //                left it stranded)
+  // 'rewarded'   — credit applied to referrer; reward email sent
+  status: text("status").notNull().default("pending"),
   rewardDays: integer("reward_days").notNull().default(30),
   createdAt: timestamp("created_at").defaultNow(),
   rewardedAt: timestamp("rewarded_at"),
