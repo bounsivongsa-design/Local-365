@@ -15,6 +15,7 @@ import {
   Clock,
   AlertCircle,
   Search,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,7 +181,7 @@ export default function ReviewRequestsPage() {
     const map = new Map(all.map((c) => [c.key, c]));
     return Array.from(selected)
       .map((k) => map.get(k))
-      .filter((c): c is EligibleCustomer => !!c && !c.askedRecently);
+      .filter((c): c is EligibleCustomer => !!c && !c.askedRecently && !c.suppressed);
   }, [selected, eligibleQuery.data]);
 
   const failedRows = useMemo(
@@ -302,6 +303,7 @@ export default function ReviewRequestsPage() {
         success: number;
         failure: number;
         cooldownExcluded: number;
+        suppressed: number;
         failures?: Array<{
           key: string;
           name: string | null;
@@ -317,14 +319,19 @@ export default function ReviewRequestsPage() {
         .slice(0, 3)
         .map((f) => `• ${f.name || f.contact || f.key}: ${f.errorMsg}`);
       const more = failures.length > 3 ? `\n…and ${failures.length - 3} more (see History tab)` : "";
-      const cooldownLine =
-        data.cooldownExcluded > 0 ? `${data.cooldownExcluded} skipped for cooldown.` : "";
+      const extraParts: string[] = [];
+      if (data.cooldownExcluded > 0) extraParts.push(`${data.cooldownExcluded} skipped for cooldown`);
+      if (data.suppressed > 0)
+        extraParts.push(
+          `${data.suppressed} skipped — permanently undeliverable`,
+        );
+      const extraLine = extraParts.length ? extraParts.join(" · ") + "." : "";
       toast({
         title: `Sent ${data.success} review request${data.success === 1 ? "" : "s"}`,
         description:
           data.failure > 0
-            ? `${data.failure} failed${cooldownLine ? " · " + cooldownLine : ""}\n${previewLines.join("\n")}${more}`
-            : cooldownLine || "All recipients reached.",
+            ? `${data.failure} failed${extraLine ? " · " + extraLine : ""}\n${previewLines.join("\n")}${more}`
+            : extraLine || "All recipients reached.",
         variant: data.failure > 0 ? "destructive" : "default",
         duration: data.failure > 0 ? 10000 : 5000,
       });
@@ -381,7 +388,7 @@ export default function ReviewRequestsPage() {
             Customers ({customers.length})
           </TabsTrigger>
           <TabsTrigger value="compose" data-testid="tab-rr-compose">
-            Compose ({selected.size})
+            Compose ({eligibleSelected.length})
           </TabsTrigger>
           <TabsTrigger value="history" data-testid="tab-rr-history">
             History ({historyQuery.data?.requests.length ?? 0})
@@ -413,12 +420,14 @@ export default function ReviewRequestsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const keys = customers.filter((c) => !c.askedRecently).map((c) => c.key);
+                    const keys = customers
+                      .filter((c) => !c.askedRecently && !c.suppressed)
+                      .map((c) => c.key);
                     setSelected(new Set(keys));
                   }}
                   data-testid="button-rr-select-all"
                 >
-                  Select all ({customers.filter((c) => !c.askedRecently).length})
+                  Select all ({customers.filter((c) => !c.askedRecently && !c.suppressed).length})
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setSelected(new Set())} data-testid="button-rr-clear">
                   Clear
@@ -438,8 +447,8 @@ export default function ReviewRequestsPage() {
               ) : (
                 <div className="border rounded-lg divide-y max-h-[480px] overflow-y-auto">
                   {customers.map((c) => {
-                    const checked = selected.has(c.key);
-                    const disabled = c.askedRecently;
+                    const checked = selected.has(c.key) && !c.suppressed;
+                    const disabled = c.askedRecently || c.suppressed;
                     return (
                       <label
                         key={c.key}
@@ -451,7 +460,7 @@ export default function ReviewRequestsPage() {
                           disabled={disabled}
                           onCheckedChange={(v) => {
                             const next = new Set(selected);
-                            if (v) next.add(c.key);
+                            if (v && !c.suppressed) next.add(c.key);
                             else next.delete(c.key);
                             setSelected(next);
                           }}
@@ -464,16 +473,32 @@ export default function ReviewRequestsPage() {
                             {c.email && c.phone && <span> · </span>}
                             {c.phone && <span>{c.phone}</span>}
                           </div>
+                          {c.suppressed && c.suppressionReason && (
+                            <div
+                              className="text-xs text-red-700 mt-1 truncate"
+                              title={c.suppressionReason}
+                              data-testid={`text-rr-suppression-reason-${c.key}`}
+                            >
+                              {c.suppressionReason}
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <Badge variant="outline" className="text-xs">
                             {c.source === "quote_request" ? "Quoted" : "Reviewer"}
                           </Badge>
-                          {disabled && (
+                          {c.suppressed ? (
+                            <span
+                              className="text-xs text-red-700 flex items-center gap-1"
+                              data-testid={`badge-rr-suppressed-${c.key}`}
+                            >
+                              <ShieldAlert className="h-3 w-3" /> Permanently undeliverable
+                            </span>
+                          ) : c.askedRecently ? (
                             <span className="text-xs text-amber-700 flex items-center gap-1">
                               <Clock className="h-3 w-3" /> Asked recently
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </label>
                     );
@@ -484,11 +509,11 @@ export default function ReviewRequestsPage() {
               <div className="flex justify-end">
                 <Button
                   onClick={() => setTab("compose")}
-                  disabled={selected.size === 0}
+                  disabled={eligibleSelected.length === 0}
                   className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
                   data-testid="button-rr-continue"
                 >
-                  Continue with {selected.size} selected
+                  Continue with {eligibleSelected.length} selected
                 </Button>
               </div>
             </CardContent>

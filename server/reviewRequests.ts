@@ -453,6 +453,7 @@ export function registerReviewRequestRoutes(app: Express) {
 
       let success = 0;
       let failure = 0;
+      let suppressedCount = 0;
       const skipped: string[] = [];
       const failures: Array<{
         key: string;
@@ -593,6 +594,12 @@ export function registerReviewRequestRoutes(app: Express) {
           success++;
         } else {
           failure++;
+          if (
+            lastErr &&
+            (lastErr.startsWith("email[suppressed]") || lastErr.startsWith("sms[suppressed]"))
+          ) {
+            suppressedCount++;
+          }
           failures.push({
             key: c.key,
             name: c.name,
@@ -609,6 +616,7 @@ export function registerReviewRequestRoutes(app: Express) {
         failure,
         skipped: skipped.length,
         cooldownExcluded: customerKeys.length - targets.length - skipped.length,
+        suppressed: suppressedCount,
         failures,
       });
     },
