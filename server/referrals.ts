@@ -438,22 +438,27 @@ export async function processReferralOnFirstPaidInvoice(args: {
 
 /**
  * Safety net for rows stuck in 'processing' (e.g. server crashed
- * mid-webhook before finalize). Flips them back to 'pending' so the
- * next invoice delivery — or an admin replay — can complete the
- * reward. Safe to call on app boot.
+ * mid-webhook before finalize). Designed to be called ONCE at app
+ * boot: any row still in 'processing' at startup is necessarily a
+ * leftover from a previous instance — the in-process flow always
+ * resolves the row to 'rewarded' or back to 'pending' before the
+ * function returns. Flips such rows back to 'pending' so the next
+ * webhook delivery (or an admin replay) can complete the reward.
+ *
+ * Do NOT call this from a periodic timer in the same instance — it
+ * would race with concurrent in-flight processors. Boot-only.
  */
-export async function requeueStuckProcessingReferrals(maxAgeMinutes = 15): Promise<number> {
+export async function requeueStuckProcessingReferrals(): Promise<number> {
   const result = await db.execute(sql`
     UPDATE referrals
     SET status = 'pending'
     WHERE status = 'processing'
-      AND COALESCE(created_at, NOW()) < NOW() - (${maxAgeMinutes}::int || ' minutes')::interval
     RETURNING id
   `);
   const rows = (result as any).rows ?? result;
   const count = Array.isArray(rows) ? rows.length : 0;
   if (count > 0) {
-    console.log(`[referrals] requeued ${count} stuck 'processing' referral row(s)`);
+    console.log(`[referrals] requeued ${count} stuck 'processing' referral row(s) on boot`);
   }
   return count;
 }
