@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useNavigate } from "react-router-dom";
@@ -69,6 +69,10 @@ import {
   Gift,
   LogIn,
   Send,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Clock,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
@@ -2351,6 +2355,7 @@ function CompMembershipsPanel({
   });
 
   const rows = data?.businesses ?? [];
+  const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
   if (!isLoading && rows.length === 0) return null;
 
   return (
@@ -2382,7 +2387,8 @@ function CompMembershipsPanel({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-amber-100/60 last:border-0" data-testid={`row-comp-${r.id}`}>
+                  <Fragment key={r.id}>
+                  <tr className="border-b border-amber-100/60 last:border-0" data-testid={`row-comp-${r.id}`}>
                     <td className="py-2 pr-3">
                       <Link to={`/directory/${r.id}`} className="text-[#0a4a82] hover:underline font-medium">{r.name}</Link>
                       <div className="text-xs text-slate-500">{r.email || "—"}{r.zipCode ? ` · ${r.zipCode}` : ""}</div>
@@ -2405,6 +2411,17 @@ function CompMembershipsPanel({
                     </td>
                     <td className="py-2 pr-3 text-right">
                       <div className="inline-flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-slate-600 hover:bg-slate-100 rounded-lg gap-1 text-xs"
+                          onClick={() => setExpandedHistory((cur) => (cur === r.id ? null : r.id))}
+                          data-testid={`button-comp-history-${r.id}`}
+                        >
+                          <History className="h-3 w-3" />
+                          History
+                          {expandedHistory === r.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -2447,6 +2464,14 @@ function CompMembershipsPanel({
                       </div>
                     </td>
                   </tr>
+                  {expandedHistory === r.id && (
+                    <tr className="bg-amber-50/40 border-b border-amber-100/60">
+                      <td colSpan={6} className="py-3 px-3">
+                        <CompHistoryRows businessId={r.id} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -2454,6 +2479,83 @@ function CompMembershipsPanel({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Audit-log subview for one business: every grant/revoke/expire row from
+// `comp_membership_audit`. Lazy-loaded only when an admin expands the row so
+// we don't fan out N+1 fetches for the whole roster up front.
+type CompHistoryEntry = {
+  id: number;
+  businessId: number;
+  action: string;
+  actorUserId: string | null;
+  actorEmail: string | null;
+  note: string | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+};
+
+function CompHistoryRows({ businessId }: { businessId: number }) {
+  const { data, isLoading, isError } = useQuery<{ history: CompHistoryEntry[] }>({
+    queryKey: ["/api/admin/businesses", businessId, "comp-history"],
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-12 w-full rounded-lg" />;
+  }
+  if (isError) {
+    return <p className="text-xs text-red-600">Failed to load history.</p>;
+  }
+  const entries = data?.history ?? [];
+  if (entries.length === 0) {
+    return <p className="text-xs text-slate-500">No audit entries.</p>;
+  }
+
+  const labelFor = (action: string) => {
+    if (action === "grant") return { label: "Granted", className: "bg-amber-100 text-amber-800 border-amber-300" };
+    if (action === "revoke") return { label: "Revoked (manual)", className: "bg-red-100 text-red-700 border-red-200" };
+    if (action === "expire") return { label: "Expired (auto)", className: "bg-slate-200 text-slate-700 border-slate-300" };
+    return { label: action, className: "bg-slate-100 text-slate-700 border-slate-200" };
+  };
+
+  return (
+    <div className="space-y-2" data-testid={`history-comp-${businessId}`}>
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+        <Clock className="h-3 w-3" />
+        Comp history ({entries.length})
+      </div>
+      <ul className="space-y-1.5">
+        {entries.map((e) => {
+          const tag = labelFor(e.action);
+          return (
+            <li
+              key={e.id}
+              className="flex flex-wrap items-center gap-2 rounded-lg bg-white/70 border border-amber-100 px-3 py-2 text-xs"
+              data-testid={`history-row-${e.id}`}
+            >
+              <Badge className={`text-[10px] border ${tag.className}`} data-testid={`history-action-${e.id}`}>
+                {tag.label}
+              </Badge>
+              <span className="text-slate-500 whitespace-nowrap">
+                {e.createdAt ? format(new Date(e.createdAt), "MMM d, yyyy h:mm a") : "—"}
+              </span>
+              <span className="text-slate-500 whitespace-nowrap">
+                · by {e.action === "expire" ? <em className="not-italic text-slate-400">system</em> : (e.actorEmail || e.actorUserId || "—")}
+              </span>
+              {e.expiresAt && (
+                <span className="text-slate-500 whitespace-nowrap">
+                  · expires {format(new Date(e.expiresAt), "MMM d, yyyy")}
+                </span>
+              )}
+              {e.note && (
+                <span className="text-slate-600 italic break-words">— "{e.note}"</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

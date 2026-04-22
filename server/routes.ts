@@ -4582,6 +4582,41 @@ Respond in this exact JSON format:
     }
   });
 
+  // Per-business audit history of every comp grant / revoke / auto-expire so
+  // admins can answer "why was this comped before?" without DB access. Joins
+  // `users` so the actor's email shows up instead of a bare user id.
+  app.get("/api/admin/businesses/:id/comp-history", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const rows = await pgDb
+        .select({
+          id: compMembershipAudit.id,
+          businessId: compMembershipAudit.businessId,
+          action: compMembershipAudit.action,
+          actorUserId: compMembershipAudit.actorUserId,
+          actorEmail: users.email,
+          note: compMembershipAudit.note,
+          expiresAt: compMembershipAudit.expiresAt,
+          createdAt: compMembershipAudit.createdAt,
+        })
+        .from(compMembershipAudit)
+        .leftJoin(users, eq(users.id, compMembershipAudit.actorUserId))
+        .where(eq(compMembershipAudit.businessId, bizId))
+        .orderBy(desc(compMembershipAudit.createdAt));
+
+      res.json({ history: rows });
+    } catch (err) {
+      console.error("Admin comp history error:", err);
+      res.status(500).json({ message: "Failed to load comp history" });
+    }
+  });
+
   app.post("/api/admin/businesses/:id/comp", isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user?.id;
