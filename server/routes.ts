@@ -5741,7 +5741,11 @@ Respond in this exact JSON format:
 // so the same warning never fires twice for the same expiry window.
 // Flags reset on grant/revoke so a re-grant or expiry change earns a fresh
 // round of reminders.
-async function sendCompExpiryReminders() {
+export type CompExpiringNotifier = typeof notifyCompExpiring;
+
+export async function sendCompExpiryReminders(
+  notifier: CompExpiringNotifier = notifyCompExpiring,
+) {
   const now = new Date();
   const in7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const in1d = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
@@ -5795,7 +5799,7 @@ async function sendCompExpiryReminders() {
       // later) doesn't permanently suppress the warning.
       let sent = false;
       try {
-        sent = await notifyCompExpiring({
+        sent = await notifier({
           recipientEmail,
           businessName: biz.name,
           expiresAt: biz.expiresAt,
@@ -5813,7 +5817,7 @@ async function sendCompExpiryReminders() {
     } else if (needs7d) {
       let sent = false;
       try {
-        sent = await notifyCompExpiring({
+        sent = await notifier({
           recipientEmail,
           businessName: biz.name,
           expiresAt: biz.expiresAt,
