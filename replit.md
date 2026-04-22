@@ -67,7 +67,9 @@ Test files live under `server/__tests__/**/*.test.ts` and are discovered/execute
 
 ### Database schema sync
 
-`npm run db:push` should always complete non-interactively. If you ever see drizzle-kit prompting "Do you want to truncate <table>?", that means a unique constraint in the live DB is named differently from what `shared/schema.ts` would generate (drizzle treats it as a new constraint on a populated table). Fix it by renaming/aligning the existing constraint in the DB to match drizzle's `<table>_<column>_unique` naming, rather than answering the prompt. For an already-drifted DB the one-time alignment that was applied for task #53 was:
+`npm run db:push` should always complete non-interactively. If you ever see drizzle-kit prompting "Do you want to truncate <table>?", that means a unique constraint in the live DB is named differently from what `shared/schema.ts` would generate (drizzle treats it as a new constraint on a populated table). Fix it by renaming/aligning the existing constraint in the DB to match drizzle's `<table>_<column>_unique` naming, rather than answering the prompt.
+
+The historical alignment SQL (already applied to the workspace DB as of task #61 — kept here only as a reference template for any future drift):
 
 ```sql
 -- locations.slug had a partial unique INDEX; replace with a real UNIQUE constraint
