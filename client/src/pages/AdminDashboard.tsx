@@ -73,6 +73,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  BellRing,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -2043,6 +2044,17 @@ function BusinessesTab() {
                 </h4>
                 {editDialog && <CompHistoryRows businessId={editDialog.id} />}
               </section>
+
+              {/* Bounce-alert email history (Task #83). Shows the rows we
+                  wrote to bounce_spike_alerts whenever the cron emailed
+                  this business owner about a bounce cluster, so support
+                  can answer "did we actually warn them?" tickets. */}
+              <section className="space-y-3 pt-2 border-t border-gray-100">
+                <h4 className="text-sm font-semibold text-[#0a4a82] flex items-center gap-2">
+                  <BellRing className="h-4 w-4" /> Bounce-Alert Emails
+                </h4>
+                {editDialog && <BounceAlertHistoryRows businessId={editDialog.id} />}
+              </section>
             </div>
           )}
 
@@ -2716,6 +2728,53 @@ function CompHistoryRows({ businessId }: { businessId: number }) {
         })}
       </ul>
       )}
+    </div>
+  );
+}
+
+function BounceAlertHistoryRows({ businessId }: { businessId: number }) {
+  const { data, isLoading, isError } = useQuery<{
+    alerts: { id: number; alertedAt: string | null; bounceCount: number }[];
+    sinceDays: number;
+  }>({
+    queryKey: ["/api/businesses", businessId, "bounce-spike-alerts"],
+  });
+  if (isLoading) {
+    return <Skeleton className="h-12 w-full rounded-lg" />;
+  }
+  if (isError) {
+    return <p className="text-xs text-red-600">Failed to load bounce-alert history.</p>;
+  }
+  const alerts = data?.alerts ?? [];
+  const sinceDays = data?.sinceDays ?? 30;
+  if (alerts.length === 0) {
+    return (
+      <p className="text-xs text-slate-500" data-testid={`bounce-alerts-empty-${businessId}`}>
+        No bounce-alert emails sent in the last {sinceDays} days.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2" data-testid={`bounce-alerts-${businessId}`}>
+      <div className="text-xs text-slate-500">
+        {alerts.length} alert{alerts.length === 1 ? "" : "s"} in the last {sinceDays} days.
+      </div>
+      <ul className="space-y-1.5">
+        {alerts.map((a) => (
+          <li
+            key={a.id}
+            className="flex flex-wrap items-center gap-2 rounded-lg bg-white/70 border border-amber-100 px-3 py-2 text-xs"
+            data-testid={`bounce-alert-row-${a.id}`}
+          >
+            <Badge className="text-[10px] border bg-amber-100 text-amber-800 border-amber-300" data-testid={`bounce-alert-count-${a.id}`}>
+              {a.bounceCount} bounce{a.bounceCount === 1 ? "" : "s"}
+            </Badge>
+            <span className="text-slate-500 whitespace-nowrap" data-testid={`bounce-alert-date-${a.id}`}>
+              {a.alertedAt ? format(new Date(a.alertedAt), "MMM d, yyyy h:mm a") : "—"}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

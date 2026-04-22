@@ -23,6 +23,7 @@ import {
   reviews,
   reviewRequests,
   recipientSuppressions,
+  bounceSpikeAlerts,
 } from "@shared/schema";
 import { quoteRequests } from "@shared/models/auth";
 import { and, eq, sql, desc, or, gte, isNotNull } from "drizzle-orm";
@@ -60,6 +61,7 @@ async function authorizeOwner(
   res: Response,
   businessId: number,
   requireGold = false,
+  opts: { allowAdmin?: boolean } = {},
 ): Promise<{ business: typeof businesses.$inferSelect } | null> {
   const userId = (req as any).user?.id;
   if (!userId) {
@@ -67,7 +69,7 @@ async function authorizeOwner(
     return null;
   }
   const [user] = await pgDb
-    .select({ id: users.id, linkedBusinessId: users.linkedBusinessId })
+    .select({ id: users.id, linkedBusinessId: users.linkedBusinessId, accountType: users.accountType })
     .from(users)
     .where(eq(users.id, userId));
   if (!user) {
@@ -82,7 +84,8 @@ async function authorizeOwner(
     res.status(404).json({ message: "Business not found" });
     return null;
   }
-  if (user.linkedBusinessId !== biz.id) {
+  const isAdmin = opts.allowAdmin && user.accountType === "admin";
+  if (user.linkedBusinessId !== biz.id && !isAdmin) {
     res.status(403).json({ message: "You don't own this business" });
     return null;
   }
@@ -775,6 +778,46 @@ export function registerReviewRequestRoutes(app: Express) {
           lookbackHours: defaultLookbackHours,
         },
       });
+    },
+  );
+
+  // Recent owner bounce-spike alert emails (Task #79 → #83). Returns the
+  // rows we wrote to `bounce_spike_alerts` whenever the cron emailed the
+  // owner about a bounce cluster, so both the owner and admins can see
+  // exactly how often we've nudged them recently. Owner OR admin readable.
+  app.get(
+    "/api/businesses/:id/bounce-spike-alerts",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId, false, { allowAdmin: true });
+      if (!auth) return;
+      try {
+        const sinceDays = 30;
+        const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+        const rows = await pgDb
+          .select({
+            id: bounceSpikeAlerts.id,
+            alertedAt: bounceSpikeAlerts.alertedAt,
+            bounceCount: bounceSpikeAlerts.bounceCount,
+          })
+          .from(bounceSpikeAlerts)
+          .where(
+            and(
+              eq(bounceSpikeAlerts.businessId, businessId),
+              gte(bounceSpikeAlerts.alertedAt, since),
+            ),
+          )
+          .orderBy(desc(bounceSpikeAlerts.alertedAt))
+          .limit(50);
+        res.json({ alerts: rows, sinceDays });
+      } catch (err: any) {
+        console.error("[review-requests] bounce-spike-alerts failed:", err?.message);
+        res.status(500).json({ message: "Failed to load bounce alert history" });
+      }
     },
   );
 

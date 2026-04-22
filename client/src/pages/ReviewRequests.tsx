@@ -17,6 +17,7 @@ import {
   Search,
   ShieldAlert,
   BellOff,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,17 @@ interface RecentBounce {
   contact: string;
   reason: string;
   createdAt: string | null;
+}
+
+interface BounceSpikeAlertRow {
+  id: number;
+  alertedAt: string | null;
+  bounceCount: number;
+}
+
+interface BounceSpikeAlertsResponse {
+  alerts: BounceSpikeAlertRow[];
+  sinceDays: number;
 }
 
 interface ReviewRequestRow {
@@ -194,6 +206,10 @@ export default function ReviewRequestsPage() {
   });
   const bounceAlertPrefsQuery = useQuery<BounceAlertPrefs>({
     queryKey: ["/api/businesses", businessId, "review-requests/bounce-alert-prefs"],
+    enabled: !!businessId,
+  });
+  const bounceAlertsQuery = useQuery<BounceSpikeAlertsResponse>({
+    queryKey: ["/api/businesses", businessId, "bounce-spike-alerts"],
     enabled: !!businessId,
   });
   const credits = useQuery<AICreditsInfo>({
@@ -783,6 +799,79 @@ export default function ReviewRequestsPage() {
                 <p className="text-xs text-destructive" data-testid="text-bounce-alert-error">
                   Threshold must be 1–10000 and cadence must be 1–720 hours.
                 </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {businessId && (() => {
+        const alerts = bounceAlertsQuery.data?.alerts ?? [];
+        const sinceDays = bounceAlertsQuery.data?.sinceDays ?? 30;
+        return (
+          <Card className="border-amber-200 bg-amber-50/30" data-testid="card-rr-bounce-alerts">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2 text-amber-900">
+                    <BellRing className="h-4 w-4" /> Bounce-alert emails we sent you
+                  </CardTitle>
+                  <CardDescription className="text-amber-800/80">
+                    When a cluster of bounces shows up on your account we email you a heads-up
+                    so you can clean your contact list. Last {sinceDays} days.
+                  </CardDescription>
+                </div>
+                {!bounceAlertsQuery.isLoading && !bounceAlertsQuery.isError && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-300 text-amber-800"
+                    data-testid="badge-bounce-alerts-count"
+                  >
+                    {alerts.length} alert{alerts.length === 1 ? "" : "s"}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {bounceAlertsQuery.isLoading ? (
+                <Skeleton className="h-12 w-full rounded-lg" data-testid="loading-rr-bounce-alerts" />
+              ) : bounceAlertsQuery.isError ? (
+                <p className="text-xs text-red-700" data-testid="error-rr-bounce-alerts">
+                  Couldn't load bounce-alert history. Please refresh.
+                </p>
+              ) : alerts.length === 0 ? (
+                <p
+                  className="text-sm text-amber-800/80"
+                  data-testid="empty-rr-bounce-alerts"
+                >
+                  No bounce-alert emails sent in the last {sinceDays} days — you're not being over-emailed.
+                </p>
+              ) : (
+                <ul
+                  className="border border-amber-200 rounded-lg divide-y divide-amber-100 bg-white max-h-[220px] overflow-y-auto"
+                  data-testid="list-rr-bounce-alerts"
+                >
+                  {alerts.map((a) => (
+                    <li
+                      key={a.id}
+                      className="p-3 flex items-center justify-between gap-3"
+                      data-testid={`row-rr-bounce-alert-${a.id}`}
+                    >
+                      <div className="text-sm" data-testid={`text-bounce-alert-date-${a.id}`}>
+                        {a.alertedAt
+                          ? new Date(a.alertedAt).toLocaleString()
+                          : "—"}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 text-amber-800"
+                        data-testid={`text-bounce-alert-count-${a.id}`}
+                      >
+                        {a.bounceCount} bounce{a.bounceCount === 1 ? "" : "s"}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
               )}
             </CardContent>
           </Card>
