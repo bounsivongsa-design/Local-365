@@ -756,6 +756,22 @@ export const recipientSuppressions = pgTable("recipient_suppressions", {
 ]);
 export type RecipientSuppression = typeof recipientSuppressions.$inferSelect;
 
+/* Per-business audit of bounce-rate spike alerts emailed to admins. Used as
+   the cooldown record so the hourly check can re-detect a spike without
+   spamming admins — we skip a business whose latest row here is newer than
+   the cooldown window. One row per alert, kept for postmortem visibility. */
+export const bounceRateAlerts = pgTable("bounce_rate_alerts", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  alertedAt: timestamp("alerted_at").notNull().defaultNow(),
+  bounceCount: integer("bounce_count").notNull(),
+  totalCount: integer("total_count").notNull(),
+  // Stored as basis-points (e.g. 1234 = 12.34%) so we can rank/trend without
+  // floating point in SQL.
+  bounceRateBp: integer("bounce_rate_bp").notNull(),
+});
+export type BounceRateAlert = typeof bounceRateAlerts.$inferSelect;
+
 /* ────────────────────────────────────────────────────────────────────────
    AI Lab — Phase 1A: Credit System
    These tables are isolated to the AI Suite. Nothing in the rest of the

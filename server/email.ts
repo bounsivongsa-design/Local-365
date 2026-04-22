@@ -557,6 +557,85 @@ export async function notifyOwnerCompExpired(args: {
 }
 
 
+/**
+ * Alert admins when a business's recent review-request blast bounce rate
+ * crosses the configured safe threshold. Returns true on a successful send
+ * (used by the caller to decide whether to persist a cooldown row), false
+ * if Resend is not configured or the send threw.
+ */
+export async function notifyAdminBounceRateSpike(args: {
+  businessId: number;
+  businessName: string;
+  bounceCount: number;
+  totalCount: number;
+  bounceRatePct: number; // 0-100
+  thresholdPct: number; // 0-100
+  windowHours: number;
+  sampleSize: number;
+}): Promise<boolean> {
+  const resend = getResend();
+  if (!resend) {
+    console.log(
+      `[EMAIL SKIPPED] Bounce-rate spike for business #${args.businessId} (${args.businessName}) — Resend not configured`,
+    );
+    return false;
+  }
+
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const adminUrl = `https://locallist365.replit.app/admin?business=${args.businessId}`;
+  const requestsUrl = `https://locallist365.replit.app/admin/businesses/${args.businessId}/review-requests`;
+  const ratePretty = args.bounceRatePct.toFixed(1);
+  const thresholdPretty = args.thresholdPct.toFixed(0);
+
+  const subject = `Bounce-rate spike: ${escape(args.businessName)} at ${ratePretty}%`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #b91c1c, #7f1d1d); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 20px;">Sender-Reputation Warning</h1>
+        <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">A business's review-request blasts are bouncing above the safe threshold.</p>
+      </div>
+      <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 8px 0; color: #666; width: 160px;">Business:</td>
+            <td style="padding: 8px 0; font-weight: bold; color: #1a1a2e;">${escape(args.businessName)} <span style="color:#666; font-weight: normal;">#${args.businessId}</span></td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Bounce rate:</td>
+            <td style="padding: 8px 0; color: #b91c1c; font-weight: bold;">${ratePretty}% <span style="color:#666; font-weight: normal;">(threshold ${thresholdPretty}%)</span></td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Sample:</td>
+            <td style="padding: 8px 0; color: #1a1a2e;">${args.bounceCount} of last ${args.totalCount} email sends in the past ${args.windowHours}h <span style="color:#666;">(cap: ${args.sampleSize})</span></td>
+          </tr>
+        </table>
+        <div style="margin-top: 16px; padding: 12px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 13px; color: #7f1d1d;">
+          Continued sending at this rate risks Resend throttling our shared domain. Review the offender's recipient list and consider pausing their blasts or clearing stale contacts before the next send.
+        </div>
+        <div style="margin-top: 24px; text-align: center;">
+          <a href="${requestsUrl}" style="display: inline-block; background: #b91c1c; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-right: 8px;">View Review Requests</a>
+          <a href="${adminUrl}" style="display: inline-block; background: #0a4a82; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Open Business</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "Local List 365 <onboarding@resend.dev>",
+      to: ADMIN_EMAILS,
+      subject,
+      html,
+    });
+    console.log(`[EMAIL SENT] ${subject}`);
+    return true;
+  } catch (err: any) {
+    console.error(`[EMAIL FAILED] ${subject}:`, err?.message);
+    return false;
+  }
+}
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;

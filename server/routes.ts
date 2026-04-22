@@ -15,14 +15,14 @@ import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
-import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired } from "./email";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts } from "@shared/schema";
 import OpenAI from "openai";
-import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte } from "drizzle-orm";
+import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte, gte } from "drizzle-orm";
 
 async function isAdminUser(userId: string): Promise<boolean> {
   const [u] = await pgDb.select({ accountType: users.accountType }).from(users).where(eq(users.id, userId));
@@ -5753,11 +5753,17 @@ Respond in this exact JSON format:
     } catch (e) {
       console.error("Comp membership expiry check error:", e);
     }
+    try {
+      await checkBounceRateAlerts();
+    } catch (e) {
+      console.error("Bounce-rate alert check error:", e);
+    }
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
   setTimeout(() => sendCompExpiryReminders().catch(e => console.error("Initial comp expiry reminder error:", e)), 12000);
   setTimeout(() => checkExpiredCompMemberships().catch(e => console.error("Initial comp expiry check error:", e)), 13000);
+  setTimeout(() => checkBounceRateAlerts().catch(e => console.error("Initial bounce-rate alert check error:", e)), 14000);
 
   setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
@@ -5981,6 +5987,158 @@ async function checkExpiredGoldTrials() {
 
   if (expired.length > 0) {
     console.log(`Gold trial check complete: ${expired.length} business(es) reverted`);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Bounce-rate spike alerting
+   --------------------------
+   The Resend webhook now back-fills `review_requests.status='failed'` with
+   `errorMsg` starting with `email[permanent]:` for any address that bounces
+   asynchronously. Without a watchdog we'd only notice a reputation problem
+   when Resend throttles us. This job samples the last N email sends per
+   business in the last 24h, computes the bounce rate, and emails admins
+   when it exceeds the configured threshold.
+
+   Knobs (env-overridable so we can tighten or loosen without a deploy):
+     BOUNCE_RATE_THRESHOLD_PCT   default 10     (alert when % > this)
+     BOUNCE_RATE_SAMPLE_SIZE     default 100    (most recent sends per biz)
+     BOUNCE_RATE_LOOKBACK_HOURS  default 24
+     BOUNCE_RATE_MIN_VOLUME      default 10     (skip tiny samples — 1/3 = 33%
+                                                 is noise, not a real spike)
+     BOUNCE_RATE_COOLDOWN_HOURS  default 24     (re-alert cooldown per biz)
+
+   Idempotency: each successful alert writes a row to `bounce_rate_alerts`.
+   A business is skipped if its most recent alert is newer than the cooldown
+   window, so the hourly cron never spams admins about the same offender.
+   ────────────────────────────────────────────────────────────────────────── */
+export type BounceRateSpikeNotifier = typeof notifyAdminBounceRateSpike;
+
+function readIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+export async function checkBounceRateAlerts(
+  notifier: BounceRateSpikeNotifier = notifyAdminBounceRateSpike,
+) {
+  const thresholdPct = readIntEnv("BOUNCE_RATE_THRESHOLD_PCT", 10);
+  const sampleSize = readIntEnv("BOUNCE_RATE_SAMPLE_SIZE", 100);
+  const lookbackHours = readIntEnv("BOUNCE_RATE_LOOKBACK_HOURS", 24);
+  const minVolume = readIntEnv("BOUNCE_RATE_MIN_VOLUME", 10);
+  const cooldownHours = readIntEnv("BOUNCE_RATE_COOLDOWN_HOURS", 24);
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
+  const cooldownStart = new Date(now.getTime() - cooldownHours * 60 * 60 * 1000);
+
+  // Per-business: of the most recent `sampleSize` *attempted* email sends in
+  // the last `lookbackHours`, how many came back as a permanent bounce?
+  // Denominator definition matters here — we deliberately exclude rows still
+  // in 'queued' (no send actually happened yet) so a backlog of pending rows
+  // can't dilute the bounce rate and suppress an alert. Only rows that
+  // represent a real send outcome count: 'sent', 'clicked' and 'completed'
+  // are successful deliveries; 'failed' is either a hard bounce
+  // (`email[permanent]:`) — which is the numerator — or a soft/transient
+  // failure that still represents a real Resend round-trip and so still
+  // belongs in the denominator. Permanent bounces are exactly the rows the
+  // Resend webhook + the synchronous permanent-failure path mark with
+  // `email[permanent]:`; soft bounces and generic failures are excluded
+  // from the numerator on purpose.
+  const rows = await pgDb.execute<{
+    business_id: number;
+    total: string;
+    bounces: string;
+  }>(sql`
+    SELECT business_id,
+           SUM(CASE WHEN rn <= ${sampleSize} THEN 1 ELSE 0 END)::text AS total,
+           SUM(CASE WHEN rn <= ${sampleSize}
+                     AND status = 'failed'
+                     AND error_msg LIKE 'email[permanent]:%'
+                    THEN 1 ELSE 0 END)::text AS bounces
+    FROM (
+      SELECT business_id, status, error_msg,
+             ROW_NUMBER() OVER (
+               PARTITION BY business_id
+               ORDER BY COALESCE(sent_at, created_at) DESC
+             ) AS rn
+      FROM review_requests
+      WHERE channel IN ('email', 'both')
+        AND status IN ('sent', 'failed', 'clicked', 'completed')
+        AND COALESCE(sent_at, created_at) >= ${windowStart}
+    ) sub
+    GROUP BY business_id
+  `);
+
+  const candidates: Array<{
+    businessId: number;
+    total: number;
+    bounces: number;
+    rateBp: number;
+  }> = [];
+  for (const r of (rows.rows ?? []) as Array<{ business_id: number; total: string; bounces: string }>) {
+    const total = Number(r.total);
+    const bounces = Number(r.bounces);
+    if (!Number.isFinite(total) || total < minVolume) continue;
+    const rateBp = Math.round((bounces / total) * 10_000);
+    if (rateBp <= thresholdPct * 100) continue;
+    candidates.push({ businessId: r.business_id, total, bounces, rateBp });
+  }
+
+  if (candidates.length === 0) return;
+
+  for (const c of candidates) {
+    // Cooldown: skip if we already alerted on this business inside the
+    // cooldown window. Reading per-business is cheap (small candidate set,
+    // indexed on business_id by the FK).
+    const recent = await pgDb
+      .select({ id: bounceRateAlerts.id })
+      .from(bounceRateAlerts)
+      .where(
+        and(
+          eq(bounceRateAlerts.businessId, c.businessId),
+          gte(bounceRateAlerts.alertedAt, cooldownStart),
+        ),
+      )
+      .limit(1);
+    if (recent.length > 0) continue;
+
+    const [biz] = await pgDb
+      .select({ id: businesses.id, name: businesses.name })
+      .from(businesses)
+      .where(eq(businesses.id, c.businessId));
+    if (!biz) continue;
+
+    let sent = false;
+    try {
+      sent = await notifier({
+        businessId: biz.id,
+        businessName: biz.name,
+        bounceCount: c.bounces,
+        totalCount: c.total,
+        bounceRatePct: c.rateBp / 100,
+        thresholdPct,
+        windowHours: lookbackHours,
+        sampleSize,
+      });
+    } catch (e) {
+      console.error(`Bounce-rate alert notify failed for business ${biz.id}:`, e);
+      continue;
+    }
+
+    if (sent) {
+      await pgDb.insert(bounceRateAlerts).values({
+        businessId: biz.id,
+        bounceCount: c.bounces,
+        totalCount: c.total,
+        bounceRateBp: c.rateBp,
+      });
+      console.log(
+        `[bounce-rate-alert] business ${biz.id} (${biz.name}) — ${c.bounces}/${c.total} = ${(c.rateBp / 100).toFixed(2)}%`,
+      );
+    }
   }
 }
 
