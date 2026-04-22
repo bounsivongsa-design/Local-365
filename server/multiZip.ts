@@ -198,6 +198,23 @@ export function registerMultiZipRoutes(app: Express) {
     }
   });
 
+  // GET /api/businesses/:id/add-zip-quote?zipCode=XXXXX — preview price + city/state
+  // for an additional zip listing before sending the buyer to Stripe. Uses the
+  // same root-listing tier logic as the checkout route so the displayed price is
+  // guaranteed to match what we'll actually charge.
+  app.get("/api/businesses/:id/add-zip-quote", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const parentId = Number(req.params.id);
+      const zipCode = String(req.query.zipCode || "");
+      const result = await quoteAddZipForOwner(userId, parentId, zipCode);
+      res.status(result.status).json(result.body);
+    } catch (err: unknown) {
+      console.error("[multiZip] add-zip-quote:", err);
+      res.status(500).json({ message: "Failed to load price" });
+    }
+  });
+
   // POST /api/businesses/:id/add-zip-checkout — start Stripe subscription for a new zip listing.
   app.post("/api/businesses/:id/add-zip-checkout", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -228,13 +245,70 @@ export function registerMultiZipRoutes(app: Express) {
 }
 
 /**
+ * Look up the city/state for a covered zip and the monthly price the owner
+ * would actually be charged if they added it as another listing. Mirrors the
+ * tier-resolution + zip-validation logic in `startAddZipCheckoutForOwner` so
+ * the UI's confirmation step shows the same price Stripe will charge.
+ */
+export async function quoteAddZipForOwner(
+  userId: string,
+  parentId: number,
+  zipCode: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  if (!zipCode) return { status: 400, body: { message: "zipCode required" } };
+
+  const callerBiz = await loadOwnedBusiness(userId, parentId);
+  if (!callerBiz) return { status: 403, body: { message: "Not your listing" } };
+
+  const root = await resolveListingRoot(callerBiz.id);
+  const parent = root || callerBiz;
+  const rootId = parent.id;
+
+  const [loc] = await pgDb
+    .select()
+    .from(locations)
+    .where(sql`${zipCode} = ANY(COALESCE(${locations.zipCodes}, ARRAY[]::text[]))`)
+    .limit(1);
+  if (!loc) return { status: 400, body: { message: "Zip not in coverage area" } };
+
+  const existing = await pgDb
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(
+      and(
+        or(
+          eq(businesses.ownerUserId, userId),
+          eq(businesses.id, rootId),
+          eq(businesses.parentBusinessId, rootId),
+        ),
+        eq(businesses.zipCode, zipCode),
+        ne(businesses.status, "archived"),
+      ),
+    )
+    .limit(1);
+  if (existing.length) {
+    return { status: 409, body: { message: "You already have a listing in this zip" } };
+  }
+
+  const tier = getEffectiveTier(parent);
+  const priceMonthly = getAdditionalZipPrice(tier);
+  return {
+    status: 200,
+    body: {
+      zipCode,
+      city: loc.city,
+      state: loc.state,
+      tier,
+      priceMonthly,
+    },
+  };
+}
+
+/**
  * Pre-Stripe validation + Stripe Checkout session creation for a buyer who
  * wants to add another zip to their listing graph. Exported for testing —
- * the route handler delegates to this function.
- *
- * Returns { status, body } in the same shape as the route's response so the
- * route can stay a thin wrapper. The body for the happy path matches what
- * the frontend already consumes: `{ url, priceMonthly }`.
+ * the route handler delegates to this function. The body for the happy path
+ * matches what the frontend already consumes: `{ url, priceMonthly }`.
  */
 export async function startAddZipCheckoutForOwner(
   userId: string,

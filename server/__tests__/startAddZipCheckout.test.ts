@@ -14,7 +14,7 @@ import type Stripe from "stripe";
 
 import { db as pgDb } from "../db";
 import { businesses, locations, users } from "@shared/schema";
-import { startAddZipCheckoutForOwner, __setStripeForTesting } from "../multiZip";
+import { startAddZipCheckoutForOwner, quoteAddZipForOwner, __setStripeForTesting } from "../multiZip";
 
 const TEST_TAG = "__addzip_checkout_route_test__";
 const TEST_LOC_NAME = "__addzip_checkout_route_test_loc__";
@@ -38,6 +38,7 @@ async function seedBusiness(opts: {
   zipCode?: string;
   status?: string;
   stripeCustomerId?: string | null;
+  membershipTier?: string;
 }) {
   const [row] = await pgDb
     .insert(businesses)
@@ -53,7 +54,7 @@ async function seedBusiness(opts: {
       city: "Moyock",
       state: "NC",
       zipCode: opts.zipCode ?? COVERED_ZIP_A,
-      membershipTier: "premium",
+      membershipTier: opts.membershipTier ?? "premium",
       stripeCustomerId: opts.stripeCustomerId ?? "cus_test_" + Math.random().toString(36).slice(2, 8),
       stripeSubscriptionId: null,
       ownerUserId: opts.ownerUserId ?? null,
@@ -392,4 +393,91 @@ test("add-zip-checkout: 503 when Stripe isn't configured (and zip/owner checks a
 
   assert.equal(result.status, 503);
   assert.match(String(result.body.message), /stripe/i);
+});
+
+// ---------------------------------------------------------------------------
+// add-zip-quote: price preview the dashboard shows before redirecting to Stripe
+// ---------------------------------------------------------------------------
+
+test("add-zip-quote: 400 when zipCode is missing", async () => {
+  const userId = await seedUser();
+  const biz = await seedBusiness({ name: "AddZipQuote Missing Zip", ownerUserId: userId });
+  const result = await quoteAddZipForOwner(userId, biz.id, "");
+  assert.equal(result.status, 400);
+});
+
+test("add-zip-quote: 403 when the caller does not own the listing", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const ownerId = await seedUser();
+  const owned = await seedBusiness({ name: "AddZipQuote Owned By Other", ownerUserId: ownerId });
+  const intruderId = await seedUser();
+  const result = await quoteAddZipForOwner(intruderId, owned.id, COVERED_ZIP_B);
+  assert.equal(result.status, 403);
+});
+
+test("add-zip-quote: 400 when the requested zip is not in any covered location", async () => {
+  const userId = await seedUser();
+  const biz = await seedBusiness({ name: "AddZipQuote Uncovered", ownerUserId: userId });
+  const result = await quoteAddZipForOwner(userId, biz.id, UNCOVERED_ZIP);
+  assert.equal(result.status, 400);
+});
+
+test("add-zip-quote: 409 when the caller already owns an active listing in that zip", async () => {
+  await seedCoveredLocation([COVERED_ZIP_A]);
+  const userId = await seedUser();
+  const biz = await seedBusiness({
+    name: "AddZipQuote Dup",
+    ownerUserId: userId,
+    zipCode: COVERED_ZIP_A,
+  });
+  const result = await quoteAddZipForOwner(userId, biz.id, COVERED_ZIP_A);
+  assert.equal(result.status, 409);
+});
+
+test("add-zip-quote: happy path returns city/state/tier/priceMonthly for a covered, available zip", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const parent = await seedBusiness({
+    name: "AddZipQuote Happy",
+    ownerUserId: userId,
+    zipCode: COVERED_ZIP_A,
+    membershipTier: "premium",
+  });
+  const result = await quoteAddZipForOwner(userId, parent.id, COVERED_ZIP_B);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.zipCode, COVERED_ZIP_B);
+  assert.equal(result.body.city, "Currituck");
+  assert.equal(result.body.state, "NC");
+  // premium → gold tier in TIER_ID_MAP → 50% off $20 = $10
+  assert.equal(result.body.tier, "premium");
+  assert.equal(result.body.priceMonthly, 10);
+});
+
+test("add-zip-quote: when caller targets a CHILD listing, price reflects the ROOT's tier (not the child's)", async () => {
+  // Regression guard: the dashboard's "Add another zip" confirm step must
+  // show the same price the buyer will actually be charged. The server
+  // checkout uses the ROOT's effective tier, so the quote must too — even
+  // when the active listing is a child whose own membershipTier differs
+  // from the root's.
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const userId = await seedUser();
+  const root = await seedBusiness({
+    name: "AddZipQuote Root Premium",
+    ownerUserId: userId,
+    zipCode: COVERED_ZIP_A,
+    membershipTier: "premium", // gold tier → 50% off → $10
+  });
+  const child = await seedBusiness({
+    name: "AddZipQuote Child Basic",
+    ownerUserId: userId,
+    parentBusinessId: root.id,
+    isAdditionalZip: true,
+    zipCode: "20999",
+    membershipTier: "basic", // bronze tier → 10% off → $18 — but should NOT be used
+  });
+
+  const result = await quoteAddZipForOwner(userId, child.id, COVERED_ZIP_B);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.tier, "premium", "must report the ROOT's tier, not the child's");
+  assert.equal(result.body.priceMonthly, 10, "price must reflect the ROOT's tier discount");
 });

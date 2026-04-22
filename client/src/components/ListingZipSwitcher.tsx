@@ -42,11 +42,13 @@ type OwnedListing = {
 };
 
 type AvailableZip = { zipCode: string; city: string; state: string; region: string };
+type ZipQuote = { zipCode: string; city: string; state: string; tier: string; priceMonthly: number };
 
 export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: number | null }) {
   const { toast } = useToast();
   const [addZipOpen, setAddZipOpen] = useState(false);
   const [pickedZip, setPickedZip] = useState<string>("");
+  const [step, setStep] = useState<"pick" | "confirm">("pick");
 
   const { data: listings = [], isLoading } = useQuery<OwnedListing[]>({
     queryKey: ["/api/my-businesses"],
@@ -65,6 +67,26 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
       return res.json();
     },
     enabled: addZipOpen && !!activeBusinessId,
+  });
+
+  const {
+    data: zipQuote,
+    isLoading: quoteLoading,
+    error: quoteError,
+  } = useQuery<ZipQuote>({
+    queryKey: ["/api/businesses", activeBusinessId, "add-zip-quote", pickedZip],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/businesses/${activeBusinessId}/add-zip-quote?zipCode=${encodeURIComponent(pickedZip)}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || "Couldn't load price");
+      }
+      return res.json();
+    },
+    enabled: step === "confirm" && !!activeBusinessId && !!pickedZip,
   });
 
   const switchMutation = useMutation({
@@ -163,60 +185,152 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
         </DropdownMenu>
       </div>
 
-      <Dialog open={addZipOpen} onOpenChange={setAddZipOpen}>
+      <Dialog
+        open={addZipOpen}
+        onOpenChange={(open) => {
+          setAddZipOpen(open);
+          if (!open) {
+            setStep("pick");
+            setPickedZip("");
+          }
+        }}
+      >
         <DialogContent className="max-w-md" data-testid="dialog-add-zip">
-          <DialogHeader>
-            <DialogTitle>Add another zip to {active.name}</DialogTitle>
-            <DialogDescription>
-              Each zip is a separate listing with its own analytics, reviews, quotes, and ads.
-              Billed monthly at the rate discounted by your current tier. No 30-day Gold trial on
-              additional zips — billing starts day 1.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <label className="text-sm font-medium">Pick a covered zip</label>
-            <Select value={pickedZip} onValueChange={setPickedZip}>
-              <SelectTrigger data-testid="select-add-zip">
-                <SelectValue placeholder={availableZips.length ? "Choose a zip…" : "Loading zips…"} />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                {availableZips.map((z) => (
-                  <SelectItem key={z.zipCode} value={z.zipCode} data-testid={`option-zip-${z.zipCode}`}>
-                    {z.city}, {z.state} {z.zipCode} · {z.region}
-                  </SelectItem>
-                ))}
-                {availableZips.length === 0 && (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    You already have a listing in every covered zip.
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              We'll copy this listing's content (categories, hours, photos, credentials, social) into
-              the new zip. You can edit it independently afterwards.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setAddZipOpen(false)} data-testid="button-cancel-add-zip">
-              Cancel
-            </Button>
-            <Button
-              onClick={() => pickedZip && checkoutMutation.mutate(pickedZip)}
-              disabled={!pickedZip || checkoutMutation.isPending}
-              className="bg-[#0a4a82] hover:bg-[#083a6a]"
-              data-testid="button-confirm-add-zip"
-            >
-              {checkoutMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Redirecting…
-                </>
-              ) : (
-                "Continue to checkout"
-              )}
-            </Button>
-          </DialogFooter>
+          {step === "pick" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Add another zip to {active.name}</DialogTitle>
+                <DialogDescription>
+                  Each zip is a separate listing with its own analytics, reviews, quotes, and ads.
+                  Billed monthly at the rate discounted by your current tier. No 30-day Gold trial on
+                  additional zips — billing starts day 1.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <label className="text-sm font-medium">Pick a covered zip</label>
+                <Select value={pickedZip} onValueChange={setPickedZip}>
+                  <SelectTrigger data-testid="select-add-zip">
+                    <SelectValue placeholder={availableZips.length ? "Choose a zip…" : "Loading zips…"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {availableZips.map((z) => (
+                      <SelectItem key={z.zipCode} value={z.zipCode} data-testid={`option-zip-${z.zipCode}`}>
+                        {z.city}, {z.state} {z.zipCode} · {z.region}
+                      </SelectItem>
+                    ))}
+                    {availableZips.length === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground">
+                        You already have a listing in every covered zip.
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  We'll copy this listing's content (categories, hours, photos, credentials, social) into
+                  the new zip. You can edit it independently afterwards.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setAddZipOpen(false)} data-testid="button-cancel-add-zip">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => pickedZip && setStep("confirm")}
+                  disabled={!pickedZip}
+                  className="bg-[#0a4a82] hover:bg-[#083a6a]"
+                  data-testid="button-review-add-zip"
+                >
+                  Review price
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {step === "confirm" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirm your additional listing</DialogTitle>
+                <DialogDescription>
+                  Review the monthly price before continuing to checkout.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div
+                  className="rounded-lg border border-[#0a4a82]/20 bg-[#0a4a82]/5 p-4 min-h-[110px]"
+                  data-testid="summary-add-zip"
+                >
+                  {quoteLoading || (!zipQuote && !quoteError) ? (
+                    <div
+                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                      data-testid="status-quote-loading"
+                    >
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Looking up your price…
+                    </div>
+                  ) : quoteError ? (
+                    <div className="text-sm text-red-600" data-testid="status-quote-error">
+                      {(quoteError as Error)?.message || "Couldn't load price"}
+                    </div>
+                  ) : zipQuote ? (
+                    <>
+                      <div className="text-sm text-muted-foreground">New listing location</div>
+                      <div
+                        className="font-medium text-base mt-0.5"
+                        data-testid="text-confirm-location"
+                      >
+                        {zipQuote.city}, {zipQuote.state} {zipQuote.zipCode}
+                      </div>
+                      <div className="mt-3 flex items-baseline gap-1">
+                        <span
+                          className="text-2xl font-semibold text-[#0a4a82]"
+                          data-testid="text-confirm-price"
+                        >
+                          ${zipQuote.priceMonthly}
+                        </span>
+                        <span className="text-sm text-muted-foreground">/month</span>
+                      </div>
+                      {zipQuote.tier && zipQuote.tier !== "none" && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Reflects your current {zipQuote.tier} tier pricing.
+                        </div>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Billing starts immediately on day 1 — no Gold trial on additional zips. You can
+                  cancel this listing anytime from the dashboard.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep("pick")}
+                  disabled={checkoutMutation.isPending}
+                  data-testid="button-back-add-zip"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={() => pickedZip && checkoutMutation.mutate(pickedZip)}
+                  disabled={!pickedZip || !zipQuote || checkoutMutation.isPending}
+                  className="bg-[#0a4a82] hover:bg-[#083a6a]"
+                  data-testid="button-confirm-add-zip"
+                >
+                  {checkoutMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Redirecting…
+                    </>
+                  ) : zipQuote ? (
+                    `Continue to checkout · $${zipQuote.priceMonthly}/mo`
+                  ) : (
+                    "Continue to checkout"
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
