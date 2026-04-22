@@ -5,7 +5,7 @@ import { businesses, promoCodes, promoCodeUsages, membershipDowngrades, jobListi
 import { notifyAdminNewAd } from "./email";
 import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
-import { processMembershipActivation } from "./referrals";
+import { processMembershipActivation, processReferralOnFirstPaidInvoice } from "./referrals";
 import { applyCreditPackPurchase } from "./aiFeatures";
 import { handleAdditionalZipCheckoutCompleted, handleAdditionalZipSubscriptionDeleted } from "./multiZip";
 
@@ -1276,6 +1276,44 @@ export function registerStripeRoutes(app: Express) {
               stripeSubscriptionId: null,
             }).where(eq(businesses.id, businessId));
             console.log(`Membership canceled: business ${businessId}`);
+          }
+          break;
+        }
+
+        case "invoice.payment_succeeded": {
+          // Referral reward: when a referee converts trial → paid, credit
+          // the referrer with one month on their next invoice. Strictly
+          // gated on amount_paid > 0 inside processReferralOnFirstPaidInvoice
+          // so $0 setup invoices never trigger payout.
+          const invoice = event.data.object as Stripe.Invoice;
+          const subId = invoice.subscription as string | null;
+          if (subId) {
+            try {
+              let businessId = 0;
+              const sub = await stripe!.subscriptions.retrieve(subId);
+              businessId = parseInt(sub.metadata?.businessId || "0");
+              if (!businessId && invoice.customer) {
+                const [biz] = await db.select({ id: businesses.id })
+                  .from(businesses)
+                  .where(eq(businesses.stripeCustomerId, invoice.customer as string));
+                businessId = biz?.id || 0;
+              }
+              if (!businessId) {
+                const [biz] = await db.select({ id: businesses.id })
+                  .from(businesses)
+                  .where(eq(businesses.stripeSubscriptionId, subId));
+                businessId = biz?.id || 0;
+              }
+              if (businessId) {
+                await processReferralOnFirstPaidInvoice({
+                  referredBusinessId: businessId,
+                  invoice,
+                  stripe: stripe!,
+                }).catch((e) => console.error("[referrals] invoice.payment_succeeded:", e));
+              }
+            } catch (err: any) {
+              console.error("[referrals] failed to resolve business for invoice", invoice.id, err?.message);
+            }
           }
           break;
         }

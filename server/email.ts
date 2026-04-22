@@ -164,6 +164,54 @@ export async function notifyAdminNewAd(adTitle: string, businessName: string, ad
  * Gold features. Sent from server/referrals.ts:processMembershipActivation
  * AFTER the rewards are committed to the DB.
  */
+export async function notifyReferralInvoiceCredit(args: {
+  referrerEmail: string | null | undefined;
+  referrerBusinessName: string;
+  referredBusinessName: string;
+  creditAmountCents: number;
+}) {
+  const resend = getResend();
+  if (!resend) {
+    console.log(
+      `[EMAIL SKIPPED] Referral invoice credit (${args.referrerBusinessName} ← ${args.referredBusinessName}) — Resend not configured`,
+    );
+    return;
+  }
+  if (!args.referrerEmail) return;
+
+  const dollars = (args.creditAmountCents / 100).toFixed(2);
+  const dashboardUrl = "https://locallist365.replit.app/dashboard";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #d4a373, #b8834f); color: white; padding: 28px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="font-size: 14px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85; margin-bottom: 8px;">Referral Reward</div>
+        <h1 style="margin: 0; font-size: 28px;">$${dollars} Credit Applied</h1>
+      </div>
+      <div style="background: #f9f9f9; padding: 28px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">Thanks for referring ${args.referredBusinessName}!</h2>
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          They just completed their first paid month, so we've credited <strong>$${dollars}</strong> to your account — equal to one month of your current membership. The credit will be applied automatically to your next Stripe invoice.
+        </p>
+        <div style="margin: 24px 0; text-align: center;">
+          <a href="${dashboardUrl}" style="display: inline-block; background: #0a4a82; color: white; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">View Your Dashboard</a>
+        </div>
+        <p style="color: #666; font-size: 13px; line-height: 1.5;">Keep referring local businesses — every successful referral earns you another month free.</p>
+      </div>
+    </div>
+  `;
+  try {
+    await resend.emails.send({
+      from: "Local List 365 <onboarding@resend.dev>",
+      to: [args.referrerEmail],
+      subject: `You earned a $${dollars} credit — thanks for the referral!`,
+      html,
+    });
+    console.log(`[EMAIL SENT] Referral invoice credit → ${args.referrerEmail}`);
+  } catch (err: any) {
+    console.error(`[EMAIL FAILED] Referral invoice credit:`, err?.message);
+  }
+}
+
 export async function notifyReferralRewarded(args: {
   referrerEmail: string | null | undefined;
   referrerBusinessName: string;

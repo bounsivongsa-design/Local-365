@@ -22,12 +22,21 @@
 import { db } from "./db";
 import { businesses, referrals } from "@shared/schema";
 import { and, eq, sql, isNull, inArray } from "drizzle-orm";
-import { notifyReferralRewarded } from "./email";
+import { notifyReferralInvoiceCredit } from "./email";
+import Stripe from "stripe";
 
 const FOUNDING_MEMBER_LIMIT = 100;
-const REFERRAL_REWARD_DAYS = 30;
+const REFERRAL_REWARD_DAYS = 30; // legacy fallback if referrer has no Stripe customer
 
 const PAID_TIERS = new Set(["basic", "standard", "premium"]);
+
+// Tier price fallbacks (cents/month) when we can't read the real Stripe sub.
+// Used only for founders / comped accounts that have no live subscription.
+const TIER_PRICE_CENTS_FALLBACK: Record<string, number> = {
+  basic: 2500,
+  standard: 5000,
+  premium: 10000,
+};
 
 /** Generates a friendly referral code like "REF-XK4Q9P". */
 export function generateReferralCode(): string {
@@ -210,78 +219,159 @@ export async function processMembershipActivation(
   let referrerBusinessId: number | null = null;
   let rewardedDays: number = REFERRAL_REWARD_DAYS;
 
-  await db.transaction(async (tx) => {
-    // 1. Founding member assignment (only if not already)
-    if (!biz.isFoundingMember) {
-      foundingNumber = await tryAssignFoundingNumber(tx, businessId);
-    }
-
-    // 2. Referral reward delivery
-    const [pending] = await tx
-      .select()
-      .from(referrals)
-      .where(
-        and(
-          eq(referrals.referredBusinessId, businessId),
-          eq(referrals.status, "pending"),
-        ),
-      );
-    if (pending) {
-      // Mark rewarded FIRST; if a parallel call grabs the same row the
-      // update count will tell us we lost the race.
-      const updated = await tx
-        .update(referrals)
-        .set({ status: "rewarded", rewardedAt: new Date() })
-        .where(and(eq(referrals.id, pending.id), eq(referrals.status, "pending")))
-        .returning({ id: referrals.id });
-
-      if (updated.length > 0) {
-        const days = pending.rewardDays ?? REFERRAL_REWARD_DAYS;
-        await addGoldDays(tx, pending.referrerBusinessId, days);
-        await addGoldDays(tx, pending.referredBusinessId, days);
-        referralRewarded = true;
-        referrerBusinessId = pending.referrerBusinessId;
-        rewardedDays = days;
-      }
-    }
-  });
-
-  if (foundingNumber || referralRewarded) {
-    console.log(
-      `[referrals] biz=${businessId} foundingNumber=${foundingNumber} referralRewarded=${referralRewarded} referrer=${referrerBusinessId}`,
-    );
+  // Founding member assignment only. Referral payout has moved to
+  // `processReferralOnFirstPaidInvoice`, which fires when the referee
+  // actually pays their first invoice (i.e. trial converts to paid).
+  if (!biz.isFoundingMember) {
+    foundingNumber = await tryAssignFoundingNumber(db, businessId);
   }
 
-  // Send celebration emails to both parties AFTER the DB transaction commits.
-  // Failures here are logged but never rethrown — emails are best-effort and
-  // must not roll back a successful reward.
-  if (referralRewarded && referrerBusinessId) {
-    try {
-      const parties = await db
-        .select({
-          id: businesses.id,
-          name: businesses.name,
-          email: businesses.email,
-        })
-        .from(businesses)
-        .where(inArray(businesses.id, [referrerBusinessId, businessId]));
-      const referrer = parties.find((p) => p.id === referrerBusinessId);
-      const referred = parties.find((p) => p.id === businessId);
-      if (referrer && referred) {
-        await notifyReferralRewarded({
-          referrerEmail: referrer.email,
-          referrerBusinessName: referrer.name,
-          referredEmail: referred.email,
-          referredBusinessName: referred.name,
-          daysGranted: rewardedDays,
-        });
-      }
-    } catch (err) {
-      console.error("[referrals] reward email send failed (non-fatal):", err);
-    }
+  if (foundingNumber) {
+    console.log(`[referrals] biz=${businessId} foundingNumber=${foundingNumber}`);
   }
 
+  // Suppress unused-var warnings; kept in return shape for backwards compat.
+  void rewardedDays;
+  void addGoldDays;
   return { foundingNumber, referralRewarded, referrerBusinessId };
+}
+
+/**
+ * Fires from the Stripe `invoice.payment_succeeded` webhook. When the
+ * referee completes their first real paid charge (i.e. trial converted
+ * to paid), credit the referrer with one month of their current
+ * membership price as a Stripe customer-balance adjustment that will
+ * apply to their next invoice.
+ *
+ * Idempotent on two layers:
+ *   1. Atomic UPDATE … WHERE status='pending' guarantees only one
+ *      caller transitions the referral row.
+ *   2. The Stripe balance transaction includes the referral id in
+ *      metadata; if we ever retry, the row is already 'rewarded'.
+ *
+ * Intentionally tolerant: if the referrer has no Stripe customer
+ * (founder / comp account), we still flip the row to 'rewarded' and
+ * fall back to extending their Gold trial by 30 days so the referee's
+ * goodwill isn't lost.
+ */
+export async function processReferralOnFirstPaidInvoice(args: {
+  referredBusinessId: number;
+  invoice: Stripe.Invoice;
+  stripe: Stripe;
+}): Promise<{ rewarded: boolean; reason?: string; creditCents?: number }> {
+  const { referredBusinessId, invoice, stripe } = args;
+
+  // Only count real money. Trial-conversion invoices have amount_paid > 0;
+  // the synthetic $0 invoice Stripe emits when a trial subscription is
+  // first created (billing_reason='subscription_create' with amount 0)
+  // does NOT trigger payout.
+  if ((invoice.amount_paid ?? 0) <= 0) {
+    return { rewarded: false, reason: "zero amount invoice" };
+  }
+  if (invoice.status !== "paid") {
+    return { rewarded: false, reason: `invoice not paid (${invoice.status})` };
+  }
+
+  // Look up the pending referral for this referee.
+  const [pending] = await db
+    .select()
+    .from(referrals)
+    .where(
+      and(
+        eq(referrals.referredBusinessId, referredBusinessId),
+        eq(referrals.status, "pending"),
+      ),
+    );
+  if (!pending) {
+    return { rewarded: false, reason: "no pending referral" };
+  }
+
+  // Atomic transition — only one caller wins.
+  const [claimed] = await db
+    .update(referrals)
+    .set({ status: "rewarded", rewardedAt: new Date() })
+    .where(and(eq(referrals.id, pending.id), eq(referrals.status, "pending")))
+    .returning({ id: referrals.id });
+  if (!claimed) {
+    return { rewarded: false, reason: "lost race to concurrent caller" };
+  }
+
+  // Look up both parties (we already won the row, so even if any of
+  // this fails the referral stays marked rewarded — operator can
+  // manually retry crediting via Stripe dashboard).
+  const parties = await db
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      email: businesses.email,
+      membershipTier: businesses.membershipTier,
+      stripeCustomerId: businesses.stripeCustomerId,
+      stripeSubscriptionId: businesses.stripeSubscriptionId,
+    })
+    .from(businesses)
+    .where(inArray(businesses.id, [pending.referrerBusinessId, referredBusinessId]));
+
+  const referrer = parties.find((p) => p.id === pending.referrerBusinessId);
+  const referred = parties.find((p) => p.id === referredBusinessId);
+  if (!referrer || !referred) {
+    console.warn(`[referrals] reward: missing party row(s) referrer=${pending.referrerBusinessId} referred=${referredBusinessId}`);
+    return { rewarded: true, reason: "marked rewarded but party row(s) missing" };
+  }
+
+  // Determine credit amount: prefer the referrer's actual current
+  // monthly subscription price; fall back to tier price table.
+  let creditCents = 0;
+  if (referrer.stripeSubscriptionId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(referrer.stripeSubscriptionId);
+      const item = sub.items?.data?.[0];
+      const unit = item?.price?.unit_amount;
+      if (typeof unit === "number" && unit > 0) creditCents = unit;
+    } catch (err: any) {
+      console.warn(`[referrals] could not fetch referrer sub ${referrer.stripeSubscriptionId}:`, err?.message);
+    }
+  }
+  if (!creditCents) {
+    creditCents = TIER_PRICE_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
+  }
+
+  if (referrer.stripeCustomerId) {
+    try {
+      // Negative amount = credit applied to NEXT invoice automatically.
+      await stripe.customers.createBalanceTransaction(referrer.stripeCustomerId, {
+        amount: -creditCents,
+        currency: "usd",
+        description: `Referral reward: ${referred.name} (referral #${pending.id})`,
+        metadata: {
+          referralId: String(pending.id),
+          referredBusinessId: String(referredBusinessId),
+          referrerBusinessId: String(pending.referrerBusinessId),
+          source: "locallist365_referral",
+        },
+      });
+      console.log(`[referrals] credited $${(creditCents / 100).toFixed(2)} to customer ${referrer.stripeCustomerId} for referral ${pending.id}`);
+    } catch (err: any) {
+      console.error(`[referrals] Stripe credit failed for referral ${pending.id}:`, err?.message);
+    }
+  } else {
+    // Founder / comp account fallback: extend Gold trial by 30 days.
+    await addGoldDays(db, referrer.id, REFERRAL_REWARD_DAYS);
+    console.log(`[referrals] no stripeCustomerId on referrer ${referrer.id}; granted +${REFERRAL_REWARD_DAYS} Gold days instead`);
+  }
+
+  // Best-effort email — failures must not roll back the reward.
+  try {
+    await notifyReferralInvoiceCredit({
+      referrerEmail: referrer.email,
+      referrerBusinessName: referrer.name,
+      referredBusinessName: referred.name,
+      creditAmountCents: creditCents,
+    });
+  } catch (err) {
+    console.error("[referrals] reward email send failed (non-fatal):", err);
+  }
+
+  return { rewarded: true, creditCents };
 }
 
 /**
