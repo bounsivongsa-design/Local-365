@@ -212,6 +212,71 @@ export async function notifyReferralInvoiceCredit(args: {
   }
 }
 
+/**
+ * Sent when processReferralOnFirstPaidInvoice rolls a referral row back to
+ * 'pending' after a Stripe error. Best-effort — the caller must not let
+ * email failures undo the referral state transition.
+ */
+export async function notifyAdminReferralPayoutFailed(args: {
+  referralId: number;
+  referrerBusinessId: number;
+  referrerBusinessName?: string | null;
+  referrerEmail?: string | null;
+  referredBusinessId: number;
+  referredBusinessName?: string | null;
+  referredEmail?: string | null;
+  invoiceId?: string | null;
+  errorMessage: string;
+}) {
+  const adminUrl = "https://locallist365.replit.app/admin/referrals?status=pending";
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const errSafe = escape(args.errorMessage || "unknown error");
+  const referrerLine = `${escape(args.referrerBusinessName || "(unknown)")} <span style="color:#666;">#${args.referrerBusinessId}${args.referrerEmail ? ` · ${escape(args.referrerEmail)}` : ""}</span>`;
+  const referredLine = `${escape(args.referredBusinessName || "(unknown)")} <span style="color:#666;">#${args.referredBusinessId}${args.referredEmail ? ` · ${escape(args.referredEmail)}` : ""}</span>`;
+  const invoiceLine = args.invoiceId ? escape(args.invoiceId) : "—";
+
+  const subject = `Referral payout FAILED — referral #${args.referralId}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #b91c1c, #7f1d1d); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 20px;">Referral Payout Failed</h1>
+        <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">The row was rolled back to 'pending' and will retry on the next webhook delivery.</p>
+      </div>
+      <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 8px 0; color: #666; width: 130px;">Referral ID:</td>
+            <td style="padding: 8px 0; font-weight: bold; color: #1a1a2e;">#${args.referralId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Referrer:</td>
+            <td style="padding: 8px 0; color: #1a1a2e;">${referrerLine}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Referred:</td>
+            <td style="padding: 8px 0; color: #1a1a2e;">${referredLine}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Invoice:</td>
+            <td style="padding: 8px 0; color: #1a1a2e; font-family: monospace; font-size: 12px;">${invoiceLine}</td>
+          </tr>
+        </table>
+        <div style="margin-top: 16px; padding: 12px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Stripe Error</div>
+          <pre style="margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 13px; color: #7f1d1d; font-family: monospace;">${errSafe}</pre>
+        </div>
+        <div style="margin-top: 24px; text-align: center;">
+          <a href="${adminUrl}" style="display: inline-block; background: #0a4a82; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+            Open Pending Referrals
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+  await sendAdminEmail(subject, html);
+}
+
 export async function notifyReferralRewarded(args: {
   referrerEmail: string | null | undefined;
   referrerBusinessName: string;

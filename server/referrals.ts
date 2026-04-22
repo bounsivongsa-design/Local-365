@@ -22,7 +22,7 @@
 import { db } from "./db";
 import { businesses, referrals } from "@shared/schema";
 import { and, eq, sql, isNull, inArray } from "drizzle-orm";
-import { notifyReferralInvoiceCredit } from "./email";
+import { notifyReferralInvoiceCredit, notifyAdminReferralPayoutFailed } from "./email";
 import Stripe from "stripe";
 
 const FOUNDING_MEMBER_LIMIT = 100;
@@ -325,6 +325,17 @@ export async function processReferralOnFirstPaidInvoice(args: {
     return { rewarded: false, reason: "lost race to concurrent caller" };
   }
 
+  type Party = {
+    id: number;
+    name: string | null;
+    email: string | null;
+    membershipTier: string | null;
+    stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
+  };
+  let referrer: Party | undefined;
+  let referred: Party | undefined;
+
   try {
     const parties = await db
       .select({
@@ -338,8 +349,8 @@ export async function processReferralOnFirstPaidInvoice(args: {
       .from(businesses)
       .where(inArray(businesses.id, [pending.referrerBusinessId, referredBusinessId]));
 
-    const referrer = parties.find((p) => p.id === pending.referrerBusinessId);
-    const referred = parties.find((p) => p.id === referredBusinessId);
+    referrer = parties.find((p) => p.id === pending.referrerBusinessId);
+    referred = parties.find((p) => p.id === referredBusinessId);
     if (!referrer || !referred) {
       throw new Error(`missing party row(s) referrer=${pending.referrerBusinessId} referred=${referredBusinessId}`);
     }
@@ -432,6 +443,25 @@ export async function processReferralOnFirstPaidInvoice(args: {
       .set({ status: "pending" })
       .where(and(eq(referrals.id, pending.id), eq(referrals.status, "processing")));
     console.error(`[referrals] reward FAILED for referral ${pending.id}, rolled back to pending:`, err?.message ?? err);
+
+    // Best-effort admin alert so failed payouts don't sit unnoticed.
+    // Must never throw — email failures cannot undo the rollback above.
+    try {
+      await notifyAdminReferralPayoutFailed({
+        referralId: pending.id,
+        referrerBusinessId: pending.referrerBusinessId,
+        referrerBusinessName: referrer?.name ?? null,
+        referrerEmail: referrer?.email ?? null,
+        referredBusinessId,
+        referredBusinessName: referred?.name ?? null,
+        referredEmail: referred?.email ?? null,
+        invoiceId: invoice.id ?? null,
+        errorMessage: err?.message ?? String(err ?? "unknown error"),
+      });
+    } catch (emailErr) {
+      console.error("[referrals] admin payout-failed email send failed (non-fatal):", emailErr);
+    }
+
     return { rewarded: false, reason: `error: ${err?.message ?? "unknown"}` };
   }
 }
