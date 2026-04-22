@@ -7,9 +7,15 @@ import { isAuthenticated } from "./replit_integrations/auth";
 import { getAdditionalZipPrice, ADDITIONAL_ZIP_BASE_PRICE, isCompActive } from "@shared/config/membership";
 
 const STRIPE_KEY = process.env.Stripeintegration || process.env.STRIPE_SECRET_KEY;
-const stripe: Stripe | null = STRIPE_KEY
+let stripe: Stripe | null = STRIPE_KEY
   ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion })
   : null;
+
+// Test seam: tests can swap in a stub Stripe client (or null) without
+// reloading the module. Production code never calls this.
+export function __setStripeForTesting(client: Stripe | null) {
+  stripe = client;
+}
 
 function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDate" | "isCompedMembership" | "compedMembershipExpiresAt">): string {
   if (isCompActive(biz)) return "premium";
@@ -292,41 +298,60 @@ export function registerMultiZipRoutes(app: Express) {
     try {
       const userId = req.user?.id;
       const id = Number(req.params.id);
-      const biz = await loadOwnedBusiness(userId, id);
-      if (!biz) return res.status(403).json({ message: "Not your listing" });
-      if (!biz.isAdditionalZip) {
-        return res.status(400).json({ message: "Use the billing portal to cancel your primary listing" });
-      }
-      if (stripe && biz.stripeSubscriptionId) {
-        try {
-          await stripe.subscriptions.cancel(biz.stripeSubscriptionId);
-        } catch (e: unknown) {
-          console.warn("[multiZip] cancel sub failed (continuing to archive):", errMsg(e));
-        }
-      }
-      await pgDb.update(businesses).set({ status: "archived" }).where(eq(businesses.id, id));
-
-      // If we just archived the active listing, switch user back to a remaining one.
-      const [u] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (u?.linkedBusinessId === id) {
-        const [next] = await pgDb
-          .select({ id: businesses.id })
-          .from(businesses)
-          .where(
-            and(eq(businesses.ownerUserId, userId), ne(businesses.status, "archived"), ne(businesses.id, id)),
-          )
-          .limit(1);
-        if (next) {
-          await pgDb.update(users).set({ linkedBusinessId: next.id }).where(eq(users.id, userId));
-        }
-      }
-
-      res.json({ ok: true });
+      const result = await cancelAdditionalZipForOwner(userId, id);
+      res.status(result.status).json(result.body);
     } catch (err: unknown) {
       console.error("[multiZip] cancel-additional-zip:", err);
       res.status(500).json({ message: "Failed to cancel" });
     }
   });
+}
+
+/**
+ * Owner-initiated cancellation of an additional-zip listing. Verifies the
+ * caller actually owns the listing, asks Stripe to cancel the subscription
+ * (best-effort), archives the row, and re-points the user's active listing
+ * if we just archived the one they were viewing.
+ *
+ * Exported for testing — the route handler delegates to this function.
+ */
+export async function cancelAdditionalZipForOwner(
+  userId: string,
+  id: number,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const biz = await loadOwnedBusiness(userId, id);
+  if (!biz) return { status: 403, body: { message: "Not your listing" } };
+  if (!biz.isAdditionalZip) {
+    return {
+      status: 400,
+      body: { message: "Use the billing portal to cancel your primary listing" },
+    };
+  }
+  if (stripe && biz.stripeSubscriptionId) {
+    try {
+      await stripe.subscriptions.cancel(biz.stripeSubscriptionId);
+    } catch (e: unknown) {
+      console.warn("[multiZip] cancel sub failed (continuing to archive):", errMsg(e));
+    }
+  }
+  await pgDb.update(businesses).set({ status: "archived" }).where(eq(businesses.id, id));
+
+  // If we just archived the active listing, switch user back to a remaining one.
+  const [u] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (u?.linkedBusinessId === id) {
+    const [next] = await pgDb
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(
+        and(eq(businesses.ownerUserId, userId), ne(businesses.status, "archived"), ne(businesses.id, id)),
+      )
+      .limit(1);
+    if (next) {
+      await pgDb.update(users).set({ linkedBusinessId: next.id }).where(eq(users.id, userId));
+    }
+  }
+
+  return { status: 200, body: { ok: true } };
 }
 
 /**
