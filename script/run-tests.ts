@@ -4,6 +4,18 @@ import { join } from "node:path";
 
 const TEST_ROOT = "server/__tests__";
 
+async function runNode(args: string[]): Promise<number> {
+  return await new Promise((resolve) => {
+    const child = spawn("tsx", args, { stdio: "inherit", env: process.env });
+    child.on("exit", (code) => resolve(code ?? 1));
+  });
+}
+
+const driftCode = await runNode(["script/check-schema-drift.ts"]);
+if (driftCode !== 0) {
+  process.exit(driftCode);
+}
+
 async function findTestFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files: string[] = [];
