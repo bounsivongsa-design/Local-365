@@ -5916,6 +5916,116 @@ async function checkExpiredGoldTrials() {
   }
 }
 
+// Daily heads-up emails for comp recipients whose Gold access ends in
+// exactly 7 or 1 days. Idempotent via comp_expiration_reminders unique
+// index on (businessId, thresholdDays, sentForExpiresAt) — if an admin
+// later extends the comp, the new expiry is a new sentForExpiresAt so
+// the reminders fire again for the fresh window.
+const COMP_REMINDER_THRESHOLDS = [7, 1] as const;
+
+async function sendCompExpirationReminders() {
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  for (const threshold of COMP_REMINDER_THRESHOLDS) {
+    // We want comps whose expiry is "exactly N days away" — match the
+    // 24-hour window (now + (N-1)d, now + N*d]. Hourly cron + idempotent
+    // insert means we'll send once per (business, threshold) per expiry.
+    const windowStart = new Date(now.getTime() + (threshold - 1) * dayMs);
+    const windowEnd = new Date(now.getTime() + threshold * dayMs);
+
+    const due = await pgDb
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        ownerUserId: businesses.ownerUserId,
+        compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+      })
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.isCompedMembership, true),
+          isNotNull(businesses.compedMembershipExpiresAt),
+          gt(businesses.compedMembershipExpiresAt, windowStart),
+          lte(businesses.compedMembershipExpiresAt, windowEnd),
+        ),
+      );
+
+    for (const biz of due) {
+      const expiresAt = biz.compedMembershipExpiresAt as Date;
+
+      // Resolve owner email — prefer the linked user account (matches the
+      // account that sees the in-app banner), fall back to businesses.email.
+      let toEmail: string | null = null;
+      if (biz.ownerUserId) {
+        const [u] = await pgDb
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, biz.ownerUserId))
+          .limit(1);
+        if (u?.email) toEmail = u.email;
+      }
+      if (!toEmail) {
+        const [u] = await pgDb
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.linkedBusinessId, biz.id))
+          .limit(1);
+        if (u?.email) toEmail = u.email;
+      }
+      if (!toEmail && biz.email) toEmail = biz.email;
+      if (!toEmail) {
+        console.warn(
+          `[COMP REMINDER] Skipping business ${biz.id} (${biz.name}) — no owner email`,
+        );
+        continue;
+      }
+
+      // Reserve the (business, threshold, expiresAt) slot first so a crash
+      // mid-send can't double-fire on the next tick. ON CONFLICT DO NOTHING
+      // means a parallel sender (or a previous successful run) wins and we
+      // skip the email. We use returning() to know whether we got the slot.
+      const inserted = await pgDb
+        .insert(compExpirationReminders)
+        .values({
+          businessId: biz.id,
+          thresholdDays: threshold,
+          sentForExpiresAt: expiresAt,
+        })
+        .onConflictDoNothing({
+          target: [
+            compExpirationReminders.businessId,
+            compExpirationReminders.thresholdDays,
+            compExpirationReminders.sentForExpiresAt,
+          ],
+        })
+        .returning({ id: compExpirationReminders.id });
+
+      if (inserted.length === 0) continue; // already sent for this expiry
+
+      const daysLeft = Math.max(
+        1,
+        Math.ceil((expiresAt.getTime() - now.getTime()) / dayMs),
+      );
+
+      await sendCompExpirationReminder({
+        toEmail,
+        businessName: biz.name,
+        daysLeft: threshold, // use canonical threshold for stable copy
+        endDate: expiresAt,
+      });
+      void daysLeft; // intentionally unused; kept for future tuning
+    }
+
+    if (due.length > 0) {
+      console.log(
+        `Comp expiration reminders (${threshold}d): processed ${due.length} candidate business(es)`,
+      );
+    }
+  }
+}
+
 async function seedAdPricing() {
   try {
     const existingPricing = await pgDb.select().from(adPricing);
