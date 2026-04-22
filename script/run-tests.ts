@@ -11,9 +11,11 @@ async function runNode(args: string[]): Promise<number> {
   });
 }
 
-const driftCode = await runNode(["script/check-schema-drift.ts"]);
-if (driftCode !== 0) {
-  process.exit(driftCode);
+// Realign legacy constraint names, run drizzle-kit push non-interactively,
+// and verify column-level drift — all in one step. See script/db-sync.ts.
+const syncCode = await runNode(["script/db-sync.ts"]);
+if (syncCode !== 0) {
+  process.exit(syncCode);
 }
 
 async function findTestFiles(dir: string): Promise<string[]> {

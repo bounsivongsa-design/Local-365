@@ -67,26 +67,32 @@ Test files live under `server/__tests__/**/*.test.ts` and are discovered/execute
 
 ### Database schema sync
 
-`npm run db:push` should always complete non-interactively. If you ever see drizzle-kit prompting "Do you want to truncate <table>?", that means a unique constraint in the live DB is named differently from what `shared/schema.ts` would generate (drizzle treats it as a new constraint on a populated table). Fix it by renaming/aligning the existing constraint in the DB to match drizzle's `<table>_<column>_unique` naming, rather than answering the prompt.
+The canonical, non-interactive way to sync the database with `shared/schema.ts` is:
 
-The historical alignment SQL (already applied to the workspace DB as of task #61 — kept here only as a reference template for any future drift):
-
-```sql
--- locations.slug had a partial unique INDEX; replace with a real UNIQUE constraint
-DROP INDEX locations_slug_unique;
-ALTER TABLE locations ADD CONSTRAINT locations_slug_unique UNIQUE (slug);
-
--- legacy *_key constraint names → drizzle's *_unique names
-ALTER TABLE businesses RENAME CONSTRAINT businesses_referral_code_key TO businesses_referral_code_unique;
-ALTER TABLE businesses RENAME CONSTRAINT businesses_founding_member_number_key TO businesses_founding_member_number_unique;
-ALTER TABLE referrals RENAME CONSTRAINT referrals_referred_business_id_key TO referrals_referred_business_id_unique;
-
--- redundant duplicates (the *_unique versions already exist)
-ALTER TABLE newsletter_subscribers DROP CONSTRAINT newsletter_subscribers_unsubscribe_token_key;
-ALTER TABLE review_requests DROP CONSTRAINT review_requests_token_key;
+```
+npx tsx script/db-sync.ts
 ```
 
-Fresh environments don't need any of this — drizzle creates everything from `shared/schema.ts` directly.
+That script does three things in order, and each step is idempotent:
+
+1. **`script/realign-schema-constraints.ts`** — renames any legacy `<table>_<column>_key` unique constraints to drizzle's expected `<table>_<column>_unique` naming (and drops duplicates if both exist), and promotes the partial UNIQUE INDEX on `locations.slug` to a real UNIQUE CONSTRAINT. This is what unblocks `drizzle-kit push` from prompting "Do you want to truncate <table>?" — the prompt fires whenever a live constraint is named differently from what drizzle would emit, and `--force` does NOT dismiss it.
+2. **`drizzle-kit push --force`** — applies the schema in `shared/schema.ts` to the database.
+3. **`script/check-schema-drift.ts`** — verifies that every column drizzle declares is present in the live DB.
+
+`npm test` runs `script/db-sync.ts` automatically before the test suite, so a freshly-restored DB or a workspace that drifted back to legacy naming will be reconciled before any test starts. If you only want to push the schema, `npm run db:push` (which calls plain `drizzle-kit push`) still works on fresh DBs that have never seen the legacy `_key` constraint names — but on a long-lived workspace you should prefer `npx tsx script/db-sync.ts`.
+
+The constraint-name aliases the realign script normalizes (kept here for reference; the script is the source of truth):
+
+| Table | Legacy name | Canonical name |
+| --- | --- | --- |
+| `businesses` | `businesses_referral_code_key` | `businesses_referral_code_unique` |
+| `businesses` | `businesses_founding_member_number_key` | `businesses_founding_member_number_unique` |
+| `referrals` | `referrals_referred_business_id_key` | `referrals_referred_business_id_unique` |
+| `newsletter_subscribers` | `newsletter_subscribers_unsubscribe_token_key` | `newsletter_subscribers_unsubscribe_token_unique` |
+| `review_requests` | `review_requests_token_key` | `review_requests_token_unique` |
+| `locations` | partial `UNIQUE INDEX locations_slug_unique WHERE slug IS NOT NULL` | `UNIQUE CONSTRAINT locations_slug_unique` |
+
+Fresh environments don't need any of this — drizzle creates everything from `shared/schema.ts` directly, the realign script is a no-op, and `db-sync` succeeds in one pass.
 
 #### Partial unique indexes
 
