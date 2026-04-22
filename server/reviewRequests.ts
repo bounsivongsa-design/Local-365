@@ -390,7 +390,7 @@ export function registerReviewRequestRoutes(app: Express) {
 
         if (wantEmail && resend && c.email) {
           try {
-            await resend.emails.send({
+            const result = await resend.emails.send({
               from: `${business.name} via Local List 365 <onboarding@resend.dev>`,
               to: [c.email],
               subject: emailSubject!,
@@ -401,7 +401,20 @@ export function registerReviewRequestRoutes(app: Express) {
                 reviewUrl,
               }),
             });
-            emailOk = true;
+            // The Resend SDK does NOT throw on non-2xx or transport errors —
+            // it returns { data, error }. If we don't inspect `error` here a
+            // real Resend outage would silently mark every recipient 'sent'
+            // and lock them out of the next 90-day cooldown without anyone
+            // ever receiving an email.
+            const sendError: { message?: string; name?: string } | null =
+              result?.error ?? null;
+            if (sendError) {
+              const msg = sendError.message ?? sendError.name ?? "send failed";
+              lastErr = `email: ${msg}`;
+              console.error("[review-requests] email failed:", msg);
+            } else {
+              emailOk = true;
+            }
           } catch (err: any) {
             lastErr = `email: ${err?.message ?? "send failed"}`;
             console.error("[review-requests] email failed:", err?.message);

@@ -51,11 +51,18 @@ globalThis.fetch = (async (input: any, init?: any) => {
   if (urlStr.includes("api.resend.com")) {
     resendCalls++;
     if (resendOutcome === "fail") {
-      // Resend SDK swallows non-2xx responses into a returned {error}
-      // object that the route currently does not inspect, so the only
-      // reliable way to make the route count an email as "failed" is to
-      // throw at the transport layer here.
-      throw new Error("stubbed resend transport failure");
+      // The Resend SDK swallows non-2xx responses into a returned
+      // { data: null, error } object (it does NOT throw). The route is
+      // expected to inspect that `error` field and mark the row 'failed';
+      // returning a real HTTP error here exercises that path end-to-end.
+      return new Response(
+        JSON.stringify({
+          name: "validation_error",
+          message: "stubbed resend HTTP 422 failure",
+          statusCode: 422,
+        }),
+        { status: 422, headers: { "Content-Type": "application/json" } },
+      );
     }
     return new Response(JSON.stringify({ id: `resend_${resendCalls}` }), {
       status: 200,
@@ -440,14 +447,12 @@ test("[email] failure: row is marked 'failed' with errorMsg captured and sentAt 
     customerEmail: "bouncy@example.com",
   });
 
-  // The Resend SDK swallows non-2xx and transport errors into a returned
-  // {error} object that the route does not currently inspect, so the only
-  // reliable hook for making the email channel fail end-to-end is
-  // clearing RESEND_API_KEY: the route then takes the "resend client not
-  // configured" branch, captures the reason in errorMsg, and marks the
-  // row 'failed'. (See follow-up task on the SDK return-shape gap.)
-  const savedKey = process.env.RESEND_API_KEY;
-  delete process.env.RESEND_API_KEY;
+  // The Resend SDK swallows non-2xx responses into a returned
+  // { data: null, error } object — it does NOT throw. The route must
+  // inspect that `error` field; otherwise a real Resend outage would
+  // mark every recipient 'sent' and lock them out of the 90-day
+  // cooldown without any email actually going out.
+  resendOutcome = "fail";
 
   const { url, close } = await start(makeApp(owner.id));
   try {
@@ -463,8 +468,9 @@ test("[email] failure: row is marked 'failed' with errorMsg captured and sentAt 
     assert.equal(body.failure, 1);
   } finally {
     await close();
-    if (savedKey !== undefined) process.env.RESEND_API_KEY = savedKey;
   }
+
+  assert.ok(resendCalls >= 1, "Resend stub must have been hit (proves we exercised the SDK error path, not the missing-key branch)");
 
   const rows = await pgDb
     .select()
@@ -475,6 +481,11 @@ test("[email] failure: row is marked 'failed' with errorMsg captured and sentAt 
   assert.equal(rows[0].sentAt, null, "sentAt must remain null on failure (so cooldown is not triggered)");
   assert.ok(rows[0].errorMsg, "errorMsg must capture why the send failed");
   assert.match(String(rows[0].errorMsg), /email/i);
+  assert.match(
+    String(rows[0].errorMsg),
+    /stubbed resend HTTP 422 failure/,
+    "errorMsg should surface the Resend-reported reason so owners can debug",
+  );
 });
 
 // ── SMS channel ──────────────────────────────────────────────────────
