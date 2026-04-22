@@ -339,26 +339,21 @@ test("recipients within the 90-day cooldown are excluded; if all selected are in
   assert.equal(rows[0].status, "sent", "the prior ask remains untouched");
 });
 
-test("partial cooldown: a fresh recipient sends successfully even when an unknown/cooldown sibling key is also passed in (cooldownExcluded math is correct)", async () => {
-  // We can't seed two eligible customers and pass them both because the
-  // route's getEligibleCustomers has a pre-existing crash whenever there
-  // is more than one row in the map (the sort comparator calls .getTime()
-  // on lastInteractionAt, and fromQuotes returns it as a string from
-  // raw pg.execute). That bug is tracked as its own follow-up.
-  //
-  // To still lock in the partial-cooldown response math
-  // (cooldownExcluded = customerKeys.length - targets.length - skipped),
-  // we seed ONE eligible customer + pass an additional key that is NOT
-  // in the eligible list. The route filters it out the same way it
-  // filters out cooldowned customers (`byKey.get` returns undefined →
-  // it never makes it into `targets`), so it ends up counted in
-  // cooldownExcluded. Once the sort bug is fixed the test can be
-  // upgraded to use a real cooldown sibling.
+test("partial cooldown: a fresh recipient sends successfully even when a real cooldowned sibling is also selected (cooldownExcluded math is correct)", async () => {
   const biz = await seedBusiness("Gold Partial Cooldown Co", { tier: "premium" });
   const owner = await seedUser({ linkedBusinessId: biz.id });
   await seedEligibleCustomer({
     businessId: biz.id,
     customerEmail: "fresh@example.com",
+  });
+  await seedEligibleCustomer({
+    businessId: biz.id,
+    customerEmail: "recent@example.com",
+  });
+  await seedPriorAsk({
+    businessId: biz.id,
+    email: "recent@example.com",
+    sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
   });
 
   resendOutcome = "ok";
@@ -366,7 +361,7 @@ test("partial cooldown: a fresh recipient sends successfully even when an unknow
   const { url, close } = await start(makeApp(owner.id));
   try {
     const res = await postSend(url, biz.id, {
-      customerKeys: ["fresh@example.com", "ghost@example.com"],
+      customerKeys: ["fresh@example.com", "recent@example.com"],
       channel: "email",
       emailSubject: "Hi there",
       emailBody: "Mind leaving us a quick review?",
@@ -379,7 +374,7 @@ test("partial cooldown: a fresh recipient sends successfully even when an unknow
     assert.equal(
       body.cooldownExcluded,
       1,
-      "the unknown/cooldown key must be reported as excluded — proves the math survives partial blasts",
+      "the cooldowned sibling must be reported as excluded — proves the math survives partial blasts",
     );
   } finally {
     await close();
@@ -389,10 +384,12 @@ test("partial cooldown: a fresh recipient sends successfully even when an unknow
     .select()
     .from(reviewRequests)
     .where(eq(reviewRequests.businessId, biz.id));
-  assert.equal(rows.length, 1, "only the fresh recipient should get a row");
-  assert.equal(rows[0].recipientEmail, "fresh@example.com");
-  assert.equal(rows[0].status, "sent");
-  assert.ok(rows[0].sentAt);
+  const fresh = rows.filter((r) => r.recipientEmail === "fresh@example.com");
+  assert.equal(fresh.length, 1, "only the fresh recipient should get a new row");
+  assert.equal(fresh[0].status, "sent");
+  assert.ok(fresh[0].sentAt);
+  const recent = rows.filter((r) => r.recipientEmail === "recent@example.com");
+  assert.equal(recent.length, 1, "the prior cooldown ask remains untouched (no new row)");
 });
 
 // ── Email channel ────────────────────────────────────────────────────

@@ -94,6 +94,13 @@ function getBaseUrl(req: Request): string {
   return `${proto}://${host}`;
 }
 
+function toDateOrNull(v: unknown): Date | null {
+  if (v == null) return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  const d = new Date(v as string | number);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 interface EligibleCustomer {
   key: string; // unique key: email or phone
   userId: string | null;
@@ -180,7 +187,7 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
       phone,
       name: row.customer_name ?? null,
       source: "quote_request",
-      lastInteractionAt: row.last_interaction,
+      lastInteractionAt: toDateOrNull(row.last_interaction),
       askedRecently: !!lastAskedAt,
       lastAskedAt,
     });
@@ -199,7 +206,7 @@ async function getEligibleCustomers(businessId: number): Promise<EligibleCustome
       phone: null,
       name: row.name,
       source: "review",
-      lastInteractionAt: row.lastInteractionAt,
+      lastInteractionAt: toDateOrNull(row.lastInteractionAt),
       askedRecently: !!lastAskedAt,
       lastAskedAt,
     });
