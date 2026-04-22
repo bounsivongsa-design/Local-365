@@ -1,27 +1,80 @@
 import type { Express, Request, Response } from "express";
 import Stripe from "stripe";
 import { db as pgDb } from "./db";
-import { businesses, locations, users } from "@shared/schema";
-import { eq, and, ne, isNull, or, sql } from "drizzle-orm";
+import { businesses, locations, users, type Business } from "@shared/schema";
+import { eq, and, ne, isNull, or, sql, inArray } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { getAdditionalZipPrice, ADDITIONAL_ZIP_BASE_PRICE } from "@shared/config/membership";
 
 const STRIPE_KEY = process.env.Stripeintegration || process.env.STRIPE_SECRET_KEY;
-const stripe = STRIPE_KEY
-  ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as any })
+const stripe: Stripe | null = STRIPE_KEY
+  ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion })
   : null;
 
-function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null }): string {
+function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDate">): string {
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) return "premium";
   return biz.membershipTier || "none";
 }
 
-async function loadOwnedBusiness(userId: string, businessId: number) {
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+// Walk parentBusinessId chain to find the true root listing. Cap at 8 hops
+// in case of corrupted data so we never spin forever.
+async function resolveListingRoot(startId: number): Promise<Business | null> {
+  let currentId: number | null = startId;
+  let last: Business | null = null;
+  for (let i = 0; i < 8 && currentId; i++) {
+    const [row] = await pgDb.select().from(businesses).where(eq(businesses.id, currentId)).limit(1);
+    if (!row) break;
+    last = row;
+    if (!row.parentBusinessId || row.parentBusinessId === row.id) break;
+    currentId = row.parentBusinessId;
+  }
+  return last;
+}
+
+// Backfill `ownerUserId` across the user's whole listing graph (root + every
+// child). Legacy listings only had `users.linkedBusinessId`; once we backfill,
+// switching active listing won't hide the primary, even if the user is
+// currently linked to a child rather than the primary.
+async function backfillPrimaryOwner(userId: string, linkedId: number | null | undefined): Promise<number | null> {
+  if (!linkedId) return null;
+  const root = await resolveListingRoot(linkedId);
+  if (!root) return null;
+  await pgDb
+    .update(businesses)
+    .set({ ownerUserId: userId })
+    .where(
+      and(
+        or(eq(businesses.id, root.id), eq(businesses.parentBusinessId, root.id)),
+        isNull(businesses.ownerUserId),
+      ),
+    );
+  return root.id;
+}
+
+async function loadOwnedBusiness(userId: string, businessId: number): Promise<Business | null> {
   const [biz] = await pgDb.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
   if (!biz) return null;
+  if (biz.ownerUserId === userId) return biz;
+
   const [u] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
-  const owns = biz.ownerUserId === userId || u?.linkedBusinessId === biz.id;
-  return owns ? biz : null;
+  if (!u?.linkedBusinessId) return null;
+
+  const root = await resolveListingRoot(u.linkedBusinessId);
+  if (!root) return null;
+
+  // Caller's listing is the root or one of its children.
+  const bizRoot = await resolveListingRoot(biz.id);
+  if (!bizRoot || bizRoot.id !== root.id) return null;
+
+  if (!biz.ownerUserId) {
+    await pgDb.update(businesses).set({ ownerUserId: userId }).where(eq(businesses.id, biz.id));
+    biz.ownerUserId = userId;
+  }
+  return biz;
 }
 
 export function registerMultiZipRoutes(app: Express) {
@@ -34,26 +87,50 @@ export function registerMultiZipRoutes(app: Express) {
       const [u] = await pgDb.select().from(users).where(eq(users.id, userId)).limit(1);
       if (!u) return res.status(404).json({ message: "User not found" });
 
+      // One-shot backfill so legacy primaries always show up alongside children.
+      await backfillPrimaryOwner(userId, u.linkedBusinessId);
+
+      const ownerOr = [eq(businesses.ownerUserId, userId)];
+      if (u.linkedBusinessId) {
+        ownerOr.push(eq(businesses.id, u.linkedBusinessId));
+        ownerOr.push(eq(businesses.parentBusinessId, u.linkedBusinessId));
+      }
+
       const rows = await pgDb
         .select()
         .from(businesses)
-        .where(
-          and(
-            or(
-              eq(businesses.ownerUserId, userId),
-              u.linkedBusinessId ? eq(businesses.id, u.linkedBusinessId) : isNull(businesses.id),
+        .where(and(or(...ownerOr), ne(businesses.status, "archived")));
+
+      // Children of any listing the user owns (covers cases where the parent's
+      // ownership came from ownerUserId rather than linkedBusinessId).
+      const ownedIds = rows.map((r) => r.id);
+      let extraChildren: Business[] = [];
+      if (ownedIds.length) {
+        extraChildren = await pgDb
+          .select()
+          .from(businesses)
+          .where(
+            and(
+              inArray(businesses.parentBusinessId, ownedIds),
+              ne(businesses.status, "archived"),
             ),
-            ne(businesses.status, "archived"),
-          ),
-        );
+          );
+      }
+      const seen = new Set(rows.map((r) => r.id));
+      for (const c of extraChildren) {
+        if (!seen.has(c.id)) {
+          rows.push(c);
+          seen.add(c.id);
+        }
+      }
 
       const enriched = rows.map((b) => ({
         ...b,
-        effectiveTier: getEffectiveTier(b as any),
+        effectiveTier: getEffectiveTier(b),
         isPrimary: b.id === u.linkedBusinessId,
       }));
       res.json(enriched);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[multiZip] my-businesses:", err);
       res.status(500).json({ message: "Failed to load listings" });
     }
@@ -73,7 +150,7 @@ export function registerMultiZipRoutes(app: Express) {
 
       await pgDb.update(users).set({ linkedBusinessId: businessId }).where(eq(users.id, userId));
       res.json({ ok: true, activeBusinessId: businessId });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[multiZip] switch:", err);
       res.status(500).json({ message: "Failed to switch listing" });
     }
@@ -108,7 +185,7 @@ export function registerMultiZipRoutes(app: Express) {
         }
       }
       res.json(flat);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[multiZip] available-zips:", err);
       res.status(500).json({ message: "Failed to load zips" });
     }
@@ -122,8 +199,15 @@ export function registerMultiZipRoutes(app: Express) {
       const { zipCode } = req.body || {};
       if (!zipCode) return res.status(400).json({ message: "zipCode required" });
 
-      const parent = await loadOwnedBusiness(userId, parentId);
-      if (!parent) return res.status(403).json({ message: "Not your listing" });
+      const callerBiz = await loadOwnedBusiness(userId, parentId);
+      if (!callerBiz) return res.status(403).json({ message: "Not your listing" });
+
+      // Always attach the new zip to the root listing so the graph stays flat
+      // (root → children) regardless of which listing the user currently has
+      // active in their dashboard.
+      const root = await resolveListingRoot(callerBiz.id);
+      const parent = root || callerBiz;
+      const rootId = parent.id;
 
       // Validate zip is covered + not already owned
       const [loc] = await pgDb
@@ -138,7 +222,11 @@ export function registerMultiZipRoutes(app: Express) {
         .from(businesses)
         .where(
           and(
-            or(eq(businesses.ownerUserId, userId), eq(businesses.id, parentId)),
+            or(
+              eq(businesses.ownerUserId, userId),
+              eq(businesses.id, rootId),
+              eq(businesses.parentBusinessId, rootId),
+            ),
             eq(businesses.zipCode, zipCode),
             ne(businesses.status, "archived"),
           ),
@@ -150,7 +238,7 @@ export function registerMultiZipRoutes(app: Express) {
 
       if (!stripe) return res.status(503).json({ message: "Stripe not configured" });
 
-      const tier = getEffectiveTier(parent as any);
+      const tier = getEffectiveTier(parent);
       const dollars = getAdditionalZipPrice(tier);
       const baseUrl = `https://${req.get("host")}`;
 
@@ -175,7 +263,7 @@ export function registerMultiZipRoutes(app: Express) {
         cancel_url: `${baseUrl}/dashboard?canceledZip=${zipCode}`,
         metadata: {
           type: "additional_zip",
-          parentBusinessId: String(parentId),
+          parentBusinessId: String(rootId),
           ownerUserId: userId,
           zipCode,
           city: loc.city,
@@ -184,7 +272,7 @@ export function registerMultiZipRoutes(app: Express) {
         subscription_data: {
           metadata: {
             type: "additional_zip",
-            parentBusinessId: String(parentId),
+            parentBusinessId: String(rootId),
             ownerUserId: userId,
             zipCode,
           },
@@ -192,9 +280,9 @@ export function registerMultiZipRoutes(app: Express) {
       });
 
       res.json({ url: session.url, priceMonthly: dollars });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[multiZip] add-zip-checkout:", err);
-      res.status(500).json({ message: err.message || "Failed to start checkout" });
+      res.status(500).json({ message: errMsg(err) || "Failed to start checkout" });
     }
   });
 
@@ -211,8 +299,8 @@ export function registerMultiZipRoutes(app: Express) {
       if (stripe && biz.stripeSubscriptionId) {
         try {
           await stripe.subscriptions.cancel(biz.stripeSubscriptionId);
-        } catch (e: any) {
-          console.warn("[multiZip] cancel sub failed (continuing to archive):", e.message);
+        } catch (e: unknown) {
+          console.warn("[multiZip] cancel sub failed (continuing to archive):", errMsg(e));
         }
       }
       await pgDb.update(businesses).set({ status: "archived" }).where(eq(businesses.id, id));
@@ -233,7 +321,7 @@ export function registerMultiZipRoutes(app: Express) {
       }
 
       res.json({ ok: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[multiZip] cancel-additional-zip:", err);
       res.status(500).json({ message: "Failed to cancel" });
     }
@@ -284,7 +372,8 @@ export async function handleAdditionalZipCheckoutCompleted(session: Stripe.Check
       : session.customer.id
     : parent.stripeCustomerId;
 
-  const { id, createdAt, referralCode, foundingMemberNumber, ...inheritable } = parent as any;
+  const { id, createdAt, referralCode, foundingMemberNumber, ...inheritable } =
+    parent as Record<string, unknown> & { id: number };
   const inserted = await pgDb
     .insert(businesses)
     .values({

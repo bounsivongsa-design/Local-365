@@ -865,8 +865,11 @@ export async function registerRoutes(
         input.referralCode = await generateUniqueReferralCode();
       }
 
+      if (userId && !input.ownerUserId) {
+        input.ownerUserId = userId;
+      }
       const business = await storage.createBusiness(input);
-      console.log(`[CREATE-BIZ] Business created: id=${business.id}, name="${business.name}", membershipTier=${business.membershipTier}`);
+      console.log(`[CREATE-BIZ] Business created: id=${business.id}, name="${business.name}", membershipTier=${business.membershipTier}, ownerUserId=${business.ownerUserId}`);
 
       // If they pasted a referral code, create the pending link.
       if (business.referredByCode) {
