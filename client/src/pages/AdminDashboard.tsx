@@ -2011,6 +2011,16 @@ function BusinessesTab() {
                   </div>
                 </div>
               </section>
+
+              {/* Comp History — full audit trail for this business, even if no
+                  comp is currently active. Lazy-loaded via the same endpoint
+                  used by the Comp Memberships panel. */}
+              <section className="space-y-3 pt-2 border-t border-gray-100">
+                <h4 className="text-sm font-semibold text-[#0a4a82] flex items-center gap-2">
+                  <History className="h-4 w-4" /> Comp History
+                </h4>
+                {editDialog && <CompHistoryRows businessId={editDialog.id} />}
+              </section>
             </div>
           )}
 
