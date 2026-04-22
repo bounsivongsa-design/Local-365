@@ -75,6 +75,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -229,6 +230,18 @@ export default function AdminDashboard() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [pendingUserSearch, setPendingUserSearch] = useState<{ term: string; nonce: number } | null>(null);
+
+  useEffect(() => {
+    const onJump = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { search?: string } | undefined;
+      const term = detail?.search?.trim();
+      if (term) setPendingUserSearch({ term, nonce: Date.now() });
+      setActiveTab("users");
+    };
+    window.addEventListener("admin:filter-users", onJump as EventListener);
+    return () => window.removeEventListener("admin:filter-users", onJump as EventListener);
+  }, []);
 
   if (!isAuthenticated || user?.accountType !== "admin") {
     return (
@@ -294,7 +307,7 @@ export default function AdminDashboard() {
 
       <div className="container py-8">
         {activeTab === "overview" && <OverviewTab onSwitchTab={setActiveTab} />}
-        {activeTab === "users" && <UsersTab />}
+        {activeTab === "users" && <UsersTab pendingSearch={pendingUserSearch} onConsumePendingSearch={() => setPendingUserSearch(null)} />}
         {activeTab === "businesses" && <BusinessesTab />}
         {activeTab === "events" && <EventsTab />}
         {activeTab === "promos" && <PromosTab />}
@@ -803,11 +816,11 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
   );
 }
 
-function UsersTab() {
+function UsersTab({ pendingSearch, onConsumePendingSearch }: { pendingSearch?: { term: string; nonce: number } | null; onConsumePendingSearch?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState(pendingSearch?.term ?? "");
+  const [searchInput, setSearchInput] = useState(pendingSearch?.term ?? "");
   const [page, setPage] = useState(1);
   const [resetDialog, setResetDialog] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -902,6 +915,15 @@ function UsersTab() {
     setPage(1);
     setSearch(searchInput);
   };
+
+  useEffect(() => {
+    const term = pendingSearch?.term?.trim();
+    if (!term) return;
+    setSearchInput(term);
+    setSearch(term);
+    setPage(1);
+    onConsumePendingSearch?.();
+  }, [pendingSearch?.nonce, pendingSearch?.term, onConsumePendingSearch]);
 
   return (
     <div className="space-y-6">
@@ -2546,6 +2568,55 @@ type CompHistoryEntry = {
   createdAt: string | null;
 };
 
+function ActorPopover({ actorEmail, actorUserId, entryId }: { actorEmail: string | null; actorUserId: string | null; entryId: number }) {
+  const [open, setOpen] = useState(false);
+  const label = actorEmail || actorUserId || "—";
+  const search = actorEmail || actorUserId || "";
+
+  const handleJump = () => {
+    if (!search) return;
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent("admin:filter-users", { detail: { search } }));
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="font-medium text-[#0a4a82] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0a4a82] focus-visible:ring-offset-1 rounded-sm"
+          data-testid={`actor-link-${entryId}`}
+        >
+          {label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3" align="start" data-testid={`actor-popover-${entryId}`}>
+        <div className="space-y-2">
+          <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Admin actor</div>
+          {actorEmail && (
+            <div className="text-sm text-[#1a1a2e] break-all" data-testid={`actor-email-${entryId}`}>
+              {actorEmail}
+            </div>
+          )}
+          {actorUserId && (
+            <div className="text-xs text-slate-500 break-all" data-testid={`actor-id-${entryId}`}>
+              ID: {actorUserId}
+            </div>
+          )}
+          <Button
+            size="sm"
+            onClick={handleJump}
+            className="w-full bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg mt-1"
+            data-testid={`button-jump-actor-${entryId}`}
+          >
+            View in Users tab
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function CompHistoryRows({ businessId }: { businessId: number }) {
   const { data, isLoading, isError } = useQuery<{ history: CompHistoryEntry[] }>({
     queryKey: ["/api/admin/businesses", businessId, "comp-history"],
@@ -2624,8 +2695,13 @@ function CompHistoryRows({ businessId }: { businessId: number }) {
               <span className="text-slate-500 whitespace-nowrap">
                 {e.createdAt ? format(new Date(e.createdAt), "MMM d, yyyy h:mm a") : "—"}
               </span>
-              <span className="text-slate-500 whitespace-nowrap">
-                · by {e.action === "expire" ? <em className="not-italic text-slate-400">system</em> : (e.actorEmail || e.actorUserId || "—")}
+              <span className="text-slate-500 whitespace-nowrap inline-flex items-center gap-1">
+                · by{" "}
+                {e.action === "expire" || (!e.actorEmail && !e.actorUserId) ? (
+                  <em className="not-italic text-slate-400">{e.action === "expire" ? "system" : "—"}</em>
+                ) : (
+                  <ActorPopover actorEmail={e.actorEmail} actorUserId={e.actorUserId} entryId={e.id} />
+                )}
               </span>
               {e.expiresAt && (
                 <span className="text-slate-500 whitespace-nowrap">
