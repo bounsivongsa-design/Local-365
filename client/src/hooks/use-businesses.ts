@@ -66,7 +66,7 @@ export function useCreateBusiness() {
 export function useCreateReview() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ businessId, ...data }: CreateReviewRequest & { businessId: number }) => {
+    mutationFn: async ({ businessId, ...data }: CreateReviewRequest & { businessId: number; reviewRequestToken?: string }) => {
       const url = buildUrl(api.reviews.create.path, { id: businessId });
       const res = await fetch(url, {
         method: api.reviews.create.method,

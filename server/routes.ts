@@ -2186,7 +2186,8 @@ Respond in this exact JSON format:
   app.post(api.reviews.create.path, isAuthenticated, async (req, res) => {
     try {
       const businessId = Number(req.params.id);
-      const input = api.reviews.create.input.parse(req.body);
+      const parsed = api.reviews.create.input.parse(req.body);
+      const { reviewRequestToken, ...input } = parsed;
       const reviewUserId = (req as any).user?.id;
       const verificationStatus = input.receiptUrl ? "proof_submitted" : "unverified";
       const review = await storage.createReview({
@@ -2195,6 +2196,29 @@ Respond in this exact JSON format:
         businessId: businessId,
         verificationStatus,
       });
+      // Funnel linking: if this submission came from a tracked outreach
+      // link, mark the originating review_request row as completed and
+      // attach the new review id. Best-effort — never block the response
+      // on bookkeeping. Scoped to the same businessId so a leaked token
+      // can't tag an unrelated business's outreach.
+      if (reviewRequestToken) {
+        try {
+          const { reviewRequests } = await import("@shared/schema");
+          const { db: pgDb } = await import("./db");
+          const { eq, and } = await import("drizzle-orm");
+          await pgDb
+            .update(reviewRequests)
+            .set({ status: "completed", completedReviewId: review.id })
+            .where(
+              and(
+                eq(reviewRequests.token, reviewRequestToken),
+                eq(reviewRequests.businessId, businessId),
+              ),
+            );
+        } catch (linkErr) {
+          console.error("[reviews] failed to link review_request:", (linkErr as Error)?.message);
+        }
+      }
       res.status(201).json(review);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -2367,7 +2391,7 @@ Respond in this exact JSON format:
         let accessRound: string | null = null;
         
         if (isBusinessUser && linkedBusinessId) {
-          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate })
+          const [linkedBusiness] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership })
             .from(businesses).where(eq(businesses.id, linkedBusinessId)).limit(1);
           
           const bizTier = linkedBusiness ? getEffectiveTier(linkedBusiness) : "none";
@@ -4236,6 +4260,7 @@ Respond in this exact JSON format:
           goldTrialEndDate: businesses.goldTrialEndDate,
           verified: businesses.verified,
           acceptsQuotes: businesses.acceptsQuotes,
+          isCompedMembership: businesses.isCompedMembership,
           createdAt: businesses.createdAt,
         }).from(businesses);
 
@@ -4314,13 +4339,17 @@ Respond in this exact JSON format:
       if (!target) return res.status(404).json({ message: "Business not found" });
 
       // Whitelist of fields admins may edit on a business (excludes Stripe IDs, dates, etc.)
+      // NOTE: `membershipTier` is intentionally NOT in this list. Tier
+      // changes are routed through the Stripe billing flow or the admin
+      // comp-membership endpoint (`/api/admin/businesses/:id/comp`) so a
+      // routine profile-edit save can never accidentally promote/demote
+      // a business's paid plan.
       const STRING_FIELDS = [
         "name", "description", "address", "city", "state", "zipCode", "category",
         "imageUrl", "logoUrl", "promoVideoUrl", "websiteUrl", "phone", "email",
         "ownerName", "businessHours", "socialMediaUrls", "searchKeywords",
         "localOperationDescription", "establishedZipCode",
         "silverPerk", "goldPerk", "platinumPerk", "ambassadorPerk",
-        "membershipTier",
       ] as const;
       // These columns are NOT NULL in the schema — reject empty strings so the
       // owner-facing listing doesn't end up with a blank required field.
@@ -4374,6 +4403,53 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Admin update business error:", err);
       res.status(500).json({ message: "Failed to update business" });
+    }
+  });
+
+  // Admin comp-membership: grant or revoke a free Gold-equivalent flag on a
+  // business. Treated as Gold by every per-feature `effectiveTier()` helper.
+  // Does NOT touch `membershipTier` or any Stripe object — comping is
+  // orthogonal to billing so it can never collide with a real subscription
+  // or trial. Audit fields (`compedMembershipGrantedAt/By`, `compedMembershipNote`)
+  // are stamped on grant and cleared on revoke.
+  app.post("/api/admin/businesses/:id/comp", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      const adminCheck = await isAdminUser(adminId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const active = req.body?.active === true;
+      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : null;
+
+      const [target] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, bizId));
+      if (!target) return res.status(404).json({ message: "Business not found" });
+
+      await pgDb
+        .update(businesses)
+        .set(
+          active
+            ? {
+                isCompedMembership: true,
+                compedMembershipNote: note,
+                compedMembershipGrantedAt: new Date(),
+                compedMembershipGrantedBy: adminId,
+              }
+            : {
+                isCompedMembership: false,
+                compedMembershipNote: null,
+                compedMembershipGrantedAt: null,
+                compedMembershipGrantedBy: null,
+              },
+        )
+        .where(eq(businesses.id, bizId));
+
+      res.json({ ok: true, isCompedMembership: active });
+    } catch (err) {
+      console.error("Admin comp membership error:", err);
+      res.status(500).json({ message: "Failed to update comp membership" });
     }
   });
 

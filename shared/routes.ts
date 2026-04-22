@@ -110,7 +110,12 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/businesses/:id/reviews',
-      input: insertReviewSchema,
+      // Optional `reviewRequestToken`: when present, the server links this
+      // new review to the originating outreach row in `review_requests` so
+      // the owner's funnel history shows it as "Reviewed".
+      input: insertReviewSchema.extend({
+        reviewRequestToken: z.string().optional(),
+      }),
       responses: {
         201: z.custom<typeof reviews.$inferSelect>(),
         400: errorSchemas.validation,

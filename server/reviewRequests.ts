@@ -36,6 +36,7 @@ function effectiveTier(b: {
   isFoundingMember?: boolean | null;
 }): string {
   if (b.isFoundingMember === true) return "premium";
+  if (b.isCompedMembership === true) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) return "premium";
   return b.membershipTier ?? "none";
@@ -467,6 +468,12 @@ export function registerReviewRequestRoutes(app: Express) {
         .where(eq(reviewRequests.id, row.id));
     }
     const baseUrl = getBaseUrl(req);
-    res.redirect(302, `${baseUrl}/directory/${row.businessId}#leave-review`);
+    // Forward the request token so the review form can (a) auto-open and
+    // (b) attach `reviewRequestToken` on submit, which lets us mark this
+    // outreach as "Reviewed" in the owner's funnel history.
+    res.redirect(
+      302,
+      `${baseUrl}/directory/${row.businessId}?reviewToken=${encodeURIComponent(token)}#leave-review`,
+    );
   });
 }

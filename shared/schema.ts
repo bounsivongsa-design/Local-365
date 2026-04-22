@@ -60,6 +60,15 @@ export const businesses = pgTable("businesses", {
   referralCode: text("referral_code").unique(),
   referredByCode: text("referred_by_code"),
   isFoundingMember: boolean("is_founding_member").default(false),
+  // Comp memberships: when true, the business has Gold-equivalent access
+  // regardless of `membershipTier` or any Stripe subscription state.
+  // Set/cleared exclusively by the admin comp-membership endpoint;
+  // never written from public/business edit paths. Honored by every
+  // Gold gate via the per-feature `effectiveTier()` helper.
+  isCompedMembership: boolean("is_comped_membership").default(false),
+  compedMembershipNote: text("comped_membership_note"),
+  compedMembershipGrantedAt: timestamp("comped_membership_granted_at"),
+  compedMembershipGrantedBy: varchar("comped_membership_granted_by"),
   foundingMemberNumber: integer("founding_member_number").unique(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),

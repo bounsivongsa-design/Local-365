@@ -21,6 +21,7 @@ function effectiveTier(b: {
   isFoundingMember?: boolean | null;
 }): string {
   if (b.isFoundingMember === true) return "premium";
+  if (b.isCompedMembership === true) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) return "premium";
   return b.membershipTier ?? "none";

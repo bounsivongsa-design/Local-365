@@ -32,8 +32,11 @@ function isFounderEmail(email: string | null | undefined): boolean {
   return FOUNDER_EMAILS.some(fe => fe.toLowerCase() === email.toLowerCase());
 }
 
-function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null }): string {
+function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null; isCompedMembership?: boolean | null }): string {
   if (biz.name && isFounderBusiness(biz.name)) {
+    return "premium";
+  }
+  if (biz.isCompedMembership === true) {
     return "premium";
   }
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) {

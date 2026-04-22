@@ -75,8 +75,10 @@ function effectiveTier(b: {
   membershipTier: string | null;
   goldTrialEndDate: Date | null;
   isFoundingMember?: boolean | null;
+  isCompedMembership?: boolean | null;
 }): string {
   if (isFounderBiz(b)) return "premium";
+  if (b.isCompedMembership === true) return "premium";
   if (b.membershipTier === "premium") return "premium";
   if (b.goldTrialEndDate && new Date(b.goldTrialEndDate) > new Date()) {
     return "premium";

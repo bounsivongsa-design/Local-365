@@ -66,6 +66,7 @@ import {
   Sparkles,
   MapPin,
   Copy,
+  Gift,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow, format } from "date-fns";
@@ -163,6 +164,7 @@ type AdminBusiness = {
   goldTrialEndDate: string | null;
   verified: boolean | null;
   acceptsQuotes: boolean | null;
+  isCompedMembership: boolean | null;
   createdAt: string | null;
 };
 
@@ -1358,6 +1360,29 @@ function BusinessesTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  // Grant/revoke comp Gold access. Confirmation prompt on grant only,
+  // since revoking is a no-op for any business that wasn't comped to begin with.
+  const compMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
+      if (active) {
+        const note = window.prompt("Optional internal note for this comp Gold grant (e.g. 'partner agreement', 'support credit'):", "") ?? undefined;
+        await apiRequest("POST", `/api/admin/businesses/${id}/comp`, { active: true, note });
+      } else {
+        await apiRequest("POST", `/api/admin/businesses/${id}/comp`, { active: false });
+      }
+    },
+    onSuccess: (_, vars) => {
+      toast({
+        title: vars.active ? "Comp Gold granted" : "Comp Gold revoked",
+        description: vars.active
+          ? "Business now has Gold-equivalent access without a Stripe charge."
+          : "Comp access removed; the business reverts to its actual paid tier.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses"] });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   // Load full business data when the edit dialog opens
   const editFullQuery = useQuery<any>({
     queryKey: ["/api/admin/businesses", editDialog?.id, "full"],
@@ -1630,6 +1655,18 @@ function BusinessesTab() {
                         >
                           <UserCog className="h-4 w-4" />
                           Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-8 px-2 rounded-lg gap-1 ${b.isCompedMembership ? "text-amber-700 hover:bg-amber-50" : "text-emerald-700 hover:bg-emerald-50"}`}
+                          onClick={() => compMutation.mutate({ id: b.id, active: !b.isCompedMembership })}
+                          disabled={compMutation.isPending}
+                          title={b.isCompedMembership ? "Revoke comp Gold access" : "Grant comp Gold access (no Stripe charge)"}
+                          data-testid={`button-comp-biz-${b.id}`}
+                        >
+                          <Gift className="h-4 w-4" />
+                          {b.isCompedMembership ? "Uncomp" : "Comp"}
                         </Button>
                         <Button
                           variant="ghost"

@@ -11,7 +11,8 @@ const stripe: Stripe | null = STRIPE_KEY
   ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion })
   : null;
 
-function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDate">): string {
+function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDate" | "isCompedMembership">): string {
+  if (biz.isCompedMembership === true) return "premium";
   if (biz.goldTrialEndDate && new Date(biz.goldTrialEndDate) > new Date()) return "premium";
   return biz.membershipTier || "none";
 }

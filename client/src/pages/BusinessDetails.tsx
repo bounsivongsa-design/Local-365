@@ -776,6 +776,21 @@ function ReviewVerifyActions({ reviewId, businessId }: { reviewId: number; busin
 
 function ReviewDialog({ businessId, businessName }: { businessId: number; businessName: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  // Capture the review-request token from the URL once on mount so a refresh
+  // or the user manually clearing the address bar doesn't lose the linkage.
+  // Auto-open the dialog when arriving from a tracked outreach link
+  // (`/r/:token` → `/directory/:id?reviewToken=…#leave-review`).
+  const [reviewRequestToken] = useState<string | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("reviewToken") || undefined;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (reviewRequestToken || window.location.hash === "#leave-review") {
+      setIsOpen(true);
+    }
+  }, [reviewRequestToken]);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -821,7 +836,7 @@ function ReviewDialog({ businessId, businessName }: { businessId: number; busine
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createReview.mutate({ businessId, rating, comment, receiptUrl: receiptPath || undefined }, {
+    createReview.mutate({ businessId, rating, comment, receiptUrl: receiptPath || undefined, reviewRequestToken }, {
       onSuccess: () => {
         setIsOpen(false);
         setComment("");

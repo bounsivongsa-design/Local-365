@@ -507,6 +507,15 @@ export default function ReviewRequestsPage() {
                       </div>
                       <Badge variant="outline" className="text-xs">{r.channel}</Badge>
                       <StatusBadge status={r.status} />
+                      {r.status === "completed" && r.completedReviewId && (
+                        <a
+                          href={`/directory/${businessId}#review-${r.completedReviewId}`}
+                          className="text-xs text-[#0a4a82] hover:underline whitespace-nowrap"
+                          data-testid={`link-view-review-${r.id}`}
+                        >
+                          View review
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
