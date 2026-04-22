@@ -59,8 +59,11 @@ export function Navigation() {
     { href: "/membership", label: "For Business", icon: Building2 },
   ];
 
+  const isBusinessAccount = user?.accountType === "business";
+
   const authenticatedNavItems = [
     ...navItems,
+    ...(isBusinessAccount ? [{ href: "/advertising", label: "Advertising", icon: Megaphone }] : []),
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     ...(isAdminAccount ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
