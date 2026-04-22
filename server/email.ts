@@ -510,6 +510,53 @@ export async function notifyCompRevoked(args: {
   });
 }
 
+/**
+ * One-time notification to a comp recipient when their complimentary Gold
+ * access has just expired and the system auto-reverted them back to whatever
+ * paid tier (or none) they were on before. Best-effort — failures are logged
+ * but never block the underlying state change.
+ *
+ * Distinct from `notifyCompRevoked` (admin-initiated) and `notifyCompExpiring`
+ * (heads-up before expiry): this one fires after the auto-revert sweep flips
+ * `isCompedMembership` to false on its own.
+ */
+export async function notifyOwnerCompExpired(args: {
+  ownerEmail: string | null | undefined;
+  businessName: string;
+  revertedToTier: string;
+}): Promise<boolean> {
+  if (!args.ownerEmail) {
+    console.log(
+      `[EMAIL SKIPPED] Comp expired (${args.businessName}) — no owner email on file`,
+    );
+    return false;
+  }
+  const tierLabel =
+    args.revertedToTier === "premium"
+      ? "Gold"
+      : args.revertedToTier === "standard"
+        ? "Silver"
+        : args.revertedToTier === "basic"
+          ? "Bronze"
+          : "Free";
+  const body = `
+    <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">Hi ${args.businessName},</h2>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      Your complimentary Gold access on Local List 365 has reached its expiration date. We've reverted <strong>${args.businessName}</strong> back to your previous plan (<strong>${tierLabel}</strong>), and Gold-only features are no longer available on this listing.
+    </p>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      If you'd like to keep using AI tools, deals, social composer, and other Gold benefits, you can upgrade anytime from your dashboard.
+    </p>
+  `;
+  return sendCompEmail({
+    to: args.ownerEmail,
+    subject: `Your complimentary Gold access has ended — ${args.businessName}`,
+    html: buildCompShell("Complimentary Access", "Your Free Gold Access Has Ended", body, "Open Dashboard"),
+    logLabel: "Comp expired",
+  });
+}
+
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;

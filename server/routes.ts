@@ -15,7 +15,7 @@ import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
-import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring } from "./email";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
@@ -5605,10 +5605,16 @@ Respond in this exact JSON format:
     } catch (e) {
       console.error("Comp expiry reminder error:", e);
     }
+    try {
+      await checkExpiredCompMemberships();
+    } catch (e) {
+      console.error("Comp membership expiry check error:", e);
+    }
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
   setTimeout(() => sendCompExpiryReminders().catch(e => console.error("Initial comp expiry reminder error:", e)), 12000);
+  setTimeout(() => checkExpiredCompMemberships().catch(e => console.error("Initial comp expiry check error:", e)), 13000);
 
   setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
@@ -5709,6 +5715,93 @@ async function sendCompExpiryReminders() {
           .where(eq(businesses.id, biz.id));
       }
     }
+  }
+}
+
+/**
+ * Auto-revert any comp recipient whose `compedMembershipExpiresAt` has passed.
+ * Without this, the flag lingers forever and `getEffectiveTier()` keeps
+ * returning "premium" for businesses whose grant should already be over —
+ * worse, the admin Comp Memberships report keeps counting them as active.
+ *
+ * For each expired row we:
+ *   1. Clear `isCompedMembership` and the related grant/note/expiry/grantedBy
+ *      columns (mirrors what the manual /api/admin/businesses/:id/comp revoke
+ *      flow does, so feature gates immediately fall back to `membershipTier`).
+ *      Reminder-sent flags are also cleared so a future re-grant gets a
+ *      fresh round of 7d/1d reminders from `sendCompExpiryReminders`.
+ *   2. Append a `comp_membership_audit` row with action='expire' so the
+ *      historical "who/when" survives the column wipe.
+ *   3. Best-effort email the owner that their free Gold has ended (failures
+ *      are logged but never block the state change).
+ *
+ * Idempotent — re-running the job after the columns have been cleared finds
+ * nothing to do because the WHERE clause requires `isCompedMembership=true`.
+ */
+async function checkExpiredCompMemberships() {
+  const now = new Date();
+  const expired = await pgDb
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      email: businesses.email,
+      membershipTier: businesses.membershipTier,
+      compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+    })
+    .from(businesses)
+    .where(
+      and(
+        eq(businesses.isCompedMembership, true),
+        isNotNull(businesses.compedMembershipExpiresAt),
+        lte(businesses.compedMembershipExpiresAt, now),
+      ),
+    );
+
+  for (const biz of expired) {
+    try {
+      await pgDb
+        .update(businesses)
+        .set({
+          isCompedMembership: false,
+          compedMembershipNote: null,
+          compedMembershipGrantedAt: null,
+          compedMembershipGrantedBy: null,
+          compedMembershipExpiresAt: null,
+          compedMembershipReminder7Sent: false,
+          compedMembershipReminder1Sent: false,
+        })
+        .where(eq(businesses.id, biz.id));
+
+      await pgDb.insert(compMembershipAudit).values({
+        businessId: biz.id,
+        action: "expire",
+        actorUserId: null,
+        note: "Auto-reverted by scheduled job after compedMembershipExpiresAt passed",
+        expiresAt: biz.compedMembershipExpiresAt ?? null,
+      });
+
+      // When `membershipTier` is null the business has no paid plan to fall
+      // back to, so the email should say "Free" rather than implying Bronze
+      // (which is what "basic" maps to in `notifyOwnerCompExpired`).
+      const revertedTo = biz.membershipTier ?? "none";
+      console.log(
+        `Comp expiry: business ${biz.id} (${biz.name}) auto-reverted to ${revertedTo}`,
+      );
+
+      notifyOwnerCompExpired({
+        ownerEmail: biz.email,
+        businessName: biz.name,
+        revertedToTier: revertedTo,
+      }).catch((e) =>
+        console.error(`Comp expiry notify failed for business ${biz.id}:`, e),
+      );
+    } catch (e) {
+      console.error(`Comp expiry processing failed for business ${biz.id}:`, e);
+    }
+  }
+
+  if (expired.length > 0) {
+    console.log(`Comp expiry check complete: ${expired.length} business(es) reverted`);
   }
 }
 
