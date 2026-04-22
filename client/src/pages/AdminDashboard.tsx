@@ -765,6 +765,9 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
         <Link to="/admin/ai-lab" data-testid="link-admin-ai-lab">
           <QuickActionCard icon={Star} label="AI Lab" sub="Pre-release sandbox" color="bg-[#d4a373]/10" iconColor="text-[#d4a373]" />
         </Link>
+        <Link to="/admin/referrals" data-testid="link-admin-referrals">
+          <QuickActionCard icon={Gift} label="Referrals" sub="Status & manual credit" color="bg-blue-500/10" iconColor="text-blue-500" />
+        </Link>
       </div>
     </div>
   );

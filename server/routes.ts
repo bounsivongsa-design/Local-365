@@ -4756,6 +4756,179 @@ Respond in this exact JSON format:
     }
   });
 
+  // Admin: full list of referrals with referrer/referred names + status,
+  // for spotting failed Stripe credits and manually re-issuing them.
+  app.get("/api/admin/referrals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!(await isAdminUser(userId))) return res.status(403).json({ message: "Forbidden" });
+
+      const { referrals } = await import("@shared/schema");
+      const statusFilter = typeof req.query.status === "string" ? req.query.status : null;
+
+      const whereClause = statusFilter && statusFilter !== "all"
+        ? eq(referrals.status, statusFilter)
+        : undefined;
+
+      const rows = whereClause
+        ? await pgDb.select().from(referrals).where(whereClause).orderBy(desc(referrals.createdAt))
+        : await pgDb.select().from(referrals).orderBy(desc(referrals.createdAt));
+
+      const bizIds = Array.from(new Set(rows.flatMap((r) => [r.referrerBusinessId, r.referredBusinessId])));
+      const bizMap = new Map<number, { name: string; tier: string | null; hasStripe: boolean }>();
+      if (bizIds.length > 0) {
+        const bizRows = await pgDb
+          .select({
+            id: businesses.id,
+            name: businesses.name,
+            membershipTier: businesses.membershipTier,
+            stripeCustomerId: businesses.stripeCustomerId,
+          })
+          .from(businesses)
+          .where(inArray(businesses.id, bizIds));
+        bizRows.forEach((b) =>
+          bizMap.set(b.id, {
+            name: b.name,
+            tier: b.membershipTier,
+            hasStripe: !!b.stripeCustomerId,
+          }),
+        );
+      }
+
+      // Estimated monthly credit (cents) based on referrer's current tier — used
+      // for the column display when we don't have the actual issued amount stored.
+      const TIER_CENTS: Record<string, number> = { basic: 2500, standard: 5000, premium: 10000 };
+
+      const enriched = rows.map((r) => {
+        const referrer = bizMap.get(r.referrerBusinessId);
+        const referred = bizMap.get(r.referredBusinessId);
+        const estimatedCreditCents = TIER_CENTS[referrer?.tier ?? ""] ?? null;
+        return {
+          id: r.id,
+          code: r.code,
+          status: r.status,
+          createdAt: r.createdAt,
+          rewardedAt: r.rewardedAt,
+          referrerBusinessId: r.referrerBusinessId,
+          referrerBusinessName: referrer?.name ?? `Business #${r.referrerBusinessId}`,
+          referrerHasStripeCustomer: referrer?.hasStripe ?? false,
+          referrerTier: referrer?.tier ?? null,
+          referredBusinessId: r.referredBusinessId,
+          referredBusinessName: referred?.name ?? `Business #${r.referredBusinessId}`,
+          estimatedCreditCents,
+        };
+      });
+
+      res.json(enriched);
+    } catch (err) {
+      console.error("Admin referrals list error:", err);
+      res.status(500).json({ message: "Failed to load referrals" });
+    }
+  });
+
+  // Admin: manually issue (or re-issue) the Stripe credit for a referral row.
+  // Use case: original webhook-triggered credit failed (e.g. transient Stripe
+  // error) and the operator needs to recover the reward without waiting on
+  // another payment event.
+  app.post("/api/admin/referrals/:id/issue-credit", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!(await isAdminUser(userId))) return res.status(403).json({ message: "Forbidden" });
+
+      const referralId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(referralId)) return res.status(400).json({ message: "Invalid referral id" });
+
+      const { referrals } = await import("@shared/schema");
+      const [row] = await pgDb.select().from(referrals).where(eq(referrals.id, referralId));
+      if (!row) return res.status(404).json({ message: "Referral not found" });
+
+      const parties = await pgDb
+        .select({
+          id: businesses.id,
+          name: businesses.name,
+          membershipTier: businesses.membershipTier,
+          stripeCustomerId: businesses.stripeCustomerId,
+          stripeSubscriptionId: businesses.stripeSubscriptionId,
+        })
+        .from(businesses)
+        .where(inArray(businesses.id, [row.referrerBusinessId, row.referredBusinessId]));
+      const referrer = parties.find((p) => p.id === row.referrerBusinessId);
+      const referred = parties.find((p) => p.id === row.referredBusinessId);
+      if (!referrer || !referred) return res.status(404).json({ message: "Referral parties missing" });
+
+      if (!referrer.stripeCustomerId) {
+        return res.status(400).json({
+          message: "Referrer has no Stripe customer (founder/comp account). Cannot issue Stripe credit.",
+        });
+      }
+
+      const stripeKey = process.env.Stripeintegration;
+      if (!stripeKey) return res.status(500).json({ message: "Stripe not configured" });
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" as any });
+
+      // Compute monthly-equivalent credit from the referrer's current sub.
+      const TIER_CENTS_FALLBACK: Record<string, number> = { basic: 2500, standard: 5000, premium: 10000 };
+      let creditCents = 0;
+      if (referrer.stripeSubscriptionId) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(referrer.stripeSubscriptionId);
+          const item = sub.items?.data?.[0];
+          const unit = item?.price?.unit_amount;
+          const recurring = item?.price?.recurring;
+          if (typeof unit === "number" && unit > 0 && recurring) {
+            const intervalCount = recurring.interval_count || 1;
+            const monthsPerInterval =
+              recurring.interval === "year" ? 12 :
+              recurring.interval === "month" ? 1 :
+              recurring.interval === "week" ? 1 / 4 :
+              recurring.interval === "day" ? 1 / 30 : 1;
+            const totalMonths = intervalCount * monthsPerInterval;
+            creditCents = totalMonths > 0 ? Math.round(unit / totalMonths) : unit;
+          }
+        } catch (err: any) {
+          console.warn(`[admin issue-credit] could not fetch sub ${referrer.stripeSubscriptionId}:`, err?.message);
+        }
+      }
+      if (!creditCents) {
+        creditCents = TIER_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
+      }
+
+      // Use a manual-issue idempotency key distinct from the webhook key so
+      // operators CAN issue the credit even if the original webhook attempt
+      // already burned the auto key. Date-stamped so repeat manual clicks on
+      // the same day are deduped but the operator can retry tomorrow.
+      const idemKey = `referral-credit-manual-${referralId}-${new Date().toISOString().slice(0, 10)}`;
+      const txn = await stripe.customers.createBalanceTransaction(
+        referrer.stripeCustomerId,
+        {
+          amount: -creditCents,
+          currency: "usd",
+          description: `Referral reward (manual): ${referred.name} (referral #${referralId})`,
+          metadata: {
+            referralId: String(referralId),
+            referredBusinessId: String(row.referredBusinessId),
+            referrerBusinessId: String(row.referrerBusinessId),
+            source: "locallist365_referral_manual",
+            issuedByAdminId: String(userId ?? ""),
+          },
+        },
+        { idempotencyKey: idemKey },
+      );
+
+      await pgDb
+        .update(referrals)
+        .set({ status: "rewarded", rewardedAt: new Date() })
+        .where(eq(referrals.id, referralId));
+
+      console.log(`[admin issue-credit] $${(creditCents / 100).toFixed(2)} credited to ${referrer.stripeCustomerId} for referral ${referralId} by admin ${userId}`);
+      res.json({ ok: true, creditCents, balanceTransactionId: txn.id });
+    } catch (err: any) {
+      console.error("Admin issue-credit error:", err);
+      res.status(500).json({ message: err?.message || "Failed to issue credit" });
+    }
+  });
+
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;
