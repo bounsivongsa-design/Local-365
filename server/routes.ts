@@ -13,6 +13,7 @@ import { registerNewsletterRoutes } from "./newsletter";
 import { registerSocialRoutes } from "./social";
 import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
+import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES } from "@shared/config/membership";
@@ -433,6 +434,7 @@ export async function registerRoutes(
   registerSocialRoutes(app);
   registerSmsRoutes(app);
   registerReviewRequestRoutes(app);
+  registerMultiZipRoutes(app);
   registerDealRoutes(app);
 
   // ============ LOCATION ROUTES ============

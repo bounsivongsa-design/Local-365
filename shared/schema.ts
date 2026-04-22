@@ -71,6 +71,13 @@ export const businesses = pgTable("businesses", {
   promoVideoUrl: text("promo_video_url"),
   acceptsQuotes: boolean("accepts_quotes").default(true),
   isExample: boolean("is_example").default(false),
+  // Multi-zip listings (Task #13) — owner can publish in multiple zips.
+  // Each zip = a separate businesses row. ownerUserId is the canonical
+  // owner pointer (back-fills from users.linkedBusinessId on push).
+  ownerUserId: varchar("owner_user_id"),
+  parentBusinessId: integer("parent_business_id"), // null for primary, set for additional-zip dups
+  isAdditionalZip: boolean("is_additional_zip").default(false), // skips Gold trial logic
+  status: text("status").default("active"), // 'active' | 'archived'
   createdAt: timestamp("created_at").defaultNow(),
 });
 

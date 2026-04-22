@@ -7,6 +7,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
 import { processMembershipActivation } from "./referrals";
 import { applyCreditPackPurchase } from "./aiFeatures";
+import { handleAdditionalZipCheckoutCompleted, handleAdditionalZipSubscriptionDeleted } from "./multiZip";
 
 const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
 const FOUNDER_EMAILS = [
@@ -1002,6 +1003,15 @@ export function registerStripeRoutes(app: Express) {
             break;
           }
 
+          if (session.metadata?.type === "additional_zip") {
+            if (session.payment_status !== "paid") {
+              console.log(`Additional-zip checkout not yet paid (status: ${session.payment_status}), skipping`);
+              break;
+            }
+            await handleAdditionalZipCheckoutCompleted(session);
+            break;
+          }
+
           if (session.metadata?.type === "event_ad") {
             if (session.payment_status !== "paid") {
               console.log(`Event ad checkout not yet paid (status: ${session.payment_status}), skipping`);
@@ -1212,6 +1222,11 @@ export function registerStripeRoutes(app: Express) {
 
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
+
+          if (subscription.metadata?.type === "additional_zip") {
+            await handleAdditionalZipSubscriptionDeleted(subscription);
+            break;
+          }
 
           if (subscription.metadata?.type === "job_listing") {
             const jobId = parseInt(subscription.metadata?.jobListingId || "0");

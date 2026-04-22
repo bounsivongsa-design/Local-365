@@ -73,6 +73,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { getMembershipTier } from "@shared/config/membership";
 import { DashboardInbox } from "@/components/DashboardInbox";
+import { ListingZipSwitcher } from "@/components/ListingZipSwitcher";
 import { apiRequest } from "@/lib/queryClient";
 import { useMyJobListings, useDeleteJobListing } from "@/hooks/use-jobs";
 import { useMyEvents, useDeleteEvent } from "@/hooks/use-events";
@@ -1862,6 +1863,11 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
       <GoldTrialBanner />
       <MembershipExpirationBanner />
       <MembershipCancellationBanner />
+      {hasBusiness && business && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <ListingZipSwitcher activeBusinessId={business.id} />
+        </div>
+      )}
       {isEditing && business && (
         <EditBusinessForm business={business} onClose={() => setIsEditing(false)} />
       )}
