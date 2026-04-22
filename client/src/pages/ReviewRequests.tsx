@@ -44,6 +44,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface EligibleCustomer {
   key: string;
@@ -62,6 +73,8 @@ interface EligibleCustomer {
 interface RecentBouncesResponse {
   bounces: RecentBounce[];
   total: number;
+  last7Days: number;
+  last30Days: number;
   hasMore?: boolean;
 }
 
@@ -228,6 +241,35 @@ export default function ReviewRequestsPage() {
     }
     return keys;
   }, [failedRows, eligibleQuery.data]);
+
+  const clearAllWebhookBounces = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/businesses/${businessId}/review-requests/suppressions/clear-webhook-bounces`,
+      );
+      return (await res.json()) as { ok: boolean; cleared: number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests/eligible"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses", businessId, "review-requests/recent-bounces"] });
+      toast({
+        title: data.cleared > 0 ? `Cleared ${data.cleared} bounce${data.cleared === 1 ? "" : "s"}` : "Nothing to clear",
+        description:
+          data.cleared > 0
+            ? "Those addresses can be retried now. Make sure you've fixed the underlying issue first."
+            : "There were no webhook-recorded bounces to clear.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Couldn't clear bounces",
+        description: err?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const clearSuppression = useMutation({
     mutationFn: async (vars: { contactType: "email" | "phone"; contact: string }) => {
@@ -415,10 +457,76 @@ export default function ReviewRequestsPage() {
                   them. Fix the address with the customer, then clear the entry to retry.
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="border-red-300 text-red-800">
-                {recentBouncesQuery.data!.total} total
-                {recentBouncesQuery.data!.hasMore ? ` (showing ${recentBouncesQuery.data!.bounces.length})` : ""}
-              </Badge>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                  <Badge
+                    variant="outline"
+                    className="border-red-300 text-red-800"
+                    data-testid="badge-bounces-total"
+                  >
+                    {recentBouncesQuery.data!.total} total
+                    {recentBouncesQuery.data!.hasMore
+                      ? ` (showing ${recentBouncesQuery.data!.bounces.length})`
+                      : ""}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-red-300 text-red-800"
+                    data-testid="badge-bounces-7d"
+                  >
+                    {recentBouncesQuery.data!.last7Days} in last 7d
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-red-300 text-red-800"
+                    data-testid="badge-bounces-30d"
+                  >
+                    {recentBouncesQuery.data!.last30Days} in last 30d
+                  </Badge>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs border-red-300 text-red-800 hover:bg-red-100"
+                      disabled={
+                        clearAllWebhookBounces.isPending ||
+                        recentBouncesQuery.data!.total === 0
+                      }
+                      data-testid="button-clear-all-bounces"
+                    >
+                      {clearAllWebhookBounces.isPending ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : null}
+                      Clear all webhook bounces
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent data-testid="dialog-confirm-clear-all-bounces">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear all webhook bounces?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This removes all {recentBouncesQuery.data!.total} auto-suppressions
+                        recorded from email provider bounces and spam complaints for this
+                        business. Manual opt-outs are not affected. If the underlying address
+                        problems aren't fixed, those addresses will likely be re-suppressed on
+                        the next send and may hurt your sender reputation.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid="button-cancel-clear-all-bounces">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => clearAllWebhookBounces.mutate()}
+                        data-testid="button-confirm-clear-all-bounces"
+                      >
+                        Clear all
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pt-0">

@@ -652,14 +652,60 @@ export function registerReviewRequestRoutes(app: Express) {
           .orderBy(desc(recipientSuppressions.createdAt))
           .limit(LIMIT);
         const [countRow] = await pgDb
-          .select({ n: sql<number>`COUNT(*)::int` })
+          .select({
+            total: sql<number>`COUNT(*)::int`,
+            last7: sql<number>`COUNT(*) FILTER (WHERE ${recipientSuppressions.createdAt} >= NOW() - INTERVAL '7 days')::int`,
+            last30: sql<number>`COUNT(*) FILTER (WHERE ${recipientSuppressions.createdAt} >= NOW() - INTERVAL '30 days')::int`,
+          })
           .from(recipientSuppressions)
           .where(whereExpr);
-        const total = Number(countRow?.n ?? rows.length);
-        res.json({ bounces: rows, total, hasMore: total > rows.length });
+        const total = Number(countRow?.total ?? rows.length);
+        const last7Days = Number(countRow?.last7 ?? 0);
+        const last30Days = Number(countRow?.last30 ?? 0);
+        res.json({
+          bounces: rows,
+          total,
+          last7Days,
+          last30Days,
+          hasMore: total > rows.length,
+        });
       } catch (err: any) {
         console.error("[review-requests] recent-bounces failed:", err?.message);
         res.status(500).json({ message: "Failed to load recent bounces" });
+      }
+    },
+  );
+
+  // Bulk clear all webhook-recorded suppressions for this business. Used by
+  // the "Clear all webhook bounces" button in the auto-suppressed panel so
+  // owners can wipe a noisy list in one click after fixing addresses /
+  // discovering a campaign that targeted bad contacts. Scoped to
+  // reason LIKE 'webhook:%' — manual / non-webhook suppressions are left
+  // alone so we don't accidentally undo intentional opt-outs.
+  app.post(
+    "/api/businesses/:id/review-requests/suppressions/clear-webhook-bounces",
+    isAuthenticated,
+    async (req, res) => {
+      const businessId = Number(req.params.id);
+      if (!Number.isFinite(businessId)) {
+        return res.status(400).json({ message: "Invalid business id" });
+      }
+      const auth = await authorizeOwner(req, res, businessId);
+      if (!auth) return;
+      try {
+        const result = await pgDb
+          .delete(recipientSuppressions)
+          .where(
+            and(
+              eq(recipientSuppressions.businessId, businessId),
+              sql`${recipientSuppressions.reason} LIKE 'webhook:%'`,
+            ),
+          )
+          .returning({ id: recipientSuppressions.id });
+        res.json({ ok: true, cleared: result.length });
+      } catch (err: any) {
+        console.error("[review-requests] bulk clear webhook bounces failed:", err?.message);
+        res.status(500).json({ message: "Failed to clear webhook bounces" });
       }
     },
   );
