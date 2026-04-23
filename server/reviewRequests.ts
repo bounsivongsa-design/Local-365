@@ -32,12 +32,12 @@ import { isAuthenticated } from "./replit_integrations/auth";
 import { normalizePhone } from "./sms";
 import { notifyOwnerBounceSpike } from "./email";
 
-// In-memory per-business rate limiter for the "Send test alert" button on
-// the Bounce alerts card. One test send per hour per business is plenty for
-// owners to verify deliverability/copy without giving them a way to spam
-// themselves (or burn our Resend quota). Cleared on process restart, which
-// is fine — the limit is purely defensive UX, not a security boundary.
-const bounceAlertTestLastSentAt = new Map<number, number>();
+// Per-business rate limiter for the "Send test alert" button on the Bounce
+// alerts card. One test send per hour per business is plenty for owners to
+// verify deliverability/copy without giving them a way to spam themselves
+// (or burn our Resend quota). Persisted on `businesses.bounceSpikeTestLastSentAt`
+// so the cooldown survives process restarts and can be surfaced inline in
+// the FE (Task #87) instead of only as a post-click 429 toast.
 const BOUNCE_ALERT_TEST_COOLDOWN_MS = 60 * 60 * 1000;
 
 const COOLDOWN_DAYS = 90;
@@ -737,6 +737,10 @@ export function registerReviewRequestRoutes(app: Express) {
         threshold: biz.bounceSpikeThreshold ?? null,
         cadenceHours: biz.bounceSpikeCadenceHours ?? null,
         muted: biz.bounceSpikeMuted === true,
+        testLastSentAt: biz.bounceSpikeTestLastSentAt
+          ? biz.bounceSpikeTestLastSentAt.toISOString()
+          : null,
+        testCooldownMs: BOUNCE_ALERT_TEST_COOLDOWN_MS,
         defaults: {
           threshold: defaultThreshold,
           cadenceHours: defaultCadenceHours,
@@ -790,6 +794,7 @@ export function registerReviewRequestRoutes(app: Express) {
           threshold: businesses.bounceSpikeThreshold,
           cadenceHours: businesses.bounceSpikeCadenceHours,
           muted: businesses.bounceSpikeMuted,
+          testLastSentAt: businesses.bounceSpikeTestLastSentAt,
         });
       const defaultThreshold = readPosIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
       const defaultCadenceHours = readPosIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
@@ -812,6 +817,10 @@ export function registerReviewRequestRoutes(app: Express) {
         threshold: updated?.threshold ?? null,
         cadenceHours: updated?.cadenceHours ?? null,
         muted: updated?.muted === true,
+        testLastSentAt: updated?.testLastSentAt
+          ? updated.testLastSentAt.toISOString()
+          : null,
+        testCooldownMs: BOUNCE_ALERT_TEST_COOLDOWN_MS,
         defaults: {
           threshold: defaultThreshold,
           cadenceHours: defaultCadenceHours,
@@ -882,7 +891,9 @@ export function registerReviewRequestRoutes(app: Express) {
       if (!auth) return;
       const biz = auth.business;
 
-      const last = bounceAlertTestLastSentAt.get(businessId);
+      const last = biz.bounceSpikeTestLastSentAt
+        ? biz.bounceSpikeTestLastSentAt.getTime()
+        : null;
       const now = Date.now();
       if (last && now - last < BOUNCE_ALERT_TEST_COOLDOWN_MS) {
         const retryInMs = BOUNCE_ALERT_TEST_COOLDOWN_MS - (now - last);
@@ -890,6 +901,8 @@ export function registerReviewRequestRoutes(app: Express) {
         return res.status(429).json({
           message: `You can only send one test alert per hour. Try again in about ${retryInMinutes} minute${retryInMinutes === 1 ? "" : "s"}.`,
           retryInMinutes,
+          testLastSentAt: new Date(last).toISOString(),
+          testCooldownMs: BOUNCE_ALERT_TEST_COOLDOWN_MS,
         });
       }
 
@@ -937,12 +950,18 @@ export function registerReviewRequestRoutes(app: Express) {
         });
       }
 
-      bounceAlertTestLastSentAt.set(businessId, now);
+      const sentAt = new Date(now);
+      await pgDb
+        .update(businesses)
+        .set({ bounceSpikeTestLastSentAt: sentAt })
+        .where(eq(businesses.id, businessId));
       res.json({
         ok: true,
         recipientEmail,
         bounceCount: syntheticBounceCount,
         windowHours: lookbackHours,
+        testLastSentAt: sentAt.toISOString(),
+        testCooldownMs: BOUNCE_ALERT_TEST_COOLDOWN_MS,
       });
     },
   );

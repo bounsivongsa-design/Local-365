@@ -167,6 +167,8 @@ interface BounceAlertPrefs {
   threshold: number | null;
   cadenceHours: number | null;
   muted: boolean;
+  testLastSentAt: string | null;
+  testCooldownMs: number;
   defaults: { threshold: number; cadenceHours: number; lookbackHours: number };
   lastAlertAt: string | null;
   nextEligibleAt: string | null;
@@ -281,6 +283,15 @@ export default function ReviewRequestsPage() {
     threshold: string;
     cadenceHours: string;
   }>({ threshold: "", cadenceHours: "" });
+
+  // Tick once a minute so the inline "Send test alert" cooldown countdown
+  // stays accurate without forcing a refetch. Cheap (one re-render/min) and
+  // the hour-long cooldown means minute resolution is plenty.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   // Re-hydrate the draft whenever the server payload changes (initial
   // load, after a successful save, or on background refetch). Empty
   // string in the input means "use the default" which serializes to
@@ -339,15 +350,40 @@ export default function ReviewRequestsPage() {
         recipientEmail: string;
         bounceCount: number;
         windowHours: number;
+        testLastSentAt: string;
+        testCooldownMs: number;
       };
     },
     onSuccess: (data) => {
+      // Optimistically stamp the cooldown into the prefs cache so the button
+      // disables immediately — without this there's a small window where a
+      // very fast second click can still 429 before the refetch lands.
+      queryClient.setQueryData<BounceAlertPrefs | undefined>(
+        ["/api/businesses", businessId, "review-requests/bounce-alert-prefs"],
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                testLastSentAt: data.testLastSentAt,
+                testCooldownMs: data.testCooldownMs,
+              }
+            : prev,
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["/api/businesses", businessId, "review-requests/bounce-alert-prefs"],
+      });
       toast({
         title: "Test alert sent",
         description: `Sent to ${data.recipientEmail}. Check your inbox (and spam folder) for the heads-up email.`,
       });
     },
     onError: (err: any) => {
+      // Server includes the canonical cooldown payload on a 429 — refetch
+      // prefs so the inline countdown immediately reflects reality even
+      // when the optimistic state was stale (e.g. another tab just sent).
+      queryClient.invalidateQueries({
+        queryKey: ["/api/businesses", businessId, "review-requests/bounce-alert-prefs"],
+      });
       toast({
         title: "Couldn't send test alert",
         description: err?.message ?? "Please try again.",
@@ -703,6 +739,45 @@ export default function ReviewRequestsPage() {
         const hasChanges =
           (prefs.threshold ?? null) !== parsedThreshold ||
           (prefs.cadenceHours ?? null) !== parsedCadence;
+        // Compute the inline cooldown for the "Send test alert" button.
+        // `testCooldownMs` is the server's source-of-truth cooldown window;
+        // anything older than that is "available now". Re-evaluated on every
+        // `nowTick` so the countdown stays fresh without polling the server.
+        const lastTestSentMs = prefs.testLastSentAt
+          ? Date.parse(prefs.testLastSentAt)
+          : null;
+        const cooldownRemainingMs =
+          lastTestSentMs !== null
+            ? Math.max(0, lastTestSentMs + prefs.testCooldownMs - nowTick)
+            : 0;
+        const cooldownActive = cooldownRemainingMs > 0;
+        const cooldownMinutes = Math.max(1, Math.ceil(cooldownRemainingMs / 60_000));
+        const lastSentMinutesAgo =
+          lastTestSentMs !== null
+            ? Math.max(0, Math.floor((nowTick - lastTestSentMs) / 60_000))
+            : null;
+        const formatAgo = (m: number) => {
+          if (m < 1) return "less than a minute ago";
+          if (m === 1) return "1 minute ago";
+          if (m < 60) return `${m} minutes ago`;
+          const h = Math.floor(m / 60);
+          if (h === 1) return "about 1 hour ago";
+          if (h < 24) return `about ${h} hours ago`;
+          const d = Math.floor(h / 24);
+          return d === 1 ? "about 1 day ago" : `about ${d} days ago`;
+        };
+        const formatIn = (m: number) => {
+          if (m === 1) return "in about 1 minute";
+          return `in about ${m} minutes`;
+        };
+        let testStatusText: string | null = null;
+        if (lastTestSentMs !== null) {
+          if (cooldownActive) {
+            testStatusText = `Last test sent ${formatAgo(lastSentMinutesAgo ?? 0)} — you can send another ${formatIn(cooldownMinutes)}.`;
+          } else {
+            testStatusText = `Last test sent ${formatAgo(lastSentMinutesAgo ?? 0)}. Available to send again now.`;
+          }
+        }
         return (
           <Card data-testid="card-bounce-alert-prefs">
             <CardHeader className="pb-3">
@@ -833,21 +908,34 @@ export default function ReviewRequestsPage() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  disabled={sendTestBounceAlert.isPending}
-                  onClick={() => sendTestBounceAlert.mutate()}
-                  data-testid="button-bounce-alert-test"
-                >
-                  {sendTestBounceAlert.isPending ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <Send className="h-3 w-3 mr-1" />
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    disabled={sendTestBounceAlert.isPending || cooldownActive}
+                    onClick={() => sendTestBounceAlert.mutate()}
+                    title={cooldownActive ? testStatusText ?? undefined : undefined}
+                    data-testid="button-bounce-alert-test"
+                  >
+                    {sendTestBounceAlert.isPending ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="h-3 w-3 mr-1" />
+                    )}
+                    {cooldownActive
+                      ? `Send test alert (available in ${cooldownMinutes}m)`
+                      : "Send test alert"}
+                  </Button>
+                  {testStatusText && (
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="text-bounce-alert-test-status"
+                    >
+                      {testStatusText}
+                    </div>
                   )}
-                  Send test alert
-                </Button>
+                </div>
                 <div className="flex items-center gap-2 ml-auto">
                 {hasChanges && (
                   <Button

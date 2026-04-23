@@ -122,6 +122,11 @@ export const businesses = pgTable("businesses", {
   bounceSpikeThreshold: integer("bounce_spike_threshold"),
   bounceSpikeCadenceHours: integer("bounce_spike_cadence_hours"),
   bounceSpikeMuted: boolean("bounce_spike_muted").default(false),
+  // Timestamp of the most recent owner-triggered "Send test alert" send for
+  // this listing. Persisted (instead of an in-memory map) so the cooldown
+  // status survives process restarts and can be surfaced inline in the
+  // Bounce alerts card without a 429-then-toast round trip.
+  bounceSpikeTestLastSentAt: timestamp("bounce_spike_test_last_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
