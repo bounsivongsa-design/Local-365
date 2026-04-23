@@ -56,7 +56,7 @@ export function LocationSearchInput({
       }
       return l.zipCodes?.[0] || "";
     };
-    if (!q) return all.slice(0, 8).map((l) => ({ loc: l, zip: pickZip(l) }));
+    if (!q) return all.map((l) => ({ loc: l, zip: pickZip(l) }));
     return all
       .filter(
         (l) =>
@@ -65,7 +65,6 @@ export function LocationSearchInput({
           (l.region || "").toLowerCase().includes(q) ||
           (l.zipCodes || []).some((z) => z.includes(q)),
       )
-      .slice(0, 12)
       .map((l) => ({ loc: l, zip: pickZip(l) }));
   }, [locations, query]);
 
@@ -288,7 +287,7 @@ export function LocationSearchInput({
 
       {open && !outOfCoverage && (matches.length > 0 || query.trim()) && (
         <div
-          className="absolute left-0 right-0 mt-2 max-h-[360px] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl z-30"
+          className="absolute left-0 right-0 mt-2 max-h-[360px] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl z-50"
           data-testid="location-autocomplete-list"
         >
           {matches.length === 0 ? (
