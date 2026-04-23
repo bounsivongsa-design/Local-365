@@ -127,14 +127,16 @@ export default function Home() {
           When the user hasn't picked a location yet (`!isLocationSet`), the
           location search is the only input. Once a location is set, the
           services search appears with dynamic per-region copy. */}
-      <section className="text-center py-20 relative overflow-hidden min-h-[650px] flex items-center">
-        <img
-          src={heroImage}
-          alt={`Local business directory for ${selectedLocation.city}, ${selectedLocation.state}`}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: "center 55%" }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
+      <section className="text-center py-20 relative min-h-[650px] flex items-center isolate">
+        <div className="absolute inset-0 overflow-hidden -z-10">
+          <img
+            src={heroImage}
+            alt={`Local business directory for ${selectedLocation.city}, ${selectedLocation.state}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center 55%" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"></div>
+        </div>
         <div className="container relative z-10 max-w-3xl mx-auto px-4">
           {/* Value Proposition Badge */}
           <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full mb-6">
