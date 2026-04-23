@@ -718,6 +718,21 @@ export function registerReviewRequestRoutes(app: Express) {
       const defaultThreshold = readPosIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
       const defaultCadenceHours = readPosIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
       const defaultLookbackHours = readPosIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
+      // Surface the most recent owner-facing bounce-spike email so the FE can
+      // tell the owner "you'll next hear from us no earlier than ___". The
+      // next-eligible time is derived from the effective cadence (per-business
+      // override or env default), matching the cooldown the cron itself uses.
+      const [lastAlert] = await pgDb
+        .select({ alertedAt: bounceSpikeAlerts.alertedAt })
+        .from(bounceSpikeAlerts)
+        .where(eq(bounceSpikeAlerts.businessId, businessId))
+        .orderBy(desc(bounceSpikeAlerts.alertedAt))
+        .limit(1);
+      const effectiveCadence = biz.bounceSpikeCadenceHours ?? defaultCadenceHours;
+      const lastAlertAt = lastAlert?.alertedAt ?? null;
+      const nextEligibleAt = lastAlertAt
+        ? new Date(lastAlertAt.getTime() + effectiveCadence * 3600 * 1000)
+        : null;
       res.json({
         threshold: biz.bounceSpikeThreshold ?? null,
         cadenceHours: biz.bounceSpikeCadenceHours ?? null,
@@ -727,6 +742,8 @@ export function registerReviewRequestRoutes(app: Express) {
           cadenceHours: defaultCadenceHours,
           lookbackHours: defaultLookbackHours,
         },
+        lastAlertAt: lastAlertAt ? lastAlertAt.toISOString() : null,
+        nextEligibleAt: nextEligibleAt ? nextEligibleAt.toISOString() : null,
       });
     },
   );
@@ -777,6 +794,20 @@ export function registerReviewRequestRoutes(app: Express) {
       const defaultThreshold = readPosIntEnv("BOUNCE_SPIKE_THRESHOLD", 5);
       const defaultCadenceHours = readPosIntEnv("BOUNCE_SPIKE_COOLDOWN_HOURS", 24);
       const defaultLookbackHours = readPosIntEnv("BOUNCE_SPIKE_LOOKBACK_HOURS", 24);
+      // Re-derive last/next-eligible alert times so the FE's setQueryData on
+      // mutation success keeps the same shape as the GET response (and the
+      // next-eligible time correctly reflects the just-saved cadence).
+      const [lastAlert] = await pgDb
+        .select({ alertedAt: bounceSpikeAlerts.alertedAt })
+        .from(bounceSpikeAlerts)
+        .where(eq(bounceSpikeAlerts.businessId, businessId))
+        .orderBy(desc(bounceSpikeAlerts.alertedAt))
+        .limit(1);
+      const effectiveCadence = (updated?.cadenceHours ?? defaultCadenceHours);
+      const lastAlertAt = lastAlert?.alertedAt ?? null;
+      const nextEligibleAt = lastAlertAt
+        ? new Date(lastAlertAt.getTime() + effectiveCadence * 3600 * 1000)
+        : null;
       res.json({
         threshold: updated?.threshold ?? null,
         cadenceHours: updated?.cadenceHours ?? null,
@@ -786,6 +817,8 @@ export function registerReviewRequestRoutes(app: Express) {
           cadenceHours: defaultCadenceHours,
           lookbackHours: defaultLookbackHours,
         },
+        lastAlertAt: lastAlertAt ? lastAlertAt.toISOString() : null,
+        nextEligibleAt: nextEligibleAt ? nextEligibleAt.toISOString() : null,
       });
     },
   );

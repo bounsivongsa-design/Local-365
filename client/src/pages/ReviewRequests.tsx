@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow, format } from "date-fns";
 import {
   Star,
   Mail,
@@ -167,6 +168,8 @@ interface BounceAlertPrefs {
   cadenceHours: number | null;
   muted: boolean;
   defaults: { threshold: number; cadenceHours: number; lookbackHours: number };
+  lastAlertAt: string | null;
+  nextEligibleAt: string | null;
 }
 
 interface AICreditsInfo {
@@ -716,6 +719,54 @@ export default function ReviewRequestsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {(() => {
+                // Surface the most recent owner heads-up email and the soonest
+                // we'd ever send the next one. Lets the owner reconcile "I just
+                // got an email" or "I set a weekly cadence" with what to expect.
+                const lastDate = prefs.lastAlertAt ? new Date(prefs.lastAlertAt) : null;
+                const nextDate = prefs.nextEligibleAt ? new Date(prefs.nextEligibleAt) : null;
+                const nextInFuture = nextDate ? nextDate.getTime() > Date.now() : false;
+                return (
+                  <div
+                    className="rounded-md border bg-muted/40 p-3 text-sm"
+                    data-testid="block-bounce-alert-status"
+                  >
+                    {!lastDate ? (
+                      <div className="text-muted-foreground" data-testid="text-bounce-alert-last">
+                        No alerts sent yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div data-testid="text-bounce-alert-last">
+                          <span className="text-muted-foreground">Last alert: </span>
+                          <span className="font-medium" title={format(lastDate, "PPpp")}>
+                            {formatDistanceToNow(lastDate, { addSuffix: true })}
+                          </span>
+                        </div>
+                        {nextDate && (
+                          <div data-testid="text-bounce-alert-next">
+                            <span className="text-muted-foreground">
+                              {prefs.muted
+                                ? "Muted — no email will be sent."
+                                : nextInFuture
+                                  ? "Next email no earlier than: "
+                                  : "Eligible to send again: "}
+                            </span>
+                            {!prefs.muted && (
+                              <span className="font-medium" title={format(nextDate, "PPpp")}>
+                                {nextInFuture
+                                  ? formatDistanceToNow(nextDate, { addSuffix: true })
+                                  : "now"}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <label
                 className="flex items-start gap-3 cursor-pointer"
                 data-testid="row-bounce-alert-mute"
