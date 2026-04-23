@@ -13,6 +13,7 @@ import { registerNewsletterRoutes } from "./newsletter";
 import { registerSocialRoutes } from "./social";
 import { registerSmsRoutes } from "./sms";
 import { registerReviewRequestRoutes } from "./reviewRequests";
+import { registerMarketingHubRoutes } from "./marketingHub";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike } from "./email";
@@ -445,6 +446,7 @@ export async function registerRoutes(
   registerSocialRoutes(app);
   registerSmsRoutes(app);
   registerReviewRequestRoutes(app);
+  registerMarketingHubRoutes(app);
   registerMultiZipRoutes(app);
   registerDealRoutes(app);
 

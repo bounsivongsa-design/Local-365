@@ -35,6 +35,7 @@ import HelpWanted from "@/pages/HelpWanted";
 import CreateBusiness from "@/pages/CreateBusiness";
 import EditListing from "@/pages/EditListing";
 import NewsletterPage from "@/pages/Newsletter";
+import MarketingHubPage from "@/pages/MarketingHub";
 import ReviewRequestsPage from "@/pages/ReviewRequests";
 import SocialPage from "@/pages/Social";
 import SmsPage from "@/pages/Sms";
@@ -89,6 +90,7 @@ function AppRouter() {
           <Route path="/create-business" element={<CreateBusiness />} />
           <Route path="/edit-listing" element={<EditListing />} />
           <Route path="/newsletter" element={<NewsletterPage />} />
+          <Route path="/marketing-hub" element={<MarketingHubPage />} />
           <Route path="/review-requests" element={<ReviewRequestsPage />} />
           <Route path="/social" element={<SocialPage />} />
           <Route path="/sms" element={<SmsPage />} />
