@@ -24,6 +24,7 @@ import {
   reviewRequests,
   recipientSuppressions,
   bounceSpikeAlerts,
+  newsletterSends,
 } from "@shared/schema";
 import { quoteRequests } from "@shared/models/auth";
 import { and, eq, sql, desc, or, gte, isNotNull } from "drizzle-orm";
@@ -1093,6 +1094,31 @@ export function registerReviewRequestRoutes(app: Express) {
       ? [data.to]
       : [];
 
+    // Newsletter engagement (opened / clicked) is matched against the
+    // newsletter_sends row by Resend's email id. We do this BEFORE the
+    // bounce/complain dispatch because it has nothing to do with
+    // suppression — it's a pure stamp-the-timestamp side-effect, and
+    // returning here keeps the rest of the handler tidy. First-touch
+    // wins (we never overwrite an existing timestamp).
+    if (type === "email.opened" || type === "email.clicked") {
+      const emailId: string = String(data?.email_id ?? data?.id ?? "");
+      if (!emailId) {
+        return res.json({ ok: true, ignored: "no email_id" });
+      }
+      const setField = type === "email.opened" ? "opened_at" : "clicked_at";
+      // First-touch: only stamp when the column is currently NULL. Single
+      // UPDATE keeps it idempotent without a SELECT-then-UPDATE race.
+      const result = await pgDb.execute(sql`
+        UPDATE newsletter_sends
+           SET ${sql.raw(setField)} = NOW()
+         WHERE message_id = ${emailId}
+           AND ${sql.raw(setField)} IS NULL
+        RETURNING id
+      `);
+      const stamped = (result as any).rowCount ?? (Array.isArray((result as any).rows) ? (result as any).rows.length : 0);
+      return res.json({ ok: true, type, stamped });
+    }
+
     let permanent = false;
     let reason = "";
     if (type === "email.bounced") {
@@ -1108,8 +1134,8 @@ export function registerReviewRequestRoutes(app: Express) {
       permanent = true;
       reason = "complained: recipient reported as spam";
     } else {
-      // Delivery / opened / clicked / etc — acknowledge so Resend stops
-      // retrying, but do nothing.
+      // Delivery / sent / etc — acknowledge so Resend stops retrying,
+      // but do nothing.
       return res.json({ ok: true, ignored: type || "unknown" });
     }
 

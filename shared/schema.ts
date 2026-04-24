@@ -1,5 +1,5 @@
 export * from "./models/auth";
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -585,12 +585,24 @@ export const newsletterSends = pgTable("newsletter_sends", {
   status: text("status").notNull().default("queued"),
   errorMessage: text("error_message"),
   sentAt: timestamp("sent_at"),
+  // Resend's response.data.id — the join key for the email.opened /
+  // email.clicked webhook events. NULL for sends made before this column
+  // existed (engagement webhooks for those rows are silently dropped) and
+  // for any send where Resend didn't return an id.
+  messageId: text("message_id"),
+  // Engagement timestamps stamped by the Resend webhook. First-touch
+  // semantics — never overwritten on subsequent events.
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
 }, (t) => [
   // Full unique index (no .where(...) predicate) — both columns are NOT NULL,
   // so a `WHERE … IS NOT NULL` partial predicate would be a no-op. Verified
   // against pg_indexes: this index has no WHERE clause in the live DB. See
   // replit.md → "Partial unique indexes" before adding a predicate here.
   uniqueIndex("newsletter_send_campaign_sub_idx").on(t.campaignId, t.subscriberId),
+  // Webhook lookup is `WHERE message_id = ?`; index speeds that up at
+  // scale. NOT unique because a NULL message_id is legal for legacy rows.
+  index("newsletter_send_message_id_idx").on(t.messageId),
 ]);
 
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;

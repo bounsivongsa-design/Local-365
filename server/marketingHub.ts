@@ -13,6 +13,7 @@ import {
   users,
   newsletterCampaigns,
   newsletterSubscribers,
+  newsletterSends,
   smsCampaigns,
   smsSubscribers,
   reviewRequests,
@@ -102,9 +103,10 @@ export function registerMarketingHubRoutes(app: Express) {
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
       // ── Newsletter ────────────────────────────────────────────────
-      // Aggregate over campaigns SENT in the window. Open/click tracking
-      // isn't wired through Resend yet, so we only report what's recorded
-      // server-side: recipient/success/failure counts on the campaign row.
+      // Aggregate over campaigns SENT in the window. Recipient/success/
+      // failure counts come off the campaign row; opens & clicks are
+      // stamped per-recipient by the Resend webhook (email.opened /
+      // email.clicked) onto newsletter_sends.
       const [nlTotals] = await pgDb
         .select({
           campaigns: count(newsletterCampaigns.id),
@@ -117,6 +119,25 @@ export function registerMarketingHubRoutes(app: Express) {
           and(
             eq(newsletterCampaigns.businessId, businessId),
             eq(newsletterCampaigns.status, "sent"),
+            isNotNull(newsletterCampaigns.sentAt),
+            gte(newsletterCampaigns.sentAt, since),
+          ),
+        );
+
+      // Engagement: join newsletter_sends → newsletter_campaigns so we
+      // only count opens/clicks for THIS business's campaigns sent in the
+      // window (not all-time, not other businesses sharing the webhook).
+      const [nlEngagement] = await pgDb
+        .select({
+          opened: sql<number>`COUNT(*) FILTER (WHERE ${newsletterSends.openedAt} IS NOT NULL)`,
+          clicked: sql<number>`COUNT(*) FILTER (WHERE ${newsletterSends.clickedAt} IS NOT NULL)`,
+        })
+        .from(newsletterSends)
+        .innerJoin(newsletterCampaigns, eq(newsletterSends.campaignId, newsletterCampaigns.id))
+        .where(
+          and(
+            eq(newsletterCampaigns.businessId, businessId),
+            eq(newsletterSends.status, "sent"),
             isNotNull(newsletterCampaigns.sentAt),
             gte(newsletterCampaigns.sentAt, since),
           ),
@@ -323,6 +344,13 @@ export function registerMarketingHubRoutes(app: Express) {
         failed: n(nlTotals?.failed),
         campaigns: n(nlTotals?.campaigns),
         deliveryRate: pct(n(nlTotals?.delivered), n(nlTotals?.recipients)),
+        opened: n(nlEngagement?.opened),
+        clicked: n(nlEngagement?.clicked),
+        // Open/click rates are denominated against DELIVERED (not
+        // recipients) so a campaign with bounces doesn't artificially
+        // tank the number.
+        openRate: pct(n(nlEngagement?.opened), n(nlTotals?.delivered)),
+        clickRate: pct(n(nlEngagement?.clicked), n(nlTotals?.delivered)),
         subscribersTotal: n(nlSubs?.total),
         subscribersActive: n(nlSubs?.active),
         last: nlLast ?? null,

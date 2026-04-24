@@ -512,7 +512,10 @@ export function registerNewsletterRoutes(app: Express) {
             continue;
           }
 
-          await resend.emails.send({
+          // Capture Resend's message id so the email.opened / email.clicked
+          // webhook events can be matched back to this exact send. Without
+          // it, engagement webhooks have no way to find the row to stamp.
+          const sendResult = await resend.emails.send({
             from: `${business.name} via Local List 365 <onboarding@resend.dev>`,
             to: [sub.email],
             subject: campaign.subject,
@@ -522,9 +525,17 @@ export function registerNewsletterRoutes(app: Express) {
               "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
             },
           });
+          // The Resend SDK shape: { data: { id }, error }. Surface a non-2xx
+          // as a thrown failure so the catch arm marks the row 'failed'
+          // (otherwise we'd record a "successful" send for a 4xx response).
+          if ((sendResult as any)?.error) {
+            const errMsg = (sendResult as any).error?.message ?? "Resend rejected send";
+            throw new Error(errMsg);
+          }
+          const messageId = (sendResult as any)?.data?.id ?? null;
           await pgDb
             .update(newsletterSends)
-            .set({ status: "sent", sentAt: new Date() })
+            .set({ status: "sent", sentAt: new Date(), messageId })
             .where(eq(newsletterSends.id, inserted[0].id));
           success += 1;
         } catch (err: any) {

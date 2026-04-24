@@ -32,6 +32,10 @@ interface MarketingHubData {
     failed: number;
     campaigns: number;
     deliveryRate: number;
+    opened: number;
+    clicked: number;
+    openRate: number;
+    clickRate: number;
     subscribersTotal: number;
     subscribersActive: number;
     last: { id: number; subject: string; sentAt: string; recipients: number } | null;
@@ -279,17 +283,40 @@ export default function MarketingHub() {
                   testid="stat-newsletter-rate"
                 />
                 <StatTile
-                  label="Failed"
-                  value={data.newsletter.failed.toLocaleString()}
-                  testid="stat-newsletter-failed"
+                  label="Opened"
+                  value={data.newsletter.opened.toLocaleString()}
+                  testid="stat-newsletter-opened"
                 />
                 <StatTile
-                  label="Subscribers"
-                  value={`${data.newsletter.subscribersActive} / ${data.newsletter.subscribersTotal}`}
-                  testid="stat-newsletter-subs"
+                  label="Open rate"
+                  value={`${data.newsletter.openRate}%`}
+                  testid="stat-newsletter-open-rate"
+                />
+                <StatTile
+                  label="Clicked"
+                  value={data.newsletter.clicked.toLocaleString()}
+                  testid="stat-newsletter-clicked"
+                />
+                <StatTile
+                  label="Click rate"
+                  value={`${data.newsletter.clickRate}%`}
+                  testid="stat-newsletter-click-rate"
                 />
               </div>
-              <div className="text-xs text-slate-600 pt-1 border-t border-slate-100">
+              <div className="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-100">
+                <span>
+                  Subscribers:{" "}
+                  <span className="font-medium" data-testid="text-newsletter-subs">
+                    {data.newsletter.subscribersActive} / {data.newsletter.subscribersTotal}
+                  </span>
+                </span>
+                {data.newsletter.failed > 0 && (
+                  <span className="text-red-600" data-testid="text-newsletter-failed">
+                    {data.newsletter.failed} failed
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-600">
                 {data.newsletter.last ? (
                   <>
                     Last sent: <span className="font-medium">{data.newsletter.last.subject}</span>{" "}
