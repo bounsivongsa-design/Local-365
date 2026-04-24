@@ -393,3 +393,267 @@ test("marketing-hub: ?days=7 includes a 5-day-old SMS, and an invalid ?days valu
     await srv.close();
   }
 });
+
+// ── Hardening tests added after architect review ─────────────────────
+
+test("marketing-hub: admin (not the owner) can read another business's hub", async () => {
+  // The endpoint allows accountType==='admin' to bypass the owner check.
+  // This test guards against accidentally tightening that to owner-only,
+  // which would break the admin support flow.
+  const biz = await seedBusiness({ tier: "premium" });
+  const [admin] = await pgDb
+    .insert(users)
+    .values({
+      email: `mh_admin_${Date.now()}_${Math.random()}@example.com`,
+      firstName: "Admin",
+      lastName: "User",
+      accountType: "admin",
+      linkedBusinessId: null, // explicitly NOT the owner
+    })
+    .returning();
+  createdUserIds.push(admin.id);
+
+  const srv = await start(makeApp(admin.id));
+  try {
+    const r = await fetch(`${srv.url}/api/businesses/${biz.id}/marketing-hub?days=30`);
+    assert.equal(r.status, 200, "admin should get 200, not 403");
+    const body = await r.json();
+    assert.equal(body.rangeDays, 30);
+  } finally {
+    await srv.close();
+  }
+});
+
+test("marketing-hub: comp-active business is treated as Gold (no Stripe tier required)", async () => {
+  // isCompActive(b) → true should let the owner through even when
+  // membershipTier='basic'. An expired comp must NOT count.
+  const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [activeCompBiz] = await pgDb
+    .insert(businesses)
+    .values({
+      name: `MH Comp Active ${Date.now()}_${Math.random()}`,
+      description: TEST_TAG,
+      address: "2 Comp Way",
+      category: "Service",
+      imageUrl: "https://example.com/x.png",
+      email: `mh_comp_${Date.now()}_${Math.random()}@example.com`,
+      membershipTier: "basic",
+      isCompedMembership: true,
+      compedMembershipExpiresAt: future,
+    })
+    .returning();
+  createdBizIds.push(activeCompBiz.id);
+
+  const [expiredCompBiz] = await pgDb
+    .insert(businesses)
+    .values({
+      name: `MH Comp Expired ${Date.now()}_${Math.random()}`,
+      description: TEST_TAG,
+      address: "3 Comp Way",
+      category: "Service",
+      imageUrl: "https://example.com/x.png",
+      email: `mh_comp_exp_${Date.now()}_${Math.random()}@example.com`,
+      membershipTier: "basic",
+      isCompedMembership: true,
+      compedMembershipExpiresAt: past,
+    })
+    .returning();
+  createdBizIds.push(expiredCompBiz.id);
+
+  const ownerActive = await seedUser(activeCompBiz.id);
+  const ownerExpired = await seedUser(expiredCompBiz.id);
+
+  const srvA = await start(makeApp(ownerActive.id));
+  try {
+    const r = await fetch(`${srvA.url}/api/businesses/${activeCompBiz.id}/marketing-hub`);
+    assert.equal(r.status, 200, "active comp owner should get 200");
+  } finally {
+    await srvA.close();
+  }
+
+  const srvE = await start(makeApp(ownerExpired.id));
+  try {
+    const r = await fetch(`${srvE.url}/api/businesses/${expiredCompBiz.id}/marketing-hub`);
+    assert.equal(r.status, 403, "expired comp must NOT count as Gold");
+    const body = await r.json();
+    assert.equal(body.code, "GOLD_REQUIRED");
+  } finally {
+    await srvE.close();
+  }
+});
+
+test("marketing-hub: cross-business isolation — biz A's hub never leaks biz B's activity", async () => {
+  // A common regression class for aggregation endpoints is forgetting a
+  // WHERE businessId=… clause on one of the sub-queries. Seed identical
+  // activity for two businesses, request biz A, and assert each metric
+  // counts only A's rows.
+  const bizA = await seedBusiness({ tier: "premium" });
+  const bizB = await seedBusiness({ tier: "premium" });
+  const ownerA = await seedUser(bizA.id);
+  const inWindow = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+
+  for (const biz of [bizA, bizB]) {
+    await pgDb.insert(newsletterCampaigns).values({
+      businessId: biz.id,
+      subject: `Hi from ${biz.id}`,
+      bodyHtml: "<p>x</p>",
+      status: "sent",
+      recipientCount: 10,
+      successCount: 10,
+      failureCount: 0,
+      sentAt: inWindow,
+    });
+    await pgDb.insert(newsletterSubscribers).values({
+      businessId: biz.id,
+      email: `sub_${biz.id}@example.com`,
+      unsubscribeToken: `iso_${biz.id}_${Date.now()}_${Math.random()}`,
+    });
+    await pgDb.insert(smsCampaigns).values({
+      businessId: biz.id,
+      body: "hi",
+      status: "sent",
+      recipientCount: 5,
+      successCount: 5,
+      failureCount: 0,
+      creditsCharged: 10,
+      sentAt: inWindow,
+    });
+    await pgDb.insert(reviewRequests).values({
+      businessId: biz.id,
+      recipientEmail: `r_${biz.id}@example.com`,
+      channel: "email",
+      status: "sent",
+      token: `iso_rr_${biz.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      sentAt: inWindow,
+    });
+    await pgDb.insert(deals).values({
+      businessId: biz.id,
+      title: `Deal ${biz.id}`,
+      description: "d",
+      discountText: "10%",
+      redemptionInstructions: "show this",
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      status: "active",
+      clickCount: 3,
+      createdAt: inWindow,
+    });
+    await pgDb.insert(socialDrafts).values({
+      businessId: biz.id,
+      sourceNotes: `notes ${biz.id}`,
+      status: "draft",
+      createdAt: inWindow,
+    });
+    await pgDb.insert(recipientSuppressions).values({
+      businessId: biz.id,
+      contactType: "email",
+      contact: `supp_${biz.id}@example.com`,
+      reason: "bounce",
+    });
+  }
+
+  const srv = await start(makeApp(ownerA.id));
+  try {
+    const r = await fetch(`${srv.url}/api/businesses/${bizA.id}/marketing-hub?days=30`);
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.newsletter.campaigns, 1, "newsletter is biz-scoped");
+    assert.equal(body.newsletter.delivered, 10);
+    assert.equal(body.newsletter.subscribersTotal, 1);
+    assert.equal(body.sms.campaigns, 1, "sms is biz-scoped");
+    assert.equal(body.reviewRequests.sent, 1, "review reqs are biz-scoped");
+    assert.equal(body.deals.currentlyActive, 1, "deals.currentlyActive is biz-scoped");
+    assert.equal(body.deals.createdInWindow, 1);
+    assert.equal(body.deals.clicksInWindow, 3);
+    assert.equal(body.social.drafts, 1, "social is biz-scoped");
+    assert.equal(body.suppressions.email, 1, "suppressions are biz-scoped");
+    // headline: 10 nl delivered + 5 sms delivered + 1 rr sent = 16
+    assert.equal(body.totalReach, 16);
+  } finally {
+    await srv.close();
+  }
+});
+
+test("marketing-hub: window and active-deal boundaries are inclusive/exclusive as documented", async () => {
+  // The endpoint uses `gte(sentAt, since)` for windowed metrics, so an
+  // event timestamped exactly at `since` is INCLUDED. For active deals
+  // it uses `startsAt <= now AND endsAt > now`, so:
+  //   - a deal whose endsAt is exactly NOW is NOT currently active
+  //   - a deal whose startsAt is exactly NOW IS currently active.
+  const biz = await seedBusiness({ tier: "premium" });
+  const owner = await seedUser(biz.id);
+
+  // Compute the server's `since` for days=7. There's a tiny race between
+  // when we compute "since" client-side here and when the server does;
+  // pad by 5 seconds inside the window so we land on the inclusive side.
+  const days = 7;
+  const insideEdge = new Date(Date.now() - days * 24 * 60 * 60 * 1000 + 5_000);
+  const outsideEdge = new Date(Date.now() - days * 24 * 60 * 60 * 1000 - 60_000);
+
+  await pgDb.insert(newsletterCampaigns).values([
+    {
+      businessId: biz.id,
+      subject: "edge-in",
+      bodyHtml: "<p>x</p>",
+      status: "sent",
+      recipientCount: 1,
+      successCount: 1,
+      failureCount: 0,
+      sentAt: insideEdge,
+    },
+    {
+      businessId: biz.id,
+      subject: "edge-out",
+      bodyHtml: "<p>x</p>",
+      status: "sent",
+      recipientCount: 999,
+      successCount: 999,
+      failureCount: 0,
+      sentAt: outsideEdge,
+    },
+  ]);
+
+  // Two deals: one whose endsAt is in the past by 1ms (should NOT be
+  // active); one whose endsAt is 1 hour in the future (should be).
+  const justEnded = new Date(Date.now() - 1);
+  const stillRunning = new Date(Date.now() + 60 * 60 * 1000);
+  await pgDb.insert(deals).values([
+    {
+      businessId: biz.id,
+      title: "just-ended",
+      description: "d",
+      discountText: "x",
+      redemptionInstructions: "x",
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: justEnded,
+      status: "active",
+      clickCount: 0,
+      createdAt: insideEdge,
+    },
+    {
+      businessId: biz.id,
+      title: "still-running",
+      description: "d",
+      discountText: "x",
+      redemptionInstructions: "x",
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: stillRunning,
+      status: "active",
+      clickCount: 0,
+      createdAt: insideEdge,
+    },
+  ]);
+
+  const srv = await start(makeApp(owner.id));
+  try {
+    const r = await fetch(`${srv.url}/api/businesses/${biz.id}/marketing-hub?days=7`);
+    const body = await r.json();
+    assert.equal(body.newsletter.campaigns, 1, "out-of-window campaign must not count");
+    assert.equal(body.newsletter.delivered, 1);
+    assert.equal(body.deals.currentlyActive, 1, "deal whose endsAt just passed must NOT count as active");
+  } finally {
+    await srv.close();
+  }
+});
