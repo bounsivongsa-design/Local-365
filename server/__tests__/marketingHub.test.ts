@@ -21,6 +21,7 @@ import {
   businesses,
   newsletterCampaigns,
   newsletterSubscribers,
+  newsletterSends,
   smsCampaigns,
   smsSubscribers,
   reviewRequests,
@@ -69,6 +70,8 @@ async function seedUser(linkedBusinessId: number | null) {
 async function cleanup() {
   if (createdBizIds.length) {
     await pgDb.delete(reviewRequests).where(inArray(reviewRequests.businessId, createdBizIds));
+    // newsletter_sends FK-cascades from campaigns/subscribers so deleting
+    // those parents wipes the children too.
     await pgDb.delete(newsletterCampaigns).where(inArray(newsletterCampaigns.businessId, createdBizIds));
     await pgDb.delete(newsletterSubscribers).where(inArray(newsletterSubscribers.businessId, createdBizIds));
     await pgDb.delete(smsCampaigns).where(inArray(smsCampaigns.businessId, createdBizIds));
@@ -178,40 +181,79 @@ test("marketing-hub: aggregates per-suite counts, scoped by ?days window", async
   const outsideWindow = new Date(now - 60 * 24 * 60 * 60 * 1000); // 60 days ago
 
   // Newsletter: one in-window sent campaign, one OUT-of-window sent
-  await pgDb.insert(newsletterCampaigns).values([
-    {
-      businessId: biz.id,
-      subject: "In window",
-      bodyHtml: "<p>x</p>",
-      status: "sent",
-      recipientCount: 100,
-      successCount: 95,
-      failureCount: 5,
-      sentAt: inWindow,
-    },
-    {
-      businessId: biz.id,
-      subject: "Old",
-      bodyHtml: "<p>old</p>",
-      status: "sent",
-      recipientCount: 999,
-      successCount: 999,
-      failureCount: 0,
-      sentAt: outsideWindow,
-    },
-  ]);
+  const [inWindowCampaign, outsideWindowCampaign] = await pgDb
+    .insert(newsletterCampaigns)
+    .values([
+      {
+        businessId: biz.id,
+        subject: "In window",
+        bodyHtml: "<p>x</p>",
+        status: "sent",
+        recipientCount: 100,
+        successCount: 95,
+        failureCount: 5,
+        sentAt: inWindow,
+      },
+      {
+        businessId: biz.id,
+        subject: "Old",
+        bodyHtml: "<p>old</p>",
+        status: "sent",
+        recipientCount: 999,
+        successCount: 999,
+        failureCount: 0,
+        sentAt: outsideWindow,
+      },
+    ])
+    .returning();
   // Two subscribers, one unsubscribed (point-in-time, not range-scoped)
-  await pgDb.insert(newsletterSubscribers).values([
+  const [subA, subB] = await pgDb
+    .insert(newsletterSubscribers)
+    .values([
+      {
+        businessId: biz.id,
+        email: "a@example.com",
+        unsubscribeToken: `tok_a_${now}`,
+      },
+      {
+        businessId: biz.id,
+        email: "b@example.com",
+        unsubscribeToken: `tok_b_${now}`,
+        unsubscribedAt: new Date(),
+      },
+    ])
+    .returning();
+
+  // Engagement: 3 sends on the in-window campaign — one opened+clicked,
+  // one opened only, one neither. Plus 1 send on the OUT-of-window
+  // campaign that's been opened+clicked, which must NOT count.
+  await pgDb.insert(newsletterSends).values([
     {
-      businessId: biz.id,
-      email: "a@example.com",
-      unsubscribeToken: `tok_a_${now}`,
+      campaignId: inWindowCampaign.id,
+      subscriberId: subA.id,
+      status: "sent",
+      sentAt: inWindow,
+      messageId: `re_inw_open_click_${now}`,
+      openedAt: new Date(now - 4 * 24 * 60 * 60 * 1000),
+      clickedAt: new Date(now - 4 * 24 * 60 * 60 * 1000),
     },
     {
-      businessId: biz.id,
-      email: "b@example.com",
-      unsubscribeToken: `tok_b_${now}`,
-      unsubscribedAt: new Date(),
+      campaignId: inWindowCampaign.id,
+      subscriberId: subB.id,
+      status: "sent",
+      sentAt: inWindow,
+      messageId: `re_inw_open_only_${now}`,
+      openedAt: new Date(now - 4 * 24 * 60 * 60 * 1000),
+    },
+    {
+      campaignId: outsideWindowCampaign.id,
+      // Reuse subA on a different campaign (uniqueIndex is per-campaign).
+      subscriberId: subA.id,
+      status: "sent",
+      sentAt: outsideWindow,
+      messageId: `re_out_open_click_${now}`,
+      openedAt: new Date(now - 50 * 24 * 60 * 60 * 1000),
+      clickedAt: new Date(now - 50 * 24 * 60 * 60 * 1000),
     },
   ]);
 
@@ -322,6 +364,13 @@ test("marketing-hub: aggregates per-suite counts, scoped by ?days window", async
     assert.equal(body.newsletter.delivered, 95);
     assert.equal(body.newsletter.failed, 5);
     assert.equal(body.newsletter.deliveryRate, 95);
+    // Engagement: 2 opens + 1 click on the in-window campaign; the
+    // opened+clicked send on the OUT-of-window campaign must NOT count.
+    assert.equal(body.newsletter.opened, 2, "in-window opens only");
+    assert.equal(body.newsletter.clicked, 1, "in-window clicks only");
+    // Rates are denominated against DELIVERED (95), not recipients.
+    assert.equal(body.newsletter.openRate, Math.round((2 / 95) * 1000) / 10);
+    assert.equal(body.newsletter.clickRate, Math.round((1 / 95) * 1000) / 10);
     assert.equal(body.newsletter.subscribersTotal, 2);
     assert.equal(body.newsletter.subscribersActive, 1);
 

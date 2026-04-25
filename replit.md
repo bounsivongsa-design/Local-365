@@ -38,7 +38,7 @@ Dev/prod parity: Anything verified in dev must also be verified in production. A
 - **Admin Dashboard**: Control center for platform management, user/business oversight, and content moderation.
 - **AI Lab**: Admin-only sandbox for developing Gold-exclusive AI features, including an AI credit system.
 - **Growth Features**: "Founding Urgency Banner" and "Refer-a-Business" program.
-- **AI-Powered Tools (Gold-exclusive)**: Listing Description Writer, Review Reply Generator, Quote Responder, Help Wanted Writer, Event Description Writer, Photo Caption & Alt-Text Generator, Daily Deals / Limited-Time Offers (with AI Deal Writer), SMS Broadcast (with AI SMS Drafter), Social Composer, Review Request Blasts, Email Newsletter (with AI Newsletter Draft).
+- **AI-Powered Tools (Gold-exclusive)**: Listing Description Writer, Review Reply Generator, Quote Responder, Help Wanted Writer, Event Description Writer, Photo Caption & Alt-Text Generator, Daily Deals / Limited-Time Offers (with AI Deal Writer), SMS Broadcast (with AI SMS Drafter), Social Composer, Review Request Blasts, Email Newsletter (with AI Newsletter Draft, plus open/click tracking via Resend webhooks → newsletter_sends.openedAt/clickedAt with first-touch semantics; surfaced as opens/clicks/openRate/clickRate in the Marketing Hub).
 - **Technical Implementations**: Haversine formula for distance filtering, hierarchical category management, Stripe integration for subscriptions and payments, Gold auto-upgrade for new members, reusable image cropper.
 - **Multi-Zip Listings**: Owners can manage separate listings in additional covered zip codes.
 - **Comp Memberships**: Provides Gold-equivalent access to businesses without Stripe charges, manageable via the admin dashboard.

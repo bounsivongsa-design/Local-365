@@ -30,6 +30,9 @@ import {
   businesses,
   reviewRequests,
   recipientSuppressions,
+  newsletterCampaigns,
+  newsletterSubscribers,
+  newsletterSends,
 } from "@shared/schema";
 import { registerReviewRequestRoutes } from "../reviewRequests";
 
@@ -80,11 +83,71 @@ async function cleanup() {
     await pgDb
       .delete(recipientSuppressions)
       .where(inArray(recipientSuppressions.businessId, createdBusinessIds));
+    // newsletter_sends cascades from campaigns/subscribers, but we delete
+    // the parents anyway. Order matters because of FK refs.
+    await pgDb
+      .delete(newsletterCampaigns)
+      .where(inArray(newsletterCampaigns.businessId, createdBusinessIds));
+    await pgDb
+      .delete(newsletterSubscribers)
+      .where(inArray(newsletterSubscribers.businessId, createdBusinessIds));
     await pgDb
       .delete(businesses)
       .where(inArray(businesses.id, createdBusinessIds));
     createdBusinessIds = [];
   }
+}
+
+async function seedNewsletterSend(opts: {
+  businessId: number;
+  messageId: string;
+  openedAt?: Date | null;
+  clickedAt?: Date | null;
+}) {
+  const [campaign] = await pgDb
+    .insert(newsletterCampaigns)
+    .values({
+      businessId: opts.businessId,
+      subject: "Engagement test",
+      bodyHtml: "<p>x</p>",
+      status: "sent",
+      recipientCount: 1,
+      successCount: 1,
+      failureCount: 0,
+      sentAt: new Date(),
+    })
+    .returning();
+  const [sub] = await pgDb
+    .insert(newsletterSubscribers)
+    .values({
+      businessId: opts.businessId,
+      email: `eng_${Date.now()}_${Math.random()}@example.com`,
+      unsubscribeToken: `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    })
+    .returning();
+  const [send] = await pgDb
+    .insert(newsletterSends)
+    .values({
+      campaignId: campaign.id,
+      subscriberId: sub.id,
+      status: "sent",
+      sentAt: new Date(),
+      messageId: opts.messageId,
+      openedAt: opts.openedAt ?? null,
+      clickedAt: opts.clickedAt ?? null,
+    })
+    .returning();
+  return { campaign, sub, send };
+}
+
+async function postSigned(url: string, body: object) {
+  const payload = JSON.stringify(body);
+  const headers = signPayload(process.env.RESEND_WEBHOOK_SECRET!, payload);
+  return fetch(`${url}/api/webhooks/resend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: payload,
+  });
 }
 
 before(async () => {
@@ -306,6 +369,129 @@ test("soft (transient) bounce is ignored — no suppression, no row change", asy
       .from(recipientSuppressions)
       .where(eq(recipientSuppressions.businessId, biz.id));
     assert.equal(supps.length, 0);
+  } finally {
+    await server.close();
+  }
+});
+
+test("email.opened stamps openedAt on the matching newsletter_send (matched by message_id)", async () => {
+  const app = makeApp();
+  const server = await start(app);
+  try {
+    const biz = await seedBusiness("Open Co");
+    const messageId = `re_open_${Date.now()}`;
+    const { send } = await seedNewsletterSend({ businessId: biz.id, messageId });
+
+    const res = await postSigned(server.url, {
+      type: "email.opened",
+      data: { email_id: messageId, to: ["reader@example.com"] },
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as any;
+    assert.equal(body.stamped, 1);
+
+    const [updated] = await pgDb
+      .select()
+      .from(newsletterSends)
+      .where(eq(newsletterSends.id, send.id));
+    assert.ok(updated.openedAt, "openedAt should have been stamped");
+    assert.equal(updated.clickedAt, null, "clickedAt must remain untouched");
+  } finally {
+    await server.close();
+  }
+});
+
+test("email.clicked stamps clickedAt and is first-touch (idempotent on re-fire)", async () => {
+  const app = makeApp();
+  const server = await start(app);
+  try {
+    const biz = await seedBusiness("Click Co");
+    const messageId = `re_click_${Date.now()}`;
+    const { send } = await seedNewsletterSend({ businessId: biz.id, messageId });
+
+    // First click — should stamp.
+    const res1 = await postSigned(server.url, {
+      type: "email.clicked",
+      data: { email_id: messageId },
+    });
+    assert.equal(res1.status, 200);
+    assert.equal(((await res1.json()) as any).stamped, 1);
+
+    const [afterFirst] = await pgDb
+      .select()
+      .from(newsletterSends)
+      .where(eq(newsletterSends.id, send.id));
+    const firstClickAt = afterFirst.clickedAt;
+    assert.ok(firstClickAt, "first click should have stamped clickedAt");
+
+    // Second click — must NOT overwrite the first-touch timestamp.
+    // Wait a tick so a buggy implementation that re-stamps would produce
+    // a different timestamp we can detect.
+    await new Promise((r) => setTimeout(r, 50));
+    const res2 = await postSigned(server.url, {
+      type: "email.clicked",
+      data: { email_id: messageId },
+    });
+    assert.equal(res2.status, 200);
+    assert.equal(
+      ((await res2.json()) as any).stamped,
+      0,
+      "second click must be a no-op (first-touch wins)",
+    );
+
+    const [afterSecond] = await pgDb
+      .select()
+      .from(newsletterSends)
+      .where(eq(newsletterSends.id, send.id));
+    assert.equal(
+      afterSecond.clickedAt?.getTime(),
+      firstClickAt!.getTime(),
+      "clickedAt must equal the first-touch timestamp",
+    );
+  } finally {
+    await server.close();
+  }
+});
+
+test("engagement event with no message_id match is a silent no-op (no error, no stamp)", async () => {
+  const app = makeApp();
+  const server = await start(app);
+  try {
+    const biz = await seedBusiness("Unknown Id Co");
+    const { send } = await seedNewsletterSend({
+      businessId: biz.id,
+      messageId: "re_real_id",
+    });
+
+    const res = await postSigned(server.url, {
+      type: "email.opened",
+      data: { email_id: "re_does_not_exist" },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(((await res.json()) as any).stamped, 0);
+
+    const [unchanged] = await pgDb
+      .select()
+      .from(newsletterSends)
+      .where(eq(newsletterSends.id, send.id));
+    assert.equal(unchanged.openedAt, null);
+    assert.equal(unchanged.clickedAt, null);
+  } finally {
+    await server.close();
+  }
+});
+
+test("engagement event without an email_id is acknowledged but ignored", async () => {
+  const app = makeApp();
+  const server = await start(app);
+  try {
+    const res = await postSigned(server.url, {
+      type: "email.opened",
+      data: { to: ["x@example.com"] },
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as any;
+    assert.equal(body.ignored, "no email_id");
   } finally {
     await server.close();
   }
