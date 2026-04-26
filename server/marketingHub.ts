@@ -127,10 +127,19 @@ export function registerMarketingHubRoutes(app: Express) {
       // Engagement: join newsletter_sends → newsletter_campaigns so we
       // only count opens/clicks for THIS business's campaigns sent in the
       // window (not all-time, not other businesses sharing the webhook).
+      //
+      // `trackable` excludes sends with NULL message_id — those are legacy
+      // rows from before open/click tracking shipped, so the Resend webhook
+      // has no id to match against and they can NEVER be stamped opened/
+      // clicked. Counting them in the rate denominator would tank reported
+      // open/click rates artificially. `untrackedSends` is surfaced
+      // separately so the UI can footnote it.
       const [nlEngagement] = await pgDb
         .select({
           opened: sql<number>`COUNT(*) FILTER (WHERE ${newsletterSends.openedAt} IS NOT NULL)`,
           clicked: sql<number>`COUNT(*) FILTER (WHERE ${newsletterSends.clickedAt} IS NOT NULL)`,
+          trackable: sql<number>`COUNT(*) FILTER (WHERE ${newsletterSends.status} = 'sent' AND ${newsletterSends.messageId} IS NOT NULL)`,
+          untracked: sql<number>`COUNT(*) FILTER (WHERE ${newsletterSends.status} = 'sent' AND ${newsletterSends.messageId} IS NULL)`,
         })
         .from(newsletterSends)
         .innerJoin(newsletterCampaigns, eq(newsletterSends.campaignId, newsletterCampaigns.id))
@@ -346,11 +355,27 @@ export function registerMarketingHubRoutes(app: Express) {
         deliveryRate: pct(n(nlTotals?.delivered), n(nlTotals?.recipients)),
         opened: n(nlEngagement?.opened),
         clicked: n(nlEngagement?.clicked),
-        // Open/click rates are denominated against DELIVERED (not
-        // recipients) so a campaign with bounces doesn't artificially
-        // tank the number.
-        openRate: pct(n(nlEngagement?.opened), n(nlTotals?.delivered)),
-        clickRate: pct(n(nlEngagement?.clicked), n(nlTotals?.delivered)),
+        // Number of in-window sends that CAN be tracked by the Resend
+        // open/click webhook (status='sent' AND message_id IS NOT NULL).
+        // Used as the denominator for openRate/clickRate so legacy sends
+        // (sent before tracking shipped) don't tank the rate.
+        trackable: n(nlEngagement?.trackable),
+        // Sends that delivered but have no Resend message_id, so engagement
+        // can never be stamped on them. Surfaced separately so the UI can
+        // footnote "(of N tracked) — M legacy sends excluded".
+        untrackedSends: n(nlEngagement?.untracked),
+        // Open/click rates are denominated against TRACKABLE sends so
+        // legacy/untracked sends don't artificially deflate the number.
+        // Falls back to delivered when nothing is yet tracked (degrades
+        // to old behavior so a brand-new install isn't a divide-by-zero).
+        openRate: pct(
+          n(nlEngagement?.opened),
+          n(nlEngagement?.trackable) || n(nlTotals?.delivered),
+        ),
+        clickRate: pct(
+          n(nlEngagement?.clicked),
+          n(nlEngagement?.trackable) || n(nlTotals?.delivered),
+        ),
         subscribersTotal: n(nlSubs?.total),
         subscribersActive: n(nlSubs?.active),
         last: nlLast ?? null,

@@ -10,8 +10,12 @@ interface ReferralRow {
   id: number;
   referredBusinessId: number;
   referredName: string | null;
-  status: "pending" | "rewarded";
+  status: "pending" | "rewarded" | "processing" | "void";
   rewardDays: number | null;
+  // Stripe credit issued in cents. Null on legacy rows or rows that took
+  // the founder/comp Gold-days fallback path; the row label degrades to
+  // "+N Gold days" instead of a dollar amount in those cases.
+  creditAmountCents: number | null;
   createdAt: string;
   rewardedAt: string | null;
 }
@@ -21,6 +25,7 @@ interface ReferralData {
   isFoundingMember: boolean;
   foundingMemberNumber: number | null;
   goldDaysEarned: number;
+  totalCreditCentsEarned: number;
   pendingCreditCents: number;
   referrals: ReferralRow[];
 }
@@ -45,6 +50,14 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
   const pendingCreditCents = data?.pendingCreditCents ?? 0;
   const pendingCreditDollars =
     pendingCreditCents > 0 ? (pendingCreditCents / 100).toFixed(2) : null;
+  const totalCreditCentsEarned = data?.totalCreditCentsEarned ?? 0;
+  const totalCreditDollarsEarned =
+    totalCreditCentsEarned > 0 ? (totalCreditCentsEarned / 100).toFixed(2) : null;
+  // Most recent rewarded referrals — capped at 3 so the card stays compact.
+  // Voided rows are excluded so the customer never sees an admin clawback.
+  const recentRewarded = (data?.referrals ?? [])
+    .filter((r) => r.status === "rewarded")
+    .slice(0, 3);
 
   const copyShareLink = async () => {
     if (!shareUrl) return;
@@ -145,12 +158,63 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
                 <div className="text-[10px] text-white/60 uppercase tracking-wide">Pending</div>
               </div>
               <div className="bg-white/10 rounded-lg py-2">
-                <div className="text-lg font-bold" data-testid="text-gold-days-earned">
-                  {data?.goldDaysEarned ?? 0}
-                </div>
-                <div className="text-[10px] text-white/60 uppercase tracking-wide">Gold Days</div>
+                {/* Show lifetime credit earned when present, otherwise the
+                    legacy Gold-days counter so founder/comp accounts (no
+                    Stripe customer → no dollar credit issued) still see
+                    their earned reward. */}
+                {totalCreditDollarsEarned ? (
+                  <>
+                    <div className="text-lg font-bold" data-testid="text-credit-earned">
+                      ${totalCreditDollarsEarned}
+                    </div>
+                    <div className="text-[10px] text-white/60 uppercase tracking-wide">Earned</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-lg font-bold" data-testid="text-gold-days-earned">
+                      {data?.goldDaysEarned ?? 0}
+                    </div>
+                    <div className="text-[10px] text-white/60 uppercase tracking-wide">Gold Days</div>
+                  </>
+                )}
               </div>
             </div>
+
+            {recentRewarded.length > 0 && (
+              <div className="mb-3 rounded-lg bg-white/5 border border-white/10 p-2">
+                <div className="text-[10px] uppercase tracking-wide text-white/60 mb-1.5 px-1">
+                  Recent rewards
+                </div>
+                <ul className="space-y-1">
+                  {recentRewarded.map((r) => {
+                    const cents = r.creditAmountCents;
+                    // Founder/comp fallback: no Stripe customer → reward came
+                    // as +N Gold days, no dollar amount to show.
+                    const label =
+                      cents != null
+                        ? `+$${(cents / 100).toFixed(2)}`
+                        : `+${r.rewardDays ?? 30}d Gold`;
+                    return (
+                      <li
+                        key={r.id}
+                        className="flex items-center justify-between text-xs px-1"
+                        data-testid={`row-rewarded-referral-${r.id}`}
+                      >
+                        <span className="truncate text-white/85" title={r.referredName ?? "Business"}>
+                          {r.referredName ?? "Business"}
+                        </span>
+                        <span
+                          className="font-semibold text-emerald-200 ml-2 shrink-0"
+                          data-testid={`text-reward-amount-${r.id}`}
+                        >
+                          {label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button

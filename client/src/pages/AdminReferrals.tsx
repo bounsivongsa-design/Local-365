@@ -22,9 +22,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, RefreshCw, Loader2, Gift, Shield } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, Gift, Shield, Ban } from "lucide-react";
 
 interface AdminReferral {
   id: number;
@@ -62,6 +64,9 @@ function statusBadge(status: string) {
   if (status === "processing") {
     return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20" data-testid={`badge-status-${status}`}>Processing</Badge>;
   }
+  if (status === "void") {
+    return <Badge className="bg-slate-500/15 text-slate-700 hover:bg-slate-500/20" data-testid={`badge-status-${status}`}>Voided</Badge>;
+  }
   return <Badge variant="outline" data-testid={`badge-status-${status}`}>{status}</Badge>;
 }
 
@@ -71,6 +76,12 @@ export default function AdminReferrals() {
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [confirmRow, setConfirmRow] = useState<AdminReferral | null>(null);
+  // Override input is a free-text dollar amount (NOT cents). The server
+  // expects cents and validates 1..100000, so we keep the input human-
+  // readable here and convert at submit time. Empty = use server default
+  // (recompute from referrer's current Stripe sub).
+  const [customDollars, setCustomDollars] = useState<string>("");
+  const [voidRow, setVoidRow] = useState<AdminReferral | null>(null);
 
   const isAdmin = isAuthenticated && user?.accountType === "admin";
 
@@ -88,8 +99,12 @@ export default function AdminReferrals() {
   });
 
   const issueCredit = useMutation({
-    mutationFn: async (referralId: number) => {
-      const res = await apiRequest("POST", `/api/admin/referrals/${referralId}/issue-credit`);
+    mutationFn: async (args: { referralId: number; customCents?: number }) => {
+      // Only send customCents in the body when the operator typed an
+      // override; otherwise we want the server to recompute from the
+      // referrer's current Stripe sub (the auto-calc path).
+      const body = args.customCents !== undefined ? { customCents: args.customCents } : undefined;
+      const res = await apiRequest("POST", `/api/admin/referrals/${args.referralId}/issue-credit`, body);
       return res.json() as Promise<{ ok: boolean; creditCents: number; balanceTransactionId: string }>;
     },
     onSuccess: (data) => {
@@ -100,6 +115,7 @@ export default function AdminReferrals() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals/stats"] });
       setConfirmRow(null);
+      setCustomDollars("");
     },
     onError: (err: any) => {
       toast({
@@ -109,6 +125,49 @@ export default function AdminReferrals() {
       });
     },
   });
+
+  const voidReferral = useMutation({
+    mutationFn: async (referralId: number) => {
+      const res = await apiRequest("POST", `/api/admin/referrals/${referralId}/void`);
+      return res.json() as Promise<{ ok: boolean; priorStatus: string; priorCreditCents: number | null }>;
+    },
+    onSuccess: (data) => {
+      // Loud about prior credit so the operator KNOWS to refund it manually
+      // in the Stripe console — voiding does not clawback.
+      const priorNote =
+        data.priorCreditCents != null && data.priorCreditCents > 0
+          ? ` ${formatCents(data.priorCreditCents)} was already credited — refund manually in Stripe if needed.`
+          : "";
+      toast({
+        title: "Referral voided",
+        description: `Status flipped from ${data.priorStatus} to void.${priorNote}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals/stats"] });
+      setVoidRow(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to void referral",
+        description: err?.message || "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Validate the custom-amount input on the fly so the Submit button can
+  // reflect bad input before round-tripping to the server. Empty string
+  // is valid (means "use server default"). Mirrors the server's range
+  // (1..100000 cents = $0.01..$1000.00).
+  const customCentsParsed = (() => {
+    const trimmed = customDollars.trim();
+    if (!trimmed) return { valid: true, cents: undefined as number | undefined };
+    const num = Number(trimmed);
+    if (!Number.isFinite(num) || num <= 0) return { valid: false, cents: undefined };
+    const cents = Math.round(num * 100);
+    if (cents < 1 || cents > 100000) return { valid: false, cents: undefined };
+    return { valid: true, cents };
+  })();
 
   const totals = (referrals || []).reduce(
     (acc, r) => {
@@ -159,6 +218,7 @@ export default function AdminReferrals() {
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="processing">Processing</SelectItem>
             <SelectItem value="rewarded">Rewarded</SelectItem>
+            <SelectItem value="void">Voided</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -241,20 +301,44 @@ export default function AdminReferrals() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!r.referrerHasStripeCustomer || (issueCredit.isPending && issueCredit.variables === r.id)}
-                          onClick={() => setConfirmRow(r)}
-                          data-testid={`button-issue-credit-${r.id}`}
-                        >
-                          {issueCredit.isPending && issueCredit.variables === r.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                          )}
-                          {r.status === "rewarded" ? "Re-issue" : "Issue credit"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              r.status === "void" ||
+                              !r.referrerHasStripeCustomer ||
+                              (issueCredit.isPending && issueCredit.variables?.referralId === r.id)
+                            }
+                            onClick={() => {
+                              setCustomDollars(""); // reset on each open
+                              setConfirmRow(r);
+                            }}
+                            data-testid={`button-issue-credit-${r.id}`}
+                          >
+                            {issueCredit.isPending && issueCredit.variables?.referralId === r.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                            )}
+                            {r.status === "rewarded" ? "Re-issue" : "Issue credit"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={r.status === "void" || (voidReferral.isPending && voidReferral.variables === r.id)}
+                            onClick={() => setVoidRow(r)}
+                            className="text-slate-600 hover:text-red-700 hover:bg-red-50"
+                            data-testid={`button-void-${r.id}`}
+                          >
+                            {voidReferral.isPending && voidReferral.variables === r.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Ban className="h-3.5 w-3.5 mr-1" />
+                            )}
+                            Void
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -271,21 +355,103 @@ export default function AdminReferrals() {
             <AlertDialogTitle>
               {confirmRow?.status === "rewarded" ? "Re-issue" : "Issue"} Stripe credit?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will apply approximately{" "}
-              {formatCents(confirmRow?.creditAmountCents ?? confirmRow?.estimatedCreditCents ?? null)} credit
-              to <strong>{confirmRow?.referrerBusinessName}</strong>'s Stripe customer balance for referring{" "}
-              <strong>{confirmRow?.referredBusinessName}</strong>. The exact amount is recalculated from
-              their current subscription at issue time. This action is logged.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This will credit <strong>{confirmRow?.referrerBusinessName}</strong>'s Stripe customer
+                  balance for referring <strong>{confirmRow?.referredBusinessName}</strong>. This action
+                  is logged.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Default behavior recomputes the amount from the referrer's current subscription
+                  (currently approximately{" "}
+                  {formatCents(confirmRow?.creditAmountCents ?? confirmRow?.estimatedCreditCents ?? null)}).
+                  Override below for partial refunds, mid-cycle upgrades, or goodwill bumps.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="space-y-2 pt-1">
+            <Label htmlFor="custom-amount-input" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Custom amount (optional)
+            </Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">$</span>
+              <Input
+                id="custom-amount-input"
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                max="1000.00"
+                step="0.01"
+                placeholder="leave blank to use default"
+                value={customDollars}
+                onChange={(e) => setCustomDollars(e.target.value)}
+                className="max-w-[200px]"
+                data-testid="input-custom-amount"
+              />
+            </div>
+            {!customCentsParsed.valid && (
+              <p className="text-xs text-red-600" data-testid="text-custom-amount-error">
+                Enter an amount between $0.01 and $1000.00
+              </p>
+            )}
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-issue">Cancel</AlertDialogCancel>
             <AlertDialogAction
               data-testid="button-confirm-issue"
-              onClick={() => confirmRow && issueCredit.mutate(confirmRow.id)}
+              disabled={!customCentsParsed.valid}
+              onClick={() => {
+                if (!confirmRow || !customCentsParsed.valid) return;
+                issueCredit.mutate({
+                  referralId: confirmRow.id,
+                  customCents: customCentsParsed.cents,
+                });
+              }}
             >
-              Issue credit
+              {customCentsParsed.cents !== undefined
+                ? `Issue ${formatCents(customCentsParsed.cents)}`
+                : "Issue credit"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!voidRow} onOpenChange={(open) => !open && setVoidRow(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Void this referral?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Marks the referral from <strong>{voidRow?.referrerBusinessName}</strong> →{" "}
+                  <strong>{voidRow?.referredBusinessName}</strong> as void. It will no longer count
+                  toward the referrer's lifetime credit total or appear in pending stats.
+                </p>
+                {voidRow?.creditAmountCents != null && voidRow.creditAmountCents > 0 && (
+                  <p className="text-xs text-amber-700 font-medium" data-testid="text-void-clawback-warning">
+                    Note: {formatCents(voidRow.creditAmountCents)} was already credited. Voiding does
+                    NOT clawback the Stripe credit — refund it manually in the Stripe console if needed.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  The unique-per-referred-business constraint still blocks duplicate referrals; voiding
+                  does not allow re-creating the link.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-void">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-void"
+              onClick={() => voidRow && voidReferral.mutate(voidRow.id)}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Void referral
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

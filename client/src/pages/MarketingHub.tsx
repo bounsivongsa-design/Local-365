@@ -34,6 +34,8 @@ interface MarketingHubData {
     deliveryRate: number;
     opened: number;
     clicked: number;
+    trackable: number;
+    untrackedSends: number;
     openRate: number;
     clickRate: number;
     subscribersTotal: number;
@@ -303,6 +305,18 @@ export default function MarketingHub() {
                   testid="stat-newsletter-click-rate"
                 />
               </div>
+              {data.newsletter.untrackedSends > 0 && (
+                <div
+                  className="text-[11px] text-slate-500 italic"
+                  data-testid="text-newsletter-untracked"
+                  title="Sends made before open/click tracking shipped have no Resend message id, so engagement events from them can never be matched. They're excluded from the rate denominator so old sends don't artificially deflate your reported open and click rates."
+                >
+                  Open/click rates calculated on {data.newsletter.trackable.toLocaleString()} tracked send
+                  {data.newsletter.trackable === 1 ? "" : "s"} —{" "}
+                  {data.newsletter.untrackedSends.toLocaleString()} legacy send
+                  {data.newsletter.untrackedSends === 1 ? "" : "s"} excluded.
+                </div>
+              )}
               <div className="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-100">
                 <span>
                   Subscribers:{" "}

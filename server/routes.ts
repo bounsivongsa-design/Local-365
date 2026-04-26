@@ -1206,6 +1206,11 @@ Respond in this exact JSON format:
           referredName: businesses.name,
           status: referrals.status,
           rewardDays: referrals.rewardDays,
+          // Actual Stripe credit issued (cents). Null on legacy rows that
+          // pre-date this column and on rows that took the founder/comp
+          // Gold-days fallback path. The card displays "$X credit" when
+          // present, otherwise falls back to the rewardDays language.
+          creditAmountCents: referrals.creditAmountCents,
           createdAt: referrals.createdAt,
           rewardedAt: referrals.rewardedAt,
         })
@@ -1213,6 +1218,14 @@ Respond in this exact JSON format:
         .leftJoin(businesses, eq(businesses.id, referrals.referredBusinessId))
         .where(eq(referrals.referrerBusinessId, businessId))
         .orderBy(desc(referrals.createdAt));
+
+      // Sum lifetime credit earned (cents) across rewarded rows. Excludes
+      // void rows (admin-cancelled) and legacy rows with NULL cents. This
+      // is a separate stat from goldDaysEarned which counts the
+      // founder/comp Gold-days fallback path.
+      const totalCreditCentsEarned = refs
+        .filter((r) => r.status === "rewarded")
+        .reduce((sum, r) => sum + (r.creditAmountCents ?? 0), 0);
 
       const goldDaysEarned = refs
         .filter((r) => r.status === "rewarded")
@@ -1223,6 +1236,7 @@ Respond in this exact JSON format:
         isFoundingMember: biz.isFoundingMember,
         foundingMemberNumber: biz.foundingMemberNumber,
         goldDaysEarned,
+        totalCreditCentsEarned,
         pendingCreditCents,
         referrals: refs,
       });
@@ -4982,7 +4996,18 @@ Respond in this exact JSON format:
         .select({ rewardedReferrals: sql<number>`count(*)::int` })
         .from(referrals)
         .where(eq(referrals.status, "rewarded"));
-      const pendingReferrals = (totalReferrals as number) - (rewardedReferrals as number);
+      // Pending must NOT include voided rows — they're explicitly retired.
+      // Computed as `pending + processing` rather than `total - rewarded`
+      // so the addition of new statuses (e.g. 'void') doesn't silently
+      // inflate the pending count.
+      const [{ pendingReferrals = 0 } = {}] = await pgDb
+        .select({ pendingReferrals: sql<number>`count(*)::int` })
+        .from(referrals)
+        .where(inArray(referrals.status, ["pending", "processing"]));
+      const [{ voidedReferrals = 0 } = {}] = await pgDb
+        .select({ voidedReferrals: sql<number>`count(*)::int` })
+        .from(referrals)
+        .where(eq(referrals.status, "void"));
 
       // Top referrers (by rewarded count, then total)
       const referrerRows = await pgDb
@@ -5030,6 +5055,7 @@ Respond in this exact JSON format:
           totalReferrals,
           rewardedReferrals,
           pendingReferrals,
+          voidedReferrals,
         },
         founding: {
           limit: FOUNDING_LIMIT,
@@ -5130,9 +5156,38 @@ Respond in this exact JSON format:
       const referralId = parseInt(req.params.id, 10);
       if (!Number.isFinite(referralId)) return res.status(400).json({ message: "Invalid referral id" });
 
+      // Optional admin override: a custom credit amount in cents. Used for
+      // edge cases the auto-calc can't handle (partial refunds, tier
+      // mid-cycle upgrades, goodwill bumps). Range-checked so a fat-finger
+      // can't issue $10,000. 0 is rejected because that would be a no-op
+      // posing as a credit; use the dedicated void route instead.
+      let customCents: number | undefined;
+      const rawCustom = req.body?.customCents;
+      if (rawCustom !== undefined && rawCustom !== null && rawCustom !== "") {
+        const parsed = typeof rawCustom === "string" ? parseInt(rawCustom, 10) : Number(rawCustom);
+        if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100000) {
+          return res.status(400).json({
+            message: "customCents must be a positive integer between 1 and 100000 (i.e. $0.01 – $1000.00)",
+          });
+        }
+        customCents = parsed;
+      }
+
       const { referrals } = await import("@shared/schema");
       const [row] = await pgDb.select().from(referrals).where(eq(referrals.id, referralId));
       if (!row) return res.status(404).json({ message: "Referral not found" });
+
+      // Status precondition: refuse to issue credit on a voided row. The
+      // operator must explicitly un-void (or create a new referral) first.
+      // Without this guard, an admin could re-flip status='void' → 'rewarded'
+      // and silently re-charge the platform.
+      if (row.status === "void") {
+        return res.status(409).json({
+          message:
+            "Cannot issue credit on a voided referral. If this was a mistake, contact engineering to restore the row.",
+          code: "REFERRAL_VOIDED",
+        });
+      }
 
       const parties = await pgDb
         .select({
@@ -5159,31 +5214,37 @@ Respond in this exact JSON format:
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" as any });
 
-      // Compute monthly-equivalent credit from the referrer's current sub.
+      // Compute monthly-equivalent credit from the referrer's current sub —
+      // unless the admin explicitly overrode the amount, in which case we
+      // use that and skip the Stripe lookup entirely.
       const TIER_CENTS_FALLBACK: Record<string, number> = { basic: 2500, standard: 5000, premium: 10000 };
       let creditCents = 0;
-      if (referrer.stripeSubscriptionId) {
-        try {
-          const sub = await stripe.subscriptions.retrieve(referrer.stripeSubscriptionId);
-          const item = sub.items?.data?.[0];
-          const unit = item?.price?.unit_amount;
-          const recurring = item?.price?.recurring;
-          if (typeof unit === "number" && unit > 0 && recurring) {
-            const intervalCount = recurring.interval_count || 1;
-            const monthsPerInterval =
-              recurring.interval === "year" ? 12 :
-              recurring.interval === "month" ? 1 :
-              recurring.interval === "week" ? 1 / 4 :
-              recurring.interval === "day" ? 1 / 30 : 1;
-            const totalMonths = intervalCount * monthsPerInterval;
-            creditCents = totalMonths > 0 ? Math.round(unit / totalMonths) : unit;
+      if (customCents !== undefined) {
+        creditCents = customCents;
+      } else {
+        if (referrer.stripeSubscriptionId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(referrer.stripeSubscriptionId);
+            const item = sub.items?.data?.[0];
+            const unit = item?.price?.unit_amount;
+            const recurring = item?.price?.recurring;
+            if (typeof unit === "number" && unit > 0 && recurring) {
+              const intervalCount = recurring.interval_count || 1;
+              const monthsPerInterval =
+                recurring.interval === "year" ? 12 :
+                recurring.interval === "month" ? 1 :
+                recurring.interval === "week" ? 1 / 4 :
+                recurring.interval === "day" ? 1 / 30 : 1;
+              const totalMonths = intervalCount * monthsPerInterval;
+              creditCents = totalMonths > 0 ? Math.round(unit / totalMonths) : unit;
+            }
+          } catch (err: any) {
+            console.warn(`[admin issue-credit] could not fetch sub ${referrer.stripeSubscriptionId}:`, err?.message);
           }
-        } catch (err: any) {
-          console.warn(`[admin issue-credit] could not fetch sub ${referrer.stripeSubscriptionId}:`, err?.message);
         }
-      }
-      if (!creditCents) {
-        creditCents = TIER_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
+        if (!creditCents) {
+          creditCents = TIER_CENTS_FALLBACK[referrer.membershipTier ?? ""] ?? 5000;
+        }
       }
 
       // Use a manual-issue idempotency key distinct from the webhook key so
@@ -5208,16 +5269,92 @@ Respond in this exact JSON format:
         { idempotencyKey: idemKey },
       );
 
-      await pgDb
+      // Conditional update so a concurrent void (which lands AFTER our
+      // pre-check above but BEFORE this write) doesn't get silently
+      // overwritten back to 'rewarded'. If the row was voided in the
+      // meantime, the Stripe credit is already issued — surface that
+      // explicitly so the operator knows to refund it manually.
+      const updated = await pgDb
         .update(referrals)
         .set({ status: "rewarded", rewardedAt: new Date(), creditAmountCents: creditCents })
-        .where(eq(referrals.id, referralId));
+        .where(and(eq(referrals.id, referralId), sql`${referrals.status} != 'void'`))
+        .returning({ id: referrals.id });
 
-      console.log(`[admin issue-credit] $${(creditCents / 100).toFixed(2)} credited to ${referrer.stripeCustomerId} for referral ${referralId} by admin ${userId}`);
+      if (updated.length === 0) {
+        console.warn(
+          `[admin issue-credit] CONCURRENT VOID — referral ${referralId} was voided after our status check; Stripe credit ${txn.id} (${creditCents}¢) was already issued and must be refunded manually in Stripe console (admin ${userId})`,
+        );
+        return res.status(409).json({
+          message:
+            "Referral was voided concurrently. Stripe credit was issued but the referral row remains 'void'. Refund the balance transaction manually.",
+          code: "REFERRAL_VOIDED_AFTER_CREDIT",
+          balanceTransactionId: txn.id,
+          creditCents,
+        });
+      }
+
+      console.log(
+        `[admin issue-credit] $${(creditCents / 100).toFixed(2)} credited to ${referrer.stripeCustomerId} for referral ${referralId} by admin ${userId}${customCents !== undefined ? " (custom amount override)" : ""}`,
+      );
       res.json({ ok: true, creditCents, balanceTransactionId: txn.id });
     } catch (err: any) {
       console.error("Admin issue-credit error:", err);
       res.status(500).json({ message: err?.message || "Failed to issue credit" });
+    }
+  });
+
+  // Admin: void a referral row. Use case: duplicate referral, fraud,
+  // referee chargeback, or any other reason the credit should not stand.
+  // Flips status to 'void' (not 'rewarded') so:
+  //   - The row is excluded from the referrer's lifetime credit total
+  //   - It still shows up in admin history with a clear status
+  //   - The unique (referredBusinessId) constraint still blocks future
+  //     duplicate referrals for the same business — voiding does NOT
+  //     allow re-creating the link
+  // Idempotent: voiding an already-void row succeeds quietly.
+  // Does NOT clawback any Stripe credit already issued — that has to be
+  // refunded manually via the Stripe console (we surface the prior
+  // creditAmountCents in the audit log so the operator knows what to undo).
+  app.post("/api/admin/referrals/:id/void", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!(await isAdminUser(userId))) return res.status(403).json({ message: "Forbidden" });
+
+      const referralId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(referralId)) return res.status(400).json({ message: "Invalid referral id" });
+
+      const { referrals } = await import("@shared/schema");
+      const [row] = await pgDb.select().from(referrals).where(eq(referrals.id, referralId));
+      if (!row) return res.status(404).json({ message: "Referral not found" });
+
+      const priorStatus = row.status;
+      const priorCents = row.creditAmountCents;
+
+      // Idempotent: voiding an already-void row is a quiet no-op (no
+      // re-log, no DB write). Returning 200 here matches REST norms for
+      // idempotent operations — the operator's intent (row should be void)
+      // is satisfied either way.
+      if (priorStatus === "void") {
+        return res.json({ ok: true, priorStatus, priorCreditCents: priorCents, alreadyVoid: true });
+      }
+
+      await pgDb
+        .update(referrals)
+        .set({
+          status: "void",
+          // Preserve creditAmountCents so the audit log on the row still
+          // reflects what was issued (if anything) before the void. Setting
+          // it to null would erase that history.
+        })
+        .where(eq(referrals.id, referralId));
+
+      console.log(
+        `[admin referral void] referral ${referralId} voided by admin ${userId} (was status=${priorStatus}, creditCents=${priorCents ?? "—"})`,
+      );
+      res.json({ ok: true, priorStatus, priorCreditCents: priorCents });
+    } catch (err: any) {
+      console.error("Admin referral void error:", err);
+      res.status(500).json({ message: err?.message || "Failed to void referral" });
     }
   });
 

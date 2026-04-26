@@ -368,9 +368,15 @@ test("marketing-hub: aggregates per-suite counts, scoped by ?days window", async
     // opened+clicked send on the OUT-of-window campaign must NOT count.
     assert.equal(body.newsletter.opened, 2, "in-window opens only");
     assert.equal(body.newsletter.clicked, 1, "in-window clicks only");
-    // Rates are denominated against DELIVERED (95), not recipients.
-    assert.equal(body.newsletter.openRate, Math.round((2 / 95) * 1000) / 10);
-    assert.equal(body.newsletter.clickRate, Math.round((1 / 95) * 1000) / 10);
+    // Rates are denominated against TRACKABLE sends (sends with a Resend
+    // message_id — i.e. those the open/click webhook can actually match).
+    // Both in-window sends here have message_id set, so trackable = 2.
+    // openRate = 2/2 = 100, clickRate = 1/2 = 50. The dedicated
+    // "untracked sends" test below covers the legacy NULL-message_id case.
+    assert.equal(body.newsletter.trackable, 2, "both in-window sends are trackable");
+    assert.equal(body.newsletter.untrackedSends, 0, "no legacy NULL-message_id rows here");
+    assert.equal(body.newsletter.openRate, 100);
+    assert.equal(body.newsletter.clickRate, 50);
     assert.equal(body.newsletter.subscribersTotal, 2);
     assert.equal(body.newsletter.subscribersActive, 1);
 
@@ -620,6 +626,108 @@ test("marketing-hub: cross-business isolation — biz A's hub never leaks biz B'
     assert.equal(body.suppressions.email, 1, "suppressions are biz-scoped");
     // headline: 10 nl delivered + 5 sms delivered + 1 rr sent = 16
     assert.equal(body.totalReach, 16);
+  } finally {
+    await srv.close();
+  }
+});
+
+test("marketing-hub: untracked sends (NULL message_id) are excluded from the open-rate denominator and surfaced via untrackedSends", async () => {
+  // Regression guard for the untracked-send fix. Background: any send
+  // row with a NULL message_id can never have an open/click stamped on
+  // it (the Resend webhook joins on message_id). If we kept those rows
+  // in the rate denominator, every legacy send would tank the reported
+  // open rate forever — owners would see a beautiful Resend dashboard
+  // saying "60% opened" while our hub said "12%".
+  //
+  // Setup: 1 in-window campaign with 4 sends —
+  //   - 2 trackable (have message_id), one of which was opened
+  //   - 2 untracked (NULL message_id), exactly the legacy shape
+  // Expected:
+  //   - opened = 1
+  //   - trackable = 2, untrackedSends = 2
+  //   - openRate = 50 (1/2), NOT 25 (1/4)
+  const biz = await seedBusiness({ tier: "premium" });
+  const owner = await seedUser(biz.id);
+  const now = Date.now();
+  const inWindow = new Date(now - 5 * 24 * 60 * 60 * 1000);
+
+  const [campaign] = await pgDb
+    .insert(newsletterCampaigns)
+    .values({
+      businessId: biz.id,
+      subject: "Untracked test",
+      bodyHtml: "<p>x</p>",
+      status: "sent",
+      // Recipients/successCount intentionally do NOT match send rows —
+      // we want to prove the denominator comes from `trackable` (the
+      // send-row count), not `delivered` (the campaign successCount).
+      recipientCount: 4,
+      successCount: 4,
+      failureCount: 0,
+      sentAt: inWindow,
+    })
+    .returning();
+
+  // Need 4 distinct subscribers — newsletter_sends has UNIQUE
+  // (campaignId, subscriberId) so we can't reuse the same one.
+  const subs = await pgDb
+    .insert(newsletterSubscribers)
+    .values([
+      { businessId: biz.id, email: "u1@example.com", unsubscribeToken: `ut_a_${now}` },
+      { businessId: biz.id, email: "u2@example.com", unsubscribeToken: `ut_b_${now}` },
+      { businessId: biz.id, email: "u3@example.com", unsubscribeToken: `ut_c_${now}` },
+      { businessId: biz.id, email: "u4@example.com", unsubscribeToken: `ut_d_${now}` },
+    ])
+    .returning();
+
+  await pgDb.insert(newsletterSends).values([
+    // Trackable + opened
+    {
+      campaignId: campaign.id,
+      subscriberId: subs[0].id,
+      status: "sent",
+      sentAt: inWindow,
+      messageId: `re_track_open_${now}`,
+      openedAt: new Date(now - 4 * 24 * 60 * 60 * 1000),
+    },
+    // Trackable, never opened
+    {
+      campaignId: campaign.id,
+      subscriberId: subs[1].id,
+      status: "sent",
+      sentAt: inWindow,
+      messageId: `re_track_noopen_${now}`,
+    },
+    // Untracked (legacy shape) — would have artificially deflated openRate
+    {
+      campaignId: campaign.id,
+      subscriberId: subs[2].id,
+      status: "sent",
+      sentAt: inWindow,
+      messageId: null,
+    },
+    // Another untracked
+    {
+      campaignId: campaign.id,
+      subscriberId: subs[3].id,
+      status: "sent",
+      sentAt: inWindow,
+      messageId: null,
+    },
+  ]);
+
+  const srv = await start(makeApp(owner.id));
+  try {
+    const r = await fetch(`${srv.url}/api/businesses/${biz.id}/marketing-hub?days=30`);
+    assert.equal(r.status, 200);
+    const body = await r.json();
+
+    assert.equal(body.newsletter.opened, 1, "only the trackable+opened send should count");
+    assert.equal(body.newsletter.trackable, 2, "two sends have a message_id and so are trackable");
+    assert.equal(body.newsletter.untrackedSends, 2, "two sends have NULL message_id and so are surfaced separately");
+    // The whole point: 1 / 2 (trackable) = 50, NOT 1 / 4 = 25.
+    assert.equal(body.newsletter.openRate, 50, "openRate must be denominated against trackable, not against all sends");
+    assert.equal(body.newsletter.clickRate, 0, "no clicks → 0% clickRate (no divide-by-zero either)");
   } finally {
     await srv.close();
   }
