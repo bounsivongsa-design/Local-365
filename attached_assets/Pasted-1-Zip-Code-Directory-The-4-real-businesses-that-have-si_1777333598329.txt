@@ -1,0 +1,21 @@
+1.  Zip Code Directory: The 4 real businesses that have signed up are visible in ALL zip codes. Dashboard only shows the Moyock option for Goat Locker Printing.
+
+2. Advertising/Help Wanted/Local Events:  How does one select which zip code the post will display in?  There is no option when creating any of these.  Maybe if I duplicate my business in another zip code then it will give me options?   I tried to duplicate to Chesapeake and it wanted to charge me $10.
+
+2A. 1 and 2 are possibly tied together because the site isn't deciphering zip code specific postings.  Although the two ads for Goat Locker and Back Bay (created before publishing) are only visible in Moyock and not displayed across all zip codes like the businesses are. .
+
+3. Membership Pricing: The percentage discount for additional zip codes is Correct.  However, the dollar discount amount is incorrect.  For example, Gold is $100 for the first zip code. Additional zip codes are 50% off; however, the system shows each additional zip code is $10.  When I tried to add another zip code to my goat locker account it was only going to charge me $10 instead of $50.
+
+4. AI Credits: I'm going to need you to break this down for me.  I like the idea.  When I click "buy more credits," it says "never expire and stack on top of your monthly Gold allowance".  I have a gold account and it shows zero credits.  Does this cost you when they utilize these AI options?  If so, we will need to determine how to cover the cost in the business plan.  Also, the"pre credit" cost for each package looks weird.  $10.00 500 Credits (200.00c per credit).  This function needs to be added under the "GOLD" membership perks on the business tab as well.
+
+5. AI Dashboard: Maybe the AI options should be grouped together in the dashboard?  Currently, they all just show "GOLD" next to them.  Or Maybe the "GOLD" needs to be changed to "AI ASSIST".  Just something to ensure it's obvious that it's a paid function.
+
+6. City Zip Codes:  I really believe the pages should be listed by City, State & Zip Code.  When I choose a different zip code it displays all 3 items.  However, once I select one the Homepage and the dropdown in the top right only state Chesapeake, VA.  It would be beneficial if the zip code was visible as well considering Chesapeake has like 5 zip codes.
+
+7. Dashboard Zip Code Management:  The tab for duplicating a listing to another zip code could be more noticable.  Maybe some accompanying text: "Add or Manage your listing in other Zip Codes."
+
+8. Admin Zip Code Breakdown:  Will our admin accounts be able to break down profits and analytics per zip code or only overall for the entire site? Just curious.
+
+9. Discount Codes.  Admin account needs an option to set up or create a fully free Gold Membership.  Dan who is making the commercial videos, will take that for payment.  Dan has many connections and will be instrumental in spreading the word.  Also, my best friend in Chesapeake will need one when we expand to there. 
+
+10. Carousel Ads. Change "Sponsored" to "Featured" in the lower left corners.
