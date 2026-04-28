@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { setBusinessCompMembership } from "./comp";
 import { linkReferralOnSignup, processMembershipActivation, ensureReferralCode, generateUniqueReferralCode } from "./referrals";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -4686,62 +4687,19 @@ Respond in this exact JSON format:
         expiresAt = parsed;
       }
 
-      const [target] = await pgDb
-        .select({ id: businesses.id, name: businesses.name, email: businesses.email, ownerUserId: businesses.ownerUserId })
-        .from(businesses)
-        .where(eq(businesses.id, bizId));
-      if (!target) return res.status(404).json({ message: "Business not found" });
-
-      await pgDb
-        .update(businesses)
-        .set(
-          active
-            ? {
-                isCompedMembership: true,
-                compedMembershipNote: note,
-                compedMembershipGrantedAt: new Date(),
-                compedMembershipGrantedBy: adminId,
-                compedMembershipExpiresAt: expiresAt,
-                // Reset reminder flags so a re-grant or expiry-date change
-                // gets a fresh round of 7d/1d warning emails.
-                compedMembershipReminder7Sent: false,
-                compedMembershipReminder1Sent: false,
-                // Clear the welcome-sent stamp on grant; the fire-and-forget
-                // notifyCompGranted below will re-stamp it iff the email
-                // actually goes out.
-                compedWelcomeEmailSentAt: null,
-              }
-            : {
-                isCompedMembership: false,
-                compedMembershipNote: null,
-                compedMembershipGrantedAt: null,
-                compedMembershipGrantedBy: null,
-                compedMembershipExpiresAt: null,
-                compedMembershipReminder7Sent: false,
-                compedMembershipReminder1Sent: false,
-                compedWelcomeEmailSentAt: null,
-              },
-        )
-        .where(eq(businesses.id, bizId));
-
-      // Resolve a recipient address: prefer the business's own contact email
-      // and fall back to the linked owner user's email so a missing
-      // business.email still gets the notice through.
-      let recipientEmail: string | null = target.email ?? null;
-      if (!recipientEmail && target.ownerUserId) {
-        const [owner] = await pgDb
-          .select({ email: users.email })
-          .from(users)
-          .where(eq(users.id, target.ownerUserId));
-        recipientEmail = owner?.email ?? null;
-      }
+      // Helper does the DB write + audit insert and returns the resolved
+      // recipient email (or null when the business + owner have no email
+      // on file). Extracted so the grant/revoke flow has direct unit-test
+      // coverage independent of Express + the admin auth middleware.
+      const result = await setBusinessCompMembership({ bizId, adminId, active, note, expiresAt });
+      if (!result) return res.status(404).json({ message: "Business not found" });
 
       // Fire-and-forget so a slow/failing Resend call never blocks the
-      // admin response or the audit insert below.
+      // admin response.
       if (active) {
         notifyCompGranted({
-          recipientEmail,
-          businessName: target.name,
+          recipientEmail: result.recipientEmail,
+          businessName: result.businessName,
           expiresAt,
           note,
         })
@@ -4756,20 +4714,10 @@ Respond in this exact JSON format:
           .catch((e) => console.error("notifyCompGranted error:", e));
       } else {
         notifyCompRevoked({
-          recipientEmail,
-          businessName: target.name,
+          recipientEmail: result.recipientEmail,
+          businessName: result.businessName,
         }).catch((e) => console.error("notifyCompRevoked error:", e));
       }
-
-      // Append-only audit row so the historical "who/when/why" survives even
-      // after revoke wipes the live columns on `businesses`.
-      await pgDb.insert(compMembershipAudit).values({
-        businessId: bizId,
-        action: active ? "grant" : "revoke",
-        actorUserId: adminId,
-        note,
-        expiresAt,
-      });
 
       res.json({ ok: true, isCompedMembership: active, compedMembershipExpiresAt: expiresAt });
     } catch (err) {
