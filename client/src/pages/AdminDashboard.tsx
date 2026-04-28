@@ -830,7 +830,8 @@ interface PerZipRow {
   activeAds: number;
   activeJobs: number;
   events: number;
-  quoteBids: number;
+  posts: number;
+  quoteRequests: number;
   adImpressions: number;
   adClicks: number;
 }
@@ -879,7 +880,7 @@ function PerZipMetricsCard() {
                   <th className="text-right py-2 px-2">Active Ads</th>
                   <th className="text-right py-2 px-2">Active Jobs</th>
                   <th className="text-right py-2 px-2">Events</th>
-                  <th className="text-right py-2 px-2">Quote Bids</th>
+                  <th className="text-right py-2 px-2">Quote Reqs</th>
                   <th className="text-right py-2 px-2">Ad Impr.</th>
                   <th className="text-right py-2 px-2">Ad Clicks</th>
                 </tr>
@@ -899,8 +900,8 @@ function PerZipMetricsCard() {
                     <td className="text-right py-2 px-2 font-medium text-emerald-700">{r.paidBusinesses.toLocaleString()}</td>
                     <td className="text-right py-2 px-2">{r.activeAds.toLocaleString()}</td>
                     <td className="text-right py-2 px-2">{r.activeJobs.toLocaleString()}</td>
-                    <td className="text-right py-2 px-2">{r.events.toLocaleString()}</td>
-                    <td className="text-right py-2 px-2">{r.quoteBids.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2">{(r.events ?? 0).toLocaleString()}</td>
+                    <td className="text-right py-2 px-2">{(r.quoteRequests ?? 0).toLocaleString()}</td>
                     <td className="text-right py-2 px-2 text-slate-600">{r.adImpressions.toLocaleString()}</td>
                     <td className="text-right py-2 px-2 text-slate-600">{r.adClicks.toLocaleString()}</td>
                   </tr>
