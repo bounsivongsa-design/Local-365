@@ -3,7 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Share2, Crown, Users, Sparkles } from "lucide-react";
+import { Copy, Check, Share2, Crown, Users, Sparkles, Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
 interface ReferralRow {
@@ -77,7 +83,7 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
       try {
         await navigator.share({
           title: "Join LocalList365",
-          text: `Join the Moyock business directory — use my code ${code} and we both get 30 free days of Gold features.`,
+          text: `Join the LocalList365 business directory — use my code ${code} when you sign up.`,
           url: shareUrl,
         });
       } catch {}
@@ -124,10 +130,66 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
               </div>
             </div>
 
-            <p className="text-xs text-white/70 mb-3">
-              When another business signs up with your code and activates a paid plan, you both
-              get <span className="font-semibold text-amber-200">30 days of Gold</span>.
+            <p className="text-xs text-white/70 mb-2">
+              Earn{" "}
+              <span className="font-semibold text-amber-200">one free month of credit</span>{" "}
+              every time a business you refer pays for their first month.
             </p>
+
+            <div
+              className="mb-3 rounded-lg bg-white/5 border border-white/10 p-2.5"
+              data-testid="block-referral-how-it-works"
+            >
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Info className="h-3 w-3 text-white/60" />
+                <span className="text-[10px] uppercase tracking-wide text-white/60 font-semibold">
+                  How it works
+                </span>
+              </div>
+              <ol className="space-y-1 text-[11px] text-white/85 leading-snug">
+                <li className="flex gap-1.5">
+                  <span className="font-semibold text-amber-200 shrink-0">1.</span>
+                  <span>You share your code with another local business.</span>
+                </li>
+                <li className="flex gap-1.5">
+                  <span className="font-semibold text-amber-200 shrink-0">2.</span>
+                  <span>
+                    They sign up with your code and start their{" "}
+                    <span className="font-semibold">free Gold trial</span>. Nothing happens to
+                    your account yet — they haven't been charged.
+                  </span>
+                </li>
+                <li className="flex gap-1.5">
+                  <span className="font-semibold text-amber-200 shrink-0">3.</span>
+                  <span>
+                    When their trial ends and they{" "}
+                    <span className="font-semibold">pay their first real invoice</span>, your
+                    credit (one month of their plan) is automatically applied to your next bill.
+                  </span>
+                </li>
+              </ol>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="mt-1.5 text-[10px] text-white/55 hover:text-white/80 underline-offset-2 hover:underline cursor-help"
+                      data-testid="button-referral-fineprint"
+                    >
+                      Why the wait?
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    className="max-w-[260px] text-xs leading-snug"
+                  >
+                    We only credit referrals after real money changes hands so trials and
+                    cancellations can't trigger a payout. Once they're billed, your credit
+                    appears within minutes.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
 
             {pendingCreditDollars && (
               <div
