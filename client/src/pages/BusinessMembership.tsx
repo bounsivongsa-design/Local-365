@@ -118,7 +118,9 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "30-sec promo video upload",
       "Advanced analytics dashboard",
       "50% off all advertising",
-      "Add extra zip-code listings for $50/mo each (50% off)"
+      "Add extra zip-code listings for $50/mo each (50% off)",
+      "AI Tools suite (Gold-exclusive): Listing Writer, Review Reply, Quote Responder, Help Wanted, Event Description, Photo Caption & Alt-Text, Deal Writer, SMS Drafter, Social Composer, Review Request Blasts, AI Newsletter",
+      "Marketing Hub dashboard (newsletter opens/clicks, SMS, social, deals KPIs)"
     ],
     icon: Crown,
     gradient: "from-amber-500 to-amber-700",
