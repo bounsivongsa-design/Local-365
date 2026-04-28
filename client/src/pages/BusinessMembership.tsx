@@ -948,10 +948,10 @@ export default function BusinessMembership() {
               {[
                 { icon: TrendingUp, text: "Top of search results" },
                 { icon: Award, text: "Featured badge" },
-                { icon: Image, text: "Promo video upload" },
+                { icon: Sparkles, text: "AI writing tools (listings, replies, deals)" },
                 { icon: Clock, text: "1st-round quote access" },
                 { icon: Star, text: "Up to 10 photos" },
-                { icon: Sparkles, text: "Advanced analytics" },
+                { icon: Sparkles, text: "Marketing Hub + AI Newsletter" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
                   <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">

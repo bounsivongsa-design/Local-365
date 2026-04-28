@@ -31,7 +31,7 @@ Dev/prod parity: Anything verified in dev must also be verified in production. A
 - **Quote System**: Facilitates customer quote requests and business responses.
 - **Events Platform**: Calendar with Stripe payment for event ads.
 - **Job Board**: Businesses can post help-wanted ads based on membership tier.
-- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions. Includes additional zip-code listings.
+- **Membership Tiers**: Bronze, Silver, Gold tiers with varying features, managed via Stripe subscriptions. Includes additional zip-code listings. Gold tier feature list explicitly enumerates the AI Tools suite (Listing Writer, Review Reply, Quote Responder, Help Wanted, Event Description, Photo Caption/Alt-Text, Deal Writer, SMS Drafter, Social Composer, Review Request Blasts, AI Newsletter, Marketing Hub) so prospective members can see exactly what's included.
 - **Advertising**: Carousel banner ads with tiered pricing and an in-browser ad designer.
 - **Business Analytics**: Tracks engagement metrics for listings.
 - **Review System**: Customer reviews with optional proof of service and business responses.
