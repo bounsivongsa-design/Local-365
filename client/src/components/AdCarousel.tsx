@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExampleBanner } from "@/components/ExampleBanner";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Megaphone, Sparkles, X, ExternalLink } from "lucide-react";
 import type { AdPlacement } from "@shared/schema";
 
@@ -64,6 +64,7 @@ function mapAdsToSlides(realAds: AdWithBusiness[] | undefined, placeholders: AdS
 }
 
 export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
+  const navigate = useNavigate();
   const [largeAdPos, setLargeAdPos] = useState(0);
   const [mediumAdPos, setMediumAdPos] = useState(0);
   const [smallAdPos, setSmallAdPos] = useState(0);
@@ -117,7 +118,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
 
   const handleAdClick = (slide: AdSlide) => {
     if (slide.id > 0) {
+      // Real, paid ad → open the preview modal so people can see it then jump
+      // to the listing or website.
       setPreviewAd(slide);
+    } else {
+      // Placeholder / "this spot is for sale" — clicking should send the user
+      // to the advertising page so the empty slots actually generate leads
+      // instead of being dead clicks.
+      navigate("/advertising");
     }
   };
 
