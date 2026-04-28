@@ -117,20 +117,21 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   };
 
   const handleAdClick = (slide: AdSlide) => {
-    if (slide.id > 0) {
-      // Real, paid ad → open the preview modal so people can see it then jump
-      // to the listing or website.
-      setPreviewAd(slide);
-    } else {
-      // Placeholder / "this spot is for sale" — clicking should send the user
-      // to the advertising page so the empty slots actually generate leads
-      // instead of being dead clicks.
-      navigate("/advertising");
-    }
+    // Always open the preview modal so people can actually see the ad's full
+    // image, headline, and description. The modal CTA then handles where the
+    // click leads:
+    //   - real, paid ad (id > 0)  → "View Business Listing" / "Visit Website"
+    //   - placeholder example (id === 0) → "Get Your Ad Here" → /advertising
+    setPreviewAd(slide);
   };
 
-  const handlePreviewAction = (action: "business" | "link") => {
+  const handlePreviewAction = (action: "business" | "link" | "advertise") => {
     if (!previewAd) return;
+    if (action === "advertise") {
+      setPreviewAd(null);
+      navigate("/advertising");
+      return;
+    }
     if (previewAd.id > 0) {
       fetch(`/api/ads/${previewAd.id}/click`, { method: "POST" }).catch(() => {});
     }
@@ -354,8 +355,8 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
             )}
             <div className="p-5 space-y-3">
               <div>
-                <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1 mb-2">
-                  <Sparkles className="h-3 w-3" /> Sponsored
+                <span className={`inline-flex items-center gap-1 ${previewAd.id > 0 ? 'bg-amber-500' : 'bg-slate-500'} text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1 mb-2`}>
+                  <Sparkles className="h-3 w-3" /> {previewAd.id > 0 ? 'Sponsored' : 'Example Ad'}
                 </span>
                 <p className="text-[#d4a373] text-sm font-semibold tracking-wide">{previewAd.businessName}</p>
                 <h3 className="text-xl font-bold text-slate-900 leading-tight mt-1">{previewAd.title}</h3>
@@ -363,15 +364,28 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
               {previewAd.description && (
                 <p className="text-slate-600 text-sm leading-relaxed">{previewAd.description}</p>
               )}
+              {previewAd.id === 0 && (
+                <p className="text-slate-500 text-xs italic border-l-2 border-amber-400 pl-3">
+                  This is an example of what your ad could look like in this spot. Real customers see your business here.
+                </p>
+              )}
               <div className="flex gap-3 pt-2">
-                {previewAd.businessId && (
-                  <button onClick={() => handlePreviewAction("business")} className="flex-1 bg-[#0a4a82] hover:bg-[#0a4a82]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm" data-testid="button-ad-view-business">
-                    View Business Listing
-                  </button>
-                )}
-                {previewAd.linkUrl && (
-                  <button onClick={() => handlePreviewAction("link")} className="flex-1 bg-[#d4a373] hover:bg-[#d4a373]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-1.5" data-testid="button-ad-visit-link">
-                    <ExternalLink className="h-4 w-4" /> Visit Website
+                {previewAd.id > 0 ? (
+                  <>
+                    {previewAd.businessId && (
+                      <button onClick={() => handlePreviewAction("business")} className="flex-1 bg-[#0a4a82] hover:bg-[#0a4a82]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm" data-testid="button-ad-view-business">
+                        View Business Listing
+                      </button>
+                    )}
+                    {previewAd.linkUrl && (
+                      <button onClick={() => handlePreviewAction("link")} className="flex-1 bg-[#d4a373] hover:bg-[#d4a373]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-1.5" data-testid="button-ad-visit-link">
+                        <ExternalLink className="h-4 w-4" /> Visit Website
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button onClick={() => handlePreviewAction("advertise")} className="flex-1 bg-[#d4a373] hover:bg-[#d4a373]/90 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-1.5" data-testid="button-ad-get-this-spot">
+                    <Sparkles className="h-4 w-4" /> Get Your Ad Here
                   </button>
                 )}
               </div>
