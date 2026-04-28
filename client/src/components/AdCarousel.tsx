@@ -343,14 +343,25 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
       </div>
 
       {previewAd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setPreviewAd(null)} data-testid="ad-preview-overlay">
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-[90vw] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setPreviewAd(null)} className="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors" data-testid="button-close-ad-preview">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setPreviewAd(null)} data-testid="ad-preview-overlay">
+          {/* Outer box stays fixed-size + non-scrolling so the close button
+              never scrolls away. Inner div scrolls. Removes the previous
+              300px image cap that was clipping tall ads (e.g. Back Bay Lawn
+              Care's "NOW ACCEPTING NEW CLIENTS" flyer) — image now renders
+              at its natural height inside a 90vh-tall scrollable modal. */}
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPreviewAd(null)} className="absolute top-3 right-3 z-20 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors" data-testid="button-close-ad-preview">
               <X className="h-4 w-4" />
             </button>
+            <div className="overflow-y-auto rounded-2xl">
             {previewAd.imageUrl && (
-              <div className="relative w-full" style={{ maxHeight: '300px' }}>
-                <img src={previewAd.imageUrl} alt={previewAd.title} className="w-full h-auto object-contain bg-gray-100" style={{ maxHeight: '300px' }} />
+              <div className="relative w-full bg-gray-100 flex items-center justify-center">
+                <img
+                  src={previewAd.imageUrl}
+                  alt={previewAd.title}
+                  className="w-full h-auto object-contain"
+                  data-testid="img-ad-preview"
+                />
               </div>
             )}
             <div className="p-5 space-y-3">
@@ -389,6 +400,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                   </button>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </div>
