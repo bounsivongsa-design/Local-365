@@ -1136,17 +1136,31 @@ Respond in this exact JSON format:
 
   // Public-safe counter for the homepage urgency banner.
   // Exposes only the founding-member roster size — no PII, no auth.
+  //
+  // We count any business that has reached a paid state (basic / standard /
+  // premium tier OR comp membership OR explicitly flagged is_founding_member),
+  // not just rows where `is_founding_member=true`. The flag is only set by the
+  // Stripe webhook → processMembershipActivation pipeline, but businesses also
+  // become "paid" via comp memberships, admin tier changes, and seed data —
+  // none of which flip the flag. Counting by tier reflects what the user
+  // actually sees: "X businesses have signed up as founding members".
+  // Capped at FOUNDING_LIMIT for the display.
   app.get("/api/public/founding-stats", async (_req, res) => {
     try {
       const FOUNDING_LIMIT = 100;
       const [{ claimed = 0 } = {}] = await pgDb
         .select({ claimed: sql<number>`count(*)::int` })
         .from(businesses)
-        .where(eq(businesses.isFoundingMember, true));
+        .where(sql`(
+          ${businesses.membershipTier} IN ('basic', 'standard', 'premium')
+          OR ${businesses.isCompedMembership} = true
+          OR ${businesses.isFoundingMember} = true
+        )`);
+      const cappedClaimed = Math.min(claimed as number, FOUNDING_LIMIT);
       res.json({
         limit: FOUNDING_LIMIT,
-        claimed,
-        remaining: Math.max(0, FOUNDING_LIMIT - (claimed as number)),
+        claimed: cappedClaimed,
+        remaining: Math.max(0, FOUNDING_LIMIT - cappedClaimed),
       });
     } catch (err) {
       console.error("Public founding stats error:", err);
