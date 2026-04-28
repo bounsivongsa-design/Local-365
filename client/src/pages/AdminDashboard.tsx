@@ -813,7 +813,104 @@ function OverviewTab({ onSwitchTab }: { onSwitchTab: (tab: Tab) => void }) {
           <QuickActionCard icon={Gift} label="Referrals" sub="Status & manual credit" color="bg-blue-500/10" iconColor="text-blue-500" />
         </Link>
       </div>
+
+      <PerZipMetricsCard />
     </div>
+  );
+}
+
+interface PerZipRow {
+  zipCode: string;
+  city: string;
+  state: string;
+  region: string | null;
+  locationName: string;
+  businesses: number;
+  paidBusinesses: number;
+  activeAds: number;
+  activeJobs: number;
+  events: number;
+  quoteBids: number;
+  adImpressions: number;
+  adClicks: number;
+}
+
+function PerZipMetricsCard() {
+  const { data, isLoading } = useQuery<{ rows: PerZipRow[] }>({
+    queryKey: ["/api/admin/stats/by-zip"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/stats/by-zip", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch per-zip stats");
+      return res.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  const rows = data?.rows || [];
+
+  return (
+    <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border-0" data-testid="card-per-zip-metrics">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-[#1a1a2e]">
+          <MapPin className="w-5 h-5 text-[#0a4a82]" />
+          Activity by Zip Code
+        </CardTitle>
+        <p className="text-sm text-slate-500 mt-1">
+          See where the platform is busiest. Top rows are the towns earning the
+          most signups, ads, and engagement — bottom rows are where to focus
+          new advertising and outreach.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">No zip activity yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-per-zip">
+              <thead className="text-xs uppercase text-slate-500 border-b">
+                <tr>
+                  <th className="text-left py-2 px-2">Zip / City</th>
+                  <th className="text-right py-2 px-2">Businesses</th>
+                  <th className="text-right py-2 px-2">Paid</th>
+                  <th className="text-right py-2 px-2">Active Ads</th>
+                  <th className="text-right py-2 px-2">Active Jobs</th>
+                  <th className="text-right py-2 px-2">Events</th>
+                  <th className="text-right py-2 px-2">Quote Bids</th>
+                  <th className="text-right py-2 px-2">Ad Impr.</th>
+                  <th className="text-right py-2 px-2">Ad Clicks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.zipCode}
+                    className="border-b last:border-0 hover:bg-slate-50"
+                    data-testid={`row-zip-${r.zipCode}`}
+                  >
+                    <td className="py-2 px-2">
+                      <div className="font-medium text-[#1a1a2e]" data-testid={`text-zip-${r.zipCode}`}>{r.zipCode}</div>
+                      <div className="text-xs text-slate-500">{r.city}{r.state ? `, ${r.state}` : ""}</div>
+                    </td>
+                    <td className="text-right py-2 px-2">{r.businesses.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2 font-medium text-emerald-700">{r.paidBusinesses.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2">{r.activeAds.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2">{r.activeJobs.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2">{r.events.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2">{r.quoteBids.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2 text-slate-600">{r.adImpressions.toLocaleString()}</td>
+                    <td className="text-right py-2 px-2 text-slate-600">{r.adClicks.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

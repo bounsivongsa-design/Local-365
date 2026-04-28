@@ -5665,6 +5665,134 @@ Respond in this exact JSON format:
     }
   });
 
+  // Per-zip metrics breakdown — lets admins see WHERE the activity is, so they
+  // can decide which towns need more advertising / more outreach. Returns one
+  // row per zip we have any business / event activity in (joined to the
+  // `locations` table for the city/state label).
+  app.get("/api/admin/stats/by-zip", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const adminCheck = await isAdminUser(userId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      // Counts per zip — businesses, active ads (via the businessId → biz.zipCode
+      // link), active jobs (same join), quote bids submitted (via quotes.businessId
+      // → biz.zipCode link), and raw ad impressions/clicks summed for that zip.
+      // Note: `posts` and `quote_requests` aren't directly business-keyed in this
+      // schema (posts.author_id → users.id; quote_requests.user_id → users.id),
+      // so they're omitted to keep the query honest. `quotes` IS business-keyed
+      // and is a better signal of "bidding activity originating from this zip".
+      //
+      // We pre-aggregate each child table in its own subquery first so SUM()
+      // values don't get multiplied by row-fanout when LEFT JOINing multiple
+      // child tables to the same business.
+      const bizPerZip: any[] = await pgDb.execute(sql`
+        SELECT
+          b.zip_code AS "zipCode",
+          COUNT(DISTINCT b.id) FILTER (WHERE COALESCE(b.status,'active') != 'archived') AS "businesses",
+          COUNT(DISTINCT b.id) FILTER (
+            WHERE COALESCE(b.status,'active') != 'archived'
+              AND b.membership_tier IN ('bronze','silver','gold','premium','standard','basic')
+          ) AS "paidBusinesses",
+          COALESCE(SUM(ad.active_count), 0)::int AS "activeAds",
+          COALESCE(SUM(j.active_count), 0)::int AS "activeJobs",
+          COALESCE(SUM(q.bid_count), 0)::int AS "quoteBids",
+          COALESCE(SUM(ad.impressions), 0)::int AS "adImpressions",
+          COALESCE(SUM(ad.clicks), 0)::int AS "adClicks"
+        FROM businesses b
+        LEFT JOIN (
+          SELECT business_id,
+                 COUNT(*) FILTER (WHERE status = 'active') AS active_count,
+                 SUM(COALESCE(impressions, 0)) AS impressions,
+                 SUM(COALESCE(clicks, 0)) AS clicks
+          FROM ad_placements
+          GROUP BY business_id
+        ) ad ON ad.business_id = b.id
+        LEFT JOIN (
+          SELECT business_id, COUNT(*) FILTER (WHERE is_active = true) AS active_count
+          FROM job_listings
+          GROUP BY business_id
+        ) j ON j.business_id = b.id
+        LEFT JOIN (
+          SELECT business_id, COUNT(*) AS bid_count
+          FROM quotes
+          GROUP BY business_id
+        ) q ON q.business_id = b.id
+        WHERE b.zip_code IS NOT NULL AND b.zip_code != ''
+        GROUP BY b.zip_code
+      `).then((r: any) => r.rows ?? r);
+
+      const eventsPerZip: any[] = await pgDb.execute(sql`
+        SELECT zip_code AS "zipCode", COUNT(*)::int AS "events"
+        FROM events
+        WHERE zip_code IS NOT NULL AND zip_code != ''
+        GROUP BY zip_code
+      `).then((r: any) => r.rows ?? r);
+
+      // Pull the human-readable city/state for each zip from the `locations`
+      // seed (zipCodes is an array column, so we unnest).
+      const locRows: any[] = await pgDb.execute(sql`
+        SELECT z AS "zipCode", city, state, region, name
+        FROM locations, UNNEST(zip_codes) AS z
+      `).then((r: any) => r.rows ?? r);
+
+      const locByZip = new Map<string, { city: string; state: string; region: string | null; name: string }>();
+      for (const r of locRows) {
+        if (r.zipCode) locByZip.set(r.zipCode, { city: r.city, state: r.state, region: r.region, name: r.name });
+      }
+
+      const eventsByZip = new Map<string, number>();
+      for (const r of eventsPerZip) {
+        if (r.zipCode) eventsByZip.set(r.zipCode, Number(r.events));
+      }
+
+      // Union of all zips that have any kind of activity.
+      const allZips = new Set<string>([
+        ...bizPerZip.map((r) => r.zipCode).filter(Boolean),
+        ...eventsPerZip.map((r) => r.zipCode).filter(Boolean),
+      ]);
+
+      const bizMap = new Map<string, any>();
+      for (const r of bizPerZip) {
+        if (r.zipCode) bizMap.set(r.zipCode, r);
+      }
+
+      const rows = Array.from(allZips).map((zip) => {
+        const b = bizMap.get(zip) || {};
+        const loc = locByZip.get(zip);
+        return {
+          zipCode: zip,
+          city: loc?.city || "",
+          state: loc?.state || "",
+          region: loc?.region || null,
+          locationName: loc?.name || zip,
+          businesses: Number(b.businesses || 0),
+          paidBusinesses: Number(b.paidBusinesses || 0),
+          activeAds: Number(b.activeAds || 0),
+          activeJobs: Number(b.activeJobs || 0),
+          events: eventsByZip.get(zip) || 0,
+          posts: Number(b.posts || 0),
+          quoteRequests: Number(b.quoteRequests || 0),
+          adImpressions: Number(b.adImpressions || 0),
+          adClicks: Number(b.adClicks || 0),
+        };
+      });
+
+      // Sort by total activity desc so the most-active zips bubble to the top
+      // of the table (= where to focus retention; bottom = where to advertise).
+      rows.sort((a, b) => {
+        const aTotal = a.businesses + a.activeAds + a.events + a.activeJobs + a.quoteBids;
+        const bTotal = b.businesses + b.activeAds + b.events + b.activeJobs + b.quoteBids;
+        return bTotal - aTotal;
+      });
+
+      res.json({ rows });
+    } catch (err) {
+      console.error("Admin per-zip stats error:", err);
+      res.status(500).json({ message: "Failed to fetch per-zip stats" });
+    }
+  });
+
   // ============ JOB LISTING ROUTES ============
 
   app.get("/api/jobs/pricing", isAuthenticated, async (req: any, res) => {

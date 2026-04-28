@@ -74,7 +74,11 @@ export default function Home() {
     }
   });
 
-  const featuredBusinesses = businesses?.slice(0, 3) || [];
+  const featuredBusinesses = (
+    selectedLocation?.zipCode
+      ? businesses?.filter((b) => b.zipCode === selectedLocation.zipCode)
+      : businesses
+  )?.slice(0, 3) || [];
   const upcomingEvents = events?.slice(0, 3) || [];
 
   const locationZip = selectedLocation?.zipCode || "";

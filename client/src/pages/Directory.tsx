@@ -82,8 +82,9 @@ export default function Directory() {
   const { isAuthenticated } = useAuth();
 
   const filteredBusinesses = useMemo(() => {
-    if (!businesses || radiusMiles === 0 || !selectedLocation.zipCode) return businesses;
+    if (!businesses || !selectedLocation.zipCode) return businesses;
     return businesses.filter((biz) => {
+      if (radiusMiles === 0) return biz.zipCode === selectedLocation.zipCode;
       const dist = getDistanceFromZips(selectedLocation.zipCode!, biz.zipCode || "");
       if (dist === null) return false;
       return dist <= radiusMiles;
@@ -91,8 +92,9 @@ export default function Directory() {
   }, [businesses, radiusMiles, selectedLocation.zipCode]);
 
   const allFilteredBusinesses = useMemo(() => {
-    if (!allBusinesses || radiusMiles === 0 || !selectedLocation.zipCode) return allBusinesses;
+    if (!allBusinesses || !selectedLocation.zipCode) return allBusinesses;
     return allBusinesses.filter((biz) => {
+      if (radiusMiles === 0) return biz.zipCode === selectedLocation.zipCode;
       const dist = getDistanceFromZips(selectedLocation.zipCode!, biz.zipCode || "");
       if (dist === null) return false;
       return dist <= radiusMiles;
