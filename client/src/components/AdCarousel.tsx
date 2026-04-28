@@ -228,28 +228,48 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
           {/* Large Ad Column */}
           <div>
             <div className="relative rounded-2xl shadow-2xl shadow-black/30 overflow-hidden max-h-[280px] lg:max-h-none" style={{ aspectRatio: '16/9' }}>
-              {largeAds.slides.map((slide, idx) => (
+              {largeAds.slides.map((slide, idx) => {
+                // Real, paid ad with a user-uploaded image: render the image
+                // CLEAN — no opacity dim, no dark gradient overlay, no
+                // duplicated business-name + title text overlay. Advertisers
+                // upload fully-designed banners (logo, headline, phone number,
+                // services list) and the previous treatment was washing them
+                // out and covering the bottom (e.g. Back Bay Lawn Care's
+                // phone number was hidden under a black gradient).
+                const isRealImageAd = !largeAds.isPlaceholder && !slide.isPlaceholderFill && slide.id > 0 && !!slide.imageUrl;
+                return (
                 <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === safeLargePos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
                   <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                     <div className="relative w-full h-full overflow-hidden group">
                       {largeAds.isPlaceholder && <ExampleBanner variant="ribbon" />}
-                      {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1">
-                            <Sparkles className="h-3 w-3" />
-                            {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Featured"}
+                      {isRealImageAd ? (
+                        <>
+                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1 shadow-lg z-10">
+                            <Sparkles className="h-3 w-3" /> Featured
                           </span>
-                        </div>
-                        <p className="text-[#d4a373] text-sm font-semibold tracking-wide mb-1">{slide.businessName}</p>
-                        <h3 className="text-lg md:text-2xl font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
-                        {slide.description && <p className="text-white/90 text-xs mt-2 leading-relaxed line-clamp-3">{slide.description}</p>}
-                      </div>
+                        </>
+                      ) : (
+                        <>
+                          {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1">
+                                <Sparkles className="h-3 w-3" />
+                                {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Featured"}
+                              </span>
+                            </div>
+                            <p className="text-[#d4a373] text-sm font-semibold tracking-wide mb-1">{slide.businessName}</p>
+                            <h3 className="text-lg md:text-2xl font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
+                            {slide.description && <p className="text-white/90 text-xs mt-2 leading-relaxed line-clamp-3">{slide.description}</p>}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
             <div className="flex justify-center gap-2 mt-3">
               {largeAds.slides.map((_, idx) => (
@@ -266,27 +286,40 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                 return (
                   <div key={`med-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === safeMediumPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                     <div className="flex flex-col gap-3 h-full">
-                      {pageSlides.map((slide, idx) => (
+                      {pageSlides.map((slide, idx) => {
+                        const isRealImageAd = !mediumAds.isPlaceholder && !slide.isPlaceholderFill && slide.id > 0 && !!slide.imageUrl;
+                        return (
                         <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-xl group h-full" style={{ aspectRatio: '20/9' }}>
                               {(mediumAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
-                              {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
-                              <div className="absolute bottom-0 left-0 right-0 p-4">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5">
-                                    <Megaphone className="h-2.5 w-2.5" />
-                                    {(mediumAds.isPlaceholder || slide.isPlaceholderFill) ? "Medium — $500/mo" : "Featured"}
+                              {isRealImageAd ? (
+                                <>
+                                  <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5 shadow-md z-10">
+                                    <Sparkles className="h-2.5 w-2.5" /> Featured
                                   </span>
-                                </div>
-                                <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>
-                                <h3 className="text-sm md:text-base font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
-                              </div>
+                                </>
+                              ) : (
+                                <>
+                                  {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-85 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
+                                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5">
+                                        <Megaphone className="h-2.5 w-2.5" />
+                                        {(mediumAds.isPlaceholder || slide.isPlaceholderFill) ? "Medium — $500/mo" : "Featured"}
+                                      </span>
+                                    </div>
+                                    <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>
+                                    <h3 className="text-sm md:text-base font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
-                      ))}
+                      );})}
                     </div>
                   </div>
                 );
@@ -307,27 +340,40 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                 return (
                   <div key={`sm-page-${pageIdx}`} className={`${pageIdx === 0 ? 'relative h-full' : 'absolute inset-0'} transition-opacity duration-700 ${pageIdx === safeSmallPos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                     <div className="flex flex-col gap-2 h-full">
-                      {pageSlides.map((slide, idx) => (
+                      {pageSlides.map((slide, idx) => {
+                        const isRealImageAd = !smallAds.isPlaceholder && !slide.isPlaceholderFill && slide.id > 0 && !!slide.imageUrl;
+                        return (
                         <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-lg group h-full" style={{ aspectRatio: '12/5' }}>
                               {(smallAds.isPlaceholder || slide.isPlaceholderFill) && <ExampleBanner variant="ribbon" />}
-                              {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                              <div className="absolute bottom-0 left-0 right-0 p-3">
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5">
-                                    <Megaphone className="h-2 w-2" />
-                                    {(smallAds.isPlaceholder || slide.isPlaceholderFill) ? "Small — $250/mo" : "Ad"}
+                              {isRealImageAd ? (
+                                <>
+                                  <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  <span className="absolute top-1.5 right-1.5 inline-flex items-center gap-0.5 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5 shadow-md z-10">
+                                    <Sparkles className="h-2 w-2" /> Ad
                                   </span>
-                                </div>
-                                <p className="text-[#d4a373] text-[10px] font-semibold tracking-wide">{slide.businessName}</p>
-                                <h3 className="text-xs font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
-                              </div>
+                                </>
+                              ) : (
+                                <>
+                                  {slide.imageUrl && <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <span className="inline-flex items-center gap-1 bg-gray-600 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5">
+                                        <Megaphone className="h-2 w-2" />
+                                        {(smallAds.isPlaceholder || slide.isPlaceholderFill) ? "Small — $250/mo" : "Ad"}
+                                      </span>
+                                    </div>
+                                    <p className="text-[#d4a373] text-[10px] font-semibold tracking-wide">{slide.businessName}</p>
+                                    <h3 className="text-xs font-bold text-white drop-shadow-md leading-tight">{slide.title}</h3>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
-                      ))}
+                      );})}
                     </div>
                   </div>
                 );

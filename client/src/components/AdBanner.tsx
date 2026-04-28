@@ -147,6 +147,32 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
       },
     }[placementType];
 
+    // Real, paid ad with a user-uploaded image: render the image CLEAN at
+    // full opacity with NO blue gradient overlay and NO duplicated text —
+    // advertisers upload fully-designed banners (logo, headline, phone, etc.)
+    // and the previous treatment was washing them out and covering content.
+    // Placeholders (no real ad) keep the legacy blue-gradient + overlay-text
+    // treatment because their image is just generic stock decoration.
+    if (!isPlaceholder && ad && imageUrl) {
+      return (
+        <div
+          className={`relative overflow-hidden ${sizeConfig.rounded} ${sizeConfig.height} cursor-pointer group ${className}`}
+          onClick={() => handleClick(ad)}
+          data-testid={`ad-${placementType}-${ad.id}`}
+        >
+          <img
+            src={imageUrl}
+            alt={title}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          <Badge className={`absolute top-3 right-3 z-10 bg-amber-500/95 ${sizeConfig.badgeSize} text-white border-none shadow-lg`}>
+            <Megaphone className={`${sizeConfig.iconSize} mr-1.5`} />
+            Featured
+          </Badge>
+        </div>
+      );
+    }
+
     return (
       <div
         className={`relative overflow-hidden ${sizeConfig.rounded} ${sizeConfig.height} text-white cursor-pointer group flex flex-col justify-center ${className}`}

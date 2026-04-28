@@ -38,6 +38,34 @@ function isFounderBusiness(name: string | null | undefined): boolean {
 }
 
 /**
+ * Unified 3-pronged founder/admin bypass for ALL Stripe checkout endpoints
+ * (membership, ad placement, job listing, event ad). Mirrors the same logic
+ * used by `shouldBypassChargesForOwner` in server/multiZip.ts so behavior is
+ * consistent across every paid surface.
+ *
+ * Returns true if the caller should skip Stripe entirely:
+ *   - any user with accountType === "admin"  (admin override)
+ *   - any user whose email is in FOUNDER_EMAILS  (e.g. boun.sivongsa@gmail.com)
+ *   - any business whose normalized name matches FOUNDER_BUSINESSES
+ *     (handles "LLC"/"Inc"/punctuation suffix variations)
+ *
+ * Why all three: the founder business name lookup alone was fragile —
+ * "Blackwater Tech Solutions" (abbreviated) wouldn't match "Blackwater
+ * Technology Solutions" because the normalizer doesn't expand abbreviations.
+ * A founder/admin should never be charged real Stripe money even if the
+ * business row was saved with an abbreviated/typo'd name.
+ */
+export function shouldBypassCharges(
+  user: { accountType?: string | null; email?: string | null } | null | undefined,
+  biz: { name?: string | null } | null | undefined,
+): boolean {
+  if (user?.accountType === "admin") return true;
+  if (isFounderEmail(user?.email)) return true;
+  if (isFounderBusiness(biz?.name)) return true;
+  return false;
+}
+
+/**
  * Process a `customer.subscription.deleted` webhook for a MEMBERSHIP
  * subscription (i.e. not job_listing or additional_zip — those are handled
  * separately by their own helpers). Flips the business off the paid tier,
@@ -220,7 +248,7 @@ export function registerStripeRoutes(app: Express) {
         biz = found || null;
       }
 
-      if ((biz && isFounderBusiness(biz.name)) || isFounderEmail(req.user?.email)) {
+      if (shouldBypassCharges(req.user, biz)) {
         if (biz) {
           await db.update(businesses).set({
             membershipTier: "premium",
@@ -719,7 +747,7 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "Business not found" });
       }
 
-      if (isFounderBusiness(biz.name)) {
+      if (shouldBypassCharges(req.user, biz)) {
         await db.update(jobListings).set({ isActive: true, paymentStatus: "paid" as any }).where(eq(jobListings.id, jobListingId));
         return res.json({ founderBypass: true, message: "Founder business — job listing activated for free!" });
       }
@@ -809,7 +837,7 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "Business not found" });
       }
 
-      if (isFounderBusiness(biz.name)) {
+      if (shouldBypassCharges(req.user, biz)) {
         await db.update(adPlacements).set({ paymentStatus: "paid", status: "active" }).where(eq(adPlacements.id, adPlacementId));
         return res.json({ founderBypass: true, message: "Founder business — ad activated for free!" });
       }
@@ -912,7 +940,7 @@ export function registerStripeRoutes(app: Express) {
         return res.status(404).json({ message: "Business not found" });
       }
 
-      if (isFounderBusiness(biz.name)) {
+      if (shouldBypassCharges(req.user, biz)) {
         await db.update(events).set({ paymentStatus: "paid", status: "approved" }).where(eq(events.id, eventId));
         return res.json({ founderBypass: true, message: "Founder business — event ad activated for free!" });
       }
