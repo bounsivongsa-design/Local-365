@@ -131,7 +131,7 @@ export function AICreditTopUpModal({ open, onOpenChange, businessId }: Props) {
                     ${(p.priceCents / 100).toFixed(2)}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1">
-                    {(p.pricePerCredit * 100).toFixed(2)}¢ per credit
+                    {p.pricePerCredit.toFixed(2)}¢ per credit
                   </div>
                 </button>
               );
