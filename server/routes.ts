@@ -43,7 +43,16 @@ const COMP_RESEND_COOLDOWN_MS = 60_000;
 const compResendThrottle = new Map<number, number>();
 
 function normalizeBusinessName(name: string): string {
-  return name.toLowerCase().replace(/\b(llc|inc|corp|ltd|co)\b\.?/gi, '').trim().replace(/\s+/g, ' ');
+  // Strip punctuation FIRST (commas, periods, parens) so "Foo Inc., LLC" and
+  // "Foo (LLC.)" both reduce to the same canonical form. Without this the
+  // legal-suffix regex stripped "LLC" but left a trailing comma, breaking
+  // founder-business matching for any name like "Blackwater Tech, LLC".
+  return name
+    .toLowerCase()
+    .replace(/[,.()]/g, ' ')
+    .replace(/\b(llc|inc|corp|ltd|co)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function isFounderBusiness(name: string | null | undefined): boolean {
