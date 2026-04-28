@@ -23,6 +23,44 @@ function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDa
   return biz.membershipTier || "none";
 }
 
+// Founder/admin bypass — duplicated locally rather than imported so multiZip
+// stays self-contained. Mirrors server/stripe.ts and server/routes.ts: any
+// admin user, any business in FOUNDER_BUSINESSES, and any user with a
+// founder email gets additional zips activated for free (no Stripe charge).
+const FOUNDER_BUSINESSES_LOCAL = ["Goat Locker Printing", "Blackwater Technology Solutions"];
+const FOUNDER_EMAILS_LOCAL = [
+  "boun.sivongsa@gmail.com",
+  "bsivongsa@blackwatertechnologysolutions.com",
+  "boun.sivongsa@hotmail.com",
+  "goatlockerprinting@gmail.com",
+];
+function normalizeBizName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[,.()]/g, ' ')
+    .replace(/\b(llc|inc|corp|ltd|co)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function isFounderBiz(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const n = normalizeBizName(name);
+  return FOUNDER_BUSINESSES_LOCAL.some(fb => normalizeBizName(fb) === n);
+}
+function isFounderEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return FOUNDER_EMAILS_LOCAL.some(fe => fe.toLowerCase() === email.toLowerCase());
+}
+function shouldBypassChargesForOwner(
+  user: { accountType?: string | null; email?: string | null } | null | undefined,
+  biz: { name?: string | null } | null | undefined,
+): boolean {
+  if (user?.accountType === "admin") return true;
+  if (isFounderEmail(user?.email)) return true;
+  if (isFounderBiz(biz?.name)) return true;
+  return false;
+}
+
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -291,7 +329,18 @@ export async function quoteAddZipForOwner(
   }
 
   const tier = getEffectiveTier(parent);
-  const priceMonthly = getAdditionalZipPrice(tier);
+  let priceMonthly = getAdditionalZipPrice(tier);
+
+  // Founder/admin bypass — show $0 in the confirmation modal so the user
+  // isn't surprised when checkout activates the listing for free.
+  const [user] = await pgDb
+    .select({ email: users.email, accountType: users.accountType })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const bypass = shouldBypassChargesForOwner(user, parent);
+  if (bypass) priceMonthly = 0;
+
   return {
     status: 200,
     body: {
@@ -300,6 +349,7 @@ export async function quoteAddZipForOwner(
       state: loc.state,
       tier,
       priceMonthly,
+      bypass,
     },
   };
 }
@@ -353,6 +403,52 @@ export async function startAddZipCheckoutForOwner(
     .limit(1);
   if (existing.length) {
     return { status: 409, body: { message: "You already have a listing in this zip" } };
+  }
+
+  // Founder/admin bypass — skip Stripe entirely and create the additional-zip
+  // listing directly. Mirrors handleAdditionalZipCheckoutCompleted but with
+  // null subscription/customer (no Stripe records exist for free activations).
+  const [callerUser] = await pgDb
+    .select({ email: users.email, accountType: users.accountType })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (shouldBypassChargesForOwner(callerUser, parent)) {
+    const { id: _pid, createdAt: _pc, referralCode: _prc, foundingMemberNumber: _pfn, ...inheritable } =
+      parent as Record<string, unknown> & { id: number };
+    const [inserted] = await pgDb
+      .insert(businesses)
+      .values({
+        ...inheritable,
+        city: loc.city,
+        state: loc.state,
+        zipCode,
+        ownerUserId: userId,
+        parentBusinessId: rootId,
+        isAdditionalZip: true,
+        status: "active",
+        // No Stripe sub/customer for free activations.
+        stripeSubscriptionId: null,
+        goldTrialEndDate: null,
+        originalMembershipTier: null,
+        isFoundingMember: false,
+        membershipStartDate: new Date(),
+        referralCode: null,
+        foundingMemberNumber: null,
+      })
+      .returning({ id: businesses.id });
+    console.log(
+      `[multiZip] founder/admin bypass — additional-zip listing ${inserted?.id} created free for owner ${userId} in ${zipCode}`,
+    );
+    return {
+      status: 200,
+      body: {
+        founderBypass: true,
+        message: `Added ${loc.city}, ${loc.state} ${zipCode} for free.`,
+        priceMonthly: 0,
+        listingId: inserted?.id,
+      },
+    };
   }
 
   if (!stripe) return { status: 503, body: { message: "Stripe not configured" } };

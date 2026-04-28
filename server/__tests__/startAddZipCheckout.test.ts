@@ -350,6 +350,130 @@ test("add-zip-checkout: happy path builds a Stripe Checkout session with the rig
   );
 });
 
+test("add-zip-checkout: founder/admin bypass — admin user gets the additional zip listing for free without ever calling Stripe (regression: 'admins were getting charged $50/mo on add-zip')", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  // Admin user — promoted via accountType, not a founder email.
+  const adminId = "user-addzip-admin-" + Math.random().toString(36).slice(2, 10);
+  await pgDb.insert(users).values({
+    id: adminId,
+    email: `${adminId}@example.com`,
+    accountType: "admin",
+    linkedBusinessId: null,
+  });
+  createdUserIds.push(adminId);
+
+  const parent = await seedBusiness({
+    name: "Some Random Admin-Owned Listing",
+    ownerUserId: adminId,
+    zipCode: COVERED_ZIP_A,
+    stripeCustomerId: "cus_admin_should_not_be_used",
+  });
+
+  const stub = makeStripeStub("https://stripe.test/should-not-be-called");
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(adminId, parent.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.founderBypass, true, "must signal bypass to the client");
+  assert.equal(result.body.priceMonthly, 0, "price must be reported as $0");
+  assert.equal(stub.createCalls.length, 0, "Stripe.checkout.sessions.create must NOT be called for admins");
+
+  // The child listing must actually exist now (the modal closed and we
+  // told the user it was activated — the row had better be there).
+  const child = await pgDb
+    .select()
+    .from(businesses)
+    .where(eq(businesses.id, Number(result.body.listingId)));
+  assert.equal(child.length, 1, "additional-zip child row must be inserted");
+  assert.equal(child[0].zipCode, COVERED_ZIP_B);
+  assert.equal(child[0].parentBusinessId, parent.id);
+  assert.equal(child[0].isAdditionalZip, true);
+  assert.equal(child[0].ownerUserId, adminId);
+  assert.equal(child[0].status, "active");
+  assert.equal(child[0].stripeSubscriptionId, null, "free listings must not carry a Stripe sub id");
+  // Don't insert a Founding row for free admin/founder duplicates — those
+  // numbers are reserved for real paying signups.
+  assert.equal(child[0].isFoundingMember, false);
+  assert.equal(child[0].foundingMemberNumber, null);
+});
+
+test("add-zip-checkout: founder/admin bypass — owner with a founder email (not admin, not founder business) also bypasses Stripe", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  // Plain business account, but the email matches FOUNDER_EMAILS_LOCAL.
+  const founderEmailUserId = "user-addzip-founderEmail-" + Math.random().toString(36).slice(2, 10);
+  await pgDb.insert(users).values({
+    id: founderEmailUserId,
+    email: "boun.sivongsa@gmail.com", // matches the founder allowlist
+    accountType: "business",
+    linkedBusinessId: null,
+  });
+  createdUserIds.push(founderEmailUserId);
+
+  const parent = await seedBusiness({
+    name: "Some Random Non-Founder Business Name",
+    ownerUserId: founderEmailUserId,
+    zipCode: COVERED_ZIP_A,
+  });
+
+  const stub = makeStripeStub("https://stripe.test/should-not-be-called");
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(founderEmailUserId, parent.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.founderBypass, true);
+  assert.equal(stub.createCalls.length, 0, "Stripe must NOT be called for founder-email owners");
+});
+
+test("add-zip-checkout: founder/admin bypass — owner of a FOUNDER_BUSINESSES-listed business (e.g. 'Blackwater Technology Solutions, LLC') bypasses Stripe even with the LLC suffix and trailing comma", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  // Plain business account with a non-founder email.
+  const ownerId = await seedUser();
+
+  // The exact name pattern that broke before (commit 210cb50): trailing comma
+  // before the legal suffix. The normalizer must strip BOTH and still match.
+  const parent = await seedBusiness({
+    name: "Blackwater Technology Solutions, LLC",
+    ownerUserId: ownerId,
+    zipCode: COVERED_ZIP_A,
+  });
+
+  const stub = makeStripeStub("https://stripe.test/should-not-be-called");
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(ownerId, parent.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.founderBypass, true);
+  assert.equal(stub.createCalls.length, 0, "Stripe must NOT be called for founder businesses");
+});
+
+test("add-zip-quote: founder/admin bypass — admin sees priceMonthly: 0 and bypass: true so the confirmation modal shows free instead of $50/mo", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const adminId = "user-addzip-quote-admin-" + Math.random().toString(36).slice(2, 10);
+  await pgDb.insert(users).values({
+    id: adminId,
+    email: `${adminId}@example.com`,
+    accountType: "admin",
+    linkedBusinessId: null,
+  });
+  createdUserIds.push(adminId);
+
+  const parent = await seedBusiness({
+    name: "Quote-Bypass Admin Parent",
+    ownerUserId: adminId,
+    zipCode: COVERED_ZIP_A,
+    membershipTier: "premium",
+  });
+
+  const result = await quoteAddZipForOwner(adminId, parent.id, COVERED_ZIP_B);
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.priceMonthly, 0, "admin quote must be $0");
+  assert.equal(result.body.bypass, true, "admin quote must flag bypass for the client");
+});
+
 test("add-zip-checkout: when the caller targets a CHILD listing, parentBusinessId in metadata is the ROOT, and the root's Stripe customer is used", async () => {
   await seedCoveredLocation([COVERED_ZIP_B]);
   const userId = await seedUser();

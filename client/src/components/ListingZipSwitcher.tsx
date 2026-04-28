@@ -42,7 +42,7 @@ type OwnedListing = {
 };
 
 type AvailableZip = { zipCode: string; city: string; state: string; region: string };
-type ZipQuote = { zipCode: string; city: string; state: string; tier: string; priceMonthly: number };
+type ZipQuote = { zipCode: string; city: string; state: string; tier: string; priceMonthly: number; bypass?: boolean };
 
 export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: number | null }) {
   const { toast } = useToast();
@@ -111,6 +111,18 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
       return res.json();
     },
     onSuccess: (data) => {
+      if (data?.founderBypass) {
+        toast({ title: "Listing added", description: data.message || "Activated for free." });
+        // The component's listings query uses ['/api/my-businesses'] (line 54) —
+        // invalidate THAT key so the new free zip appears in the switcher
+        // immediately. Also bust the public business list cache.
+        queryClient.invalidateQueries({ queryKey: ["/api/my-businesses"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/businesses"] });
+        setAddZipOpen(false);
+        setStep("pick");
+        setPickedZip(null);
+        return;
+      }
       if (data?.url) {
         window.location.href = data.url;
       } else {
@@ -289,11 +301,15 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
                         </span>
                         <span className="text-sm text-muted-foreground">/month</span>
                       </div>
-                      {zipQuote.tier && zipQuote.tier !== "none" && (
+                      {zipQuote.bypass ? (
+                        <div className="text-xs text-green-700 mt-1" data-testid="text-bypass-note">
+                          Founder/admin account — additional listings are free.
+                        </div>
+                      ) : zipQuote.tier && zipQuote.tier !== "none" ? (
                         <div className="text-xs text-muted-foreground mt-1">
                           Reflects your current {zipQuote.tier} tier pricing.
                         </div>
-                      )}
+                      ) : null}
                     </>
                   ) : null}
                 </div>
@@ -320,8 +336,10 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
                   {checkoutMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Redirecting…
+                      {zipQuote?.bypass ? "Activating…" : "Redirecting…"}
                     </>
+                  ) : zipQuote?.bypass ? (
+                    "Activate for free"
                   ) : zipQuote ? (
                     `Continue to checkout · $${zipQuote.priceMonthly}/mo`
                   ) : (
