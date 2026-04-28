@@ -230,7 +230,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="inline-flex items-center gap-1 bg-amber-500 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1">
                             <Sparkles className="h-3 w-3" />
-                            {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Sponsored"}
+                            {largeAds.isPlaceholder ? "Large — $1,000/mo" : "Featured"}
                           </span>
                         </div>
                         <p className="text-[#d4a373] text-sm font-semibold tracking-wide mb-1">{slide.businessName}</p>
@@ -268,7 +268,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="inline-flex items-center gap-1 bg-[#0a4a82] text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5">
                                     <Megaphone className="h-2.5 w-2.5" />
-                                    {(mediumAds.isPlaceholder || slide.isPlaceholderFill) ? "Medium — $500/mo" : "Sponsored"}
+                                    {(mediumAds.isPlaceholder || slide.isPlaceholderFill) ? "Medium — $500/mo" : "Featured"}
                                   </span>
                                 </div>
                                 <p className="text-[#d4a373] text-xs font-semibold tracking-wide mb-0.5">{slide.businessName}</p>

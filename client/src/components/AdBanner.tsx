@@ -205,7 +205,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
           <div className="flex-1">
             <Badge className="mb-3 bg-white/20 text-white border border-white/20 hover:bg-white/25">
               <Megaphone className="h-3 w-3 mr-1.5" />
-              {isPlaceholder ? "Ad Space Available" : "Sponsored"}
+              {isPlaceholder ? "Ad Space Available" : "Featured"}
             </Badge>
             <h3 className="text-2xl md:text-3xl font-bold mb-2 drop-shadow-lg">{title}</h3>
             <p className="text-white/95 max-w-2xl text-sm md:text-base leading-relaxed drop-shadow-sm">{description}</p>
@@ -251,7 +251,7 @@ export function AdBanner({ placementType, category, className = "", limit = 1 }:
                   <div className="flex items-center gap-2 mb-1.5">
                     <Badge className="text-xs bg-[#d4a373]/10 text-[#d4a373] border border-[#d4a373]/30 hover:bg-[#d4a373]/15">
                       {isPlaceholder ? <Star className="h-2.5 w-2.5 mr-1" /> : <Megaphone className="h-2.5 w-2.5 mr-1" />}
-                      {isPlaceholder ? "Ad Space" : "Sponsored"}
+                      {isPlaceholder ? "Ad Space" : "Featured"}
                     </Badge>
                   </div>
                   <h4 className="font-semibold text-sm group-hover:text-[#0a4a82] transition-colors">{(ad as any).title}</h4>

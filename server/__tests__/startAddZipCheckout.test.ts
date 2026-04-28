@@ -448,9 +448,9 @@ test("add-zip-quote: happy path returns city/state/tier/priceMonthly for a cover
   assert.equal(result.body.zipCode, COVERED_ZIP_B);
   assert.equal(result.body.city, "Currituck");
   assert.equal(result.body.state, "NC");
-  // premium → gold tier in TIER_ID_MAP → 50% off $20 = $10
+  // premium → gold tier in TIER_ID_MAP → 50% off the $100 Gold monthly = $50
   assert.equal(result.body.tier, "premium");
-  assert.equal(result.body.priceMonthly, 10);
+  assert.equal(result.body.priceMonthly, 50);
 });
 
 test("add-zip-quote: when caller targets a CHILD listing, price reflects the ROOT's tier (not the child's)", async () => {
@@ -465,7 +465,7 @@ test("add-zip-quote: when caller targets a CHILD listing, price reflects the ROO
     name: "AddZipQuote Root Premium",
     ownerUserId: userId,
     zipCode: COVERED_ZIP_A,
-    membershipTier: "premium", // gold tier → 50% off → $10
+    membershipTier: "premium", // gold tier → 50% off the $100 Gold monthly = $50
   });
   const child = await seedBusiness({
     name: "AddZipQuote Child Basic",
@@ -473,11 +473,11 @@ test("add-zip-quote: when caller targets a CHILD listing, price reflects the ROO
     parentBusinessId: root.id,
     isAdditionalZip: true,
     zipCode: "20999",
-    membershipTier: "basic", // bronze tier → 10% off → $18 — but should NOT be used
+    membershipTier: "basic", // bronze tier → 10% off the $25 Bronze monthly = $22.50 — should NOT be used
   });
 
   const result = await quoteAddZipForOwner(userId, child.id, COVERED_ZIP_B);
   assert.equal(result.status, 200);
   assert.equal(result.body.tier, "premium", "must report the ROOT's tier, not the child's");
-  assert.equal(result.body.priceMonthly, 10, "price must reflect the ROOT's tier discount");
+  assert.equal(result.body.priceMonthly, 50, "price must reflect the ROOT's tier discount");
 });

@@ -148,9 +148,11 @@ export function LocationPicker() {
         >
           <MapPin className="h-4 w-4 text-[#d4a373]" />
           <span className="hidden sm:inline">
-            {location.city}, {location.state}
+            {location.city}, {location.state} {location.zipCode}
           </span>
-          <span className="sm:hidden">{location.city}</span>
+          <span className="sm:hidden">
+            {location.city} {location.zipCode}
+          </span>
           <ChevronDown className="h-3 w-3 opacity-70" />
         </Button>
       </DialogTrigger>

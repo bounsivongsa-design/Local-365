@@ -59,7 +59,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Up to 4 categories",
       "Basic quote access (3rd round)",
       "Monthly performance email",
-      "Add extra zip-code listings for $18/mo each (10% off)",
+      "Add extra zip-code listings for $22.50/mo each (10% off)",
     ],
     limits: {
       maxPhotos: 0,
@@ -95,7 +95,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Basic analytics dashboard",
       "Create customer coupons",
       "Verified business badge",
-      "Add extra zip-code listings for $15/mo each (25% off)",
+      "Add extra zip-code listings for $37.50/mo each (25% off)",
     ],
     limits: {
       maxPhotos: 6,
@@ -132,7 +132,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Custom business page branding",
       "Monthly spotlight in newsletter",
       "50% off advertising rates",
-      "Add extra zip-code listings for $10/mo each (50% off)",
+      "Add extra zip-code listings for $50/mo each (50% off)",
     ],
     limits: {
       maxPhotos: 10,
@@ -358,9 +358,11 @@ export const EVENT_MONTHLY_AD_RATES = {
 
 /**
  * Pricing for additional zip-code listings (one extra business listing per zip).
- * Base $20/mo, discounted by membership tier:
- *   Bronze 10% → $18, Silver 25% → $15, Gold 50% → $10.
- * Non-members and free founders not applicable (founders priced separately).
+ * Each extra zip is priced at the tier's monthly price minus a tier discount:
+ *   Bronze ($25 × 10% off) → $22.50
+ *   Silver ($50 × 25% off) → $37.50
+ *   Gold   ($100 × 50% off) → $50.00
+ * The fallback (when tier is unknown) keeps the legacy $20 base price.
  */
 export const ADDITIONAL_ZIP_BASE_PRICE = 20;
 
@@ -373,8 +375,12 @@ export const ADDITIONAL_ZIP_TIER_DISCOUNTS: Record<string, number> = {
 export function getAdditionalZipPrice(tierId: string | null | undefined): number {
   if (!tierId) return ADDITIONAL_ZIP_BASE_PRICE;
   const normalizedId = TIER_ID_MAP[tierId] || tierId;
-  const discount = ADDITIONAL_ZIP_TIER_DISCOUNTS[normalizedId] ?? 0;
-  return Math.round(ADDITIONAL_ZIP_BASE_PRICE * (1 - discount));
+  const discount = ADDITIONAL_ZIP_TIER_DISCOUNTS[normalizedId];
+  if (discount === undefined) return ADDITIONAL_ZIP_BASE_PRICE;
+  const tier = MEMBERSHIP_TIERS.find((t) => t.id === normalizedId);
+  if (!tier) return ADDITIONAL_ZIP_BASE_PRICE;
+  // Round to whole cents so Stripe's unit_amount is a clean integer.
+  return Math.round(tier.monthlyPrice * (1 - discount) * 100) / 100;
 }
 
 export type AdSize = keyof typeof MEMBER_AD_RATES;

@@ -71,7 +71,7 @@ export function AICreditsCard({ businessId }: Props) {
             </Badge>
           ) : (
             <Badge className="bg-white/80 text-amber-700 border border-amber-300">
-              Gold
+              AI Assist
             </Badge>
           )}
         </CardTitle>

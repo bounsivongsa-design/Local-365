@@ -179,7 +179,7 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
               className="text-[#0a4a82] font-medium"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add this listing to another zip
+              Add or manage this listing in other zip codes
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -75,7 +75,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Up to 4 categories",
       "Quote access: Round 3 (opens 48+ hrs after request)",
       "10% off advertising",
-      "Add extra zip-code listings for $18/mo each (10% off)"
+      "Add extra zip-code listings for $22.50/mo each (10% off)"
     ],
     icon: Medal,
     gradient: "from-amber-700 to-amber-900",
@@ -96,7 +96,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Verified business badge",
       "Social media links",
       "25% off advertising",
-      "Add extra zip-code listings for $15/mo each (25% off)"
+      "Add extra zip-code listings for $37.50/mo each (25% off)"
     ],
     icon: Star,
     gradient: "from-slate-400 to-slate-600",
@@ -118,7 +118,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "30-sec promo video upload",
       "Advanced analytics dashboard",
       "50% off all advertising",
-      "Add extra zip-code listings for $10/mo each (50% off)"
+      "Add extra zip-code listings for $50/mo each (50% off)"
     ],
     icon: Crown,
     gradient: "from-amber-500 to-amber-700",
