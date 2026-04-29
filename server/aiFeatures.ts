@@ -37,12 +37,19 @@ const stripe = stripeKey
   ? new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" as any })
   : null;
 
+// Re-export the unified founder/admin bypass from the shared module so the
+// existing test imports (`import { shouldBypassAiCredits } from "../aiFeatures"`)
+// keep working without churn. ALL founder rules now live in one place to
+// prevent the kind of drift that produced the original bug ("Stripe bypass
+// works, but AI Credits widget shows 0/250 for admins") — see
+// server/lib/founderRules.ts for the full rationale.
+export { shouldBypassAiCredits } from "./lib/founderRules";
+import { shouldBypassAiCredits as _shouldBypassAiCredits } from "./lib/founderRules";
+
 /**
- * Founder check uses the IMMUTABLE `businesses.isFoundingMember` column.
- * (Originally we keyed off business name, but a name is editable by the
- * owner — so a non-founder could rename their business and bypass Gold
- * gating + free credits. The column is set once by the founding-member
- * referral flow and never edited by owners.)
+ * Legacy founder-flag-only check, retained for callers that don't have user
+ * context (e.g. the bootstrap path inside `reserveCredits`). New code paths
+ * should prefer `shouldBypassAiCredits(user, biz)`.
  */
 function isFounderBiz(b: { isFoundingMember?: boolean | null } | null | undefined): boolean {
   return b?.isFoundingMember === true;
@@ -97,7 +104,7 @@ async function authorizeOwnerOnGold(
   req: Request,
   res: Response,
   businessId: number,
-): Promise<{ business: typeof businesses.$inferSelect } | null> {
+): Promise<{ business: typeof businesses.$inferSelect; isFounder: boolean } | null> {
   const userId = (req as any).user?.id;
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
@@ -106,6 +113,7 @@ async function authorizeOwnerOnGold(
   const [user] = await pgDb
     .select({
       id: users.id,
+      email: users.email,
       accountType: users.accountType,
       linkedBusinessId: users.linkedBusinessId,
     })
@@ -137,7 +145,38 @@ async function authorizeOwnerOnGold(
     });
     return null;
   }
-  return { business: biz };
+
+  // Compute the unified founder/admin bypass and persist it into the
+  // ai_credits row so reserveCredits (which doesn't have user context) can
+  // honor it on every subsequent call without re-deriving from user info.
+  // Self-healing: if a row exists with isFounderComp=false but the unified
+  // rule now says founder, we promote it (and conversely never demote — that
+  // would require an explicit admin action).
+  //
+  // The returned isFounder is the OR of the rule-based result AND the
+  // existing row's is_founder_comp flag. The row flag matters because
+  // admins can manually grant comp-founder status to a business that
+  // doesn't match any of the four rules (e.g. an influencer/partner
+  // business). Without that OR, downstream gates like the credit-pack
+  // checkout would happily charge real money to a row that reserveCredits
+  // already treats as ∞ — see architect H1.
+  const ruleBasedIsFounder = shouldBypassAiCredits(user, biz);
+  if (ruleBasedIsFounder) {
+    await pgDb
+      .insert(aiCredits)
+      .values({ businessId: biz.id, balance: 0, isFounderComp: true })
+      .onConflictDoUpdate({
+        target: aiCredits.businessId,
+        set: { isFounderComp: true, updatedAt: new Date() },
+      });
+  }
+  const [existingRow] = await pgDb
+    .select({ isFounderComp: aiCredits.isFounderComp })
+    .from(aiCredits)
+    .where(eq(aiCredits.businessId, biz.id));
+  const isFounder = ruleBasedIsFounder || existingRow?.isFounderComp === true;
+
+  return { business: biz, isFounder };
 }
 
 /**
@@ -469,14 +508,11 @@ export function registerAiFeatureRoutes(app: Express) {
     const auth = await authorizeOwnerOnGold(req, res, businessId);
     if (!auth) return;
 
-    // Founder businesses don't need to buy credits — silently refuse so the
+    // Admins/founders don't need to buy credits — silently refuse so the
     // UI can hide the button entirely. (Defense in depth: button is hidden
-    // client-side too.)
-    const [creditRow] = await pgDb
-      .select({ isFounderComp: aiCredits.isFounderComp })
-      .from(aiCredits)
-      .where(eq(aiCredits.businessId, businessId));
-    if (creditRow?.isFounderComp || isFounderBiz(auth.business)) {
+    // client-side too.) Uses the unified bypass that already self-healed
+    // ai_credits.isFounderComp inside authorizeOwnerOnGold.
+    if (auth.isFounder) {
       return res.status(400).json({
         message: "Founder businesses have unlimited credits.",
         code: "FOUNDER_NO_PURCHASE",
@@ -599,7 +635,11 @@ export function registerAiFeatureRoutes(app: Express) {
         balance: row?.balance ?? 0,
         monthlyAllowance: row?.monthlyAllowance ?? 250,
         cycleResetsAt: row?.cycleResetsAt ?? null,
-        isFounder: row?.isFounderComp ?? isFounderBiz(auth.business),
+        // Unified founder/admin check (admin accountType OR founder email
+        // OR founder business name OR isFoundingMember flag OR row.isFounderComp).
+        // The auth helper has already self-healed the row, so either source
+        // would work here — we OR them for defense-in-depth.
+        isFounder: auth.isFounder || row?.isFounderComp === true,
         eligible: true,
         monthUsage: {
           totalCredits,

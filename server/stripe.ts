@@ -10,60 +10,17 @@ import { invalidateStripeCreditCache, refreshPersistedCreditFromStripe } from ".
 import { applyCreditPackPurchase } from "./aiFeatures";
 import { handleAdditionalZipCheckoutCompleted, handleAdditionalZipSubscriptionDeleted } from "./multiZip";
 
-const FOUNDER_BUSINESSES = ["Goat Locker Printing", "Blackwater Technology Solutions"];
-const FOUNDER_EMAILS = [
-  "boun.sivongsa@gmail.com",
-  "bsivongsa@blackwatertechnologysolutions.com",
-  "boun.sivongsa@hotmail.com",
-  "goatlockerprinting@gmail.com",
-];
-
-function normalizeBusinessName(name: string): string {
-  // Strip punctuation FIRST (commas, periods, parens) so "Foo Inc., LLC" and
-  // "Foo (LLC.)" both reduce to the same canonical form. Without this the
-  // legal-suffix regex stripped "LLC" but left a trailing comma, breaking
-  // founder-business matching for any name like "Blackwater Tech, LLC".
-  return name
-    .toLowerCase()
-    .replace(/[,.()]/g, ' ')
-    .replace(/\b(llc|inc|corp|ltd|co)\b/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function isFounderBusiness(name: string | null | undefined): boolean {
-  if (!name) return false;
-  const normalized = normalizeBusinessName(name);
-  return FOUNDER_BUSINESSES.some(fb => normalizeBusinessName(fb) === normalized);
-}
-
-/**
- * Unified 3-pronged founder/admin bypass for ALL Stripe checkout endpoints
- * (membership, ad placement, job listing, event ad). Mirrors the same logic
- * used by `shouldBypassChargesForOwner` in server/multiZip.ts so behavior is
- * consistent across every paid surface.
- *
- * Returns true if the caller should skip Stripe entirely:
- *   - any user with accountType === "admin"  (admin override)
- *   - any user whose email is in FOUNDER_EMAILS  (e.g. boun.sivongsa@gmail.com)
- *   - any business whose normalized name matches FOUNDER_BUSINESSES
- *     (handles "LLC"/"Inc"/punctuation suffix variations)
- *
- * Why all three: the founder business name lookup alone was fragile —
- * "Blackwater Tech Solutions" (abbreviated) wouldn't match "Blackwater
- * Technology Solutions" because the normalizer doesn't expand abbreviations.
- * A founder/admin should never be charged real Stripe money even if the
- * business row was saved with an abbreviated/typo'd name.
- */
-export function shouldBypassCharges(
-  user: { accountType?: string | null; email?: string | null } | null | undefined,
-  biz: { name?: string | null } | null | undefined,
-): boolean {
-  if (user?.accountType === "admin") return true;
-  if (isFounderEmail(user?.email)) return true;
-  if (isFounderBusiness(biz?.name)) return true;
-  return false;
-}
+// All founder rules now live in server/lib/founderRules.ts so a single
+// list of founder emails / founder business names is the source of truth
+// for Stripe bypass, AI credit bypass, multi-zip bypass, and SMS bypass.
+// Re-exported here so existing test imports
+// (`import { shouldBypassCharges } from "../stripe"`) keep working.
+import {
+  shouldBypassCharges,
+  isFounderBusinessName as isFounderBusiness,
+  isFounderEmail,
+} from "./lib/founderRules";
+export { shouldBypassCharges };
 
 /**
  * Process a `customer.subscription.deleted` webhook for a MEMBERSHIP
@@ -117,11 +74,6 @@ export async function handleMembershipSubscriptionDeleted(
   }).where(eq(businesses.id, businessId));
   console.log(`Membership canceled: business ${businessId}`);
   return { businessId, previousTier: oldTier };
-}
-
-function isFounderEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return FOUNDER_EMAILS.some(fe => fe.toLowerCase() === email.toLowerCase());
 }
 
 function getEffectiveTier(biz: { membershipTier: string | null; goldTrialEndDate: Date | null; name?: string | null; isCompedMembership?: boolean | null; compedMembershipExpiresAt?: Date | string | null }): string {

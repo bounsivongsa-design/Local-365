@@ -23,43 +23,10 @@ function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDa
   return biz.membershipTier || "none";
 }
 
-// Founder/admin bypass — duplicated locally rather than imported so multiZip
-// stays self-contained. Mirrors server/stripe.ts and server/routes.ts: any
-// admin user, any business in FOUNDER_BUSINESSES, and any user with a
-// founder email gets additional zips activated for free (no Stripe charge).
-const FOUNDER_BUSINESSES_LOCAL = ["Goat Locker Printing", "Blackwater Technology Solutions"];
-const FOUNDER_EMAILS_LOCAL = [
-  "boun.sivongsa@gmail.com",
-  "bsivongsa@blackwatertechnologysolutions.com",
-  "boun.sivongsa@hotmail.com",
-  "goatlockerprinting@gmail.com",
-];
-function normalizeBizName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[,.()]/g, ' ')
-    .replace(/\b(llc|inc|corp|ltd|co)\b/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-function isFounderBiz(name: string | null | undefined): boolean {
-  if (!name) return false;
-  const n = normalizeBizName(name);
-  return FOUNDER_BUSINESSES_LOCAL.some(fb => normalizeBizName(fb) === n);
-}
-function isFounderEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return FOUNDER_EMAILS_LOCAL.some(fe => fe.toLowerCase() === email.toLowerCase());
-}
-function shouldBypassChargesForOwner(
-  user: { accountType?: string | null; email?: string | null } | null | undefined,
-  biz: { name?: string | null } | null | undefined,
-): boolean {
-  if (user?.accountType === "admin") return true;
-  if (isFounderEmail(user?.email)) return true;
-  if (isFounderBiz(biz?.name)) return true;
-  return false;
-}
+// All founder rules are centralized in server/lib/founderRules.ts —
+// imported here under the local alias `shouldBypassChargesForOwner` so the
+// downstream call sites (which already use this name) don't have to change.
+import { shouldBypassCharges as shouldBypassChargesForOwner } from "./lib/founderRules";
 
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

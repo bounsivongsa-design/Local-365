@@ -32,16 +32,26 @@ import {
 import { and, eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { isAuthenticated } from "./replit_integrations/auth";
+import { shouldBypassAiCredits } from "./lib/founderRules";
 
 const SMS_CREDITS_PER_SEGMENT = 2;
 const PROVIDER = (process.env.SMS_PROVIDER ?? "stub").toLowerCase();
 
 /* ─── Helpers ─── */
 
+// effectiveTier here uses the same Gold-equivalence semantics as
+// aiFeatures.ts / marketingHub.ts. Founders are always Gold for SMS
+// purposes — we use the legacy `isFoundingMember` flag here because
+// effectiveTier does not have user context (no email/accountType to
+// check). The full 4-prong founder/admin bypass is applied separately
+// in `authorizeOwner` (via shouldBypassAiCredits) and persisted into
+// `ai_credits.is_founder_comp` so `reserveSmsCredits` honors it.
 function effectiveTier(b: {
   membershipTier: string | null;
   goldTrialEndDate: Date | null;
   isFoundingMember?: boolean | null;
+  isCompedMembership?: boolean | null;
+  compedMembershipExpiresAt?: Date | string | null;
 }): string {
   if (b.isFoundingMember === true) return "premium";
   if (isCompActive(b)) return "premium";
@@ -97,7 +107,12 @@ async function authorizeOwner(
     return null;
   }
   const [user] = await pgDb
-    .select({ id: users.id, linkedBusinessId: users.linkedBusinessId })
+    .select({
+      id: users.id,
+      email: users.email,
+      accountType: users.accountType,
+      linkedBusinessId: users.linkedBusinessId,
+    })
     .from(users)
     .where(eq(users.id, userId));
   if (!user) {
@@ -122,6 +137,21 @@ async function authorizeOwner(
       code: "GOLD_REQUIRED",
     });
     return null;
+  }
+
+  // Self-heal the ai_credits.is_founder_comp flag for the unified
+  // founder/admin bypass — same logic as aiFeatures.authorizeOwnerOnGold.
+  // Without this, an admin/founder who hasn't yet visited an AI Credits
+  // page first would have reserveSmsCredits cap them at 250 credits and
+  // 402 with INSUFFICIENT, defeating the bypass on the SMS surface.
+  if (shouldBypassAiCredits(user, biz)) {
+    await pgDb
+      .insert(aiCredits)
+      .values({ businessId: biz.id, balance: 0, isFounderComp: true })
+      .onConflictDoUpdate({
+        target: aiCredits.businessId,
+        set: { isFounderComp: true, updatedAt: new Date() },
+      });
   }
   return { business: biz };
 }
