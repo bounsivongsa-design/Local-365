@@ -3479,7 +3479,8 @@ function GrowthTab() {
             Founding Members Roster
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <FoundingMemberGrantBox />
           {founding.members.length === 0 ? (
             <p className="text-sm text-slate-500">No founding members assigned yet.</p>
           ) : (
@@ -3507,6 +3508,74 @@ function GrowthTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/**
+ * Compact admin tool that lets the founder/admin flag a business as a
+ * Founding Member by ID. Auto-assigns the next available number.
+ * Sits inside the Founding Members Roster card on the Growth tab.
+ */
+function FoundingMemberGrantBox() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [bizId, setBizId] = useState("");
+
+  const grant = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/admin/businesses/${id}/grant-founding-member`);
+      return res.json() as Promise<{ ok: boolean; foundingMemberNumber: number; name: string; alreadyFoundingMember?: boolean }>;
+    },
+    onSuccess: (r) => {
+      toast({
+        title: r.alreadyFoundingMember ? "Already a founding member" : "Founding member granted",
+        description: `${r.name} → #${r.foundingMemberNumber}`,
+      });
+      setBizId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/referrals/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/businesses"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Grant failed", description: err?.message || "Unknown error", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="rounded-lg border border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100/40 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Crown className="h-4 w-4 text-amber-700" />
+        <span className="text-sm font-semibold text-amber-900">Grant Founding Member status</span>
+      </div>
+      <p className="text-xs text-slate-600 mb-2">
+        Enter a business ID (find it on the Businesses tab) to flag them and assign the next available number 1&ndash;100.
+      </p>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = parseInt(bizId);
+          if (!isNaN(n) && n > 0) grant.mutate(n);
+        }}
+      >
+        <input
+          type="number"
+          inputMode="numeric"
+          value={bizId}
+          onChange={(e) => setBizId(e.target.value)}
+          placeholder="Business ID (e.g. 70)"
+          className="flex-1 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          data-testid="input-grant-founder-bizid"
+        />
+        <Button
+          type="submit"
+          disabled={!bizId || grant.isPending}
+          className="bg-amber-600 hover:bg-amber-700 text-white"
+          data-testid="button-grant-founder"
+        >
+          {grant.isPending ? "Granting…" : "Grant"}
+        </Button>
+      </form>
     </div>
   );
 }

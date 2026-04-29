@@ -5042,6 +5042,129 @@ Respond in this exact JSON format:
     }
   });
 
+  // Admin: grant a business "Founding Member" status. Auto-assigns the next
+  // available founding member number (1..FOUNDING_LIMIT). Idempotent — if
+  // the business is already a founding member, returns the existing number
+  // unchanged. Used by the Founding Members Roster card on the admin
+  // dashboard so we can manually flag businesses that signed up before the
+  // founding-member referral pipeline existed (Boun's own Blackwater Tech
+  // Solutions and GOAT LOCKER PRINTING are the canonical examples).
+  app.post("/api/admin/businesses/:id/grant-founding-member", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!(await isAdminUser(userId))) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const FOUNDING_LIMIT = 100;
+
+      // Wrap the entire read-then-write in a transaction guarded by a
+      // Postgres advisory lock keyed to a constant for this operation.
+      // Without this, two admins clicking "Grant" simultaneously would
+      // both pass the `isFoundingMember` early-return AND both compute
+      // the same `MAX + 1`, ending up either with two businesses sharing
+      // a number or one business having its number overwritten (burning
+      // a slot). The advisory lock auto-releases at end of transaction.
+      // Constant 0xF0D14 (chosen arbitrarily; doesn't collide with any
+      // other advisory lock in the codebase).
+      const result = await pgDb.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(986388)`);
+
+        const [target] = await tx
+          .select({
+            id: businesses.id,
+            name: businesses.name,
+            isFoundingMember: businesses.isFoundingMember,
+            foundingMemberNumber: businesses.foundingMemberNumber,
+          })
+          .from(businesses)
+          .where(eq(businesses.id, bizId));
+        if (!target) {
+          return { kind: "not_found" as const };
+        }
+
+        if (target.isFoundingMember && target.foundingMemberNumber) {
+          return {
+            kind: "already" as const,
+            foundingMemberNumber: target.foundingMemberNumber,
+            name: target.name,
+          };
+        }
+
+        const [maxRow] = await tx
+          .select({
+            maxNum: sql<number>`COALESCE(MAX(${businesses.foundingMemberNumber}), 0)`,
+          })
+          .from(businesses)
+          .where(eq(businesses.isFoundingMember, true));
+        const nextNum = (maxRow?.maxNum ?? 0) + 1;
+        if (nextNum > FOUNDING_LIMIT) {
+          return { kind: "full" as const };
+        }
+
+        await tx
+          .update(businesses)
+          .set({ isFoundingMember: true, foundingMemberNumber: nextNum })
+          .where(eq(businesses.id, bizId));
+
+        return { kind: "granted" as const, foundingMemberNumber: nextNum, name: target.name };
+      });
+
+      if (result.kind === "not_found") {
+        return res.status(404).json({ message: "Business not found" });
+      }
+      if (result.kind === "full") {
+        return res.status(409).json({ message: `Founding member roster is full (${FOUNDING_LIMIT}/${FOUNDING_LIMIT}).` });
+      }
+      if (result.kind === "already") {
+        return res.json({
+          ok: true,
+          alreadyFoundingMember: true,
+          foundingMemberNumber: result.foundingMemberNumber,
+          name: result.name,
+        });
+      }
+
+      console.log(
+        `[admin] granted founding-member #${result.foundingMemberNumber} to business ${bizId} (${result.name}) by admin ${userId}`,
+      );
+      res.json({ ok: true, foundingMemberNumber: result.foundingMemberNumber, name: result.name });
+    } catch (err) {
+      console.error("Grant founding member error:", err);
+      res.status(500).json({ message: "Failed to grant founding member status" });
+    }
+  });
+
+  // Admin: revoke a business's Founding Member status. Used to undo a mistake;
+  // the freed slot becomes the next-assigned number on the next grant.
+  app.post("/api/admin/businesses/:id/revoke-founding-member", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!(await isAdminUser(userId))) return res.status(403).json({ message: "Forbidden" });
+
+      const bizId = parseInt(req.params.id);
+      if (isNaN(bizId)) return res.status(400).json({ message: "Invalid business ID" });
+
+      const [target] = await pgDb
+        .select({ id: businesses.id, name: businesses.name, foundingMemberNumber: businesses.foundingMemberNumber })
+        .from(businesses)
+        .where(eq(businesses.id, bizId));
+      if (!target) return res.status(404).json({ message: "Business not found" });
+
+      await pgDb
+        .update(businesses)
+        .set({ isFoundingMember: false, foundingMemberNumber: null })
+        .where(eq(businesses.id, bizId));
+
+      console.log(`[admin] revoked founding-member #${target.foundingMemberNumber} from business ${bizId} (${target.name}) by admin ${userId}`);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Revoke founding member error:", err);
+      res.status(500).json({ message: "Failed to revoke founding member status" });
+    }
+  });
+
   // Admin: full list of referrals with referrer/referred names + status,
   // for spotting failed Stripe credits and manually re-issuing them.
   app.get("/api/admin/referrals", isAuthenticated, async (req: any, res) => {
