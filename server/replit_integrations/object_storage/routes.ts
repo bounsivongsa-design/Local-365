@@ -46,14 +46,27 @@ export function registerObjectStorageRoutes(app: Express): void {
         });
       }
 
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+      // Allowed types are bucketed by family so each family can carry its
+      // own size cap. Images and PDFs are capped at 10 MB; video ad uploads
+      // are capped at 50 MB to match the in-app "Upload video (MP4, max
+      // 50MB, 30s limit)" hint on the Advertising page. We accept the
+      // common video MIME types browsers report for MP4/WebM/QuickTime —
+      // some browsers report MP4 as "video/mp4" and others as
+      // "video/quicktime" depending on codec, so both are allowed.
+      const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+      const videoTypes = ["video/mp4", "video/webm", "video/quicktime"];
+      const allowedTypes = [...imageTypes, ...videoTypes];
       if (contentType && !allowedTypes.includes(contentType)) {
-        return res.status(400).json({ error: "File type not allowed. Supported: JPG, PNG, WebP, GIF, PDF." });
+        return res.status(400).json({
+          error: "File type not allowed. Supported: JPG, PNG, WebP, GIF, PDF, MP4, WebM, MOV.",
+        });
       }
 
-      const maxSize = 10 * 1024 * 1024;
+      const isVideo = !!contentType && videoTypes.includes(contentType);
+      const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
       if (size && size > maxSize) {
-        return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
+        const maxLabel = isVideo ? "50MB" : "10MB";
+        return res.status(400).json({ error: `File too large. Maximum size is ${maxLabel}.` });
       }
 
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
