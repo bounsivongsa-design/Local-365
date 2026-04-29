@@ -958,20 +958,22 @@ export function registerStripeRoutes(app: Express) {
       return res.status(400).json({ message: "Missing stripe-signature header" });
     }
 
-    // High-value write paths (anything that mints credits or money out of
-    // thin air) MUST require a verified signature in production. The
-    // unverified dev fallback above is convenient locally but lets an
-    // attacker forge `checkout.session.completed` events and grant
-    // themselves AI credits. Block that explicitly.
+    // SECURITY: in production, ANY unverified webhook event is rejected
+    // outright. Multiple branches in the switch below mint money, credits,
+    // or memberships out of thin air (credit-pack purchases, referral
+    // payouts on `invoice.payment_succeeded`, ad/job activation, comp
+    // membership grants, etc.) and an attacker who can hit this endpoint
+    // unauthenticated could forge any of them if we let the unverified
+    // dev fallback through. Fail closed — production must always have
+    // STRIPE_WEBHOOK_SECRET configured. The unverified fallback above
+    // remains available ONLY in non-production environments for local
+    // testing.
     const isProd = process.env.NODE_ENV === "production";
-    if (
-      isProd &&
-      !sigVerified &&
-      event?.type === "checkout.session.completed" &&
-      (event.data?.object as any)?.metadata?.type === "credit_pack"
-    ) {
-      console.error("[security] refusing unverified credit_pack webhook in production");
-      return res.status(400).json({ message: "Signature required for this event" });
+    if (isProd && !sigVerified) {
+      console.error(
+        `[security] refusing unverified Stripe webhook in production (event type: ${event?.type ?? "unknown"})`,
+      );
+      return res.status(400).json({ message: "Signature required" });
     }
 
     try {
