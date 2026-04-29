@@ -63,6 +63,7 @@ import {
   Paintbrush,
   Crop,
   Share2,
+  Lock,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1262,7 +1263,398 @@ function EditAdDialog({ ad, open, onClose }: { ad: any; open: boolean; onClose: 
   );
 }
 
-function MyAdsSection({ businessId }: { businessId: number }) {
+const AD_BASE_PRICING_MONTHLY: Record<"small" | "medium" | "large", number> = {
+  small: 250,
+  medium: 500,
+  large: 1000,
+};
+const TIER_DISCOUNT_MAP: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
+const TIER_ALLOWED_AD_SIZES: Record<string, ("small" | "medium" | "large")[]> = {
+  none: ["small"],
+  basic: ["small"],
+  standard: ["small", "medium"],
+  premium: ["small", "medium", "large"],
+};
+function placementForSize(size: "small" | "medium" | "large"): string {
+  return size === "large" ? "large_banner" : size === "medium" ? "medium_banner" : "small_banner";
+}
+
+function CreateAdDialog({ business, open, onClose }: { business: Business; open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { uploadFile, isUploading, progress } = useUpload();
+  const effectiveTier = ((business as any).effectiveTier || business.membershipTier || "basic") as string;
+  const allowedSizes = TIER_ALLOWED_AD_SIZES[effectiveTier] || ["small"];
+  const discount = TIER_DISCOUNT_MAP[effectiveTier] || 0;
+  const defaultSize = allowedSizes[allowedSizes.length - 1] as "small" | "medium" | "large";
+
+  const [adSize, setAdSize] = useState<"small" | "medium" | "large">(defaultSize);
+  const [formData, setFormData] = useState({ title: "", description: "", linkUrl: "" });
+  const [imageUrl, setImageUrl] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showDesigner, setShowDesigner] = useState(false);
+
+  const monthlyPrice = Math.round(AD_BASE_PRICING_MONTHLY[adSize] * (1 - discount));
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingFile(file);
+    e.target.value = "";
+  };
+
+  const handleCroppedImage = async (blob: Blob) => {
+    setCropFile(null);
+    const ext = blob.type === "image/png" ? "png" : "jpg";
+    const file = new File([blob], `ad-image-${Date.now()}.${ext}`, { type: blob.type || "image/jpeg" });
+    const result = await uploadFile(file);
+    if (result) {
+      const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+      setImageUrl(path);
+      toast({ title: "Image Uploaded" });
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.title.trim()) {
+      toast({ title: "Title required", description: "Give your ad a catchy title.", variant: "destructive" });
+      return;
+    }
+    if (!imageUrl) {
+      toast({ title: "Image required", description: "Upload or design an ad image.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const normalizedLink = formData.linkUrl && formData.linkUrl.trim() && !formData.linkUrl.startsWith("http")
+        ? `https://${formData.linkUrl}`
+        : formData.linkUrl;
+      const createRes = await fetch("/api/ads/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          businessId: business.id,
+          placementType: placementForSize(adSize),
+          adSize,
+          adDuration: "30",
+          title: formData.title,
+          description: formData.description,
+          linkUrl: normalizedLink,
+          imageUrl,
+        }),
+      });
+      if (!createRes.ok) {
+        const err = await createRes.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to create ad");
+      }
+      const created = await createRes.json();
+      const adId = created.id || created.ad?.id;
+      queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+
+      const checkoutRes = await fetch("/api/stripe/ad-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ adPlacementId: adId }),
+      });
+      const checkoutData = await checkoutRes.json();
+      if (checkoutData.founderBypass) {
+        toast({ title: "Ad Activated!", description: checkoutData.message || "Your ad is live (founder/comp bypass)." });
+        queryClient.invalidateQueries({ queryKey: ["/api/ads/my-ads"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ads/active"] });
+        onClose();
+        return;
+      }
+      if (checkoutData.url) {
+        window.location.href = checkoutData.url;
+        return;
+      }
+      toast({ title: "Ad Submitted", description: "We saved your ad. Open it from My Ads to complete payment." });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to submit ad", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-[#0a4a82]" />
+            Create New Ad
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div>
+            <Label className="mb-2 block">Ad Size</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["small", "medium", "large"] as const).map((sz) => {
+                const allowed = allowedSizes.includes(sz);
+                const price = Math.round(AD_BASE_PRICING_MONTHLY[sz] * (1 - discount));
+                const selected = adSize === sz;
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    disabled={!allowed}
+                    onClick={() => allowed && setAdSize(sz)}
+                    className={`rounded-xl p-3 text-center border-2 transition-all ${
+                      selected
+                        ? "border-[#0a4a82] bg-[#0a4a82]/5 ring-1 ring-[#0a4a82]/20"
+                        : allowed
+                          ? "border-slate-200 hover:border-[#0a4a82]/40 bg-white"
+                          : "border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
+                    }`}
+                    data-testid={`button-create-ad-size-${sz}`}
+                  >
+                    <p className={`text-sm font-bold capitalize ${selected ? "text-[#0a4a82]" : "text-[#1a1a2e]"}`}>{sz}</p>
+                    <p className="text-xs font-semibold text-[#0a4a82] mt-1">${price}/mo</p>
+                    {!allowed && <Lock className="h-3 w-3 mx-auto mt-1 text-slate-400" />}
+                  </button>
+                );
+              })}
+            </div>
+            {allowedSizes.length < 3 && (
+              <p className="text-[10px] text-[#d4a373] mt-1">Upgrade your membership to unlock larger sizes.</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="create-ad-title">Ad Title *</Label>
+            <Input
+              id="create-ad-title"
+              placeholder="e.g., Spring Special — 20% Off"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="bg-white"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              data-testid="input-create-ad-title"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="create-ad-description">Description</Label>
+            <Textarea
+              id="create-ad-description"
+              placeholder="Brief description of your ad..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className="bg-white"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              data-testid="input-create-ad-description"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="create-ad-link">Link URL</Label>
+            <Input
+              id="create-ad-link"
+              type="url"
+              placeholder="https://yourwebsite.com"
+              value={formData.linkUrl}
+              onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
+              className="bg-white"
+              style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+              data-testid="input-create-ad-link"
+            />
+          </div>
+
+          <div>
+            <Label>Ad Image *</Label>
+            <p className="text-xs text-muted-foreground mb-1">
+              Recommended: {adSize === "large" ? "1200×675px (16:9)" : adSize === "medium" ? "1200×540px (20:9)" : "1200×500px (12:5)"}, max 5MB
+            </p>
+            {imageUrl ? (
+              <div>
+                <div className="relative rounded-xl overflow-hidden border-2 border-[#0a4a82]/20 h-32 mt-1">
+                  <img src={imageUrl.startsWith("/objects/") ? imageUrl : `/objects/${imageUrl}`} alt="Ad preview" className="w-full h-full object-cover" />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5 font-medium text-xs w-full"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = (e) => handleImageSelect(e as any);
+                    input.click();
+                  }}
+                  data-testid="button-create-replace-ad-image"
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  Replace Image
+                </Button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center gap-2 p-4 mt-1 rounded-xl border-2 border-dashed border-[#0a4a82]/20 cursor-pointer hover:border-[#0a4a82]/40 transition-colors">
+                <Upload className="h-5 w-5 text-[#0a4a82]/40" />
+                <span className="text-xs text-gray-500">Click to upload an image</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-create-ad-image-upload" />
+              </label>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 rounded-lg border-[#d4a373] text-[#d4a373] hover:bg-[#d4a373]/10 font-medium text-xs w-full"
+              onClick={() => setShowDesigner(true)}
+              data-testid="button-create-open-ad-designer"
+            >
+              <Paintbrush className="h-3.5 w-3.5 mr-1.5" />
+              Design Your Ad
+            </Button>
+            {isUploading && (
+              <div className="mt-2">
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#0a4a82] to-[#d4a373] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-[#0a4a82]/5 p-3 rounded-xl border border-[#0a4a82]/10">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-slate-700">Monthly Price (30 days):</span>
+              <span className="text-xl font-bold text-[#0a4a82]" data-testid="text-create-ad-price">${monthlyPrice}</span>
+            </div>
+            {discount > 0 && (
+              <p className="text-[10px] text-green-600 font-medium mt-0.5">{Math.round(discount * 100)}% member discount applied</p>
+            )}
+            <p className="text-xs text-slate-500 mt-1.5">You'll be redirected to secure checkout. Founders/comp Gold members are activated instantly with no charge.</p>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting || isUploading}
+              className="flex-1 bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-lg font-semibold"
+              data-testid="button-submit-create-ad"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
+              Submit &amp; Continue
+            </Button>
+            <Button variant="outline" onClick={onClose} disabled={submitting} className="rounded-lg" data-testid="button-cancel-create-ad">
+              Cancel
+            </Button>
+          </div>
+          <Link to="/advertising" className="block text-center">
+            <span className="text-xs text-[#0a4a82]/70 hover:text-[#0a4a82] underline">
+              Need promo codes, video ads, or to compare tiers? Open the full Advertising page
+            </span>
+          </Link>
+        </div>
+      </DialogContent>
+
+      {pendingFile && !cropFile && (
+        <Dialog open={true} onOpenChange={() => setPendingFile(null)}>
+          <DialogContent className="max-w-md" data-testid="dialog-create-upload-choice">
+            <DialogHeader>
+              <DialogTitle className="text-[#1a1a2e]">How would you like to upload?</DialogTitle>
+            </DialogHeader>
+            <div className="bg-[#0a4a82]/5 rounded-lg p-3 text-sm">
+              <p className="font-medium text-[#0a4a82] mb-1">Recommended size for your ad:</p>
+              <p className="text-[#0a4a82]/80 font-mono">
+                {adSize === "large" ? "1200 × 675px (16:9)" : adSize === "medium" ? "1200 × 540px (20:9)" : "1200 × 500px (12:5)"}
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              <strong>Upload Directly</strong> auto-resizes to fit perfectly. <strong>Crop First</strong> lets you pick which part of the image to use.
+            </p>
+            <div className="flex flex-col gap-3 mt-1">
+              <Button
+                className="bg-[#0a4a82] hover:bg-[#0a4a82]/90"
+                disabled={isUploading}
+                data-testid="button-create-upload-direct"
+                onClick={async () => {
+                  const file = pendingFile;
+                  setPendingFile(null);
+                  if (!file) return;
+                  const dims: Record<string, { w: number; h: number }> = {
+                    large: { w: 1200, h: 675 }, medium: { w: 1200, h: 540 }, small: { w: 1200, h: 500 },
+                  };
+                  const target = dims[adSize] || dims.large;
+                  try {
+                    const resized = await resizeImageToFit(file, target.w, target.h);
+                    const result = await uploadFile(resized);
+                    if (result) {
+                      const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+                      setImageUrl(path);
+                      toast({ title: "Image Uploaded", description: `Resized to ${target.w}×${target.h}.` });
+                    }
+                  } catch {
+                    toast({ title: "Upload failed", description: "Could not process the image.", variant: "destructive" });
+                  }
+                }}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {isUploading ? "Uploading..." : "Upload Directly (Auto-Resize)"}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-[#0a4a82] text-[#0a4a82]"
+                data-testid="button-create-upload-crop"
+                onClick={() => {
+                  setCropFile(pendingFile);
+                  setPendingFile(null);
+                }}
+              >
+                <Crop className="h-4 w-4 mr-2" />
+                Crop &amp; Resize First
+              </Button>
+              <Button variant="ghost" onClick={() => setPendingFile(null)} data-testid="button-create-upload-cancel">
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      {cropFile && (
+        <ImageCropper
+          imageFile={cropFile}
+          aspectRatio={adSize === "large" ? 16 / 9 : adSize === "medium" ? 20 / 9 : 12 / 5}
+          onCropped={handleCroppedImage}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
+      <Dialog open={showDesigner} onOpenChange={setShowDesigner}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-6" data-testid="dialog-create-ad-designer">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#1a1a2e]">
+              <Paintbrush className="h-5 w-5 text-[#0a4a82]" />
+              Design Your Ad
+            </DialogTitle>
+          </DialogHeader>
+          <AdDesigner
+            adSize={adSize}
+            businessName={business.name || ""}
+            onComplete={async (blob) => {
+              setShowDesigner(false);
+              const file = new File([blob], `designed-ad-${Date.now()}.png`, { type: "image/png" });
+              const result = await uploadFile(file);
+              if (result) {
+                const path = result.objectPath.startsWith("/objects/") ? result.objectPath : `/objects/${result.objectPath}`;
+                setImageUrl(path);
+                toast({ title: "Ad Design Saved!", description: "Your custom design has been set as the ad image." });
+              }
+            }}
+            onCancel={() => setShowDesigner(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </Dialog>
+  );
+}
+
+function MyAdsSection({ business }: { business: Business }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: myAds, isLoading } = useQuery<any[]>({
@@ -1271,6 +1663,7 @@ function MyAdsSection({ businessId }: { businessId: number }) {
   const [payingAdId, setPayingAdId] = useState<number | null>(null);
   const [deletingAdId, setDeletingAdId] = useState<number | null>(null);
   const [editingAd, setEditingAd] = useState<any>(null);
+  const [creatingAd, setCreatingAd] = useState(false);
 
   const handlePayAd = async (adId: number) => {
     setPayingAdId(adId);
@@ -1338,12 +1731,15 @@ function MyAdsSection({ businessId }: { businessId: number }) {
           </div>
           My Ad Campaigns
         </CardTitle>
-        <Link to="/advertising">
-          <Button size="sm" className="rounded-lg bg-[#0a4a82] hover:bg-[#083a6a] text-white" data-testid="button-create-ad">
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Ad
-          </Button>
-        </Link>
+        <Button
+          size="sm"
+          className="rounded-lg bg-[#0a4a82] hover:bg-[#083a6a] text-white"
+          onClick={() => setCreatingAd(true)}
+          data-testid="button-create-ad"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          New Ad
+        </Button>
       </CardHeader>
       <CardContent>
         {ads.length === 0 ? (
@@ -1353,11 +1749,19 @@ function MyAdsSection({ businessId }: { businessId: number }) {
             </div>
             <p className="text-gray-500 font-medium">No ad campaigns yet</p>
             <p className="text-sm text-gray-400 mt-1">Create banner ads to promote your business across the platform</p>
-            <Link to="/advertising" className="mt-4 inline-block">
-              <Button size="sm" variant="outline" className="rounded-lg border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5" data-testid="button-browse-ads">
-                <Megaphone className="h-3.5 w-3.5 mr-1.5" />
-                Browse Ad Options
-              </Button>
+            <Button
+              size="sm"
+              className="mt-4 rounded-lg bg-[#0a4a82] hover:bg-[#083a6a] text-white"
+              onClick={() => setCreatingAd(true)}
+              data-testid="button-browse-ads"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Create Your First Ad
+            </Button>
+            <Link to="/advertising" className="block mt-2">
+              <span className="text-xs text-[#0a4a82]/70 hover:text-[#0a4a82] underline" data-testid="link-advertising-tiers">
+                See full pricing &amp; tier comparison
+              </span>
             </Link>
           </div>
         ) : (
@@ -2269,7 +2673,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
 
           <DashboardInbox />
 
-          <MyAdsSection businessId={business.id} />
+          <MyAdsSection business={business} />
           <MyJobsSection />
           <MyEventsSection />
 
