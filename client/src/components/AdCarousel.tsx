@@ -68,21 +68,6 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
   const [mediumAdPos, setMediumAdPos] = useState(0);
   const [smallAdPos, setSmallAdPos] = useState(0);
   const [previewAd, setPreviewAd] = useState<AdSlide | null>(null);
-  // Per-real-ad natural aspect ratios (width / height), keyed by ad placement id.
-  // Real customer ads come in many shapes (1:1 square, 4:3, 16:9, custom). A
-  // fixed 16:9 slot was making them look small/squished — e.g. Back Bay Lawn
-  // Care's banner sat in a too-short box with the phone number compressed
-  // against the bottom edge. We measure each uploaded ad's natural dimensions
-  // on load and resize the slot to match the currently-shown real ad so the
-  // image fills its slot edge-to-edge with no wasted space.
-  const [realAdAspects, setRealAdAspects] = useState<Record<number, number>>({});
-  const handleRealAdImgLoad = (slideId: number) => (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    if (slideId > 0 && img.naturalWidth > 0 && img.naturalHeight > 0) {
-      const aspect = img.naturalWidth / img.naturalHeight;
-      setRealAdAspects(prev => (prev[slideId] === aspect ? prev : { ...prev, [slideId]: aspect }));
-    }
-  };
   const impressionsSent = useRef<Set<number>>(new Set());
 
   const { data: realLargeAds } = useQuery<AdWithBusiness[]>({
@@ -230,22 +215,6 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
     }
   }, [safeSmallPos, smallAds.slides]);
 
-  // Compute the aspect ratio of the LARGE slot from the currently-shown real
-  // ad's natural dimensions (measured by the <img onLoad> handler). This lets
-  // each customer's banner fill its slot edge-to-edge regardless of whether
-  // they uploaded a square, 4:3, 16:9, or custom-shaped image. Falls back to
-  // 16:9 for placeholder slides or before the image has loaded.
-  const currentLargeSlide = largeAds.slides[safeLargePos];
-  const isCurrentLargeReal = !!(
-    currentLargeSlide &&
-    !largeAds.isPlaceholder &&
-    !currentLargeSlide.isPlaceholderFill &&
-    currentLargeSlide.id > 0 &&
-    currentLargeSlide.imageUrl
-  );
-  const measuredLargeAspect = isCurrentLargeReal ? realAdAspects[currentLargeSlide!.id] : undefined;
-  const largeSlotAspect = measuredLargeAspect && measuredLargeAspect > 0 ? measuredLargeAspect : 16 / 9;
-
   return (
     <div className="bg-gradient-to-b from-[#0a3a6e] via-[#0a4a82] to-[#0a3a6e] py-12">
       <div className="container relative z-10">
@@ -254,10 +223,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
           <p className="text-white/85 mt-2">Premium advertising spots — <Link to="/advertising" className="text-[#d4a373] hover:underline font-semibold" data-testid="link-advertise-here">Advertise Here</Link></p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr_2fr] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr_2fr] gap-5 items-stretch">
           {/* Large Ad Column */}
-          <div>
-            <div className="relative rounded-2xl shadow-2xl shadow-black/30 overflow-hidden bg-[#0a3a6e]" style={{ aspectRatio: String(largeSlotAspect) }}>
+          <div className="flex flex-col">
+            {/* Slot stretches to match the medium/small columns' height (which
+                are tall because they stack 2 and 3 ads respectively). On
+                mobile only, fall back to a 16:9 aspect since columns stack
+                vertically and there's no sibling to stretch against. */}
+            <div className="relative rounded-2xl shadow-2xl shadow-black/30 overflow-hidden bg-[#0a3a6e] flex-1 aspect-video lg:aspect-auto lg:min-h-[320px]">
               {largeAds.slides.map((slide, idx) => {
                 // Real, paid ad with a user-uploaded image: render the image
                 // CLEAN — no opacity dim, no dark gradient overlay, no
@@ -286,7 +259,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                               757-563-4705 was being chopped off the bottom).
                               The container has bg-[#0a3a6e] matching the
                               carousel section, so any letterboxing blends in. */}
-                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-700" onLoad={handleRealAdImgLoad(slide.id)} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1 shadow-lg z-10">
                             <Sparkles className="h-3 w-3" /> Featured
                           </span>
