@@ -239,7 +239,7 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                 return (
                 <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === safeLargePos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
                   <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
-                    <div className="relative w-full h-full overflow-hidden group">
+                    <div className="relative w-full h-full overflow-hidden group bg-[#0a3a6e]">
                       {/* No corner EXAMPLE ribbon. Placeholder slides are
                           distinguished by their pricing pill ("Large — $1,000/mo")
                           inside the content overlay and the "Get Your Ad Here" CTA
@@ -248,7 +248,14 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                           paying customers (e.g. Back Bay Lawn Care). */}
                       {isRealImageAd ? (
                         <>
-                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          {/* Real customer ads use object-contain so the WHOLE
+                              uploaded banner is visible — phone numbers, service
+                              lists, and logos baked into the design were getting
+                              clipped by object-cover (Back Bay Lawn Care's
+                              757-563-4705 was being chopped off the bottom).
+                              The container has bg-[#0a3a6e] matching the
+                              carousel section, so any letterboxing blends in. */}
+                          <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[10px] px-2.5 py-1 shadow-lg z-10">
                             <Sparkles className="h-3 w-3" /> Featured
                           </span>
@@ -295,10 +302,10 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         return (
                         <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
-                            <div className="relative overflow-hidden rounded-xl group h-full" style={{ aspectRatio: '20/9' }}>
+                            <div className="relative overflow-hidden rounded-xl group h-full bg-[#0a3a6e]" style={{ aspectRatio: '20/9' }}>
                               {isRealImageAd ? (
                                 <>
-                                  <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                   <span className="absolute top-2 right-2 inline-flex items-center gap-1 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[9px] px-2 py-0.5 shadow-md z-10">
                                     <Sparkles className="h-2.5 w-2.5" /> Featured
                                   </span>
@@ -348,10 +355,10 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         return (
                         <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
-                            <div className="relative overflow-hidden rounded-lg group h-full" style={{ aspectRatio: '12/5' }}>
+                            <div className="relative overflow-hidden rounded-lg group h-full bg-[#0a3a6e]" style={{ aspectRatio: '12/5' }}>
                               {isRealImageAd ? (
                                 <>
-                                  <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                   <span className="absolute top-1.5 right-1.5 inline-flex items-center gap-0.5 bg-amber-500/95 text-white font-bold rounded-full uppercase tracking-wide text-[8px] px-1.5 py-0.5 shadow-md z-10">
                                     <Sparkles className="h-2 w-2" /> Ad
                                   </span>
