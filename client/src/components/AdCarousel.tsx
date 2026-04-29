@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExampleBanner } from "@/components/ExampleBanner";
 import { Link, useNavigate } from "react-router-dom";
 import { Megaphone, Sparkles, X, ExternalLink } from "lucide-react";
 import type { AdPlacement } from "@shared/schema";
@@ -241,13 +240,12 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                 <div key={slide.id > 0 ? slide.id : `lg-${idx}`} className={`absolute inset-0 transition-opacity duration-700 ${idx === safeLargePos ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} data-testid={`ad-large-${idx}`}>
                   <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                     <div className="relative w-full h-full overflow-hidden group">
-                      {/* EXAMPLE ribbon is strictly slide-driven: real DB ads always
-                          have id > 0, every placeholder/filler has id = 0. We do NOT
-                          gate this on the carousel-level `isPlaceholder` flag because
-                          a real ad must NEVER get tagged "EXAMPLE" (regression: in
-                          prod the Back Bay Lawn Care ad was showing the EXAMPLE
-                          ribbon even though it's a paying customer). */}
-                      {slide.id === 0 && <ExampleBanner variant="ribbon" />}
+                      {/* No corner EXAMPLE ribbon. Placeholder slides are
+                          distinguished by their pricing pill ("Large — $1,000/mo")
+                          inside the content overlay and the "Get Your Ad Here" CTA
+                          in the click-through modal. The diagonal ribbon was
+                          visually bleeding into adjacent real ads and confusing
+                          paying customers (e.g. Back Bay Lawn Care). */}
                       {isRealImageAd ? (
                         <>
                           <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -298,7 +296,6 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         <div key={slide.id > 0 ? slide.id : `med-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-medium-${pageIdx * 2 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-xl group h-full" style={{ aspectRatio: '20/9' }}>
-                              {slide.id === 0 && <ExampleBanner variant="ribbon" />}
                               {isRealImageAd ? (
                                 <>
                                   <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -352,7 +349,6 @@ export function AdCarousel({ zipCode = "27958" }: { zipCode?: string }) {
                         <div key={slide.id > 0 ? slide.id : `sm-${pageIdx}-${idx}`} className="flex-1 min-h-0" data-testid={`ad-small-${pageIdx * 3 + idx}`}>
                           <div onClick={() => handleAdClick(slide)} className="block w-full h-full cursor-pointer">
                             <div className="relative overflow-hidden rounded-lg group h-full" style={{ aspectRatio: '12/5' }}>
-                              {slide.id === 0 && <ExampleBanner variant="ribbon" />}
                               {isRealImageAd ? (
                                 <>
                                   <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
