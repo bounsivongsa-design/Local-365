@@ -5432,13 +5432,15 @@ Respond in this exact JSON format:
         return res.json({ ok: true, priorStatus, priorCreditCents: priorCents, alreadyVoid: true });
       }
 
+      // Per spec: zero out creditAmountCents and stamp rewardedAt so the row
+      // can't be confused with a real payout. The prior credit amount and
+      // status are preserved in the audit console.log below for forensics.
       await pgDb
         .update(referrals)
         .set({
           status: "void",
-          // Preserve creditAmountCents so the audit log on the row still
-          // reflects what was issued (if anything) before the void. Setting
-          // it to null would erase that history.
+          creditAmountCents: 0,
+          rewardedAt: new Date(),
         })
         .where(eq(referrals.id, referralId));
 
