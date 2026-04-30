@@ -449,6 +449,79 @@ test("add-zip-checkout: founder/admin bypass — owner of a FOUNDER_BUSINESSES-l
   assert.equal(stub.createCalls.length, 0, "Stripe must NOT be called for founder businesses");
 });
 
+test("add-zip-checkout: comp-Gold bypass — a non-admin, non-founder business with isCompedMembership=true gets the additional zip free (regression: 'Back Bay Lawn Care comp Gold was being charged $50/mo for VA Beach add-zip')", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  // Plain business account, plain email (NOT admin, NOT in FOUNDER_EMAILS).
+  const ownerId = await seedUser();
+  const parent = await seedBusiness({
+    name: "Comp-Gold Lawn Care",
+    ownerUserId: ownerId,
+    zipCode: COVERED_ZIP_A,
+  });
+  // Flip on the comp flag with an open-ended (NULL) expiry so it counts as
+  // active by isCompActive(). Mirrors what the admin Comp Memberships UI does.
+  await pgDb
+    .update(businesses)
+    .set({ isCompedMembership: true, compedMembershipExpiresAt: null })
+    .where(eq(businesses.id, parent.id));
+
+  const stub = makeStripeStub("https://stripe.test/should-not-be-called");
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(ownerId, parent.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.founderBypass, true, "comp-Gold must take the founder-bypass branch (free activation, no Stripe)");
+  assert.equal(stub.createCalls.length, 0, "Stripe must NOT be called for comp-Gold businesses adding a zip");
+});
+
+test("add-zip-quote: comp-Gold bypass — quote shows priceMonthly: 0 and bypass: true so the comp business sees 'free' instead of $50/mo before they click checkout", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const ownerId = await seedUser();
+  const parent = await seedBusiness({
+    name: "Comp-Gold Quote Preview",
+    ownerUserId: ownerId,
+    zipCode: COVERED_ZIP_A,
+  });
+  await pgDb
+    .update(businesses)
+    .set({ isCompedMembership: true, compedMembershipExpiresAt: null })
+    .where(eq(businesses.id, parent.id));
+
+  const result = await quoteAddZipForOwner(ownerId, parent.id, COVERED_ZIP_B);
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.priceMonthly, 0, "comp-Gold quote must be $0");
+  assert.equal(result.body.bypass, true, "comp-Gold quote must flag bypass for the client");
+});
+
+test("add-zip-checkout: comp-Gold bypass does NOT trigger when the comp expiry is in the past (expired comp = back to paying customer)", async () => {
+  await seedCoveredLocation([COVERED_ZIP_B]);
+  const ownerId = await seedUser();
+  const parent = await seedBusiness({
+    name: "Expired Comp Lawn Care",
+    ownerUserId: ownerId,
+    zipCode: COVERED_ZIP_A,
+  });
+  // Expired comp: flag is still true but expiry is yesterday. isCompActive()
+  // must fail-closed here so we don't keep giving free zips after the comp
+  // has lapsed.
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await pgDb
+    .update(businesses)
+    .set({ isCompedMembership: true, compedMembershipExpiresAt: yesterday })
+    .where(eq(businesses.id, parent.id));
+
+  const stub = makeStripeStub("https://stripe.test/expired-comp-still-pays");
+  __setStripeForTesting(stub.client);
+
+  const result = await startAddZipCheckoutForOwner(ownerId, parent.id, COVERED_ZIP_B, "myhost.example");
+
+  assert.equal(result.status, 200);
+  assert.notEqual(result.body.founderBypass, true, "expired-comp must NOT take the bypass branch");
+  assert.equal(stub.createCalls.length, 1, "expired-comp must go through Stripe checkout");
+});
+
 test("add-zip-quote: founder/admin bypass — admin sees priceMonthly: 0 and bypass: true so the confirmation modal shows free instead of $50/mo", async () => {
   await seedCoveredLocation([COVERED_ZIP_B]);
   const adminId = "user-addzip-quote-admin-" + Math.random().toString(36).slice(2, 10);
