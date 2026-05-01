@@ -77,7 +77,7 @@ export function FoundingUrgencyBanner() {
       <div className="container flex items-center justify-center gap-3 py-2 px-10 text-sm font-medium relative">
         <Crown
           className={`h-4 w-4 shrink-0 ${
-            isCritical ? "text-[#073661]" : "text-amber-300"
+            isCritical ? "text-[#073661]" : "text-white"
           }`}
         />
         <span
@@ -93,10 +93,10 @@ export function FoundingUrgencyBanner() {
         </span>
         <Link
           to="/membership"
-          className={`hidden md:inline-flex items-center gap-1 ml-2 rounded-full px-3 py-0.5 text-xs font-bold transition ${
+          className={`hidden md:inline-flex items-center gap-1 ml-2 rounded-full px-3 py-1 text-xs font-bold transition ${
             isCritical
-              ? "bg-[#073661] text-amber-300 hover:bg-[#052849]"
-              : "bg-amber-300 text-[#073661] hover:bg-amber-400"
+              ? "bg-white text-[#073661] hover:bg-gray-100"
+              : "bg-white text-[#0a4a82] hover:bg-gray-100"
           }`}
           data-testid="link-banner-claim-spot"
         >
