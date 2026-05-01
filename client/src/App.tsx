@@ -31,6 +31,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Legal from "@/pages/Legal";
 import FAQ from "@/pages/FAQ";
+import Help from "@/pages/Help";
 import HelpWanted from "@/pages/HelpWanted";
 import CreateBusiness from "@/pages/CreateBusiness";
 import EditListing from "@/pages/EditListing";
@@ -100,6 +101,7 @@ function AppRouter() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="/faq" element={<FAQ />} />
+          <Route path="/help" element={<Help />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -130,6 +132,7 @@ function AppRouter() {
               <li><Link to="/legal?section=terms" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-terms">Terms of Service</Link></li>
               <li><Link to="/legal?section=privacy" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
               <li><Link to="/legal?section=disclaimers" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-disclaimers">Disclaimers</Link></li>
+              <li><Link to="/help" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-help">Help Center</Link></li>
               <li><Link to="/faq" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-faq">FAQ</Link></li>
             </ul>
           </div>

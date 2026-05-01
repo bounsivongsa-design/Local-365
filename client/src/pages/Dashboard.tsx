@@ -11,6 +11,8 @@ import { useUpload } from "@/hooks/use-upload";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { ReferAndEarnCard } from "@/components/ReferAndEarnCard";
 import { AICreditsCard } from "@/components/AICreditsCard";
+import { StartHereCard } from "@/components/StartHereCard";
+import { HelpHint } from "@/components/HelpHint";
 import { ImageCropper } from "@/components/ImageCropper";
 import { AdDesigner } from "@/components/AdDesigner";
 import { Link } from "react-router-dom";
@@ -2357,6 +2359,7 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
       <CompExpirationBanner />
       <MembershipExpirationBanner />
       <MembershipCancellationBanner />
+      <StartHereCard userId={user?.id} accountType="business" />
       {hasBusiness && business && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <ListingZipSwitcher activeBusinessId={business.id} />
@@ -2438,7 +2441,14 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
 
             <Card className="bg-gradient-to-br from-[#d4a373] to-[#b8834f] border-0 shadow-[0_8px_30px_rgba(212,163,115,0.3)] rounded-2xl text-white">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-white/70">Membership</CardTitle>
+                <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
+                  Membership
+                  <HelpHint
+                    testId="help-membership"
+                    text="Your membership tier (Bronze, Silver, or Gold) controls which features you can access — extra photos, job posts, AI tools, and more. Upgrade or change your plan anytime."
+                    className="text-white/70 hover:text-white"
+                  />
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3 mb-3">
@@ -2477,7 +2487,14 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
 
             <Card className="bg-gradient-to-br from-[#8a9a5b] to-[#6b7a42] border-0 shadow-[0_8px_30px_rgba(138,154,91,0.3)] rounded-2xl text-white">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-white/70">Reviews</CardTitle>
+                <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
+                  Reviews
+                  <HelpHint
+                    testId="help-reviews"
+                    text="Your average star rating and total review count from real customers. Click View Reviews to read each one and reply — replies show up publicly on your listing."
+                    className="text-white/70 hover:text-white"
+                  />
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2 mb-3">
@@ -2505,6 +2522,10 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
                     <Settings className="h-4 w-4 text-white" />
                   </div>
                   Quick Actions
+                  <HelpHint
+                    testId="help-quick-actions"
+                    text="Shortcuts to the things you'll do most often: edit your listing, post a job or event, run a deal, or open the AI tools. Each button takes you straight to that page."
+                  />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -3466,6 +3487,9 @@ export default function Dashboard() {
         <BusinessDashboard user={user} business={business || null} />
       ) : (
         <div className="container py-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-3">
+            <StartHereCard userId={user?.id} accountType="customer" />
+          </div>
           <Card className="lg:col-span-1 bg-gradient-to-br from-[#0a4a82] to-[#062d54] border-0 shadow-[0_8px_30px_rgba(10,74,130,0.3)] rounded-2xl text-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">

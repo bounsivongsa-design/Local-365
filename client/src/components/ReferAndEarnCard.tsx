@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { HelpHint } from "@/components/HelpHint";
 
 interface ReferralRow {
   id: number;
@@ -101,6 +102,11 @@ export function ReferAndEarnCard({ businessId }: { businessId: number }) {
         <CardTitle className="text-sm font-medium text-white/70 flex items-center gap-2">
           <Sparkles className="h-4 w-4" />
           Refer & Earn
+          <HelpHint
+            testId="help-refer-and-earn"
+            text="Share your referral code with another business owner. When they sign up and pay their first month, you both earn an account credit."
+            className="text-white/70 hover:text-white"
+          />
         </CardTitle>
       </CardHeader>
       <CardContent>

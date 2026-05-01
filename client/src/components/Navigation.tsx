@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, Shield, Bell, Mail, Share2 } from "lucide-react";
+import { Calendar, Store, Home, Menu, LogOut, Gavel, Megaphone, Building2, Briefcase, Settings, LayoutDashboard, Shield, Bell, Mail, Share2, HelpCircle } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +57,7 @@ export function Navigation() {
     { href: "/events", label: "Local Events", icon: Calendar },
     { href: "/jobs", label: "Help Wanted", icon: Briefcase },
     { href: "/membership", label: "For Business", icon: Building2 },
+    { href: "/help", label: "Help", icon: HelpCircle },
   ];
 
   const isBusinessAccount = user?.accountType === "business";

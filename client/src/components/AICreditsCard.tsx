@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AICreditTopUpModal } from "@/components/AICreditTopUpModal";
+import { HelpHint } from "@/components/HelpHint";
 
 interface MonthUsage {
   totalCredits: number;
@@ -63,6 +64,10 @@ export function AICreditsCard({ businessId }: Props) {
           <span className="flex items-center gap-2 text-base font-semibold">
             <Sparkles className="h-5 w-5 text-amber-500" />
             AI Credits
+            <HelpHint
+              testId="help-ai-credits"
+              text="Each Gold business gets monthly credits to use the AI writing tools (listing descriptions, review replies, deal copy, and more). Credits reset every month. Founders get unlimited use."
+            />
           </span>
           {data.isFounder ? (
             <Badge className="bg-gradient-to-r from-amber-400 to-amber-500 text-white border-0 shadow gap-1">
