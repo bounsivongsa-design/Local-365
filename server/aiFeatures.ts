@@ -43,8 +43,15 @@ const stripe = stripeKey
 // prevent the kind of drift that produced the original bug ("Stripe bypass
 // works, but AI Credits widget shows 0/250 for admins") — see
 // server/lib/founderRules.ts for the full rationale.
-export { shouldBypassAiCredits } from "./lib/founderRules";
-import { shouldBypassAiCredits as _shouldBypassAiCredits } from "./lib/founderRules";
+// IMPORTANT: `export { foo } from "./bar"` is a pure re-export and does NOT
+// create a local binding for `foo` in this module's scope. In dev (tsx/ESM)
+// the loose resolver tolerates referencing it directly, but the bundled CJS
+// production build throws `ReferenceError: shouldBypassAiCredits is not
+// defined` on every call (root cause of "AI Credits card invisible in prod").
+// We must import the symbol with its real name so it is in scope locally,
+// THEN re-export it so existing test imports still work.
+import { shouldBypassAiCredits } from "./lib/founderRules";
+export { shouldBypassAiCredits };
 
 /**
  * Legacy founder-flag-only check, retained for callers that don't have user
