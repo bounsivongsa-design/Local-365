@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import heroImage from "@assets/image_1773172681995.png";
-import promoVideo from "@assets/hf_20260422_184333_74bafff4-441e-4310-aa8c-c391066e1f4b_1777632767836.mp4";
 import { ExampleBanner } from "@/components/ExampleBanner";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { LocationSearchInput } from "@/components/LocationSearchInput";
@@ -236,33 +235,6 @@ export default function Home() {
 
       {/* 3-Tier Ad Carousels */}
       <AdCarousel zipCode={locationZip} />
-
-      {/* Promo Video */}
-      <section className="bg-gradient-to-b from-[#f5f0eb] to-white py-12 md:py-16" data-testid="section-promo-video">
-        <div className="container">
-          <div className="text-center mb-6 md:mb-8">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-[#0a4a82]">
-              See Local List 365 in Action
-            </h2>
-            <p className="text-[#555] mt-2 max-w-2xl mx-auto">
-              A quick look at how neighbors connect with the businesses, events, and
-              local pros that make Currituck County feel like home.
-            </p>
-          </div>
-          <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(10,74,130,0.25)] ring-1 ring-[#0a4a82]/10 bg-black">
-            <video
-              src={promoVideo}
-              controls
-              playsInline
-              preload="metadata"
-              className="w-full h-auto block"
-              data-testid="video-home-promo"
-            >
-              Your browser does not support the video tag.
-            </video>
-          </div>
-        </div>
-      </section>
 
       {/* Growth: Refer & Earn + Founding Member 100 */}
       <GrowthPromoSection />
