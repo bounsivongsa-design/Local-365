@@ -298,16 +298,14 @@ export async function quoteAddZipForOwner(
   const tier = getEffectiveTier(parent);
   let priceMonthly = getAdditionalZipPrice(tier);
 
-  // Founder/admin bypass OR active comp-Gold bypass — show $0 in the
-  // confirmation modal so the user isn't surprised when checkout activates
-  // the listing for free. Comp Gold is meant to be a fully-sponsored
-  // Gold-equivalent (no Stripe charges), so it includes additional zips.
+  // Founder/admin bypass — show $0 in the confirmation modal so the user
+  // isn't surprised when checkout activates the listing for free.
   const [user] = await pgDb
     .select({ email: users.email, accountType: users.accountType })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  const bypass = shouldBypassChargesForOwner(user, parent) || isCompActive(parent);
+  const bypass = shouldBypassChargesForOwner(user, parent);
   if (bypass) priceMonthly = 0;
 
   return {
@@ -374,17 +372,15 @@ export async function startAddZipCheckoutForOwner(
     return { status: 409, body: { message: "You already have a listing in this zip" } };
   }
 
-  // Founder/admin bypass OR active comp-Gold bypass — skip Stripe entirely
-  // and create the additional-zip listing directly. Mirrors
-  // handleAdditionalZipCheckoutCompleted but with null subscription/customer
-  // (no Stripe records exist for free activations). Comp Gold is a
-  // fully-sponsored Gold-equivalent so additional zips ride on that comp.
+  // Founder/admin bypass — skip Stripe entirely and create the additional-zip
+  // listing directly. Mirrors handleAdditionalZipCheckoutCompleted but with
+  // null subscription/customer (no Stripe records exist for free activations).
   const [callerUser] = await pgDb
     .select({ email: users.email, accountType: users.accountType })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (shouldBypassChargesForOwner(callerUser, parent) || isCompActive(parent)) {
+  if (shouldBypassChargesForOwner(callerUser, parent)) {
     const { id: _pid, createdAt: _pc, referralCode: _prc, foundingMemberNumber: _pfn, ...inheritable } =
       parent as Record<string, unknown> & { id: number };
     const [inserted] = await pgDb
