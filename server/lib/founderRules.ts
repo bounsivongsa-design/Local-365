@@ -32,6 +32,7 @@
 export const FOUNDER_BUSINESSES = [
   "Goat Locker Printing",
   "Blackwater Technology Solutions",
+  "Back Bay Lawn Care",
 ];
 
 export const FOUNDER_EMAILS = [
@@ -39,6 +40,7 @@ export const FOUNDER_EMAILS = [
   "bsivongsa@blackwatertechnologysolutions.com",
   "boun.sivongsa@hotmail.com",
   "goatlockerprinting@gmail.com",
+  "backbaylawncare2026@gmail.com",
 ];
 
 /**
