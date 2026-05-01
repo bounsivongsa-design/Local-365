@@ -98,7 +98,7 @@ export default {
         "primary-dark": "#062f5e",
         "dune": "#8a9a5b",
         "sand": "#d4a373",
-        "base": "#f5f5dc",
+        "cream": "#f5f5dc",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
