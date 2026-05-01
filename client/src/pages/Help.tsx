@@ -382,7 +382,7 @@ export default function Help() {
     showingResults && filteredTasks.length === 0 && filteredGlossary.length === 0;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#f5f0eb]">
       {/* Hero */}
       <section className="bg-gradient-to-br from-[#0a4a82] via-[#0a4a82]/95 to-[#0a3a6e] py-16 px-4 text-white">
         <div className="max-w-4xl mx-auto text-center">
@@ -417,10 +417,10 @@ export default function Help() {
         {/* Choose your path */}
         {!showingResults && (
           <section>
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-center mb-2">
+            <h2 className="font-display text-2xl md:text-3xl font-bold text-center mb-2 text-[#0a4a82]">
               Choose your path
             </h2>
-            <p className="text-center text-muted-foreground mb-8">
+            <p className="text-center text-[#555] mb-8">
               Pick the one that sounds like you.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -485,10 +485,10 @@ export default function Help() {
         {/* Top tasks */}
         {filteredTasks.length > 0 && (
           <section>
-            <h2 className="font-display text-2xl md:text-3xl font-bold mb-2">
+            <h2 className="font-display text-2xl md:text-3xl font-bold mb-2 text-[#0a4a82]">
               {showingResults ? "Matching how-tos" : "Top how-tos"}
             </h2>
-            <p className="text-muted-foreground mb-8">
+            <p className="text-[#555] mb-8">
               Step-by-step guides for the most common tasks.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -550,10 +550,10 @@ export default function Help() {
         {/* Glossary */}
         {filteredGlossary.length > 0 && (
           <section>
-            <h2 className="font-display text-2xl md:text-3xl font-bold mb-2">
+            <h2 className="font-display text-2xl md:text-3xl font-bold mb-2 text-[#0a4a82]">
               {showingResults ? "Matching terms" : "What is...?"}
             </h2>
-            <p className="text-muted-foreground mb-8">
+            <p className="text-[#555] mb-8">
               Plain-language definitions for every feature you'll see on Local List 365.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
