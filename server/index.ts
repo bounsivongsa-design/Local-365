@@ -2,6 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { db as pgDb } from "./db";
+import { requestLogs } from "@shared/schema";
+import { sql as drizzleSql } from "drizzle-orm";
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,6 +36,18 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Strip a referer URL down to just its hostname so the Top Referrers list
+// groups by site (e.g. instagram.com) rather than by every distinct landing
+// path. Returns null for blank/invalid referers.
+function refererToHost(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  try {
+    return new URL(raw).host || null;
+  } catch {
+    return null;
+  }
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -53,6 +68,44 @@ app.use((req, res, next) => {
       }
 
       log(logLine);
+
+      // Persist to request_logs for the admin Traffic tab. Fire-and-forget
+      // so we never add latency to the response. Skips noisy paths to keep
+      // table growth manageable. NODE_ENV=test is excluded so unit tests
+      // don't accidentally hammer the dev DB.
+      //
+      // Privacy note: we store raw IP + user-agent here. Access is gated to
+      // accountType=admin, the table auto-prunes at 30d, and this is the
+      // operator's own site analytics — no third-party data is shared.
+      // If we ever expose this beyond admins, hash the IP first.
+      if (process.env.NODE_ENV !== "test" && !path.startsWith("/api/admin/analytics")) {
+        const xff = req.headers["x-forwarded-for"];
+        const ip =
+          (Array.isArray(xff) ? xff[0] : xff?.split(",")[0])?.trim() ||
+          req.socket.remoteAddress ||
+          null;
+        const refHost = refererToHost(
+          (req.headers["referer"] as string | undefined) ||
+            (req.headers["referrer"] as string | undefined),
+        );
+        const ua = (req.headers["user-agent"] as string | undefined) || null;
+        // Cap path length defensively in case of pathological URLs.
+        const safePath = path.length > 512 ? path.slice(0, 512) : path;
+        pgDb
+          .insert(requestLogs)
+          .values({
+            method: req.method,
+            path: safePath,
+            status: res.statusCode,
+            durationMs: duration,
+            ip,
+            refererHost: refHost,
+            userAgent: ua ? ua.slice(0, 512) : null,
+          })
+          .catch(() => {
+            /* swallow — analytics must never break the request path */
+          });
+      }
     }
   });
 
@@ -95,6 +148,21 @@ app.use((req, res, next) => {
   } catch (e) {
     console.error("Service-area seed:", e);
   }
+
+  // Prune request_logs > 30 days at boot, then hourly. Keeps the analytics
+  // table from growing unbounded — admin dashboard only ever queries the
+  // last 30 days anyway.
+  const pruneRequestLogs = async () => {
+    try {
+      await pgDb.execute(
+        drizzleSql`DELETE FROM request_logs WHERE ts < NOW() - INTERVAL '30 days'`,
+      );
+    } catch (e) {
+      console.error("[request_logs] prune failed:", e);
+    }
+  };
+  pruneRequestLogs();
+  setInterval(pruneRequestLogs, 60 * 60 * 1000);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

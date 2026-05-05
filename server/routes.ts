@@ -23,7 +23,7 @@ import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHL
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts, recipientSuppressions, bounceSpikeAlerts } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts, recipientSuppressions, bounceSpikeAlerts, requestLogs } from "@shared/schema";
 import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte, gte } from "drizzle-orm";
 
@@ -5914,6 +5914,157 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Admin per-zip stats error:", err);
       res.status(500).json({ message: "Failed to fetch per-zip stats" });
+    }
+  });
+
+  // ============ TRAFFIC ANALYTICS ============
+  // Powers the admin "Traffic" tab: requests over time, top URLs, top
+  // referrers, HTTP status breakdown, duration histogram, unique IPs.
+  // Source data is the request_logs table populated by the express
+  // middleware in server/index.ts (fire-and-forget). The endpoint itself
+  // is excluded from logging in that middleware so polling the dashboard
+  // doesn't dominate the dataset.
+  app.get("/api/admin/analytics/traffic", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const adminCheck = await isAdminUser(userId);
+      if (!adminCheck) return res.status(403).json({ message: "Forbidden" });
+
+      const rangeParam = String(req.query.range || "24h");
+      // Map the friendly range param to a SQL interval and the bucket size
+      // used for the time-series chart. Anything outside the allowlist
+      // falls back to 24h to avoid SQL injection / unbounded scans.
+      let intervalSql: any;
+      let bucket: "hour" | "day";
+      if (rangeParam === "7d") {
+        intervalSql = sql`INTERVAL '7 days'`;
+        bucket = "day";
+      } else if (rangeParam === "30d") {
+        intervalSql = sql`INTERVAL '30 days'`;
+        bucket = "day";
+      } else {
+        intervalSql = sql`INTERVAL '24 hours'`;
+        bucket = "hour";
+      }
+      const bucketSql = bucket === "hour" ? sql`'hour'` : sql`'day'`;
+
+      // Run all six aggregates in parallel — they each scan request_logs
+      // independently and PG can pipeline them.
+      const [
+        timeSeriesRes,
+        topUrlsRes,
+        topReferrersRes,
+        statusesRes,
+        durationsRes,
+        overviewRes,
+      ] = await Promise.all([
+        pgDb.execute(sql`
+          SELECT date_trunc(${bucketSql}, ts) AS bucket, COUNT(*)::int AS count
+          FROM request_logs
+          WHERE ts >= NOW() - ${intervalSql}
+          GROUP BY bucket
+          ORDER BY bucket ASC
+        `),
+        pgDb.execute(sql`
+          SELECT path, COUNT(*)::int AS count
+          FROM request_logs
+          WHERE ts >= NOW() - ${intervalSql}
+          GROUP BY path
+          ORDER BY count DESC
+          LIMIT 15
+        `),
+        pgDb.execute(sql`
+          SELECT COALESCE(referer_host, '(direct)') AS host, COUNT(*)::int AS count
+          FROM request_logs
+          WHERE ts >= NOW() - ${intervalSql}
+          GROUP BY host
+          ORDER BY count DESC
+          LIMIT 15
+        `),
+        pgDb.execute(sql`
+          SELECT
+            CASE
+              WHEN status BETWEEN 200 AND 299 THEN '2xx'
+              WHEN status BETWEEN 300 AND 399 THEN '3xx'
+              WHEN status BETWEEN 400 AND 499 THEN '4xx'
+              WHEN status BETWEEN 500 AND 599 THEN '5xx'
+              ELSE 'other'
+            END AS bucket,
+            COUNT(*)::int AS count
+          FROM request_logs
+          WHERE ts >= NOW() - ${intervalSql}
+          GROUP BY bucket
+          ORDER BY bucket
+        `),
+        pgDb.execute(sql`
+          SELECT
+            CASE
+              WHEN duration_ms < 100 THEN '<100ms'
+              WHEN duration_ms < 500 THEN '100-500ms'
+              WHEN duration_ms < 1000 THEN '500ms-1s'
+              WHEN duration_ms < 2000 THEN '1-2s'
+              WHEN duration_ms < 5000 THEN '2-5s'
+              ELSE '5s+'
+            END AS bucket,
+            COUNT(*)::int AS count
+          FROM request_logs
+          WHERE ts >= NOW() - ${intervalSql}
+          GROUP BY bucket
+        `),
+        pgDb.execute(sql`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(DISTINCT ip)::int AS unique_ips,
+            COALESCE(AVG(duration_ms), 0)::int AS avg_duration,
+            COALESCE(SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END), 0)::int AS errors
+          FROM request_logs
+          WHERE ts >= NOW() - ${intervalSql}
+        `),
+      ]);
+
+      // node-postgres returns either { rows } or an array depending on the
+      // adapter. Normalize so the rest of this handler can use a plain array.
+      const rows = (r: any): any[] => (Array.isArray(r) ? r : r?.rows ?? []);
+
+      // Order the histogram buckets so the chart x-axis is monotonic
+      // regardless of which buckets came back from the DB.
+      const durationOrder = ["<100ms", "100-500ms", "500ms-1s", "1-2s", "2-5s", "5s+"];
+      const statusOrder = ["2xx", "3xx", "4xx", "5xx", "other"];
+      const sortBy = (rs: any[], order: string[], key = "bucket") =>
+        order
+          .map((b) => rs.find((r) => r[key] === b))
+          .filter(Boolean)
+          .map((r) => ({ bucket: r[key], count: Number(r.count) || 0 }));
+
+      const overview = rows(overviewRes)[0] ?? {};
+
+      res.json({
+        range: rangeParam,
+        bucket,
+        overview: {
+          total: Number(overview.total) || 0,
+          uniqueIps: Number(overview.unique_ips) || 0,
+          avgDuration: Number(overview.avg_duration) || 0,
+          errors: Number(overview.errors) || 0,
+        },
+        timeSeries: rows(timeSeriesRes).map((r: any) => ({
+          bucket: r.bucket,
+          count: Number(r.count) || 0,
+        })),
+        topUrls: rows(topUrlsRes).map((r: any) => ({
+          path: r.path,
+          count: Number(r.count) || 0,
+        })),
+        topReferrers: rows(topReferrersRes).map((r: any) => ({
+          host: r.host,
+          count: Number(r.count) || 0,
+        })),
+        statuses: sortBy(rows(statusesRes), statusOrder),
+        durations: sortBy(rows(durationsRes), durationOrder),
+      });
+    } catch (err) {
+      console.error("Admin traffic analytics error:", err);
+      res.status(500).json({ message: "Failed to fetch traffic analytics" });
     }
   });
 

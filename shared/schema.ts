@@ -438,6 +438,37 @@ export const businessAnalytics = pgTable("business_analytics", {
   eventDate: timestamp("event_date").defaultNow(),
 });
 
+// Site-wide HTTP request log used by the admin Traffic Analytics tab.
+// Populated by a fire-and-forget insert in the express middleware in
+// server/index.ts. Auto-pruned to ~30 days at boot.
+export const requestLogs = pgTable(
+  "request_logs",
+  {
+    id: serial("id").primaryKey(),
+    ts: timestamp("ts").defaultNow().notNull(),
+    method: text("method").notNull(),
+    path: text("path").notNull(),
+    status: integer("status").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    ip: text("ip"),
+    refererHost: text("referer_host"),
+    userAgent: text("user_agent"),
+  },
+  (t) => ({
+    // ts index covers the prune job (`ts < NOW() - 30 days`) and the
+    // range filter (`ts >= NOW() - 24h`) shared by every analytics query.
+    tsIdx: index("idx_request_logs_ts").on(t.ts),
+    // Composite indexes let the analytics aggregate queries do index-only
+    // range scans + grouping without a heap fetch per row. They cost a
+    // little extra disk + write overhead per insert but are well worth it
+    // since every analytics tab refresh issues 6 group-by queries.
+    tsPathIdx: index("idx_request_logs_ts_path").on(t.ts, t.path),
+    tsRefererIdx: index("idx_request_logs_ts_referer").on(t.ts, t.refererHost),
+    tsIpIdx: index("idx_request_logs_ts_ip").on(t.ts, t.ip),
+  }),
+);
+export type RequestLog = typeof requestLogs.$inferSelect;
+
 // Schemas & Types
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBusinessSchema = createInsertSchema(businesses).omit({ id: true, verified: true });

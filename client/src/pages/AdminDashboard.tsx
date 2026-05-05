@@ -74,7 +74,20 @@ import {
   ChevronUp,
   Clock,
   BellRing,
+  Activity,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Cell,
+} from "recharts";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatDistanceToNow, format } from "date-fns";
@@ -201,7 +214,7 @@ function compIsActive(b: { isCompedMembership?: boolean | null; compedMembership
   return new Date(b.compedMembershipExpiresAt).getTime() > Date.now();
 }
 
-type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes" | "growth" | "locations";
+type Tab = "overview" | "users" | "businesses" | "events" | "promos" | "ads" | "quotes" | "growth" | "locations" | "traffic";
 
 function tierLabel(t: string | null | undefined) {
   if (!t || t === "none") return "No Plan";
@@ -269,6 +282,7 @@ export default function AdminDashboard() {
     { id: "quotes", label: "Quotes", icon: MessageSquare },
     { id: "growth", label: "Growth", icon: Sparkles },
     { id: "locations", label: "Locations", icon: MapPin },
+    { id: "traffic", label: "Traffic", icon: Activity },
   ];
 
   return (
@@ -316,6 +330,7 @@ export default function AdminDashboard() {
         {activeTab === "quotes" && <QuotesTab />}
         {activeTab === "growth" && <GrowthTab />}
         {activeTab === "locations" && <LocationsTab />}
+        {activeTab === "traffic" && <TrafficTab />}
       </div>
     </div>
   );
@@ -3707,6 +3722,352 @@ function LocationsTab() {
           </p>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ============================================================
+// Traffic Analytics Tab
+// Reads /api/admin/analytics/traffic for the selected range and
+// renders the same panels you'd see on a typical hosting console:
+// requests over time, top URLs, top referrers, status code mix,
+// duration histogram, and a unique-IP count.
+// Source data is the request_logs table populated by the express
+// middleware in server/index.ts.
+// ============================================================
+
+type TrafficResponse = {
+  range: string;
+  bucket: "hour" | "day";
+  overview: { total: number; uniqueIps: number; avgDuration: number; errors: number };
+  timeSeries: { bucket: string; count: number }[];
+  topUrls: { path: string; count: number }[];
+  topReferrers: { host: string; count: number }[];
+  statuses: { bucket: string; count: number }[];
+  durations: { bucket: string; count: number }[];
+};
+
+function TrafficTab() {
+  const [range, setRange] = useState<"24h" | "7d" | "30d">("24h");
+
+  const { data, isLoading, isError } = useQuery<TrafficResponse>({
+    queryKey: ["/api/admin/analytics/traffic", range],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/analytics/traffic?range=${range}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load traffic analytics");
+      return res.json();
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Pretty-print bucket labels — short clock for hourly view, MMM d for daily.
+  const formatBucketLabel = (b: string) => {
+    try {
+      const d = new Date(b);
+      if (data?.bucket === "day") return format(d, "MMM d");
+      return format(d, "ha");
+    } catch {
+      return b;
+    }
+  };
+
+  const statusColor = (b: string) =>
+    b === "2xx" ? "#10b981" :
+    b === "3xx" ? "#3b82f6" :
+    b === "4xx" ? "#f59e0b" :
+    b === "5xx" ? "#ef4444" : "#94a3b8";
+
+  const maxTopUrl = Math.max(1, ...(data?.topUrls.map((u) => u.count) ?? [1]));
+  const maxTopReferrer = Math.max(1, ...(data?.topReferrers.map((r) => r.count) ?? [1]));
+
+  return (
+    <div className="space-y-6" data-testid="tab-content-traffic">
+      {/* Range selector + summary */}
+      <Card className="bg-white">
+        <CardContent className="p-5 flex flex-wrap items-center gap-4 justify-between">
+          <div className="flex items-center gap-3">
+            <Activity className="h-5 w-5 text-[#0a4a82]" />
+            <div>
+              <h2 className="text-lg font-semibold text-[#1a1a2e]">Traffic Analytics</h2>
+              <p className="text-xs text-slate-500">
+                Live HTTP request data from the past {range === "24h" ? "24 hours" : range === "7d" ? "7 days" : "30 days"}.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+            {(["24h", "7d", "30d"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                data-testid={`button-traffic-range-${r}`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  range === r
+                    ? "bg-[#0a4a82] text-white shadow"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {r === "24h" ? "Last 24h" : r === "7d" ? "Last 7d" : "Last 30d"}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {isError && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-4 text-sm text-red-700">
+            Couldn't load traffic analytics. Try again in a moment.
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Headline stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <TrafficStatCard
+          label="Total Requests"
+          value={data?.overview.total ?? 0}
+          loading={isLoading}
+          testId="stat-traffic-total"
+        />
+        <TrafficStatCard
+          label="Unique IPs"
+          value={data?.overview.uniqueIps ?? 0}
+          loading={isLoading}
+          testId="stat-traffic-unique-ips"
+        />
+        <TrafficStatCard
+          label="Avg Duration"
+          value={`${data?.overview.avgDuration ?? 0}ms`}
+          loading={isLoading}
+          testId="stat-traffic-avg-duration"
+        />
+        <TrafficStatCard
+          label="5xx Errors"
+          value={data?.overview.errors ?? 0}
+          loading={isLoading}
+          testId="stat-traffic-errors"
+          tone={data && data.overview.errors > 0 ? "danger" : "default"}
+        />
+      </div>
+
+      {/* Requests over time */}
+      <Card className="bg-white">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-[#0a4a82]" />
+            Requests Over Time
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (data?.timeSeries.length ?? 0) === 0 ? (
+            <EmptyHint />
+          ) : (
+            <div className="h-64" data-testid="chart-traffic-timeseries">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data?.timeSeries ?? []} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis
+                    dataKey="bucket"
+                    tickFormatter={formatBucketLabel}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: "#64748b" }} allowDecimals={false} />
+                  <RechartsTooltip
+                    labelFormatter={(v) => formatBucketLabel(String(v))}
+                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#0a4a82"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top URLs / Top Referrers — paired */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Top URLs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-64 w-full" />
+            ) : (data?.topUrls.length ?? 0) === 0 ? (
+              <EmptyHint />
+            ) : (
+              <ul className="space-y-2" data-testid="list-traffic-top-urls">
+                {data!.topUrls.map((u) => (
+                  <li
+                    key={u.path}
+                    className="relative px-3 py-2 rounded-md bg-slate-50 overflow-hidden"
+                    data-testid={`row-traffic-url-${u.path}`}
+                  >
+                    <div
+                      className="absolute inset-y-0 left-0 bg-[#0a4a82]/10"
+                      style={{ width: `${(u.count / maxTopUrl) * 100}%` }}
+                    />
+                    <div className="relative flex items-center justify-between gap-3">
+                      <code className="text-xs text-slate-700 truncate" title={u.path}>
+                        {u.path}
+                      </code>
+                      <span className="text-xs font-semibold text-[#0a4a82] tabular-nums">
+                        {u.count.toLocaleString()}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Top Referrers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-64 w-full" />
+            ) : (data?.topReferrers.length ?? 0) === 0 ? (
+              <EmptyHint />
+            ) : (
+              <ul className="space-y-2" data-testid="list-traffic-top-referrers">
+                {data!.topReferrers.map((r) => (
+                  <li
+                    key={r.host}
+                    className="relative px-3 py-2 rounded-md bg-slate-50 overflow-hidden"
+                    data-testid={`row-traffic-referrer-${r.host}`}
+                  >
+                    <div
+                      className="absolute inset-y-0 left-0 bg-[#8a9a5b]/15"
+                      style={{ width: `${(r.count / maxTopReferrer) * 100}%` }}
+                    />
+                    <div className="relative flex items-center justify-between gap-3">
+                      <span className="text-xs text-slate-700 truncate" title={r.host}>
+                        {r.host}
+                      </span>
+                      <span className="text-xs font-semibold text-[#8a9a5b] tabular-nums">
+                        {r.count.toLocaleString()}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Status codes / Duration histogram — paired */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">HTTP Status Codes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-56 w-full" />
+            ) : (data?.statuses.length ?? 0) === 0 ? (
+              <EmptyHint />
+            ) : (
+              <div className="h-56" data-testid="chart-traffic-statuses">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data!.statuses}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} allowDecimals={false} />
+                    <RechartsTooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {data!.statuses.map((s) => (
+                        <Cell key={s.bucket} fill={statusColor(s.bucket)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Request Duration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-56 w-full" />
+            ) : (data?.durations.length ?? 0) === 0 ? (
+              <EmptyHint />
+            ) : (
+              <div className="h-56" data-testid="chart-traffic-durations">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data!.durations}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} allowDecimals={false} />
+                    <RechartsTooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="count" fill="#d4a373" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function TrafficStatCard({
+  label,
+  value,
+  loading,
+  testId,
+  tone = "default",
+}: {
+  label: string;
+  value: string | number;
+  loading?: boolean;
+  testId?: string;
+  tone?: "default" | "danger";
+}) {
+  return (
+    <Card className="bg-white">
+      <CardContent className="p-5">
+        <div className="text-xs uppercase tracking-wide text-slate-500 font-medium">{label}</div>
+        {loading ? (
+          <Skeleton className="h-8 w-24 mt-2" />
+        ) : (
+          <div
+            className={`mt-1 text-2xl font-bold tabular-nums ${
+              tone === "danger" ? "text-red-600" : "text-[#0a4a82]"
+            }`}
+            data-testid={testId}
+          >
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyHint() {
+  return (
+    <div className="text-center py-12 text-sm text-slate-400">
+      No traffic recorded in this window yet. Browse the site to generate data.
     </div>
   );
 }
