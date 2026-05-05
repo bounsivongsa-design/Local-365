@@ -17,6 +17,7 @@ import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMarketingHubRoutes } from "./marketingHub";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
+import { shouldBypassCharges } from "./lib/founderRules";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
@@ -2095,13 +2096,17 @@ Respond in this exact JSON format:
 
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       let bizTier = "none";
+      let isFounderBypass = false;
       if (serverBusinessId) {
-        const [bizData] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
+        const [bizData] = await pgDb.select({ name: businesses.name, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
           .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
-        bizTier = bizData ? getEffectiveTier(bizData) : "none";
+        // Founders/admins get full Gold-tier event-ad privileges on every
+        // listing they own, even non-primary zip listings.
+        isFounderBypass = shouldBypassCharges(user[0], bizData);
+        bizTier = isFounderBypass ? "premium" : (bizData ? getEffectiveTier(bizData) : "none");
       }
       const discount = tierDiscounts[bizTier] || 0;
-      const finalPriceCents = Math.round(basePriceCents * (1 - discount));
+      const finalPriceCents = isFounderBypass ? 0 : Math.round(basePriceCents * (1 - discount));
 
       await pgDb.update(events).set({ priceCharged: finalPriceCents }).where(eq(events.id, event.id));
 
@@ -3120,10 +3125,15 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
-      const [biz] = await pgDb.select({ zipCode: businesses.zipCode, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
+      const [biz] = await pgDb.select({ name: businesses.name, zipCode: businesses.zipCode, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
       const businessZip = biz?.zipCode || "27958";
-      const effectiveTier = biz ? getEffectiveTier(biz) : "none";
+      // Founders (and admins) bypass tier gating for ad creation — they get
+      // full Gold-tier privileges on every listing they own, regardless of
+      // which child/zip listing is currently active. Charges are bypassed
+      // separately in the Stripe ad-checkout route.
+      const isFounderBypass = shouldBypassCharges(user, biz);
+      const effectiveTier = isFounderBypass ? "premium" : (biz ? getEffectiveTier(biz) : "none");
 
       const tierAllowedSizes: Record<string, string[]> = {
         none: ["small"],
@@ -3142,7 +3152,7 @@ Respond in this exact JSON format:
 
       const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
       const discount = tierDiscounts[effectiveTier] || 0;
-      const discountedPrice = Math.round(chargedPrice * (1 - discount));
+      const discountedPrice = isFounderBypass ? 0 : Math.round(chargedPrice * (1 - discount));
 
       let validatedVideoUrl: string | null = null;
       if (videoUrl) {
@@ -3230,15 +3240,33 @@ Respond in this exact JSON format:
       if (ad.status === "active" && ad.paymentStatus === "paid" && adSize && adSize !== ad.adSize) {
         return res.status(400).json({ message: "Cannot change ad size while the ad is active. You can update the title, description, image, or link." });
       }
-      if (adSize && ["small", "medium", "large"].includes(adSize)) {
-        updates.adSize = adSize;
+      if (adSize && ["small", "medium", "large"].includes(adSize) && adSize !== ad.adSize) {
+        // Tier gating only fires when the size is actually changing — the
+        // frontend echoes `adSize` on every edit (including title/description-
+        // only edits), so we must NOT block downgraded businesses from
+        // editing copy on a previously-grandfathered larger ad.
         const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-        const [biz] = await pgDb.select({ membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
+        const [biz] = await pgDb.select({ name: businesses.name, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
           .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
-        const adEffectiveTier = biz ? getEffectiveTier(biz) : "none";
+        // Founders/admins get full Gold-tier ad-size privileges on every
+        // listing they own, even non-primary zip listings.
+        const isFounderBypass = shouldBypassCharges(user, biz);
+        const adEffectiveTier = isFounderBypass ? "premium" : (biz ? getEffectiveTier(biz) : "none");
+        const tierAllowedSizesPatch: Record<string, string[]> = {
+          none: ["small"],
+          basic: ["small"],
+          standard: ["small", "medium"],
+          premium: ["small", "medium", "large"],
+        };
+        const allowedPatch = tierAllowedSizesPatch[adEffectiveTier] || ["small"];
+        if (!allowedPatch.includes(adSize)) {
+          const tierNames: Record<string, string> = { medium: "Silver", large: "Gold" };
+          return res.status(403).json({ message: `${tierNames[adSize] || "Higher"} membership required for ${adSize} ads` });
+        }
+        updates.adSize = adSize;
         const tierDiscounts: Record<string, number> = { basic: 0.10, standard: 0.25, premium: 0.50 };
         const discount = tierDiscounts[adEffectiveTier] || 0;
-        updates.priceMonthly = Math.round(AD_MONTHLY_PRICING[adSize] * (1 - discount));
+        updates.priceMonthly = isFounderBypass ? 0 : Math.round(AD_MONTHLY_PRICING[adSize] * (1 - discount));
         if (ad.adSize !== adSize && ad.paymentStatus === "paid") {
           updates.paymentStatus = "unpaid";
           updates.totalPaid = 0;

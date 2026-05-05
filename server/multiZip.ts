@@ -136,9 +136,13 @@ export function registerMultiZipRoutes(app: Express) {
         }
       }
 
+      // Founders/admins get full Gold-tier privileges on every listing they
+      // own, even non-primary zip listings (which carry no paid membership of
+      // their own). Surfacing that as `effectiveTier: "premium"` here keeps
+      // the dashboard UI in sync with the server-side ad/event gating.
       const enriched = rows.map((b) => ({
         ...b,
-        effectiveTier: getEffectiveTier(b),
+        effectiveTier: shouldBypassChargesForOwner(u, b) ? "premium" : getEffectiveTier(b),
         isPrimary: b.id === u.linkedBusinessId,
       }));
       res.json(enriched);
