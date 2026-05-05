@@ -6,6 +6,7 @@ import {
   reviews,
   users,
   jobListings,
+  adminMessages,
   type Business,
   type CreateBusinessRequest,
   type Event,
@@ -19,8 +20,10 @@ import {
   type JobListing,
   type InsertJobListing,
   type JobListingWithBusiness,
+  type AdminMessage,
+  type InsertAdminMessage,
 } from "@shared/schema";
-import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike, asc, isNull, inArray } from "drizzle-orm";
 import { authStorage } from "./replit_integrations/auth/storage";
 
 export interface IStorage {
@@ -50,6 +53,31 @@ export interface IStorage {
   createJobListing(listing: InsertJobListing): Promise<JobListing>;
   updateJobListing(id: number, updates: Partial<JobListing>): Promise<JobListing | undefined>;
   deleteJobListing(id: number): Promise<void>;
+
+  // Admin <-> Business direct messages (one thread per business).
+  getAdminMessageThread(businessId: number): Promise<AdminMessage[]>;
+  createAdminMessage(msg: InsertAdminMessage): Promise<AdminMessage>;
+  // Mark every message in this thread written by the *other* side as read.
+  // role = the role of the viewer (admin sees msgs from business; business
+  // sees msgs from admin). Returns the number of rows updated.
+  markAdminThreadRead(businessId: number, viewerRole: "admin" | "business"): Promise<number>;
+  // Most recent admin->business message (used for the once-per-N-hours
+  // email throttle).
+  getLastAdminToBusinessMessage(businessId: number): Promise<AdminMessage | undefined>;
+  // Listing of every business that has at least one message, with last-msg
+  // timestamp + count of unread messages from the business side. Powers the
+  // admin "Messages" inbox.
+  listAdminMessageThreadsForAdmin(): Promise<Array<{
+    businessId: number;
+    businessName: string;
+    lastMessageAt: Date;
+    lastMessageBody: string;
+    lastSenderRole: string;
+    unreadFromBusiness: number;
+  }>>;
+  // Number of unread admin->business messages owned by this user across all
+  // their business listings. Drives the inbox bell badge.
+  getUnreadAdminMessageCountForOwner(ownerUserId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +287,116 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJobListing(id: number): Promise<void> {
     await db.delete(jobListings).where(eq(jobListings.id, id));
+  }
+
+  // ----- Admin <-> Business direct messages -----
+
+  async getAdminMessageThread(businessId: number): Promise<AdminMessage[]> {
+    return await db
+      .select()
+      .from(adminMessages)
+      .where(eq(adminMessages.businessId, businessId))
+      .orderBy(asc(adminMessages.createdAt));
+  }
+
+  async createAdminMessage(msg: InsertAdminMessage): Promise<AdminMessage> {
+    const [row] = await db.insert(adminMessages).values(msg).returning();
+    return row;
+  }
+
+  async markAdminThreadRead(
+    businessId: number,
+    viewerRole: "admin" | "business",
+  ): Promise<number> {
+    // The viewer reads messages written by the *opposite* role.
+    const otherRole = viewerRole === "admin" ? "business" : "admin";
+    const result = await db
+      .update(adminMessages)
+      .set({ readAt: new Date() })
+      .where(
+        and(
+          eq(adminMessages.businessId, businessId),
+          eq(adminMessages.senderRole, otherRole),
+          isNull(adminMessages.readAt),
+        ),
+      )
+      .returning({ id: adminMessages.id });
+    return result.length;
+  }
+
+  async getLastAdminToBusinessMessage(businessId: number): Promise<AdminMessage | undefined> {
+    const [row] = await db
+      .select()
+      .from(adminMessages)
+      .where(
+        and(
+          eq(adminMessages.businessId, businessId),
+          eq(adminMessages.senderRole, "admin"),
+        ),
+      )
+      .orderBy(desc(adminMessages.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async listAdminMessageThreadsForAdmin() {
+    // Aggregate one row per business that has any admin_messages row,
+    // ordered by most-recent activity. Unread count = business->admin
+    // messages still unread by admin.
+    const rows = await db
+      .select({
+        businessId: adminMessages.businessId,
+        businessName: businesses.name,
+        lastMessageAt: sql<Date>`MAX(${adminMessages.createdAt})`,
+        unreadFromBusiness: sql<number>`SUM(CASE WHEN ${adminMessages.senderRole} = 'business' AND ${adminMessages.readAt} IS NULL THEN 1 ELSE 0 END)`,
+      })
+      .from(adminMessages)
+      .leftJoin(businesses, eq(businesses.id, adminMessages.businessId))
+      .groupBy(adminMessages.businessId, businesses.name)
+      .orderBy(desc(sql`MAX(${adminMessages.createdAt})`));
+
+    if (rows.length === 0) return [];
+
+    // Fetch the latest body + sender role per business in a single query.
+    const businessIds = rows.map((r) => r.businessId);
+    const latestPerBiz = await db.execute<{
+      business_id: number;
+      body: string;
+      sender_role: string;
+    }>(sql`
+      SELECT DISTINCT ON (business_id) business_id, body, sender_role
+      FROM admin_messages
+      WHERE business_id IN (${sql.join(businessIds.map((id) => sql`${id}`), sql`, `)})
+      ORDER BY business_id, created_at DESC
+    `);
+    const latestMap = new Map<number, { body: string; senderRole: string }>();
+    for (const r of latestPerBiz.rows) {
+      latestMap.set(r.business_id, { body: r.body, senderRole: r.sender_role });
+    }
+
+    return rows.map((r) => ({
+      businessId: r.businessId,
+      businessName: r.businessName ?? "(deleted business)",
+      lastMessageAt: r.lastMessageAt,
+      lastMessageBody: latestMap.get(r.businessId)?.body ?? "",
+      lastSenderRole: latestMap.get(r.businessId)?.senderRole ?? "admin",
+      unreadFromBusiness: Number(r.unreadFromBusiness ?? 0),
+    }));
+  }
+
+  async getUnreadAdminMessageCountForOwner(ownerUserId: string): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(adminMessages)
+      .innerJoin(businesses, eq(businesses.id, adminMessages.businessId))
+      .where(
+        and(
+          eq(businesses.ownerUserId, ownerUserId),
+          eq(adminMessages.senderRole, "admin"),
+          isNull(adminMessages.readAt),
+        ),
+      );
+    return Number(row?.count ?? 0);
   }
 }
 

@@ -75,6 +75,7 @@ import {
   Clock,
   BellRing,
   Activity,
+  Loader2,
 } from "lucide-react";
 import {
   LineChart,
@@ -1534,6 +1535,11 @@ function BusinessesTab() {
   // closed. We pre-fill with the row's existing comp values so editing an
   // active grant feels like an Edit, not a re-grant from scratch.
   const [compDialog, setCompDialog] = useState<{ biz: AdminBusiness; note: string; expiresAt: string } | null>(null);
+  // Admin DM dialog: opened when admin clicks "Message" on a business row.
+  // Holds the target biz + the in-progress reply text. Thread itself comes
+  // from a separate query keyed by businessId.
+  const [messageDialog, setMessageDialog] = useState<AdminBusiness | null>(null);
+  const [messageBody, setMessageBody] = useState("");
 
   const { data, isLoading, isError, refetch } = useQuery<{ businesses: AdminBusiness[]; total: number; page: number; pages: number }>({
     queryKey: ["/api/admin/businesses", search, page],
@@ -1927,6 +1933,17 @@ function BusinessesTab() {
                         >
                           <Gift className="h-4 w-4" />
                           {b.isCompedMembership ? "Uncomp" : "Comp"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-[#0a4a82] hover:bg-blue-50 rounded-lg gap-1"
+                          onClick={() => { setMessageDialog(b); setMessageBody(""); }}
+                          title="Send a direct message to this business owner"
+                          data-testid={`button-message-biz-${b.id}`}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          Message
                         </Button>
                         <Button
                           variant="ghost"
@@ -2431,6 +2448,13 @@ function BusinessesTab() {
         </DialogContent>
       </Dialog>
 
+      <AdminMessageDialog
+        biz={messageDialog}
+        body={messageBody}
+        setBody={setMessageBody}
+        onClose={() => { setMessageDialog(null); setMessageBody(""); }}
+      />
+
       <Dialog open={!!compDialog} onOpenChange={(open) => { if (!open) setCompDialog(null); }}>
         <DialogContent className="bg-white rounded-2xl max-w-md" data-testid="dialog-comp-grant">
           <DialogHeader>
@@ -2492,6 +2516,172 @@ function BusinessesTab() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Modal for sending direct messages from admin -> a business owner. Renders
+// the existing thread (so admins have full context for the back-and-forth)
+// plus a compose box. The thread is fetched fresh every time the dialog opens
+// (and short-poll-refreshed while open) so an admin always sees the latest
+// owner reply without needing to reopen.
+function AdminMessageDialog({
+  biz,
+  body,
+  setBody,
+  onClose,
+}: {
+  biz: AdminBusiness | null;
+  body: string;
+  setBody: (s: string) => void;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const open = !!biz;
+  const businessId = biz?.id;
+
+  const threadQuery = useQuery<{
+    business: { id: number; name: string; ownerUserId: string | null; ownerEmail: string | null };
+    messages: Array<{
+      id: number;
+      senderUserId: string;
+      senderRole: "admin" | "business";
+      body: string;
+      createdAt: string;
+      readAt: string | null;
+    }>;
+  }>({
+    queryKey: ["/api/admin/businesses", businessId, "messages"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/businesses/${businessId}/messages`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load thread");
+      return res.json();
+    },
+    enabled: open && !!businessId,
+    refetchInterval: open ? 8000 : false,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      if (!businessId) return;
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/businesses/${businessId}/messages`,
+        { body: body.trim() },
+      );
+      return (await res.json()) as { emailed: boolean };
+    },
+    onSuccess: (data) => {
+      setBody("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/businesses", businessId, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/messages/threads"] });
+      toast({
+        title: "Message sent",
+        description: data?.emailed
+          ? "Owner has been notified by email."
+          : "Owner notified in-app (email skipped — recent message already sent within 4h cooldown).",
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Couldn't send", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        className="bg-white rounded-2xl max-w-lg max-h-[85vh] flex flex-col"
+        data-testid="dialog-admin-message"
+      >
+        <DialogHeader>
+          <DialogTitle className="text-[#1a1a2e] flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-[#0a4a82]" />
+            Message {biz?.name}
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            {threadQuery.data?.business.ownerEmail ? (
+              <>Owner: <span className="text-[#0a4a82]">{threadQuery.data.business.ownerEmail}</span> · Sends an email + in-app notification</>
+            ) : (
+              <>This business has no linked owner account — messages can't be delivered.</>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 min-h-[200px] max-h-[40vh] overflow-y-auto space-y-2 px-1 py-2 bg-slate-50/50 rounded-xl">
+          {threadQuery.isLoading ? (
+            <div className="text-center py-6 text-slate-400 text-sm">Loading thread…</div>
+          ) : threadQuery.data?.messages.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-sm">
+              No messages yet. Start the conversation below.
+            </div>
+          ) : (
+            threadQuery.data?.messages.map((m) => {
+              const fromAdmin = m.senderRole === "admin";
+              return (
+                <div
+                  key={m.id}
+                  className={`flex ${fromAdmin ? "justify-end" : "justify-start"} px-2`}
+                  data-testid={`admin-dialog-msg-${m.id}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-3.5 py-2 shadow-sm ${
+                      fromAdmin
+                        ? "bg-[#0a4a82] text-white rounded-br-md"
+                        : "bg-white text-[#1a1a2e] border border-slate-200 rounded-bl-md"
+                    }`}
+                  >
+                    {!fromAdmin && (
+                      <p className="text-[11px] font-semibold mb-0.5 text-[#d4a373]">
+                        Business owner
+                      </p>
+                    )}
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                    <p className={`text-[10px] mt-1 ${fromAdmin ? "text-white/60" : "text-slate-400"}`}>
+                      {format(new Date(m.createdAt), "MMM d, h:mm a")}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs text-slate-600">Your message</Label>
+          <Textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Type a message to this business owner…"
+            rows={4}
+            maxLength={5000}
+            className="rounded-xl bg-white resize-none"
+            style={{ color: "#1a1a2e", caretColor: "#1a1a2e" }}
+            data-testid="input-admin-message-body"
+          />
+          <p className="text-[11px] text-slate-400">
+            {body.length}/5000 · Owner is emailed at most once every 4 hours; replies appear instantly here.
+          </p>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="rounded-xl" data-testid="button-cancel-admin-message">
+            Close
+          </Button>
+          <Button
+            onClick={() => sendMutation.mutate()}
+            disabled={sendMutation.isPending || !body.trim() || !threadQuery.data?.business.ownerUserId}
+            className="bg-[#0a4a82] hover:bg-[#083a6a] text-white rounded-xl gap-1"
+            data-testid="button-send-admin-message"
+          >
+            {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send Message
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

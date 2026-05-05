@@ -18,12 +18,12 @@ import { registerMarketingHubRoutes } from "./marketingHub";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
 import { shouldBypassCharges } from "./lib/founderRules";
-import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike } from "./email";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike, notifyOwnerOfAdminMessage } from "./email";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
 import { users, receipts, quoteRequests, quotes, quotePriorityAssignments, vendorMetrics, quoteMessages, EMERGENCY_CATEGORIES, LOW_RATING_THRESHOLD } from "@shared/models/auth";
-import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts, recipientSuppressions, bounceSpikeAlerts, requestLogs } from "@shared/schema";
+import { locations, businesses, events, adPlacements, adPricing, comments as commentsTable, posts as postsTable, categoryRequests, insertCategoryRequestSchema, promoCodes, promoCodeUsages, membershipDowngrades, jobListings, insertJobListingSchema, businessAnalytics, businessVerificationChecks, verificationDocuments, adminSubmissions, reviews, compMembershipAudit, reviewRequests, bounceRateAlerts, recipientSuppressions, bounceSpikeAlerts, requestLogs, adminMessages } from "@shared/schema";
 import OpenAI from "openai";
 import { eq, desc, and, or, ilike, inArray, sql, asc, isNull, isNotNull, lt, gt, lte, gte } from "drizzle-orm";
 
@@ -4833,6 +4833,250 @@ Respond in this exact JSON format:
     } catch (err) {
       console.error("Admin comp resend welcome error:", err);
       res.status(500).json({ message: "Failed to resend welcome email" });
+    }
+  });
+
+  // ====================================================================
+  // Admin <-> Business direct messaging
+  // ====================================================================
+  // One implicit thread per business. Admin can DM any business owner from
+  // the admin dashboard; owner sees the thread + can reply from their own
+  // dashboard inbox.
+  //
+  // Email throttle: when an admin sends a message we email the owner only
+  // if no admin->business email has been "fresh enough" — concretely, the
+  // most recent admin->business message must be older than ADMIN_DM_EMAIL_COOLDOWN_MS,
+  // or the owner has read it. This prevents back-to-back admin messages
+  // from spamming the owner's inbox while still notifying them when a new
+  // conversation starts.
+  const ADMIN_DM_EMAIL_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+  // Admin: list every business with an active DM thread.
+  app.get("/api/admin/messages/threads", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      if (!(await isAdminUser(adminId))) return res.status(403).json({ message: "Forbidden" });
+      const threads = await storage.listAdminMessageThreadsForAdmin();
+      res.json(threads);
+    } catch (err) {
+      console.error("Admin message threads error:", err);
+      res.status(500).json({ message: "Failed to load threads" });
+    }
+  });
+
+  // Admin: read a single business's thread + mark business->admin msgs read.
+  app.get("/api/admin/businesses/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      if (!(await isAdminUser(adminId))) return res.status(403).json({ message: "Forbidden" });
+      const businessId = parseInt(req.params.id, 10);
+      if (Number.isNaN(businessId)) return res.status(400).json({ message: "Invalid business id" });
+
+      const biz = await storage.getBusiness(businessId);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+
+      // Mark unread business->admin messages as read for the admin viewer.
+      await storage.markAdminThreadRead(businessId, "admin");
+      const messages = await storage.getAdminMessageThread(businessId);
+
+      // Pull owner email for the compose UI hint.
+      let ownerEmail: string | null = null;
+      if (biz.ownerUserId) {
+        const owner = await pgDb.execute<{ email: string | null }>(sql`SELECT email FROM users WHERE id = ${biz.ownerUserId} LIMIT 1`);
+        ownerEmail = owner.rows[0]?.email ?? null;
+      }
+
+      res.json({
+        business: { id: biz.id, name: biz.name, ownerUserId: biz.ownerUserId, ownerEmail },
+        messages,
+      });
+    } catch (err) {
+      console.error("Admin get thread error:", err);
+      res.status(500).json({ message: "Failed to load thread" });
+    }
+  });
+
+  // Admin: post a new message into a business's thread.
+  app.post("/api/admin/businesses/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user?.id;
+      if (!(await isAdminUser(adminId))) return res.status(403).json({ message: "Forbidden" });
+      const businessId = parseInt(req.params.id, 10);
+      if (Number.isNaN(businessId)) return res.status(400).json({ message: "Invalid business id" });
+
+      const body = String(req.body?.body ?? "").trim();
+      if (!body) return res.status(400).json({ message: "Message body is required" });
+      if (body.length > 5000) return res.status(400).json({ message: "Message too long (5000 char max)" });
+
+      const biz = await storage.getBusiness(businessId);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+      if (!biz.ownerUserId) {
+        return res.status(400).json({ message: "This business has no linked owner account to message." });
+      }
+
+      // Email throttle (race-safe): serialize concurrent admin sends to the
+      // same business with a per-business advisory lock, then re-check the
+      // last-admin-message timestamp inside the same transaction. This makes
+      // throttle decisions atomic with the insert, so two near-simultaneous
+      // POSTs cannot both pass the cooldown check and both fire an email.
+      const { msg, shouldEmail, ownerEmail } = await pgDb.transaction(async (tx) => {
+        // Advisory lock auto-releases at txn commit/rollback. Scoped per business.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(${businessId})`);
+
+        const [lastAdmin] = await tx
+          .select({ createdAt: adminMessages.createdAt })
+          .from(adminMessages)
+          .where(and(eq(adminMessages.businessId, businessId), eq(adminMessages.senderRole, "admin")))
+          .orderBy(desc(adminMessages.createdAt))
+          .limit(1);
+
+        const now = Date.now();
+        const shouldEmail = !lastAdmin
+          || (now - new Date(lastAdmin.createdAt).getTime() >= ADMIN_DM_EMAIL_COOLDOWN_MS);
+
+        const [inserted] = await tx
+          .insert(adminMessages)
+          .values({ businessId, senderUserId: adminId, senderRole: "admin", body })
+          .returning();
+
+        let ownerEmail: string | null = null;
+        if (shouldEmail) {
+          const ownerRow = await tx.execute<{ email: string | null }>(
+            sql`SELECT email FROM users WHERE id = ${biz.ownerUserId} LIMIT 1`,
+          );
+          ownerEmail = ownerRow.rows[0]?.email ?? null;
+        }
+        return { msg: inserted, shouldEmail, ownerEmail };
+      });
+
+      // Fire-and-forget email — never block the response on email delivery.
+      if (shouldEmail && ownerEmail) {
+        notifyOwnerOfAdminMessage({
+          ownerEmail,
+          businessName: biz.name,
+          body,
+        }).catch((err) => console.error("notifyOwnerOfAdminMessage error:", err));
+      }
+
+      res.json({ message: msg, emailed: shouldEmail && !!ownerEmail });
+    } catch (err) {
+      console.error("Admin send message error:", err);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Owner: list admin-message threads for any business they own (typically
+  // 1 per business). Returns empty array if the user owns no businesses.
+  app.get("/api/my/admin-messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      // Find all businesses this user owns (multi-zip listings allowed).
+      const owned = await pgDb
+        .select({ id: businesses.id, name: businesses.name })
+        .from(businesses)
+        .where(eq(businesses.ownerUserId, userId));
+
+      if (owned.length === 0) return res.json([]);
+
+      const ids = owned.map((b) => b.id);
+      const allMessages = await pgDb
+        .select()
+        .from(adminMessages)
+        .where(inArray(adminMessages.businessId, ids))
+        .orderBy(asc(adminMessages.createdAt));
+
+      // Group by businessId.
+      const grouped = new Map<number, typeof allMessages>();
+      for (const m of allMessages) {
+        if (!grouped.has(m.businessId)) grouped.set(m.businessId, []);
+        grouped.get(m.businessId)!.push(m);
+      }
+
+      const threads = owned
+        .filter((b) => grouped.has(b.id))
+        .map((b) => {
+          const msgs = grouped.get(b.id)!;
+          const last = msgs[msgs.length - 1];
+          const unread = msgs.filter((m) => m.senderRole === "admin" && !m.readAt).length;
+          return {
+            businessId: b.id,
+            businessName: b.name,
+            messages: msgs,
+            lastMessageAt: last.createdAt,
+            unreadCount: unread,
+          };
+        })
+        .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+
+      res.json(threads);
+    } catch (err) {
+      console.error("Owner get admin messages error:", err);
+      res.status(500).json({ message: "Failed to load admin messages" });
+    }
+  });
+
+  // Owner: post a reply into a business's admin DM thread (must own biz).
+  app.post("/api/my/admin-messages/:businessId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const businessId = parseInt(req.params.businessId, 10);
+      if (Number.isNaN(businessId)) return res.status(400).json({ message: "Invalid business id" });
+
+      const body = String(req.body?.body ?? "").trim();
+      if (!body) return res.status(400).json({ message: "Message body is required" });
+      if (body.length > 5000) return res.status(400).json({ message: "Message too long (5000 char max)" });
+
+      const biz = await storage.getBusiness(businessId);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+      if (biz.ownerUserId !== userId) return res.status(403).json({ message: "Forbidden" });
+
+      const msg = await storage.createAdminMessage({
+        businessId,
+        senderUserId: userId,
+        senderRole: "business",
+        body,
+      });
+      res.json({ message: msg });
+    } catch (err) {
+      console.error("Owner send admin message error:", err);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Owner: mark all unread admin->owner messages in a thread as read.
+  app.post("/api/my/admin-messages/:businessId/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const businessId = parseInt(req.params.businessId, 10);
+      if (Number.isNaN(businessId)) return res.status(400).json({ message: "Invalid business id" });
+
+      const biz = await storage.getBusiness(businessId);
+      if (!biz) return res.status(404).json({ message: "Business not found" });
+      if (biz.ownerUserId !== userId) return res.status(403).json({ message: "Forbidden" });
+
+      const updated = await storage.markAdminThreadRead(businessId, "business");
+      res.json({ ok: true, markedRead: updated });
+    } catch (err) {
+      console.error("Owner mark admin messages read error:", err);
+      res.status(500).json({ message: "Failed to mark as read" });
+    }
+  });
+
+  // Owner: count of unread admin messages across all their businesses
+  // (used for the dashboard inbox badge).
+  app.get("/api/my/admin-messages/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const count = await storage.getUnreadAdminMessageCountForOwner(userId);
+      res.json({ count });
+    } catch (err) {
+      console.error("Owner unread admin messages count error:", err);
+      res.status(500).json({ message: "Failed to count unread messages" });
     }
   });
 

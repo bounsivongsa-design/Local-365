@@ -76,6 +76,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { getMembershipTier, isCompActive } from "@shared/config/membership";
 import { DashboardInbox } from "@/components/DashboardInbox";
+import { AdminMessagesInbox } from "@/components/AdminMessagesInbox";
 import { ListingZipSwitcher } from "@/components/ListingZipSwitcher";
 import { apiRequest } from "@/lib/queryClient";
 import { useMyJobListings, useDeleteJobListing } from "@/hooks/use-jobs";
@@ -2691,6 +2692,8 @@ function BusinessDashboard({ user, business }: { user: any; business: Business |
           </div>
 
           <BusinessQuoteLeads businessId={business.id} />
+
+          <AdminMessagesInbox />
 
           <DashboardInbox />
 

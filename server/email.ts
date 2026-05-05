@@ -707,6 +707,63 @@ export async function notifyOwnerBounceSpike(args: {
   }
 }
 
+// Notify a business owner that an admin sent them a direct message.
+// Throttling (max one per N hours per business) is enforced by the caller in
+// server/routes.ts before invoking this — we just send unconditionally here.
+export async function notifyOwnerOfAdminMessage(args: {
+  ownerEmail: string;
+  businessName: string;
+  body: string;
+}): Promise<boolean> {
+  const resend = getResend();
+  if (!resend) {
+    console.log(
+      `[EMAIL SKIPPED] Admin DM to ${args.ownerEmail} (${args.businessName}) — Resend not configured`,
+    );
+    return false;
+  }
+
+  const safeBody = args.body
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br />");
+
+  try {
+    await resend.emails.send({
+      from: "Local List 365 <onboarding@resend.dev>",
+      to: [args.ownerEmail],
+      subject: `Message from Local List 365 admin — ${args.businessName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #0a4a82, #0d5a9e); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+            <h1 style="margin: 0; font-size: 20px;">New message from the admin team</h1>
+            <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.85;">For ${args.businessName}</p>
+          </div>
+          <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+            <div style="background: white; border-left: 3px solid #0a4a82; padding: 14px 16px; border-radius: 6px; color: #1a1a2e; font-size: 14px; line-height: 1.55;">
+              ${safeBody}
+            </div>
+            <div style="margin-top: 22px; text-align: center;">
+              <a href="https://locallist365.replit.app/dashboard" style="display: inline-block; background: #0a4a82; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                Reply in your dashboard
+              </a>
+            </div>
+            <p style="margin-top: 18px; font-size: 12px; color: #888; line-height: 1.5;">
+              You're getting this because the Local List 365 admin team sent your business a message. To avoid spamming you, follow-up admin messages within the next few hours won't trigger a second email — open your dashboard inbox to see them.
+            </p>
+          </div>
+        </div>
+      `,
+    });
+    console.log(`[EMAIL SENT] Admin DM -> ${args.ownerEmail} (${args.businessName})`);
+    return true;
+  } catch (err: any) {
+    console.error(`[EMAIL FAILED] Admin DM -> ${args.ownerEmail}:`, err?.message);
+    return false;
+  }
+}
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;

@@ -531,6 +531,39 @@ export type CreateEventRequest = z.infer<typeof insertEventSchema>;
 export type CreatePostRequest = z.infer<typeof insertPostSchema>;
 export type CreateReviewRequest = z.infer<typeof insertReviewSchema>;
 
+// Direct-message thread between site admins and a single business owner.
+// One implicit thread per business (businessId is the natural thread key).
+// senderRole tells us who wrote it; readAt is set when the *other* side opens
+// the thread. Owner-side reads use the helper "mark all admin msgs read for
+// this business" pattern — keeps the schema simple (no separate participant
+// table or last-read pointer).
+export const adminMessages = pgTable(
+  "admin_messages",
+  {
+    id: serial("id").primaryKey(),
+    businessId: integer("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    senderUserId: varchar("sender_user_id")
+      .notNull()
+      .references(() => users.id),
+    senderRole: text("sender_role").notNull(), // 'admin' | 'business'
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    readAt: timestamp("read_at"),
+  },
+  (t) => ({
+    bizIdx: index("idx_admin_messages_biz").on(t.businessId, t.createdAt),
+  }),
+);
+export const insertAdminMessageSchema = createInsertSchema(adminMessages).omit({
+  id: true,
+  createdAt: true,
+  readAt: true,
+});
+export type InsertAdminMessage = z.infer<typeof insertAdminMessageSchema>;
+export type AdminMessage = typeof adminMessages.$inferSelect;
+
 export const adminSubmissions = pgTable("admin_submissions", {
   id: serial("id").primaryKey(),
   userId: text("user_id").references(() => users.id),
