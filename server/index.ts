@@ -78,7 +78,11 @@ app.use((req, res, next) => {
       // accountType=admin, the table auto-prunes at 30d, and this is the
       // operator's own site analytics — no third-party data is shared.
       // If we ever expose this beyond admins, hash the IP first.
-      if (process.env.NODE_ENV !== "test" && !path.startsWith("/api/admin/analytics")) {
+      if (
+        process.env.NODE_ENV !== "test" &&
+        !path.startsWith("/api/admin/analytics") &&
+        path !== "/api/_pv"
+      ) {
         const xff = req.headers["x-forwarded-for"];
         const ip =
           (Array.isArray(xff) ? xff[0] : xff?.split(",")[0])?.trim() ||

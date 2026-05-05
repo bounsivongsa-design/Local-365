@@ -45,6 +45,7 @@ import NotFound from "@/pages/not-found";
 import { DevModePanel } from "@/components/DevModePanel";
 import { CookieConsent } from "@/components/CookieConsent";
 import { useReferralCapture } from "@/hooks/use-referral-capture";
+import { usePageViewTracking } from "@/hooks/use-page-view-tracking";
 import backgroundImage from "@assets/image_1773172681995.png";
 
 function FooterTagline() {
@@ -58,6 +59,7 @@ function FooterTagline() {
 
 function AppRouter() {
   useReferralCapture();
+  usePageViewTracking();
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased relative">
       {/* Static Image Background */}

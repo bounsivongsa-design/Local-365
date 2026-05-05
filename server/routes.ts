@@ -5917,6 +5917,60 @@ Respond in this exact JSON format:
     }
   });
 
+  // ============ PAGE-VIEW BEACON ============
+  // Lightweight endpoint hit by the SPA on every client-side route change
+  // (and on initial mount). Lets the Traffic dashboard count actual page
+  // views, not just /api/* requests. We insert directly with the page path
+  // the client sent (e.g. "/directory") so the Top URLs list shows real
+  // pages, not "/api/_pv". The auto-logging middleware in server/index.ts
+  // explicitly skips /api/_pv so we never double-count this beacon.
+  app.post("/api/_pv", async (req, res) => {
+    try {
+      const rawPath = typeof req.body?.path === "string" ? req.body.path : "/";
+      // Only accept same-origin SPA paths. Reject anything that looks like
+      // a full URL or external redirect to keep the data trustworthy.
+      const safePath =
+        rawPath.startsWith("/") && !rawPath.startsWith("//")
+          ? (rawPath.length > 512 ? rawPath.slice(0, 512) : rawPath)
+          : "/";
+      const xff = req.headers["x-forwarded-for"];
+      const ip =
+        (Array.isArray(xff) ? xff[0] : xff?.split(",")[0])?.trim() ||
+        req.socket.remoteAddress ||
+        null;
+      const refHost = (() => {
+        const raw =
+          (typeof req.body?.referer === "string" ? req.body.referer : null) ||
+          (req.headers["referer"] as string | undefined) ||
+          null;
+        if (!raw) return null;
+        try {
+          return new URL(raw).host || null;
+        } catch {
+          return null;
+        }
+      })();
+      const ua = (req.headers["user-agent"] as string | undefined) || null;
+      // Fire-and-forget so the beacon never blocks navigation.
+      pgDb.insert(requestLogs)
+        .values({
+          method: "PAGE",
+          path: safePath,
+          status: 200,
+          durationMs: 0,
+          ip,
+          refererHost: refHost,
+          userAgent: ua ? ua.slice(0, 512) : null,
+        })
+        .catch(() => {
+          /* swallow — analytics must never break navigation */
+        });
+    } catch {
+      /* swallow */
+    }
+    res.status(204).end();
+  });
+
   // ============ TRAFFIC ANALYTICS ============
   // Powers the admin "Traffic" tab: requests over time, top URLs, top
   // referrers, HTTP status breakdown, duration histogram, unique IPs.
