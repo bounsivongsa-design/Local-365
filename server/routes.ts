@@ -4537,6 +4537,11 @@ Respond in this exact JSON format:
       const [target] = await pgDb.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, bizId));
       if (!target) return res.status(404).json({ message: "Business not found" });
 
+      // Defensive: if the body parser produced no object (missing/invalid
+      // JSON body, wrong content-type, etc.) bail with a 400 instead of
+      // crashing on `req.body[f]` below.
+      const body: Record<string, any> = (req.body && typeof req.body === "object") ? req.body : {};
+
       // Whitelist of fields admins may edit on a business (excludes Stripe IDs, dates, etc.)
       // NOTE: `membershipTier` is intentionally NOT in this list. Tier
       // changes are routed through the Stripe billing flow or the admin
@@ -4565,8 +4570,8 @@ Respond in this exact JSON format:
 
       const updates: any = {};
       for (const f of STRING_FIELDS) {
-        if (req.body[f] !== undefined) {
-          const v = req.body[f];
+        if (body[f] !== undefined) {
+          const v = body[f];
           if (v === null || v === "") {
             // Don't allow blanking out NOT NULL fields
             if (REQUIRED_NON_EMPTY.has(f)) continue;
@@ -4577,11 +4582,11 @@ Respond in this exact JSON format:
         }
       }
       for (const f of BOOL_FIELDS) {
-        if (typeof req.body[f] === "boolean") updates[f] = req.body[f];
+        if (typeof body[f] === "boolean") updates[f] = body[f];
       }
       for (const f of INT_FIELDS) {
-        if (req.body[f] !== undefined) {
-          const v = req.body[f];
+        if (body[f] !== undefined) {
+          const v = body[f];
           if (v === null || v === "") updates[f] = null;
           else {
             const n = parseInt(v);
@@ -4590,8 +4595,8 @@ Respond in this exact JSON format:
         }
       }
       for (const f of ARRAY_FIELDS) {
-        if (Array.isArray(req.body[f])) {
-          updates[f] = req.body[f].map((x: any) => String(x)).filter((x: string) => x.length > 0);
+        if (Array.isArray(body[f])) {
+          updates[f] = body[f].map((x: any) => String(x)).filter((x: string) => x.length > 0);
         }
       }
 
