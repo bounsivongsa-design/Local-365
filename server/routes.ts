@@ -440,6 +440,48 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // SEO: dynamic sitemap.xml — lists every public business + event/job page so
+  // search engines can crawl the directory. Falls back to just the static
+  // marketing pages if the DB query fails.
+  app.get("/sitemap.xml", async (_req, res) => {
+    const base = "https://locallist365.com";
+    const today = new Date().toISOString().slice(0, 10);
+    const urls: Array<{ loc: string; changefreq: string; priority: string; lastmod?: string }> = [
+      { loc: `${base}/`, changefreq: "daily", priority: "1.0", lastmod: today },
+      { loc: `${base}/directory`, changefreq: "daily", priority: "0.9", lastmod: today },
+      { loc: `${base}/events`, changefreq: "daily", priority: "0.8", lastmod: today },
+      { loc: `${base}/jobs`, changefreq: "daily", priority: "0.8", lastmod: today },
+      { loc: `${base}/deals`, changefreq: "daily", priority: "0.8", lastmod: today },
+      { loc: `${base}/about`, changefreq: "monthly", priority: "0.5" },
+      { loc: `${base}/contact`, changefreq: "monthly", priority: "0.5" },
+    ];
+    try {
+      const rows = await pgDb.select({ id: businesses.id, updatedAt: businesses.updatedAt }).from(businesses);
+      for (const r of rows) {
+        urls.push({
+          loc: `${base}/business/${r.id}`,
+          changefreq: "weekly",
+          priority: "0.7",
+          lastmod: r.updatedAt ? new Date(r.updatedAt as any).toISOString().slice(0, 10) : today,
+        });
+      }
+    } catch {
+      // ignore — serve at least the static pages
+    }
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      urls
+        .map(
+          (u) =>
+            `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ""}<changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
+        )
+        .join("\n") +
+      "\n</urlset>\n";
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(xml);
+  });
+
   // Auth Setup
   await setupAuth(app);
   registerAuthRoutes(app);

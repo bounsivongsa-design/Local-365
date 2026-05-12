@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /account-setup
+Disallow: /auth
+
+Sitemap: https://locallist365.com/sitemap.xml
