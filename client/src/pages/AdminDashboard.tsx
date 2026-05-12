@@ -1882,7 +1882,7 @@ function BusinessesTab() {
                             variant="ghost"
                             size="sm"
                             className="h-8 px-2 text-green-600 hover:bg-green-50 rounded-lg gap-1"
-                            onClick={() => updateBizMutation.mutate({ id: b.id, membershipTier: b.membershipTier || "none", verified: true })}
+                            onClick={() => updateBizMutation.mutate({ id: b.id, body: { verified: true } })}
                             disabled={updateBizMutation.isPending}
                             data-testid={`button-verify-biz-${b.id}`}
                           >
@@ -2434,7 +2434,7 @@ function BusinessesTab() {
             {verifyDialog && !verifyDialog.verified && (
               <Button
                 onClick={() => {
-                  updateBizMutation.mutate({ id: verifyDialog.id, membershipTier: verifyDialog.membershipTier || "none", verified: true });
+                  updateBizMutation.mutate({ id: verifyDialog.id, body: { verified: true } });
                   setVerifyDialog(null);
                 }}
                 disabled={updateBizMutation.isPending}
