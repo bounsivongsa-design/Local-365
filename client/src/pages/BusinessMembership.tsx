@@ -296,6 +296,23 @@ export default function BusinessMembership() {
       window.location.href = "/auth?mode=register&type=business";
       return;
     }
+    if ((user as any)?.accountType === "customer") {
+      const proceed = window.confirm(
+        "You're signed in with a customer account. To buy a business membership, we'll switch your account to a business account. Continue?"
+      );
+      if (!proceed) return;
+      apiRequest("POST", "/api/user/account-type", { accountType: "business" })
+        .then(async () => {
+          await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+          setPromoCode("");
+          setPromoStatus(null);
+          setCheckoutTier(tier);
+        })
+        .catch(() => {
+          toast({ title: "Could not switch account", description: "Please try again or contact support.", variant: "destructive" });
+        });
+      return;
+    }
     setPromoCode("");
     setPromoStatus(null);
     setCheckoutTier(tier);

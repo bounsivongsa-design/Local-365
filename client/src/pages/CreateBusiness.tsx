@@ -4,8 +4,9 @@ import { CreateBusinessForm } from "@/components/CreateBusinessForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Loader2, CheckCircle, CreditCard } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2, CheckCircle, CreditCard, Building2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const STRIPE_SESSION_KEY = "ll365_stripe_session_id";
 
@@ -32,6 +33,8 @@ function clearStoredStripeSession() {
 export default function CreateBusiness() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [upgrading, setUpgrading] = useState(false);
   const [searchParams] = useSearchParams();
   const fromCheckoutParam = searchParams.get("success") === "true";
   const urlSessionId = searchParams.get("session_id");
@@ -94,6 +97,54 @@ export default function CreateBusiness() {
             <Link to="/auth?mode=register&type=business">
               <Button data-testid="button-sign-in-to-create">Sign In / Register</Button>
             </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isCustomerAccount = (user as any)?.accountType === "customer";
+
+  if (isCustomerAccount && !hasPaymentProof) {
+    return (
+      <div className="min-h-screen bg-[#f5f0eb] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full shadow-lg rounded-2xl">
+          <CardContent className="pt-8 pb-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0a4a82] to-[#0a4a82]/70 flex items-center justify-center mx-auto mb-5">
+              <Building2 className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1a1a2e] mb-3">This Section is for Businesses</h2>
+            <p className="text-gray-600 mb-6">
+              You're signed in with a customer account. To list a business, switch to a business account and choose a membership plan.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button
+                size="lg"
+                disabled={upgrading}
+                onClick={async () => {
+                  setUpgrading(true);
+                  try {
+                    await apiRequest("POST", "/api/user/account-type", { accountType: "business" });
+                    await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+                    toast({ title: "Account upgraded", description: "Choose a membership plan to get listed." });
+                    navigate("/membership");
+                  } catch {
+                    toast({ title: "Could not upgrade account", description: "Please try again or contact support.", variant: "destructive" });
+                  } finally {
+                    setUpgrading(false);
+                  }
+                }}
+                className="bg-gradient-to-r from-[#0a4a82] to-[#083a6a] hover:from-[#083a6a] hover:to-[#062d54] h-12 px-8 rounded-xl font-semibold"
+                data-testid="button-upgrade-to-business"
+              >
+                {upgrading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Switch to Business Account"}
+              </Button>
+              <Link to="/">
+                <Button variant="outline" size="lg" className="w-full h-12 rounded-xl" data-testid="button-back-home">
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
