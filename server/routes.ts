@@ -440,6 +440,27 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // SEO: dynamic robots.txt — served as an Express route (not a static file)
+  // so it works reliably in production and isn't intercepted by the SPA
+  // catch-all that serves index.html for unknown paths.
+  app.get("/robots.txt", (_req, res) => {
+    const body = [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /api/",
+      "Disallow: /admin",
+      "Disallow: /dashboard",
+      "Disallow: /account-setup",
+      "Disallow: /auth",
+      "",
+      "Sitemap: https://locallist365.com/sitemap.xml",
+      "",
+    ].join("\n");
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(body);
+  });
+
   // SEO: dynamic sitemap.xml — lists every public business + event/job page so
   // search engines can crawl the directory. Falls back to just the static
   // marketing pages if the DB query fails.
