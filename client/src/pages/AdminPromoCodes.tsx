@@ -125,7 +125,7 @@ export default function AdminPromoCodes() {
   const [newGoldTrialCode, setNewGoldTrialCode] = useState({
     code: generateCode("GOLD"),
     description: "",
-    durationDays: "60",
+    durationDays: "120",
   });
 
   const { data: promoCodes = [], isLoading } = useQuery<PromoCode[]>({
@@ -297,7 +297,7 @@ export default function AdminPromoCodes() {
     setNewGoldTrialCode({
       code: generateCode("GOLD"),
       description: "",
-      durationDays: "60",
+      durationDays: "120",
     });
   };
 
@@ -333,7 +333,7 @@ export default function AdminPromoCodes() {
             <div className="flex gap-3">
             <Dialog open={goldTrialDialogOpen} onOpenChange={(open) => {
               setGoldTrialDialogOpen(open);
-              if (open) setNewGoldTrialCode({ code: generateCode("GOLD"), description: "", durationDays: "60" });
+              if (open) setNewGoldTrialCode({ code: generateCode("GOLD"), description: "", durationDays: "120" });
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-yellow-500 hover:bg-yellow-600 text-white" data-testid="button-create-gold-trial">
@@ -379,7 +379,7 @@ export default function AdminPromoCodes() {
                   <div>
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Gold Access Duration</label>
                     <div className="mt-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300" data-testid="text-gold-trial-duration">
-                      60 Days (all new signups already get 30 days free)
+                      120 Days (all new signups already get 90 days free)
                     </div>
                   </div>
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">

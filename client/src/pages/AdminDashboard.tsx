@@ -3319,8 +3319,8 @@ function PromosTab() {
             )}
             {newType === "gold_trial" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800 font-medium">Gold Trial: 60 Days Total</p>
-                <p className="text-xs text-blue-600 mt-1">New businesses already get 30 days of Gold free. This promo adds 30 more days, giving them 60 days total.</p>
+                <p className="text-sm text-blue-800 font-medium">Gold Trial: 120 Days Total</p>
+                <p className="text-xs text-blue-600 mt-1">New businesses already get 90 days of Gold free. This promo adds 30 more days, giving them 120 days total.</p>
               </div>
             )}
             <div>
@@ -3713,7 +3713,116 @@ function GrowthTab() {
           )}
         </CardContent>
       </Card>
+
+      <GoldPriceMigrationBox />
     </div>
+  );
+}
+
+/**
+ * One-time admin tool to migrate EXISTING Gold subscriptions from the old
+ * pricing to the new $75/mo pricing. Always preview (dry-run) first, then
+ * Apply. Safe to run more than once (idempotent on the server).
+ */
+function GoldPriceMigrationBox() {
+  const { toast } = useToast();
+  type Row = { businessId: number; name: string; cadence: string; oldPrice: number; newPrice: number; applied?: boolean };
+  type Result = {
+    apply: boolean;
+    candidatesChecked: number;
+    migratedCount: number;
+    skippedCount: number;
+    errorCount: number;
+    migrated: Row[];
+    skipped: { businessId: number; name: string; reason: string }[];
+    errors: { businessId: number; name: string; error: string }[];
+  };
+  const [result, setResult] = useState<Result | null>(null);
+
+  const run = useMutation({
+    mutationFn: async (apply: boolean) => {
+      const res = await apiRequest("POST", `/api/stripe/admin/migrate-gold-pricing`, { apply });
+      return res.json() as Promise<Result>;
+    },
+    onSuccess: (r) => {
+      setResult(r);
+      toast({
+        title: r.apply ? "Migration applied" : "Preview ready",
+        description: r.apply
+          ? `${r.migratedCount} updated · ${r.skippedCount} skipped · ${r.errorCount} errors`
+          : `${r.migratedCount} would change · ${r.skippedCount} skipped`,
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: "Migration failed", description: err?.message || "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const handleApply = () => {
+    if (!result || result.apply) return;
+    if (!window.confirm(`Lower ${result.migratedCount} live Gold subscription(s) to the new $75 pricing? They keep their current period and renew at the lower price. This cannot be auto-undone.`)) return;
+    run.mutate(true);
+  };
+
+  return (
+    <Card className="bg-white/95 p-6" data-testid="card-gold-migration">
+      <div className="flex items-center gap-2 mb-1">
+        <Crown className="h-4 w-4 text-amber-600" />
+        <h3 className="text-lg font-bold text-[#0a4a82]">Gold Price Migration → $75</h3>
+      </div>
+      <p className="text-sm text-slate-600 mb-4">
+        Existing Gold members keep paying their old price until you migrate them here. New members already get $75 automatically.
+        Run <span className="font-semibold">Preview</span> first to see who is affected, then <span className="font-semibold">Apply</span>.
+        Only subscriptions currently at the old Gold price are touched — trial members on a lower chosen tier are never affected.
+        <span className="block mt-1 text-amber-700 font-medium">Must be run on the published (production) site to affect real members.</span>
+      </p>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => run.mutate(false)}
+          disabled={run.isPending}
+          data-testid="button-gold-migration-preview"
+        >
+          {run.isPending && !run.variables ? "Checking…" : "Preview (dry run)"}
+        </Button>
+        <Button
+          className="bg-amber-500 hover:bg-amber-600 text-white"
+          onClick={handleApply}
+          disabled={run.isPending || !result || result.migratedCount === 0 || result.apply}
+          data-testid="button-gold-migration-apply"
+        >
+          {run.isPending && run.variables ? "Applying…" : `Apply${result && !result.apply ? ` (${result.migratedCount})` : ""}`}
+        </Button>
+      </div>
+
+      {result && (
+        <div className="mt-4 text-sm" data-testid="text-gold-migration-result">
+          <div className="font-medium text-slate-800 mb-2">
+            {result.apply ? "Applied" : "Preview"}: checked {result.candidatesChecked} ·{" "}
+            <span className="text-emerald-700">{result.migratedCount} {result.apply ? "updated" : "to change"}</span> ·{" "}
+            <span className="text-slate-500">{result.skippedCount} skipped</span>
+            {result.errorCount > 0 && <span className="text-red-600"> · {result.errorCount} errors</span>}
+          </div>
+          {result.migrated.length > 0 && (
+            <div className="space-y-1 max-h-48 overflow-auto rounded border border-slate-200 p-2 bg-slate-50">
+              {result.migrated.map((m) => (
+                <div key={m.businessId} className="flex justify-between gap-2">
+                  <span className="truncate text-slate-700">{m.name} <span className="text-slate-400">#{m.businessId}</span></span>
+                  <span className="whitespace-nowrap text-slate-600">${m.oldPrice} → ${m.newPrice} <span className="text-slate-400">/ {m.cadence}</span></span>
+                </div>
+              ))}
+            </div>
+          )}
+          {result.errors.length > 0 && (
+            <div className="mt-2 space-y-1 text-red-600">
+              {result.errors.map((e) => (
+                <div key={e.businessId} className="truncate">{e.name} #{e.businessId}: {e.error}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

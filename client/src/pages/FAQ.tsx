@@ -29,7 +29,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I create a business account?",
-        answer: "Go to the Sign In page and click the \"Business\" tab. Enter your business name, your name, email, and password. After registration, you'll be guided to set up your business listing with details like your services, hours, photos, and contact info. Your first month is free — no charges until month two.",
+        answer: "Go to the Sign In page and click the \"Business\" tab. Enter your business name, your name, email, and password. After registration, you'll be guided to set up your business listing with details like your services, hours, photos, and contact info. Your first 90 days are free — no charges for the first three months.",
         links: [{ label: "Register your business", to: "/auth?mode=register&type=business" }],
       },
       {
@@ -147,7 +147,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "Is there a free trial?",
-        answer: "Yes! Every new business gets 30 days of Gold-tier access completely free — no matter which tier you choose. Even if you purchase Bronze or Silver, you'll enjoy top search placement, featured badge, promo video upload, advanced analytics, and first-round quote access for a full month. After 30 days, your listing automatically transitions to the tier you purchased. No extra charges, no action needed.",
+        answer: "Yes! Every new business gets 90 days of Gold-tier access completely free — no matter which tier you choose. Even if you purchase Bronze or Silver, you'll enjoy top search placement, featured badge, promo video upload, advanced analytics, and first-round quote access for a full three months. After 90 days, your listing automatically transitions to the tier you purchased. No extra charges, no action needed.",
       },
       {
         question: "How do I cancel my membership?",
@@ -358,7 +358,7 @@ export default function FAQ() {
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Everything in Bronze plus logo display, website link, up to 6 photos and categories, verified badge, social media links, and 2nd-round quote access.</p>
                                   </div>
                                   <div className="rounded-xl border border-yellow-500/40 bg-gradient-to-r from-yellow-50 to-amber-50/30 dark:from-yellow-900/20 dark:to-transparent p-4 shadow-sm">
-                                    <div className="font-bold text-yellow-900 dark:text-yellow-400 text-base mb-1">Gold — $100/month</div>
+                                    <div className="font-bold text-yellow-900 dark:text-yellow-400 text-base mb-1">Gold — $75/month</div>
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Everything in Silver plus top search placement, featured badge, up to 10 photos and 8 categories, 30-second promo video, advanced analytics, and exclusive 1st-round quote access.</p>
                                   </div>
                                 </div>

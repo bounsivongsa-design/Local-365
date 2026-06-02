@@ -214,7 +214,7 @@ export function ListingZipSwitcher({ activeBusinessId }: { activeBusinessId: num
                 <DialogTitle>Add another zip to {active.name}</DialogTitle>
                 <DialogDescription>
                   Each zip is a separate listing with its own analytics, reviews, quotes, and ads.
-                  Billed monthly at the rate discounted by your current tier. No 30-day Gold trial on
+                  Billed monthly at the rate discounted by your current tier. No 90-day Gold trial on
                   additional zips — billing starts day 1.
                 </DialogDescription>
               </DialogHeader>

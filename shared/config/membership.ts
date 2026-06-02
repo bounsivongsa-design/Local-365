@@ -113,9 +113,9 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "gold",
     name: "Gold",
-    monthlyPrice: 100,
-    semiAnnualPrice: 540,
-    annualPrice: 930,
+    monthlyPrice: 75,
+    semiAnnualPrice: 405,
+    annualPrice: 698,
     pricingBasis: "per_zip_code",
     color: "#ffd700",
     badgeGradient: "from-yellow-500 via-amber-300 to-yellow-500",
@@ -132,7 +132,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Custom business page branding",
       "Monthly spotlight in newsletter",
       "50% off advertising rates",
-      "Add extra zip-code listings for $50/mo each (50% off)",
+      "Add extra zip-code listings for $37.50/mo each (50% off)",
       "AI Listing Description Writer",
       "AI Review Reply Generator",
       "AI Quote Responder",
@@ -176,7 +176,7 @@ export const PAYMENT_FREQUENCIES: PaymentFrequency[] = [
     name: "Monthly",
     label: "per month",
     discount: 0,
-    trialInfo: "1st month FREE for new members",
+    trialInfo: "First 90 days FREE for new members",
     billingCycles: 1,
   },
   {
@@ -373,7 +373,7 @@ export const EVENT_MONTHLY_AD_RATES = {
  * Each extra zip is priced at the tier's monthly price minus a tier discount:
  *   Bronze ($25 × 10% off) → $22.50
  *   Silver ($50 × 25% off) → $37.50
- *   Gold   ($100 × 50% off) → $50.00
+ *   Gold   ($75 × 50% off) → $37.50
  * The fallback (when tier is unknown) keeps the legacy $20 base price.
  */
 export const ADDITIONAL_ZIP_BASE_PRICE = 20;

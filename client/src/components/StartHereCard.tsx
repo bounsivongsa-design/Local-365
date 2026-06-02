@@ -51,7 +51,7 @@ const BUSINESS_STEPS: Step[] = [
   },
   {
     icon: Crown,
-    title: "4. Try your free 30-day Gold trial",
+    title: "4. Try your free 90-day Gold trial",
     description:
       "Unlocks AI writing tools, marketing hub, newsletter, and more — no card required.",
     ctaLabel: "See Gold features",

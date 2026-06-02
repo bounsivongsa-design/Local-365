@@ -107,7 +107,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "gold",
     dbId: "premium",
     name: "Gold",
-    monthlyPrice: 100,
+    monthlyPrice: 75,
     description: "For businesses that want it all",
     features: [
       "Everything in Silver",
@@ -118,7 +118,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "30-sec promo video upload",
       "Advanced analytics dashboard",
       "50% off all advertising",
-      "Add extra zip-code listings for $50/mo each (50% off)",
+      "Add extra zip-code listings for $37.50/mo each (50% off)",
       "AI Tools suite (Gold-exclusive): Listing Writer, Review Reply, Quote Responder, Help Wanted, Event Description, Photo Caption & Alt-Text, Deal Writer, SMS Drafter, Social Composer, Review Request Blasts, AI Newsletter",
       "Marketing Hub dashboard (newsletter opens/clicks, SMS, social, deals KPIs)"
     ],
@@ -368,7 +368,7 @@ export default function BusinessMembership() {
     }
     const finalTotal = Math.max(0, pricing.total - discount);
     const hasFreeTrial = isNewMember || (promoStatus?.valid && promoStatus.discountType === "gold_trial");
-    const trialDays = promoStatus?.valid && promoStatus.discountType === "gold_trial" && promoStatus.durationDays ? promoStatus.durationDays : 30;
+    const trialDays = promoStatus?.valid && promoStatus.discountType === "gold_trial" && promoStatus.durationDays ? promoStatus.durationDays : 90;
     return { ...pricing, discount, finalTotal, hasFreeTrial, trialDays };
   };
 
@@ -552,7 +552,7 @@ export default function BusinessMembership() {
                       {isNewMember && tier.id !== "gold" && (
                         <div className="inline-flex items-center gap-1.5 bg-amber-400/30 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold border border-amber-300/40">
                           <Crown className="h-4 w-4 text-amber-200" />
-                          Gold access FREE for 30 days!
+                          Gold access FREE for 90 days!
                         </div>
                       )}
                       {pricing.freeMonths > 0 && tier.id === "gold" && (
@@ -752,10 +752,10 @@ export default function BusinessMembership() {
                         </div>
                         <div>
                           <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
-                            Enjoy Gold access FREE for 30 days!
+                            Enjoy Gold access FREE for 90 days!
                           </p>
                           <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5 leading-relaxed">
-                            Get top search placement, featured badge, promo video, advanced analytics, and first-round quote access. After 30 days, you'll automatically move to your {checkoutTier.name} plan.
+                            Get top search placement, featured badge, promo video, advanced analytics, and first-round quote access. After 90 days, you'll automatically move to your {checkoutTier.name} plan.
                           </p>
                         </div>
                       </div>
@@ -947,7 +947,7 @@ export default function BusinessMembership() {
           <div className="bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 p-8 text-white text-center">
             <DialogHeader>
               <DialogTitle className="sr-only">Gold Trial Activated</DialogTitle>
-              <DialogDescription className="sr-only">Your Gold membership trial is now active for 30 days.</DialogDescription>
+              <DialogDescription className="sr-only">Your Gold membership trial is now active for 90 days.</DialogDescription>
             </DialogHeader>
             <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-5 shadow-lg">
               <Crown className="h-10 w-10 text-white" />
@@ -956,12 +956,12 @@ export default function BusinessMembership() {
               Welcome to Gold!
             </h2>
             <p className="text-white/90 text-lg">
-              Enjoy <span className="font-bold">30 days of Gold access</span> — completely free.
+              Enjoy <span className="font-bold">90 days of Gold access</span> — completely free.
             </p>
           </div>
           <div className="p-6 space-y-4">
             <p className="text-slate-600 dark:text-slate-400 text-sm text-center leading-relaxed">
-              For the next 30 days, your listing gets all Gold-tier benefits:
+              For the next 90 days, your listing gets all Gold-tier benefits:
             </p>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -982,7 +982,7 @@ export default function BusinessMembership() {
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-center">
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                After 30 days, you'll automatically transition to your purchased plan at no extra cost.
+                After 90 days, you'll automatically transition to your purchased plan at no extra cost.
               </p>
             </div>
             <Button

@@ -134,7 +134,7 @@ export default function AuthPage() {
           <p className="text-white/80 mt-2 drop-shadow">
             {mode === "login"
               ? loginType === "business" ? "Access your business dashboard & manage your listing" : "Sign in to your Local List 365 account"
-              : accountType === "business" ? "Create a business account — first month FREE" : "Always free — browse, discover, and connect locally"}
+              : accountType === "business" ? "Create a business account — first 90 days FREE" : "Always free — browse, discover, and connect locally"}
           </p>
         </div>
 

@@ -251,7 +251,7 @@ export function registerStripeRoutes(app: Express) {
         }
         promoId = promo.id;
         if (promo.discountType === "gold_trial") {
-          goldTrialDays = promo.durationDays || 30;
+          goldTrialDays = promo.durationDays || 120;
         } else if (promo.discountType === "percentage") {
           const pct = promo.discountValue || 0;
           promoIsFullDiscount = pct >= 100;
@@ -348,7 +348,7 @@ export function registerStripeRoutes(app: Express) {
                 description: goldTrialDays
                   ? `Gold tier trial for ${goldTrialDays} days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
                   : isAutoUpgrade
-                    ? `Gold tier trial for first 30 days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
+                    ? `Gold tier trial for first 90 days! Then reverts to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
                     : `${tierName} tier membership`,
               },
               unit_amount: priceAmount,
@@ -380,7 +380,7 @@ export function registerStripeRoutes(app: Express) {
         },
       };
 
-      const baselineTrialDays = goldTrialDays || (isNewMember ? 30 : 0);
+      const baselineTrialDays = Math.max(goldTrialDays || 0, isNewMember ? 90 : 0);
       const effectiveTrialDays = Math.max(baselineTrialDays, promoFreeDays || 0);
       if (effectiveTrialDays > 0) {
         sessionParams.subscription_data.trial_period_days = effectiveTrialDays;
@@ -417,6 +417,126 @@ export function registerStripeRoutes(app: Express) {
     } catch (err: any) {
       console.error("Portal session error:", err);
       res.status(500).json({ message: "Failed to create billing portal session" });
+    }
+  });
+
+  // Admin-only one-time migration: drop EXISTING Gold subscriptions from the
+  // old pricing ($100/mo, $540/6mo, $930/yr) to the new pricing derived from
+  // the membership config ($75/mo, $405/6mo, $698/yr). Matching is done on the
+  // subscription's CURRENT Stripe price (not the DB tier), so new members still
+  // inside their free Gold trial — who carry membershipTier='premium' but are
+  // billed at their chosen lower tier's price — are never touched. The change
+  // uses proration_behavior:'none', so members finish their current paid period
+  // at the price they paid and simply renew at the new lower price. Idempotent:
+  // a subscription already at the new price (or not at an old-Gold price) is
+  // skipped, so it is safe to run more than once. Defaults to a dry-run preview;
+  // pass { apply: true } to actually update live subscriptions.
+  app.post("/api/stripe/admin/migrate-gold-pricing", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const [admin] = await db.select().from(users).where(eq(users.id, req.user?.id || ""));
+      if (admin?.accountType !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const apply = req.body?.apply === true;
+
+      // interval signature -> { old gold cents, new gold cents }
+      const PRICE_MAP: Record<string, { old: number; new: number; label: string }> = {
+        "month-1": { old: 10000, new: TIER_PRICES.gold.monthly, label: "monthly" },
+        "month-6": { old: 54000, new: TIER_PRICES.gold.semi_annual, label: "semi-annual" },
+        "year-1": { old: 93000, new: TIER_PRICES.gold.annual, label: "annual" },
+      };
+
+      const candidates = await db
+        .select()
+        .from(businesses)
+        .where(and(eq(businesses.membershipTier, "premium"), sql`${businesses.stripeSubscriptionId} IS NOT NULL`));
+
+      const migrated: any[] = [];
+      const skipped: any[] = [];
+      const errors: any[] = [];
+
+      for (const biz of candidates) {
+        const subId = biz.stripeSubscriptionId!;
+        try {
+          const sub = await stripe!.subscriptions.retrieve(subId);
+          if (["canceled", "incomplete_expired", "unpaid"].includes(sub.status)) {
+            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: `subscription ${sub.status}` });
+            continue;
+          }
+          if (sub.items.data.length !== 1) {
+            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: `unexpected item count (${sub.items.data.length})` });
+            continue;
+          }
+          const item = sub.items.data[0];
+          const rec = item.price.recurring;
+          const sig = rec ? `${rec.interval}-${rec.interval_count}` : "none";
+          const mapping = PRICE_MAP[sig];
+          const current = item.price.unit_amount ?? 0;
+
+          if (!mapping) {
+            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: `unrecognized billing cadence (${sig})` });
+            continue;
+          }
+          if (current === mapping.new) {
+            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: "already at new price" });
+            continue;
+          }
+          if (current !== mapping.old) {
+            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: `not at old Gold price (current $${(current / 100).toFixed(2)} ${mapping.label})` });
+            continue;
+          }
+
+          const record = {
+            businessId: biz.id,
+            name: biz.name,
+            subId,
+            cadence: mapping.label,
+            oldPrice: current / 100,
+            newPrice: mapping.new / 100,
+          };
+
+          if (!apply) {
+            migrated.push({ ...record, applied: false });
+            continue;
+          }
+
+          const productId = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
+          await stripe!.subscriptions.update(subId, {
+            items: [
+              {
+                id: item.id,
+                price_data: {
+                  currency: item.price.currency,
+                  product: productId,
+                  unit_amount: mapping.new,
+                  recurring: { interval: rec!.interval, interval_count: rec!.interval_count },
+                },
+              },
+            ],
+            proration_behavior: "none",
+            metadata: { ...(sub.metadata || {}), goldPriceMigrated: "75" },
+          });
+          migrated.push({ ...record, applied: true });
+        } catch (err: any) {
+          errors.push({ businessId: biz.id, name: biz.name, subId, error: err?.message || String(err) });
+        }
+      }
+
+      res.json({
+        apply,
+        dryRun: !apply,
+        candidatesChecked: candidates.length,
+        migratedCount: migrated.length,
+        skippedCount: skipped.length,
+        errorCount: errors.length,
+        migrated,
+        skipped,
+        errors,
+      });
+    } catch (err: any) {
+      console.error("Gold pricing migration error:", err);
+      res.status(500).json({ message: err.message || "Migration failed" });
     }
   });
 

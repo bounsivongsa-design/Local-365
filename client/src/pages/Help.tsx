@@ -100,7 +100,7 @@ const TOP_TASKS: TopTask[] = [
     audience: "business",
     icon: Building2,
     summary:
-      "Get your business in front of locals. Your first 30 days of Gold features are free — no card required.",
+      "Get your business in front of locals. Your first 90 days of Gold features are free — no card required.",
     steps: [
       { text: "Click 'For Business' or 'Sign In'." },
       { text: "Pick the 'Business' tab and create an account." },
@@ -268,7 +268,7 @@ const GLOSSARY: GlossaryItem[] = [
     term: "Gold Trial",
     icon: Crown,
     definition:
-      "Every new business gets 30 days of full Gold access for free — no credit card required. After it ends, you choose a paid tier or downgrade to Bronze.",
+      "Every new business gets 90 days of full Gold access for free — no credit card required. After it ends, you choose a paid tier or downgrade to Bronze.",
   },
   {
     term: "AI Credits",

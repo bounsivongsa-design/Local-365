@@ -3879,7 +3879,7 @@ Respond in this exact JSON format:
       }
 
       if (promo.discountType === "gold_trial") {
-        const durationDays = promo.durationDays || 30;
+        const durationDays = promo.durationDays || 120;
         const trialEnd = new Date();
         trialEnd.setDate(trialEnd.getDate() + durationDays);
 
