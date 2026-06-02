@@ -435,7 +435,7 @@ export default function BusinessMembership() {
             {isNewMember && (
               <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#d4a373] to-amber-500 text-white px-6 py-3 rounded-full shadow-lg shadow-amber-500/25">
                 <Gift className="h-5 w-5" />
-                <span className="font-semibold">New Members: First Month FREE!</span>
+                <span className="font-semibold">New Members: First 90 Days FREE!</span>
               </div>
             )}
             {winBackData?.eligible && winBackData.previousTier && (
@@ -555,10 +555,10 @@ export default function BusinessMembership() {
                           Gold access FREE for 90 days!
                         </div>
                       )}
-                      {pricing.freeMonths > 0 && tier.id === "gold" && (
+                      {isNewMember && tier.id === "gold" && (
                         <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium">
                           <Gift className="h-4 w-4" />
-                          First month FREE!
+                          First 90 days FREE!
                         </div>
                       )}
                       <div className="flex items-baseline gap-1">
