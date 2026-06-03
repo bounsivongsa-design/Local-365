@@ -43,9 +43,9 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "bronze",
     name: "Bronze",
-    monthlyPrice: 25,
-    semiAnnualPrice: 135,
-    annualPrice: 233,
+    monthlyPrice: 18.75,
+    semiAnnualPrice: 101,
+    annualPrice: 174,
     pricingBasis: "per_zip_code",
     color: "#cd7f32",
     badgeGradient: "from-amber-700 via-amber-500 to-amber-700",
@@ -59,7 +59,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Up to 4 categories",
       "Basic quote access (3rd round)",
       "Monthly performance email",
-      "Add extra zip-code listings for $22.50/mo each (10% off)",
+      "Add extra zip-code listings for $16.88/mo each (10% off)",
     ],
     limits: {
       maxPhotos: 0,
@@ -77,9 +77,9 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "silver",
     name: "Silver",
-    monthlyPrice: 50,
-    semiAnnualPrice: 270,
-    annualPrice: 465,
+    monthlyPrice: 37.50,
+    semiAnnualPrice: 203,
+    annualPrice: 349,
     pricingBasis: "per_zip_code",
     color: "#c0c0c0",
     badgeGradient: "from-gray-400 via-gray-200 to-gray-400",
@@ -95,7 +95,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Basic analytics dashboard",
       "Create customer coupons",
       "Verified business badge",
-      "Add extra zip-code listings for $37.50/mo each (25% off)",
+      "Add extra zip-code listings for $28.13/mo each (25% off)",
     ],
     limits: {
       maxPhotos: 6,
@@ -371,8 +371,8 @@ export const EVENT_MONTHLY_AD_RATES = {
 /**
  * Pricing for additional zip-code listings (one extra business listing per zip).
  * Each extra zip is priced at the tier's monthly price minus a tier discount:
- *   Bronze ($25 × 10% off) → $22.50
- *   Silver ($50 × 25% off) → $37.50
+ *   Bronze ($18.75 × 10% off) → $16.88
+ *   Silver ($37.50 × 25% off) → $28.13
  *   Gold   ($75 × 50% off) → $37.50
  * The fallback (when tier is unknown) keeps the legacy $20 base price.
  */

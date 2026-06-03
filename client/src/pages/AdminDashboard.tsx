@@ -3714,17 +3714,17 @@ function GrowthTab() {
         </CardContent>
       </Card>
 
-      <GoldPriceMigrationBox />
+      <TierPriceMigrationBox />
     </div>
   );
 }
 
 /**
- * One-time admin tool to migrate EXISTING Gold subscriptions from the old
- * pricing to the new $75/mo pricing. Always preview (dry-run) first, then
- * Apply. Safe to run more than once (idempotent on the server).
+ * One-time admin tool to migrate EXISTING subscriptions (Bronze, Silver, Gold)
+ * from the old pricing to the new lower pricing. Always preview (dry-run)
+ * first, then Apply. Safe to run more than once (idempotent on the server).
  */
-function GoldPriceMigrationBox() {
+function TierPriceMigrationBox() {
   const { toast } = useToast();
   type Row = { businessId: number; name: string; cadence: string; oldPrice: number; newPrice: number; applied?: boolean };
   type Result = {
@@ -3741,7 +3741,7 @@ function GoldPriceMigrationBox() {
 
   const run = useMutation({
     mutationFn: async (apply: boolean) => {
-      const res = await apiRequest("POST", `/api/stripe/admin/migrate-gold-pricing`, { apply });
+      const res = await apiRequest("POST", `/api/stripe/admin/migrate-tier-pricing`, { apply });
       return res.json() as Promise<Result>;
     },
     onSuccess: (r) => {
@@ -3760,20 +3760,20 @@ function GoldPriceMigrationBox() {
 
   const handleApply = () => {
     if (!result || result.apply) return;
-    if (!window.confirm(`Lower ${result.migratedCount} live Gold subscription(s) to the new $75 pricing? They keep their current period and renew at the lower price. This cannot be auto-undone.`)) return;
+    if (!window.confirm(`Lower ${result.migratedCount} live subscription(s) to the new pricing? They keep their current period and renew at the lower price. This cannot be auto-undone.`)) return;
     run.mutate(true);
   };
 
   return (
-    <Card className="bg-white/95 p-6" data-testid="card-gold-migration">
+    <Card className="bg-white/95 p-6" data-testid="card-tier-migration">
       <div className="flex items-center gap-2 mb-1">
         <Crown className="h-4 w-4 text-amber-600" />
-        <h3 className="text-lg font-bold text-[#0a4a82]">Gold Price Migration → $75</h3>
+        <h3 className="text-lg font-bold text-[#0a4a82]">Membership Price Migration</h3>
       </div>
       <p className="text-sm text-slate-600 mb-4">
-        Existing Gold members keep paying their old price until you migrate them here. New members already get $75 automatically.
+        Lowers existing Bronze, Silver, and Gold subscriptions to the new pricing (Bronze $18.75, Silver $37.50, Gold $75 monthly, with matching semi-annual/annual rates). New members already get the new prices automatically.
         Run <span className="font-semibold">Preview</span> first to see who is affected, then <span className="font-semibold">Apply</span>.
-        Only subscriptions currently at the old Gold price are touched — trial members on a lower chosen tier are never affected.
+        Each subscription moves to the new price of the tier it is actually billed at — trial members and add-on listings are handled safely.
         <span className="block mt-1 text-amber-700 font-medium">Must be run on the published (production) site to affect real members.</span>
       </p>
       <div className="flex gap-2">
@@ -3781,7 +3781,7 @@ function GoldPriceMigrationBox() {
           variant="outline"
           onClick={() => run.mutate(false)}
           disabled={run.isPending}
-          data-testid="button-gold-migration-preview"
+          data-testid="button-tier-migration-preview"
         >
           {run.isPending && !run.variables ? "Checking…" : "Preview (dry run)"}
         </Button>
@@ -3789,14 +3789,14 @@ function GoldPriceMigrationBox() {
           className="bg-amber-500 hover:bg-amber-600 text-white"
           onClick={handleApply}
           disabled={run.isPending || !result || result.migratedCount === 0 || result.apply}
-          data-testid="button-gold-migration-apply"
+          data-testid="button-tier-migration-apply"
         >
           {run.isPending && run.variables ? "Applying…" : `Apply${result && !result.apply ? ` (${result.migratedCount})` : ""}`}
         </Button>
       </div>
 
       {result && (
-        <div className="mt-4 text-sm" data-testid="text-gold-migration-result">
+        <div className="mt-4 text-sm" data-testid="text-tier-migration-result">
           <div className="font-medium text-slate-800 mb-2">
             {result.apply ? "Applied" : "Preview"}: checked {result.candidatesChecked} ·{" "}
             <span className="text-emerald-700">{result.migratedCount} {result.apply ? "updated" : "to change"}</span> ·{" "}

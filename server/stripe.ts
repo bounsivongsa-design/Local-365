@@ -420,18 +420,23 @@ export function registerStripeRoutes(app: Express) {
     }
   });
 
-  // Admin-only one-time migration: drop EXISTING Gold subscriptions from the
-  // old pricing ($100/mo, $540/6mo, $930/yr) to the new pricing derived from
-  // the membership config ($75/mo, $405/6mo, $698/yr). Matching is done on the
-  // subscription's CURRENT Stripe price (not the DB tier), so new members still
-  // inside their free Gold trial — who carry membershipTier='premium' but are
-  // billed at their chosen lower tier's price — are never touched. The change
-  // uses proration_behavior:'none', so members finish their current paid period
-  // at the price they paid and simply renew at the new lower price. Idempotent:
-  // a subscription already at the new price (or not at an old-Gold price) is
-  // skipped, so it is safe to run more than once. Defaults to a dry-run preview;
-  // pass { apply: true } to actually update live subscriptions.
-  app.post("/api/stripe/admin/migrate-gold-pricing", isAuthenticated, async (req: any, res: Response) => {
+  // Admin-only one-time migration: drop EXISTING subscriptions from the old
+  // pricing to the new lower pricing derived from the membership config:
+  //   Gold:   $100/$540/$930 → $75/$405/$698
+  //   Silver: $50/$270/$465  → $37.50/$203/$349
+  //   Bronze: $25/$135/$233  → $18.75/$101/$174
+  // Matching is done on the subscription's CURRENT Stripe price + cadence (not
+  // the DB tier), so each sub is moved to the NEW price of whatever tier it is
+  // actually billed at. Members inside their free Gold trial carry
+  // membershipTier='premium' but are billed at their chosen tier's price, so
+  // they are migrated to that same tier's new price — never bumped up to Gold.
+  // The change uses proration_behavior:'none', so members finish their current
+  // paid period at the price they paid and simply renew at the new lower price.
+  // Subscriptions at an additional-zip price or any unrecognized amount are left
+  // untouched. Idempotent: a sub already at a new price is skipped, so it is
+  // safe to run more than once. Defaults to a dry-run preview; pass
+  // { apply: true } to actually update live subscriptions.
+  app.post("/api/stripe/admin/migrate-tier-pricing", isAuthenticated, async (req: any, res: Response) => {
     try {
       const [admin] = await db.select().from(users).where(eq(users.id, req.user?.id || ""));
       if (admin?.accountType !== "admin") {
@@ -440,17 +445,29 @@ export function registerStripeRoutes(app: Express) {
 
       const apply = req.body?.apply === true;
 
-      // interval signature -> { old gold cents, new gold cents }
-      const PRICE_MAP: Record<string, { old: number; new: number; label: string }> = {
-        "month-1": { old: 10000, new: TIER_PRICES.gold.monthly, label: "monthly" },
-        "month-6": { old: 54000, new: TIER_PRICES.gold.semi_annual, label: "semi-annual" },
-        "year-1": { old: 93000, new: TIER_PRICES.gold.annual, label: "annual" },
+      // `${oldCents}-${interval}-${interval_count}` -> new price (cents) + label.
+      // Old prices are historical hardcoded values; new prices come from the
+      // membership config so there is a single source of truth.
+      const OLD_TO_NEW: Record<string, { new: number; label: string }> = {
+        "10000-month-1": { new: TIER_PRICES.gold.monthly, label: "Gold monthly" },
+        "54000-month-6": { new: TIER_PRICES.gold.semi_annual, label: "Gold semi-annual" },
+        "93000-year-1": { new: TIER_PRICES.gold.annual, label: "Gold annual" },
+        "5000-month-1": { new: TIER_PRICES.silver.monthly, label: "Silver monthly" },
+        "27000-month-6": { new: TIER_PRICES.silver.semi_annual, label: "Silver semi-annual" },
+        "46500-year-1": { new: TIER_PRICES.silver.annual, label: "Silver annual" },
+        "2500-month-1": { new: TIER_PRICES.bronze.monthly, label: "Bronze monthly" },
+        "13500-month-6": { new: TIER_PRICES.bronze.semi_annual, label: "Bronze semi-annual" },
+        "23300-year-1": { new: TIER_PRICES.bronze.annual, label: "Bronze annual" },
       };
+
+      const NEW_PRICES = new Set<number>(
+        Object.values(TIER_PRICES).flatMap((t) => [t.monthly, t.semi_annual, t.annual]),
+      );
 
       const candidates = await db
         .select()
         .from(businesses)
-        .where(and(eq(businesses.membershipTier, "premium"), sql`${businesses.stripeSubscriptionId} IS NOT NULL`));
+        .where(sql`${businesses.stripeSubscriptionId} IS NOT NULL`);
 
       const migrated: any[] = [];
       const skipped: any[] = [];
@@ -471,19 +488,14 @@ export function registerStripeRoutes(app: Express) {
           const item = sub.items.data[0];
           const rec = item.price.recurring;
           const sig = rec ? `${rec.interval}-${rec.interval_count}` : "none";
-          const mapping = PRICE_MAP[sig];
           const current = item.price.unit_amount ?? 0;
+          const mapping = OLD_TO_NEW[`${current}-${sig}`];
 
           if (!mapping) {
-            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: `unrecognized billing cadence (${sig})` });
-            continue;
-          }
-          if (current === mapping.new) {
-            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: "already at new price" });
-            continue;
-          }
-          if (current !== mapping.old) {
-            skipped.push({ businessId: biz.id, name: biz.name, subId, reason: `not at old Gold price (current $${(current / 100).toFixed(2)} ${mapping.label})` });
+            const reason = NEW_PRICES.has(current)
+              ? "already at new price"
+              : `not at a recognized old tier price (current $${(current / 100).toFixed(2)}, ${sig})`;
+            skipped.push({ businessId: biz.id, name: biz.name, subId, reason });
             continue;
           }
 
@@ -515,7 +527,7 @@ export function registerStripeRoutes(app: Express) {
               },
             ],
             proration_behavior: "none",
-            metadata: { ...(sub.metadata || {}), goldPriceMigrated: "75" },
+            metadata: { ...(sub.metadata || {}), tierPriceMigrated: String(mapping.new) },
           });
           migrated.push({ ...record, applied: true });
         } catch (err: any) {
@@ -535,7 +547,7 @@ export function registerStripeRoutes(app: Express) {
         errors,
       });
     } catch (err: any) {
-      console.error("Gold pricing migration error:", err);
+      console.error("Tier pricing migration error:", err);
       res.status(500).json({ message: err.message || "Migration failed" });
     }
   });

@@ -66,7 +66,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "bronze",
     dbId: "basic",
     name: "Bronze",
-    monthlyPrice: 25,
+    monthlyPrice: 18.75,
     description: "Perfect for getting started",
     features: [
       "Business listing in directory",
@@ -75,7 +75,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Up to 4 categories",
       "Quote access: Round 3 (opens 48+ hrs after request)",
       "10% off advertising",
-      "Add extra zip-code listings for $22.50/mo each (10% off)"
+      "Add extra zip-code listings for $16.88/mo each (10% off)"
     ],
     icon: Medal,
     gradient: "from-amber-700 to-amber-900",
@@ -85,7 +85,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "silver",
     dbId: "standard",
     name: "Silver",
-    monthlyPrice: 50,
+    monthlyPrice: 37.50,
     description: "Most popular for growing businesses",
     features: [
       "Everything in Bronze",
@@ -96,7 +96,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Verified business badge",
       "Social media links",
       "25% off advertising",
-      "Add extra zip-code listings for $37.50/mo each (25% off)"
+      "Add extra zip-code listings for $28.13/mo each (25% off)"
     ],
     icon: Star,
     gradient: "from-slate-400 to-slate-600",
@@ -358,18 +358,24 @@ export default function BusinessMembership() {
   const getCheckoutPricing = () => {
     if (!checkoutTier) return null;
     const pricing = calculatePrice(checkoutTier.monthlyPrice, selectedFrequency, isNewMember);
+    // Canonical recurring charge that matches exactly what Stripe bills: the raw
+    // monthly price for monthly cadence (no rounding), or the config-derived
+    // rounded total for semi-annual/annual. pricing.total rounds to whole
+    // dollars, which is right for semi/annual but would distort a decimal
+    // monthly price (e.g. 18.75 -> 19), so monthly uses monthlyPrice directly.
+    const recurringCharge = selectedFrequency === "monthly" ? checkoutTier.monthlyPrice : pricing.total;
     let discount = 0;
     if (promoStatus?.valid && promoStatus.discountValue) {
       if (promoStatus.discountType === "percentage") {
-        discount = pricing.total * (promoStatus.discountValue / 100);
+        discount = recurringCharge * (promoStatus.discountValue / 100);
       } else {
         discount = promoStatus.discountValue;
       }
     }
-    const finalTotal = Math.max(0, pricing.total - discount);
+    const finalTotal = Math.max(0, recurringCharge - discount);
     const hasFreeTrial = isNewMember || (promoStatus?.valid && promoStatus.discountType === "gold_trial");
     const trialDays = promoStatus?.valid && promoStatus.discountType === "gold_trial" && promoStatus.durationDays ? promoStatus.durationDays : 90;
-    return { ...pricing, discount, finalTotal, hasFreeTrial, trialDays };
+    return { ...pricing, recurringCharge, discount, finalTotal, hasFreeTrial, trialDays };
   };
 
   const handleManageSubscription = async () => {
@@ -562,7 +568,7 @@ export default function BusinessMembership() {
                         </div>
                       )}
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-bold">${pricing.perMonth.toFixed(0)}</span>
+                        <span className="text-5xl font-bold">${Number.isInteger(pricing.perMonth) ? pricing.perMonth.toFixed(0) : pricing.perMonth.toFixed(2)}</span>
                         <span className="text-white/70 text-lg">/mo per zip code</span>
                       </div>
                       {selectedFrequency !== "monthly" && (
@@ -766,8 +772,10 @@ export default function BusinessMembership() {
                     {(() => {
                       const fullPrice = checkoutTier.monthlyPrice * checkoutPricing.months;
                       const frequencyDiscount = PAYMENT_DISCOUNTS[selectedFrequency].discount;
-                      const frequencySavings = fullPrice * frequencyDiscount;
-                      const afterFreqPrice = fullPrice - frequencySavings;
+                      // Savings = list price minus the canonical charge, so the
+                      // subtotal/savings/total breakdown always reconciles to the
+                      // exact amount Stripe bills (no fractional-cent drift).
+                      const frequencySavings = selectedFrequency === "monthly" ? 0 : fullPrice - checkoutPricing.recurringCharge;
 
                       return (
                         <>
@@ -828,13 +836,13 @@ export default function BusinessMembership() {
                                     <span className="text-lg font-bold text-[#0a4a82] dark:text-blue-400">
                                       {selectedFrequency === "monthly"
                                         ? `$${checkoutTier.monthlyPrice.toFixed(2)}/mo`
-                                        : `$${afterFreqPrice.toFixed(2)} / ${selectedFrequency === "semi_annual" ? "6 months" : "year"}`
+                                        : `$${checkoutPricing.recurringCharge.toFixed(2)} / ${selectedFrequency === "semi_annual" ? "6 months" : "year"}`
                                       }
                                     </span>
                                   </div>
                                   {selectedFrequency !== "monthly" && (
                                     <p className="text-xs text-[#8a9a5b] font-medium mt-0.5">
-                                      That's ${checkoutPricing.perMonth.toFixed(0)}/mo — save ${frequencySavings.toFixed(0)} vs monthly!
+                                      That's ${Number.isInteger(checkoutPricing.perMonth) ? checkoutPricing.perMonth.toFixed(0) : checkoutPricing.perMonth.toFixed(2)}/mo — save ${frequencySavings.toFixed(0)} vs monthly!
                                     </p>
                                   )}
                                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -850,7 +858,7 @@ export default function BusinessMembership() {
                                     Total Due
                                   </span>
                                   <span className="font-bold text-2xl text-[#0a4a82] dark:text-blue-400">
-                                    ${(afterFreqPrice - checkoutPricing.discount).toFixed(2)}
+                                    ${checkoutPricing.finalTotal.toFixed(2)}
                                   </span>
                                 </div>
                                 <p className="text-xs text-slate-500 mt-1">

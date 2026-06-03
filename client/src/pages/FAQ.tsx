@@ -350,11 +350,11 @@ export default function FAQ() {
                                 <p>There are three membership tiers:</p>
                                 <div className="space-y-3 my-2">
                                   <div className="rounded-xl border border-amber-700/20 bg-gradient-to-r from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-transparent p-4">
-                                    <div className="font-bold text-amber-800 dark:text-amber-400 text-base mb-1">Bronze — $25/month</div>
+                                    <div className="font-bold text-amber-800 dark:text-amber-400 text-base mb-1">Bronze — $18.75/month</div>
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Basic directory listing with phone number, reviews, up to 4 categories, and 3rd-round quote access.</p>
                                   </div>
                                   <div className="rounded-xl border border-slate-300/60 bg-gradient-to-r from-slate-100 to-slate-50/50 dark:from-slate-700/30 dark:to-transparent p-4">
-                                    <div className="font-bold text-slate-700 dark:text-slate-300 text-base mb-1">Silver — $50/month</div>
+                                    <div className="font-bold text-slate-700 dark:text-slate-300 text-base mb-1">Silver — $37.50/month</div>
                                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Everything in Bronze plus logo display, website link, up to 6 photos and categories, verified badge, social media links, and 2nd-round quote access.</p>
                                   </div>
                                   <div className="rounded-xl border border-yellow-500/40 bg-gradient-to-r from-yellow-50 to-amber-50/30 dark:from-yellow-900/20 dark:to-transparent p-4 shadow-sm">
