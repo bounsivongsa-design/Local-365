@@ -3768,12 +3768,12 @@ function TierPriceMigrationBox() {
     <Card className="bg-white/95 p-6" data-testid="card-tier-migration">
       <div className="flex items-center gap-2 mb-1">
         <Crown className="h-4 w-4 text-amber-600" />
-        <h3 className="text-lg font-bold text-[#0a4a82]">Membership Price Migration</h3>
+        <h3 className="text-lg font-bold text-[#0a4a82]">Gold Price Migration → $75</h3>
       </div>
       <p className="text-sm text-slate-600 mb-4">
-        Lowers existing Bronze, Silver, and Gold subscriptions to the new pricing (Bronze $18.75, Silver $37.50, Gold $75 monthly, with matching semi-annual/annual rates). New members already get the new prices automatically.
+        Lowers existing Gold subscriptions from the old $100/mo pricing to the new $75/mo pricing (with matching semi-annual/annual rates). New Gold members already get $75 automatically. Bronze ($25) and Silver ($50) are unchanged.
         Run <span className="font-semibold">Preview</span> first to see who is affected, then <span className="font-semibold">Apply</span>.
-        Each subscription moves to the new price of the tier it is actually billed at — trial members and add-on listings are handled safely.
+        Only subscriptions currently at the old Gold price are touched — members inside a free Gold trial (billed at a lower tier) and add-on listings are left alone.
         <span className="block mt-1 text-amber-700 font-medium">Must be run on the published (production) site to affect real members.</span>
       </p>
       <div className="flex gap-2">

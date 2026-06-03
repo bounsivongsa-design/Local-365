@@ -66,7 +66,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "bronze",
     dbId: "basic",
     name: "Bronze",
-    monthlyPrice: 18.75,
+    monthlyPrice: 25,
     description: "Perfect for getting started",
     features: [
       "Business listing in directory",
@@ -75,7 +75,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Up to 4 categories",
       "Quote access: Round 3 (opens 48+ hrs after request)",
       "10% off advertising",
-      "Add extra zip-code listings for $16.88/mo each (10% off)"
+      "Add extra zip-code listings for $22.50/mo each (10% off)"
     ],
     icon: Medal,
     gradient: "from-amber-700 to-amber-900",
@@ -85,7 +85,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "silver",
     dbId: "standard",
     name: "Silver",
-    monthlyPrice: 37.50,
+    monthlyPrice: 50,
     description: "Most popular for growing businesses",
     features: [
       "Everything in Bronze",
@@ -96,7 +96,7 @@ const MEMBERSHIP_TIERS: MembershipTier[] = [
       "Verified business badge",
       "Social media links",
       "25% off advertising",
-      "Add extra zip-code listings for $28.13/mo each (25% off)"
+      "Add extra zip-code listings for $37.50/mo each (25% off)"
     ],
     icon: Star,
     gradient: "from-slate-400 to-slate-600",
@@ -568,7 +568,7 @@ export default function BusinessMembership() {
                         </div>
                       )}
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-bold">${Number.isInteger(pricing.perMonth) ? pricing.perMonth.toFixed(0) : pricing.perMonth.toFixed(2)}</span>
+                        <span className="text-5xl font-bold">${pricing.perMonth.toFixed(0)}</span>
                         <span className="text-white/70 text-lg">/mo per zip code</span>
                       </div>
                       {selectedFrequency !== "monthly" && (
@@ -842,7 +842,7 @@ export default function BusinessMembership() {
                                   </div>
                                   {selectedFrequency !== "monthly" && (
                                     <p className="text-xs text-[#8a9a5b] font-medium mt-0.5">
-                                      That's ${Number.isInteger(checkoutPricing.perMonth) ? checkoutPricing.perMonth.toFixed(0) : checkoutPricing.perMonth.toFixed(2)}/mo — save ${frequencySavings.toFixed(0)} vs monthly!
+                                      That's ${checkoutPricing.perMonth.toFixed(0)}/mo — save ${frequencySavings.toFixed(0)} vs monthly!
                                     </p>
                                   )}
                                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">

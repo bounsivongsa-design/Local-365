@@ -420,11 +420,10 @@ export function registerStripeRoutes(app: Express) {
     }
   });
 
-  // Admin-only one-time migration: drop EXISTING subscriptions from the old
-  // pricing to the new lower pricing derived from the membership config:
+  // Admin-only one-time migration: drop EXISTING Gold subscriptions from the
+  // old pricing to the new lower pricing derived from the membership config:
   //   Gold:   $100/$540/$930 → $75/$405/$698
-  //   Silver: $50/$270/$465  → $37.50/$203/$349
-  //   Bronze: $25/$135/$233  → $18.75/$101/$174
+  // Bronze ($25) and Silver ($50) are unchanged, so only Gold is migrated.
   // Matching is done on the subscription's CURRENT Stripe price + cadence (not
   // the DB tier), so each sub is moved to the NEW price of whatever tier it is
   // actually billed at. Members inside their free Gold trial carry
@@ -452,12 +451,6 @@ export function registerStripeRoutes(app: Express) {
         "10000-month-1": { new: TIER_PRICES.gold.monthly, label: "Gold monthly" },
         "54000-month-6": { new: TIER_PRICES.gold.semi_annual, label: "Gold semi-annual" },
         "93000-year-1": { new: TIER_PRICES.gold.annual, label: "Gold annual" },
-        "5000-month-1": { new: TIER_PRICES.silver.monthly, label: "Silver monthly" },
-        "27000-month-6": { new: TIER_PRICES.silver.semi_annual, label: "Silver semi-annual" },
-        "46500-year-1": { new: TIER_PRICES.silver.annual, label: "Silver annual" },
-        "2500-month-1": { new: TIER_PRICES.bronze.monthly, label: "Bronze monthly" },
-        "13500-month-6": { new: TIER_PRICES.bronze.semi_annual, label: "Bronze semi-annual" },
-        "23300-year-1": { new: TIER_PRICES.bronze.annual, label: "Bronze annual" },
       };
 
       const NEW_PRICES = new Set<number>(
