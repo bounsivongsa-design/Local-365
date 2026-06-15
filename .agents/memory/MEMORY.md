@@ -1,0 +1,1 @@
+- [Comp membership ↔ Stripe](comp-membership-stripe.md) — granting a comp must cancel the live paid Stripe subscription or the "free" customer keeps getting billed.

@@ -26,7 +26,28 @@ import { db as pgDb } from "../db";
 import { businesses, compMembershipAudit } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { isCompActive } from "@shared/config/membership";
-import { setBusinessCompMembership } from "../comp";
+import { setBusinessCompMembership, __setStripeForTesting } from "../comp";
+
+// Minimal Stripe stub that records subscription cancel calls so the comp
+// helper can be tested without touching the live Stripe API.
+function makeStripeStub(opts: { throwOnCancel?: boolean; subType?: string } = {}) {
+  const cancelCalls: string[] = [];
+  const retrieveCalls: string[] = [];
+  const client = {
+    subscriptions: {
+      retrieve: async (id: string) => {
+        retrieveCalls.push(id);
+        return { id, metadata: opts.subType ? { type: opts.subType } : {} };
+      },
+      cancel: async (id: string) => {
+        cancelCalls.push(id);
+        if (opts.throwOnCancel) throw new Error("stripe boom");
+        return { id, status: "canceled" };
+      },
+    },
+  } as unknown as import("stripe").default;
+  return { cancelCalls, retrieveCalls, client };
+}
 
 const TEST_TAG = "__set_comp_test__";
 
@@ -267,6 +288,117 @@ test("re-grant: flipping a previously-revoked comp back on resets reminder flags
   assert.equal(after.compedMembershipReminder7Sent, false, "7d reminder flag must reset on re-grant");
   assert.equal(after.compedMembershipReminder1Sent, false, "1d reminder flag must reset on re-grant");
   assert.equal(after.compedWelcomeEmailSentAt, null, "welcome-sent stamp must reset on re-grant");
+});
+
+test("grant cancels the live PAID Stripe subscription and clears the pointer so the comped business stops being billed", async () => {
+  const admin = await seedAdmin();
+  const biz = await seedBusiness({ membershipTier: "premium" });
+  await pgDb
+    .update(businesses)
+    .set({ stripeSubscriptionId: "sub_comp_test_123" })
+    .where(eq(businesses.id, biz.id));
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+  try {
+    await setBusinessCompMembership({ bizId: biz.id, adminId: admin.id, active: true });
+  } finally {
+    __setStripeForTesting(null);
+  }
+
+  assert.deepEqual(
+    stub.cancelCalls,
+    ["sub_comp_test_123"],
+    "comp grant must cancel the live subscription exactly once",
+  );
+  const [after] = await pgDb.select().from(businesses).where(eq(businesses.id, biz.id));
+  assert.equal(after.stripeSubscriptionId, null, "pointer cleared after a successful cancel");
+  assert.equal(after.isCompedMembership, true, "comp still granted");
+});
+
+test("grant on a business with NO live subscription never calls Stripe", async () => {
+  const admin = await seedAdmin();
+  const biz = await seedBusiness();
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+  try {
+    await setBusinessCompMembership({ bizId: biz.id, adminId: admin.id, active: true });
+  } finally {
+    __setStripeForTesting(null);
+  }
+
+  assert.equal(stub.cancelCalls.length, 0, "no subscription → no Stripe cancel call");
+});
+
+test("revoke never cancels a subscription (only grants do)", async () => {
+  const admin = await seedAdmin();
+  const biz = await seedBusiness({ membershipTier: "premium" });
+  await pgDb
+    .update(businesses)
+    .set({ stripeSubscriptionId: "sub_should_survive_revoke" })
+    .where(eq(businesses.id, biz.id));
+
+  const stub = makeStripeStub();
+  __setStripeForTesting(stub.client);
+  try {
+    await setBusinessCompMembership({ bizId: biz.id, adminId: admin.id, active: false });
+  } finally {
+    __setStripeForTesting(null);
+  }
+
+  assert.equal(stub.cancelCalls.length, 0, "revoke must not cancel any subscription");
+  const [after] = await pgDb.select().from(businesses).where(eq(businesses.id, biz.id));
+  assert.equal(after.stripeSubscriptionId, "sub_should_survive_revoke", "revoke leaves the pointer untouched");
+});
+
+test("if Stripe cancel fails, the grant still succeeds AND the subscription pointer is kept for manual reconciliation", async () => {
+  const admin = await seedAdmin();
+  const biz = await seedBusiness({ membershipTier: "premium" });
+  await pgDb
+    .update(businesses)
+    .set({ stripeSubscriptionId: "sub_cancel_fails" })
+    .where(eq(businesses.id, biz.id));
+
+  const stub = makeStripeStub({ throwOnCancel: true });
+  __setStripeForTesting(stub.client);
+  try {
+    await setBusinessCompMembership({ bizId: biz.id, adminId: admin.id, active: true });
+  } finally {
+    __setStripeForTesting(null);
+  }
+
+  assert.deepEqual(stub.cancelCalls, ["sub_cancel_fails"], "cancel was attempted");
+  const [after] = await pgDb.select().from(businesses).where(eq(businesses.id, biz.id));
+  assert.equal(after.isCompedMembership, true, "comp grant must not roll back on Stripe failure");
+  assert.equal(
+    after.stripeSubscriptionId,
+    "sub_cancel_fails",
+    "pointer kept so the still-billing subscription can be canceled by hand",
+  );
+});
+
+test("grant does NOT cancel a non-membership (additional_zip) subscription that happens to be on the business row", async () => {
+  const admin = await seedAdmin();
+  const biz = await seedBusiness({ membershipTier: "premium" });
+  await pgDb
+    .update(businesses)
+    .set({ stripeSubscriptionId: "sub_addzip_999" })
+    .where(eq(businesses.id, biz.id));
+
+  const stub = makeStripeStub({ subType: "additional_zip" });
+  __setStripeForTesting(stub.client);
+  try {
+    await setBusinessCompMembership({ bizId: biz.id, adminId: admin.id, active: true });
+  } finally {
+    __setStripeForTesting(null);
+  }
+
+  assert.deepEqual(stub.retrieveCalls, ["sub_addzip_999"], "type is checked before any cancel");
+  assert.equal(stub.cancelCalls.length, 0, "a non-membership subscription must never be canceled by a comp");
+  const [after] = await pgDb.select().from(businesses).where(eq(businesses.id, biz.id));
+  assert.equal(after.stripeSubscriptionId, "sub_addzip_999", "non-membership pointer left untouched");
+  assert.equal(after.isCompedMembership, true, "comp still granted");
 });
 
 test("unknown business id returns null (route surfaces as 404 — does NOT throw)", async () => {

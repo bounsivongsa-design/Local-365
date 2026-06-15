@@ -1,7 +1,19 @@
 import { eq } from "drizzle-orm";
+import Stripe from "stripe";
 import { db as pgDb } from "./db";
 import { businesses, compMembershipAudit } from "@shared/schema";
 import { users } from "@shared/models/auth";
+
+const STRIPE_KEY = process.env.Stripeintegration || process.env.STRIPE_SECRET_KEY;
+let stripe: Stripe | null = STRIPE_KEY
+  ? new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion })
+  : null;
+
+// Test seam: tests swap in a stub Stripe client (or null) without reloading
+// the module. Production code never calls this.
+export function __setStripeForTesting(client: Stripe | null) {
+  stripe = client;
+}
 
 export interface SetCompMembershipResult {
   isCompedMembership: boolean;
@@ -47,6 +59,7 @@ export async function setBusinessCompMembership(
         name: businesses.name,
         email: businesses.email,
         ownerUserId: businesses.ownerUserId,
+        stripeSubscriptionId: businesses.stripeSubscriptionId,
       })
       .from(businesses)
       .where(eq(businesses.id, opts.bizId));
@@ -98,6 +111,43 @@ export async function setBusinessCompMembership(
   });
 
   if (!target) return null;
+
+  // Comp = free Gold. If the business still has a live PAID Stripe
+  // subscription, cancel it now so the customer stops being billed — leaving
+  // it running silently charges them every cycle (this is the bug that let a
+  // comped business get charged after the admin "gave them a free account").
+  // Best-effort: a Stripe failure must NOT roll back the comp grant, but we
+  // keep the subscription pointer intact on failure so it can be retried /
+  // reconciled by hand rather than orphaning a live, billing subscription.
+  if (opts.active && target.stripeSubscriptionId && stripe) {
+    const subId = target.stripeSubscriptionId;
+    try {
+      // Only the MEMBERSHIP subscription should be canceled by a comp. A
+      // business row's stripeSubscriptionId can also point at a non-membership
+      // sub (e.g. an additional-zip listing), and canceling that would wrongly
+      // tear down an unrelated paid service. Membership subs carry no
+      // metadata.type; additional_zip / job_listing subs set it — so skip
+      // anything with an explicit non-membership type.
+      const sub = await stripe.subscriptions.retrieve(subId);
+      const subType = sub.metadata?.type;
+      if (subType && subType !== "membership") {
+        console.warn(
+          `[comp] business ${opts.bizId} subscription ${subId} is type='${subType}', not a membership sub — leaving it alone.`,
+        );
+      } else {
+        await stripe.subscriptions.cancel(subId);
+        await pgDb
+          .update(businesses)
+          .set({ stripeSubscriptionId: null })
+          .where(eq(businesses.id, opts.bizId));
+      }
+    } catch (e: unknown) {
+      console.error(
+        `[comp] FAILED to cancel Stripe subscription ${subId} for comped business ${opts.bizId} — it may be STILL BILLING; cancel/refund by hand:`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
 
   // Resolve a recipient address (outside the txn — read-only, no need to
   // hold the row lock for it). Prefer the business's own contact email
