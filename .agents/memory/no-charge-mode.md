@@ -48,19 +48,19 @@ free signups into founding members → unlimited AI → blows the cost guardrail
 
 ## AI credit-pack purchase route
 `POST /api/ai/credit-packs/checkout` (`server/aiFeatures.ts`) is a DISCRETE
-purchase → charged normally. It is NOT gated by NO_CHARGE_MODE (an earlier
-NO_CHARGE_MODE pause there was removed). Bypass tiers:
+purchase → charged normally. It is NOT gated by NO_CHARGE_MODE. Bypass tiers:
 - Founders/founding members → refused via `auth.isFounder` (they already have
   unlimited AI; no pack needed).
-- Active admin-comped businesses → granted the pack credits FREE (owner decided
-  comps don't pay for discrete purchases, accepting the OpenAI cost). The route
-  detects `isCompActive(auth.business)` and calls `applyCreditPackPurchase` with
-  `revenueCents: 0` + a synthetic `comp_<biz>_<sku>_<ts>` payment-intent id
-  instead of a Stripe session. **Why a grant, not a refusal:** comps are metered
-  (not unlimited like founders), so refusing would leave them unable to top up.
-- Everyone else → real Stripe checkout.
-Note: `shouldBypassAiCredits` is still founders/founding-members only — comps
-remain metered for ordinary AI usage; only the explicit pack top-up is free.
+- Everyone else, INCLUDING active admin-comped businesses → real Stripe checkout.
+  **Comps are NOT exempt for AI packs.** A comp grants the Gold tier's set
+  monthly AI allotment; usage beyond that is paid like any other member.
+  (This differs from ads/event-ads/job-posts, where comps ARE free — AI is the
+  exception because every extra credit is real metered OpenAI cost.)
+**Why this is the AI-specific exception:** the owner first said "give comps free
+packs too", then corrected to "they only get a set amount of AI creds, beyond
+that they pay." So comp = free on ads/events/jobs, but comp = charged on AI packs.
+`shouldBypassAiCredits` stays founders/founding-members only — comps remain
+metered for ordinary AI usage AND pay for top-up packs.
 
 ## Tests are mode-aware
 `server/__tests__/shouldBypassCharges.test.ts` and `startAddZipCheckout.test.ts`

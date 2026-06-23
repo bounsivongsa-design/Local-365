@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Pack {
   sku: string;
@@ -46,26 +46,9 @@ export function AICreditTopUpModal({ open, onOpenChange, businessId }: Props) {
         businessId,
         sku,
       });
-      return (await res.json()) as {
-        url?: string;
-        message?: string;
-        granted?: boolean;
-        balance?: number;
-        credits?: number;
-      };
+      return (await res.json()) as { url?: string; message?: string };
     },
     onSuccess: (resp) => {
-      if (resp.granted) {
-        toast({
-          title: "Credits added",
-          description: resp.message ?? "Your credits are ready.",
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["/api/businesses", businessId, "ai-credits"],
-        });
-        onOpenChange(false);
-        return;
-      }
       if (resp.url) {
         window.location.href = resp.url;
       } else {

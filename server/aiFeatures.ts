@@ -534,31 +534,10 @@ export function registerAiFeatureRoutes(app: Express) {
       return res.status(404).json({ message: "Pack not found" });
     }
 
-    // Active admin-comped businesses get extra credit packs FREE (owner
-    // policy: comps don't pay for discrete purchases). Unlike founders /
-    // founding members they are metered (not unlimited), so we grant the
-    // pack's credits directly instead of charging. Founders/founding members
-    // never reach here — they're refused above with "unlimited credits".
-    if (isCompActive(auth.business)) {
-      const result = await applyCreditPackPurchase({
-        businessId,
-        packSku: pack.sku,
-        credits: pack.credits,
-        revenueCents: 0,
-        stripePaymentIntentId: `comp_${businessId}_${pack.sku}_${Date.now()}`,
-      });
-      if (!result.ok) {
-        return res
-          .status(500)
-          .json({ message: "Couldn't add credits. Please try again." });
-      }
-      return res.json({
-        granted: true,
-        balance: result.balance,
-        credits: pack.credits,
-        message: `${pack.credits.toLocaleString()} credits added free (comp membership).`,
-      });
-    }
+    // NOTE: comped businesses are NOT exempt here. A comp grants the Gold
+    // tier's set monthly AI allotment; anything beyond that is paid like any
+    // other member. Only founders / founding members (refused above with
+    // "unlimited credits") skip paying. Comps pay normal Stripe checkout.
 
     if (!stripe) {
       return res.status(503).json({
