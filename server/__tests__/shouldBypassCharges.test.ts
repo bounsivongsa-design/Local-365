@@ -14,12 +14,12 @@
 //       2. founder email allowlist (works even if biz name is wrong/missing)
 //       3. founder business name match (legacy path, kept for backwards compat)
 //
-//  2. shouldBypassCharges(user, biz) — the live gate. While NO_CHARGE_MODE is
-//     on (growth period), it returns true for EVERYONE so nobody is charged.
-//     When billing resumes (NO_CHARGE_MODE=false) it falls back to
-//     isFounderOrAdmin. We also lock in that NO_CHARGE_MODE does NOT leak into
-//     AI-credit bypass (that would hand every business unlimited AI at the
-//     platform's own metered cost).
+//  2. shouldBypassMembershipCharges — membership dues + additional-zip: FREE
+//     for everyone while NO_CHARGE_MODE is on (growth period).
+//  3. shouldBypassCharges — discrete purchases (ads, event ads, job posts, AI
+//     packs): ALWAYS charged, EXCEPT founders/admins, legacy founding members,
+//     and businesses with an active admin comp. NOT tied to NO_CHARGE_MODE.
+//     We also lock in that NO_CHARGE_MODE does NOT leak into AI-credit bypass.
 process.env.RESEND_API_KEY = "";
 
 import test from "node:test";
@@ -28,6 +28,7 @@ import { shouldBypassCharges } from "../stripe";
 import {
   isFounderOrAdmin,
   shouldBypassAiCredits,
+  shouldBypassMembershipCharges,
   NO_CHARGE_MODE,
 } from "../lib/founderRules";
 
@@ -111,28 +112,78 @@ test("isFounderOrAdmin: ABBREVIATED founder business name still matches via foun
 });
 
 // ---------------------------------------------------------------------------
-// Growth-period kill switch (NO_CHARGE_MODE)
+// Membership surfaces (membership dues + additional-zip): FREE in growth mode
 // ---------------------------------------------------------------------------
 
-test("shouldBypassCharges: founders/admins always bypass (independent of growth switch)", () => {
+test("shouldBypassMembershipCharges: founders/admins always bypass", () => {
+  const adminUser = { accountType: "admin", email: "anyone@example.com" };
+  const founderEmailUser = { accountType: "business", email: "boun.sivongsa@gmail.com" };
+  assert.equal(shouldBypassMembershipCharges(adminUser, { name: "Random LLC" }), true);
+  assert.equal(shouldBypassMembershipCharges(founderEmailUser, { name: "Some Random Business" }), true);
+});
+
+test("shouldBypassMembershipCharges: while NO_CHARGE_MODE is on, membership is FREE for everyone", () => {
+  // Growth mode waives RECURRING membership dues (and additional-zip) for
+  // every business, even an ordinary paying customer.
+  const regularUser = { accountType: "business", email: "joe@joeslawn.com" };
+  if (NO_CHARGE_MODE) {
+    assert.equal(shouldBypassMembershipCharges(regularUser, { name: "Joe's Lawn Care" }), true);
+    assert.equal(shouldBypassMembershipCharges(null, null), true);
+  } else {
+    // Billing has resumed — falls back to the founder/admin rule.
+    assert.equal(shouldBypassMembershipCharges(regularUser, { name: "Joe's Lawn Care" }), false);
+    assert.equal(shouldBypassMembershipCharges(null, null), false);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Discrete purchases (ads, event ads, job posts, AI packs): CHARGED even in
+// growth mode, EXCEPT founders/admins, founding members, and active comps.
+// ---------------------------------------------------------------------------
+
+test("shouldBypassCharges: founders/admins always bypass discrete purchases", () => {
   const adminUser = { accountType: "admin", email: "anyone@example.com" };
   const founderEmailUser = { accountType: "business", email: "boun.sivongsa@gmail.com" };
   assert.equal(shouldBypassCharges(adminUser, { name: "Random LLC" }), true);
   assert.equal(shouldBypassCharges(founderEmailUser, { name: "Some Random Business" }), true);
 });
 
-test("shouldBypassCharges: while NO_CHARGE_MODE is on, NOBODY is charged (incl. ordinary paying customers)", () => {
-  // Growth mode: every business — even a plain paying customer — must bypass
-  // all real-money checkout. This is the whole point of the switch.
+test("shouldBypassCharges: ordinary paying customers ARE charged for discrete purchases (even during growth mode)", () => {
+  // Unlike membership, discrete purchases (ads/events/jobs/AI packs) are NOT
+  // waived by the growth switch — ordinary businesses must still pay.
   const regularUser = { accountType: "business", email: "joe@joeslawn.com" };
-  if (NO_CHARGE_MODE) {
-    assert.equal(shouldBypassCharges(regularUser, { name: "Joe's Lawn Care" }), true);
-    assert.equal(shouldBypassCharges(null, null), true);
-  } else {
-    // Billing has resumed — falls back to the founder/admin rule.
-    assert.equal(shouldBypassCharges(regularUser, { name: "Joe's Lawn Care" }), false);
-    assert.equal(shouldBypassCharges(null, null), false);
-  }
+  assert.equal(shouldBypassCharges(regularUser, { name: "Joe's Lawn Care", isFoundingMember: false }), false);
+  assert.equal(shouldBypassCharges(null, null), false);
+});
+
+test("shouldBypassCharges: legacy founding members bypass discrete purchases", () => {
+  const regularUser = { accountType: "business", email: "joe@joeslawn.com" };
+  assert.equal(
+    shouldBypassCharges(regularUser, { name: "Joe's Lawn Care", isFoundingMember: true }),
+    true,
+  );
+});
+
+test("shouldBypassCharges: businesses with an ACTIVE admin comp bypass discrete purchases", () => {
+  const regularUser = { accountType: "business", email: "joe@joeslawn.com" };
+  // Active comp (indefinite — no expiry) => free.
+  assert.equal(
+    shouldBypassCharges(regularUser, {
+      name: "Joe's Lawn Care",
+      isCompedMembership: true,
+      compedMembershipExpiresAt: null,
+    }),
+    true,
+  );
+  // Comp present but EXPIRED => charged.
+  assert.equal(
+    shouldBypassCharges(regularUser, {
+      name: "Joe's Lawn Care",
+      isCompedMembership: true,
+      compedMembershipExpiresAt: new Date(Date.now() - 24 * 3600 * 1000),
+    }),
+    false,
+  );
 });
 
 test("NO_CHARGE_MODE does NOT grant unlimited AI credits to ordinary businesses (cost guardrail)", () => {

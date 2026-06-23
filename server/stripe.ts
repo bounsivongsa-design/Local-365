@@ -17,12 +17,13 @@ import { handleAdditionalZipCheckoutCompleted, handleAdditionalZipSubscriptionDe
 // (`import { shouldBypassCharges } from "../stripe"`) keep working.
 import {
   shouldBypassCharges,
+  shouldBypassMembershipCharges,
   isFounderBusinessName as isFounderBusiness,
   isFounderEmail,
   isFounderOrAdmin,
   NO_CHARGE_MODE,
 } from "./lib/founderRules";
-export { shouldBypassCharges };
+export { shouldBypassCharges, shouldBypassMembershipCharges };
 
 /**
  * Process a `customer.subscription.deleted` webhook for a MEMBERSHIP
@@ -202,7 +203,7 @@ export function registerStripeRoutes(app: Express) {
         biz = found || null;
       }
 
-      if (shouldBypassCharges(req.user, biz)) {
+      if (shouldBypassMembershipCharges(req.user, biz)) {
         if (biz) {
           await db.update(businesses).set({
             membershipTier: "premium",
@@ -838,7 +839,7 @@ export function registerStripeRoutes(app: Express) {
 
       if (shouldBypassCharges(req.user, biz)) {
         await db.update(jobListings).set({ isActive: true, paymentStatus: "paid" as any }).where(eq(jobListings.id, jobListingId));
-        return res.json({ founderBypass: true, message: "Founder business — job listing activated for free!" });
+        return res.json({ founderBypass: true, message: "Job listing activated for free!" });
       }
 
       const JOB_PRICES_BY_TIER: Record<string, number> = {
@@ -928,7 +929,7 @@ export function registerStripeRoutes(app: Express) {
 
       if (shouldBypassCharges(req.user, biz)) {
         await db.update(adPlacements).set({ paymentStatus: "paid", status: "active" }).where(eq(adPlacements.id, adPlacementId));
-        return res.json({ founderBypass: true, message: "Founder business — ad activated for free!" });
+        return res.json({ founderBypass: true, message: "Ad activated for free!" });
       }
 
       const priceInCents = ad.priceMonthly || 25000;
@@ -1031,7 +1032,7 @@ export function registerStripeRoutes(app: Express) {
 
       if (shouldBypassCharges(req.user, biz)) {
         await db.update(events).set({ paymentStatus: "paid", status: "approved" }).where(eq(events.id, eventId));
-        return res.json({ founderBypass: true, message: "Founder business — event ad activated for free!" });
+        return res.json({ founderBypass: true, message: "Event ad activated for free!" });
       }
 
       const priceInCents = (evt.priceCharged || 5000);

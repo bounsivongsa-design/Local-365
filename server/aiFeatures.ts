@@ -50,7 +50,7 @@ const stripe = stripeKey
 // defined` on every call (root cause of "AI Credits card invisible in prod").
 // We must import the symbol with its real name so it is in scope locally,
 // THEN re-export it so existing test imports still work.
-import { shouldBypassAiCredits, NO_CHARGE_MODE } from "./lib/founderRules";
+import { shouldBypassAiCredits } from "./lib/founderRules";
 export { shouldBypassAiCredits };
 
 /**
@@ -523,16 +523,6 @@ export function registerAiFeatureRoutes(app: Express) {
       return res.status(400).json({
         message: "Founder businesses have unlimited credits.",
         code: "FOUNDER_NO_PURCHASE",
-      });
-    }
-
-    // Growth period: nobody is charged. AI credit-pack top-ups are paused
-    // while NO_CHARGE_MODE is on — ordinary members keep their free metered
-    // allotment, we just don't sell more. Flip NO_CHARGE_MODE off to re-enable.
-    if (NO_CHARGE_MODE) {
-      return res.status(400).json({
-        message: "Credit purchases are paused right now — enjoy your free credits!",
-        code: "NO_CHARGE_MODE",
       });
     }
 

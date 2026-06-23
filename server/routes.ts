@@ -2161,7 +2161,7 @@ Respond in this exact JSON format:
       let bizTier = "none";
       let isFounderBypass = false;
       if (serverBusinessId) {
-        const [bizData] = await pgDb.select({ name: businesses.name, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
+        const [bizData] = await pgDb.select({ name: businesses.name, isFoundingMember: businesses.isFoundingMember, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
           .from(businesses).where(eq(businesses.id, serverBusinessId)).limit(1);
         // Founders/admins get full Gold-tier event-ad privileges on every
         // listing they own, even non-primary zip listings.
@@ -3188,7 +3188,7 @@ Respond in this exact JSON format:
         return res.status(400).json({ message: "Invalid placement type" });
       }
 
-      const [biz] = await pgDb.select({ name: businesses.name, zipCode: businesses.zipCode, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
+      const [biz] = await pgDb.select({ name: businesses.name, zipCode: businesses.zipCode, isFoundingMember: businesses.isFoundingMember, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
         .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
       const businessZip = biz?.zipCode || "27958";
       // Founders (and admins) bypass tier gating for ad creation — they get
@@ -3309,7 +3309,7 @@ Respond in this exact JSON format:
         // only edits), so we must NOT block downgraded businesses from
         // editing copy on a previously-grandfathered larger ad.
         const AD_MONTHLY_PRICING: Record<string, number> = { small: 25000, medium: 50000, large: 100000 };
-        const [biz] = await pgDb.select({ name: businesses.name, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
+        const [biz] = await pgDb.select({ name: businesses.name, isFoundingMember: businesses.isFoundingMember, membershipTier: businesses.membershipTier, goldTrialEndDate: businesses.goldTrialEndDate, isCompedMembership: businesses.isCompedMembership, compedMembershipExpiresAt: businesses.compedMembershipExpiresAt })
           .from(businesses).where(eq(businesses.id, user.linkedBusinessId)).limit(1);
         // Founders/admins get full Gold-tier ad-size privileges on every
         // listing they own, even non-primary zip listings.

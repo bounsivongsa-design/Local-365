@@ -26,7 +26,7 @@ function getEffectiveTier(biz: Pick<Business, "membershipTier" | "goldTrialEndDa
 // All founder rules are centralized in server/lib/founderRules.ts —
 // imported here under the local alias `shouldBypassChargesForOwner` so the
 // downstream call sites (which already use this name) don't have to change.
-import { shouldBypassCharges as shouldBypassChargesForOwner } from "./lib/founderRules";
+import { shouldBypassMembershipCharges as shouldBypassChargesForOwner } from "./lib/founderRules";
 
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

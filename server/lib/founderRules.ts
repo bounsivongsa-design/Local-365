@@ -13,21 +13,29 @@
  * adds a founder email or a founder business updates ONE list, and
  * every paid surface stays in lockstep.
  *
- * Two helpers are exported because the rule set genuinely differs by
+ * Three helpers are exported because the rule set genuinely differs by
  * surface:
  *
- *  - `shouldBypassCharges(user, biz)` — 3-prong rule used by EVERY
- *    real-money Stripe surface (membership checkout, ad placements,
- *    job listings, event ads, additional-zip subscriptions).
+ *  - `shouldBypassMembershipCharges(user, biz)` — used by the RECURRING
+ *    "membership" surfaces (membership tier checkout + additional-zip
+ *    listings). FREE for everyone while NO_CHARGE_MODE is on (growth
+ *    period); otherwise only founders/admins.
  *
- *  - `shouldBypassAiCredits(user, biz)` — 4-prong rule (= the 3 prongs
- *    plus legacy `business.isFoundingMember === true`) used by AI
- *    feature credit deduction AND the SMS Broadcast credit pool.
- *    The extra 4th prong exists because `is_founding_member` was the
- *    ORIGINAL founder-detection flag set by the founding-member referral
- *    pipeline; rows created via that path may not match by name/email
- *    but should still bypass.
+ *  - `shouldBypassCharges(user, biz)` — used by DISCRETE paid purchases
+ *    (banner ads, event ads, job posts, AI credit packs). These are
+ *    ALWAYS charged — even during the growth period — EXCEPT for
+ *    founders/admins, legacy founding members, and businesses with an
+ *    active admin comp. NOT tied to NO_CHARGE_MODE.
+ *
+ *  - `shouldBypassAiCredits(user, biz)` — 4-prong rule (= founder/admin
+ *    plus legacy `business.isFoundingMember === true`) used by AI feature
+ *    credit deduction AND the SMS Broadcast credit pool. The extra prong
+ *    exists because `is_founding_member` was the ORIGINAL founder-detection
+ *    flag; rows created via that path may not match by name/email but
+ *    should still bypass.
  */
+
+import { isCompActive } from "@shared/config/membership";
 
 export const FOUNDER_BUSINESSES = [
   "Goat Locker Printing",
@@ -71,18 +79,22 @@ export function isFounderEmail(email: string | null | undefined): boolean {
 }
 
 /**
- * GROWTH-PERIOD KILL SWITCH — while true, NO ONE is charged real money on
- * ANY Stripe surface (membership signup, ads, job listings, event ads,
- * additional-zip listings). Every paid checkout is activated for free.
+ * GROWTH-PERIOD MEMBERSHIP SWITCH — while true, the RECURRING membership
+ * surfaces are free for everyone: membership tier signup AND additional
+ * zip-code listings. Every such checkout is activated for free.
  *
- * Why this exists: during the customer/business acquisition phase the
- * platform is intentionally free so price is never a barrier to signing up.
- * Flip this to `false` (and redeploy) to resume billing.
+ * Why this exists: during the customer/business acquisition phase we don't
+ * want a recurring membership fee to be a barrier to signing up. Flip this to
+ * `false` (and redeploy) to resume charging membership dues.
  *
- * IMPORTANT: this only zeroes out real-money charges. It deliberately does
- * NOT grant everyone unlimited AI credits — `shouldBypassAiCredits` stays
- * metered (only true founders/admins get ∞) so the platform's own OpenAI /
- * SMS usage cost stays bounded even while membership is free.
+ * SCOPE — this switch covers MEMBERSHIP DUES + ADDITIONAL-ZIP LISTINGS ONLY.
+ * Discrete paid purchases (banner ads, event ads, job posts, AI credit packs)
+ * are still charged via `shouldBypassCharges` (founders/admins, founding
+ * members, and active comps remain exempt there).
+ *
+ * IMPORTANT: this never grants unlimited AI credits — `shouldBypassAiCredits`
+ * stays metered (only founders/admins/legacy founding-members get ∞) so the
+ * platform's own OpenAI / SMS usage cost stays bounded.
  */
 export const NO_CHARGE_MODE = true;
 
@@ -106,18 +118,47 @@ export function isFounderOrAdmin(
 }
 
 /**
- * Stripe-side bypass. Returns true if the caller should never be charged
- * money. True for EVERYONE while NO_CHARGE_MODE is on; otherwise only for
- * founders/admins.
+ * Membership-side bypass — for the RECURRING membership surfaces (membership
+ * tier checkout + additional-zip listings). FREE for everyone while
+ * NO_CHARGE_MODE is on; otherwise only founders/admins.
  *
  * Defensive against null/undefined inputs.
  */
-export function shouldBypassCharges(
+export function shouldBypassMembershipCharges(
   user: { accountType?: string | null; email?: string | null } | null | undefined,
   biz: { name?: string | null } | null | undefined,
 ): boolean {
   if (NO_CHARGE_MODE) return true;
   return isFounderOrAdmin(user, biz);
+}
+
+/**
+ * Discrete-purchase bypass — for one-off / per-item paid surfaces (banner
+ * ads, event ads, job posts, AI credit packs). These are ALWAYS charged, even
+ * during the growth period, EXCEPT for:
+ *   1-3. founders/admins (isFounderOrAdmin)
+ *   4. legacy founding members (business.isFoundingMember === true)
+ *   5. businesses with an ACTIVE admin comp (isCompActive)
+ *
+ * NOT tied to NO_CHARGE_MODE — growth mode only waives membership dues, not
+ * discrete purchases. Defensive against null/undefined inputs.
+ */
+export function shouldBypassCharges(
+  user: { accountType?: string | null; email?: string | null } | null | undefined,
+  biz:
+    | {
+        name?: string | null;
+        isFoundingMember?: boolean | null;
+        isCompedMembership?: boolean | null;
+        compedMembershipExpiresAt?: Date | string | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  if (isFounderOrAdmin(user, biz)) return true;
+  if (biz?.isFoundingMember === true) return true;
+  if (biz && isCompActive(biz)) return true;
+  return false;
 }
 
 /**
