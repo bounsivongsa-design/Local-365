@@ -19,6 +19,8 @@ import {
   shouldBypassCharges,
   isFounderBusinessName as isFounderBusiness,
   isFounderEmail,
+  isFounderOrAdmin,
+  NO_CHARGE_MODE,
 } from "./lib/founderRules";
 export { shouldBypassCharges };
 
@@ -207,13 +209,23 @@ export function registerStripeRoutes(app: Express) {
             membershipStartDate: new Date(),
             membershipEndDate: null,
           }).where(eq(businesses.id, biz.id));
-          await processMembershipActivation(biz.id).catch((e) => console.error("[referrals] founder bypass:", e));
+          // Founding-member numbers are reserved for genuine founders/admins.
+          // processMembershipActivation assigns a founding number for ANY
+          // paid-tier activation, and isFoundingMember=true confers UNLIMITED
+          // AI/SMS credits (legacy bypass). During NO_CHARGE_MODE every signup
+          // hits this free branch, so we must NOT run it for ordinary users —
+          // otherwise free signups would silently get unlimited AI at our
+          // metered cost. Only founders/admins (who already have unlimited AI)
+          // get the activation hook.
+          if (isFounderOrAdmin(req.user, biz)) {
+            await processMembershipActivation(biz.id).catch((e) => console.error("[referrals] founder bypass:", e));
+          }
         } else {
           await db.update(users).set({
             pendingMembershipTier: "premium",
           }).where(eq(users.id, req.user!.id));
         }
-        return res.json({ founderBypass: true, message: "Founder business — Gold membership activated for free!" });
+        return res.json({ founderBypass: true, message: NO_CHARGE_MODE ? "Gold membership activated for free!" : "Founder business — Gold membership activated for free!" });
       }
 
       let promoId: number | null = null;

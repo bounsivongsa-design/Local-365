@@ -15,6 +15,7 @@ import type Stripe from "stripe";
 import { db as pgDb } from "../db";
 import { businesses, locations, users } from "@shared/schema";
 import { startAddZipCheckoutForOwner, quoteAddZipForOwner, __setStripeForTesting } from "../multiZip";
+import { NO_CHARGE_MODE } from "../lib/founderRules";
 
 const TEST_TAG = "__addzip_checkout_route_test__";
 const TEST_LOC_NAME = "__addzip_checkout_route_test_loc__";
@@ -307,6 +308,21 @@ test("add-zip-checkout: happy path builds a Stripe Checkout session with the rig
   const result = await startAddZipCheckoutForOwner(userId, parent.id, COVERED_ZIP_B, "myhost.example");
 
   assert.equal(result.status, 200);
+
+  if (NO_CHARGE_MODE) {
+    // Growth period: additional zips are free for EVERYONE, so checkout skips
+    // Stripe entirely and activates the child listing directly.
+    assert.equal(result.body.founderBypass, true);
+    assert.equal(result.body.priceMonthly, 0, "no-charge mode: price must be $0");
+    assert.equal(stub.createCalls.length, 0, "Stripe must NOT be called while no-charge mode is on");
+    const freeChild = await pgDb.select().from(businesses).where(eq(businesses.id, Number(result.body.listingId)));
+    assert.equal(freeChild.length, 1, "additional-zip child row must be inserted");
+    assert.equal(freeChild[0].zipCode, COVERED_ZIP_B);
+    assert.equal(freeChild[0].parentBusinessId, parent.id);
+    assert.equal(freeChild[0].stripeSubscriptionId, null, "free listings must not carry a Stripe sub id");
+    return;
+  }
+
   assert.equal(result.body.url, "https://stripe.test/checkout/happy");
   assert.ok(typeof result.body.priceMonthly === "number" && (result.body.priceMonthly as number) > 0,
     "must report a positive monthly price to the frontend");
@@ -498,6 +514,19 @@ test("add-zip-checkout: when the caller targets a CHILD listing, parentBusinessI
   const result = await startAddZipCheckoutForOwner(userId, child.id, COVERED_ZIP_B, "myhost.example");
 
   assert.equal(result.status, 200);
+
+  if (NO_CHARGE_MODE) {
+    // No-charge mode: free activation, but the child must STILL be attached to
+    // the ROOT (not the targeted child) so the listing graph stays flat.
+    assert.equal(result.body.founderBypass, true);
+    assert.equal(stub.createCalls.length, 0, "Stripe must NOT be called while no-charge mode is on");
+    const freeChild = await pgDb.select().from(businesses).where(eq(businesses.id, Number(result.body.listingId)));
+    assert.equal(freeChild.length, 1);
+    assert.equal(freeChild[0].parentBusinessId, root.id,
+      "new listing must attach to the ROOT, not the targeted child");
+    return;
+  }
+
   assert.equal(stub.createCalls.length, 1);
   const params = stub.createCalls[0];
   assert.equal(params.metadata?.parentBusinessId, String(root.id),
@@ -514,6 +543,14 @@ test("add-zip-checkout: 503 when Stripe isn't configured (and zip/owner checks a
   __setStripeForTesting(null);
 
   const result = await startAddZipCheckoutForOwner(userId, parent.id, COVERED_ZIP_B, "example.test");
+
+  if (NO_CHARGE_MODE) {
+    // No-charge mode bypasses Stripe BEFORE the "is Stripe configured" guard,
+    // so a missing Stripe client is irrelevant — the zip is added for free.
+    assert.equal(result.status, 200);
+    assert.equal(result.body.founderBypass, true);
+    return;
+  }
 
   assert.equal(result.status, 503);
   assert.match(String(result.body.message), /stripe/i);
@@ -572,9 +609,15 @@ test("add-zip-quote: happy path returns city/state/tier/priceMonthly for a cover
   assert.equal(result.body.zipCode, COVERED_ZIP_B);
   assert.equal(result.body.city, "Currituck");
   assert.equal(result.body.state, "NC");
-  // premium → gold tier in TIER_ID_MAP → 50% off the $75 Gold monthly = $37.50
   assert.equal(result.body.tier, "premium");
-  assert.equal(result.body.priceMonthly, 37.5);
+  if (NO_CHARGE_MODE) {
+    // No-charge mode: the confirm modal must show $0 with the bypass flag.
+    assert.equal(result.body.priceMonthly, 0, "no-charge mode: quote must show $0");
+    assert.equal(result.body.bypass, true);
+  } else {
+    // premium → gold tier in TIER_ID_MAP → 50% off the $75 Gold monthly = $37.50
+    assert.equal(result.body.priceMonthly, 37.5);
+  }
 });
 
 test("add-zip-quote: when caller targets a CHILD listing, price reflects the ROOT's tier (not the child's)", async () => {
@@ -603,5 +646,10 @@ test("add-zip-quote: when caller targets a CHILD listing, price reflects the ROO
   const result = await quoteAddZipForOwner(userId, child.id, COVERED_ZIP_B);
   assert.equal(result.status, 200);
   assert.equal(result.body.tier, "premium", "must report the ROOT's tier, not the child's");
-  assert.equal(result.body.priceMonthly, 37.5, "price must reflect the ROOT's tier discount");
+  if (NO_CHARGE_MODE) {
+    assert.equal(result.body.priceMonthly, 0, "no-charge mode: quote must show $0");
+    assert.equal(result.body.bypass, true);
+  } else {
+    assert.equal(result.body.priceMonthly, 37.5, "price must reflect the ROOT's tier discount");
+  }
 });
