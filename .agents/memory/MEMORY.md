@@ -1,2 +1,2 @@
 - [Comp membership ↔ Stripe](comp-membership-stripe.md) — granting a comp must cancel the live paid Stripe subscription or the "free" customer keeps getting billed.
-- [NO_CHARGE_MODE growth switch](no-charge-mode.md) — waives membership dues + add-zip ONLY; discrete purchases (ads/events/jobs/AI packs) still charged except founders/founding-members/active-comp; AI/SMS credits stay metered; never let free signups become founding members.
+- [NO_CHARGE_MODE growth switch](no-charge-mode.md) — waives membership + add-zip only; discrete purchases still charged except founders/founding/active-comp; AI/SMS stay metered.

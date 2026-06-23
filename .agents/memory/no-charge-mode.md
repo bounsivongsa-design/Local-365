@@ -49,9 +49,18 @@ free signups into founding members → unlimited AI → blows the cost guardrail
 ## AI credit-pack purchase route
 `POST /api/ai/credit-packs/checkout` (`server/aiFeatures.ts`) is a DISCRETE
 purchase → charged normally. It is NOT gated by NO_CHARGE_MODE (an earlier
-NO_CHARGE_MODE pause there was removed). Founders/founding members are already
-refused via `auth.isFounder` (which folds in `isFoundingMember` +
-`ai_credits.isFounderComp`).
+NO_CHARGE_MODE pause there was removed). Bypass tiers:
+- Founders/founding members → refused via `auth.isFounder` (they already have
+  unlimited AI; no pack needed).
+- Active admin-comped businesses → granted the pack credits FREE (owner decided
+  comps don't pay for discrete purchases, accepting the OpenAI cost). The route
+  detects `isCompActive(auth.business)` and calls `applyCreditPackPurchase` with
+  `revenueCents: 0` + a synthetic `comp_<biz>_<sku>_<ts>` payment-intent id
+  instead of a Stripe session. **Why a grant, not a refusal:** comps are metered
+  (not unlimited like founders), so refusing would leave them unable to top up.
+- Everyone else → real Stripe checkout.
+Note: `shouldBypassAiCredits` is still founders/founding-members only — comps
+remain metered for ordinary AI usage; only the explicit pack top-up is free.
 
 ## Tests are mode-aware
 `server/__tests__/shouldBypassCharges.test.ts` and `startAddZipCheckout.test.ts`
