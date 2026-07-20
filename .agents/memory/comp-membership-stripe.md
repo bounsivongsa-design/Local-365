@@ -27,3 +27,10 @@ columns and left their subscription live.
   children share the parent's Stripe customer but hold no membership sub.
 - Refunds are NOT done in-app — they must be issued from the live Stripe
   dashboard. Re-saving a comp after deploy will cancel a still-live sub.
+- Self-healing sweep `reconcileCompedSubscriptions()` (server/comp.ts) runs at
+  startup + hourly: for every ACTIVE comp (no expiry or future expiry) with a
+  live membership sub pointer, it cancels the sub via the same shared helper
+  the grant path uses (skips non-membership metadata.type, skips already-
+  canceled, keeps pointer on Stripe failure for retry). Expired comps are
+  skipped — their sub is a legit paid membership. This catches comps granted
+  BEFORE the grant-time auto-cancel fix existed (the Back Bay double-charge).

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
-import { setBusinessCompMembership } from "./comp";
+import { setBusinessCompMembership, reconcileCompedSubscriptions } from "./comp";
 import { linkReferralOnSignup, processMembershipActivation, ensureReferralCode, generateUniqueReferralCode } from "./referrals";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -6662,6 +6662,11 @@ Respond in this exact JSON format:
       console.error("Comp membership expiry check error:", e);
     }
     try {
+      await reconcileCompedSubscriptions();
+    } catch (e) {
+      console.error("Comp subscription reconcile error:", e);
+    }
+    try {
       await checkBounceRateAlerts();
     } catch (e) {
       console.error("Bounce-rate alert check error:", e);
@@ -6676,6 +6681,7 @@ Respond in this exact JSON format:
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
   setTimeout(() => sendCompExpiryReminders().catch(e => console.error("Initial comp expiry reminder error:", e)), 12000);
   setTimeout(() => checkExpiredCompMemberships().catch(e => console.error("Initial comp expiry check error:", e)), 13000);
+  setTimeout(() => reconcileCompedSubscriptions().catch(e => console.error("Initial comp subscription reconcile error:", e)), 16000);
   setTimeout(() => checkBounceRateAlerts().catch(e => console.error("Initial bounce-rate alert check error:", e)), 14000);
   setTimeout(() => checkBounceSpikeAlerts().catch(e => console.error("Initial bounce-spike owner alert check error:", e)), 15000);
 

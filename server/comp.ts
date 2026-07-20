@@ -120,33 +120,7 @@ export async function setBusinessCompMembership(
   // keep the subscription pointer intact on failure so it can be retried /
   // reconciled by hand rather than orphaning a live, billing subscription.
   if (opts.active && target.stripeSubscriptionId && stripe) {
-    const subId = target.stripeSubscriptionId;
-    try {
-      // Only the MEMBERSHIP subscription should be canceled by a comp. A
-      // business row's stripeSubscriptionId can also point at a non-membership
-      // sub (e.g. an additional-zip listing), and canceling that would wrongly
-      // tear down an unrelated paid service. Membership subs carry no
-      // metadata.type; additional_zip / job_listing subs set it — so skip
-      // anything with an explicit non-membership type.
-      const sub = await stripe.subscriptions.retrieve(subId);
-      const subType = sub.metadata?.type;
-      if (subType && subType !== "membership") {
-        console.warn(
-          `[comp] business ${opts.bizId} subscription ${subId} is type='${subType}', not a membership sub — leaving it alone.`,
-        );
-      } else {
-        await stripe.subscriptions.cancel(subId);
-        await pgDb
-          .update(businesses)
-          .set({ stripeSubscriptionId: null })
-          .where(eq(businesses.id, opts.bizId));
-      }
-    } catch (e: unknown) {
-      console.error(
-        `[comp] FAILED to cancel Stripe subscription ${subId} for comped business ${opts.bizId} — it may be STILL BILLING; cancel/refund by hand:`,
-        e instanceof Error ? e.message : e,
-      );
-    }
+    await cancelMembershipSubForComp(opts.bizId, target.stripeSubscriptionId);
   }
 
   // Resolve a recipient address (outside the txn — read-only, no need to
@@ -168,4 +142,93 @@ export async function setBusinessCompMembership(
     recipientEmail,
     businessName: target.name,
   };
+}
+
+/**
+ * Cancel a comped business's paid MEMBERSHIP Stripe subscription and clear
+ * the pointer on success. Shared by the grant path and the reconcile sweep.
+ *
+ * Only the MEMBERSHIP subscription should be canceled by a comp. A business
+ * row's stripeSubscriptionId can also point at a non-membership sub (e.g. an
+ * additional-zip listing), and canceling that would wrongly tear down an
+ * unrelated paid service. Membership subs carry no metadata.type;
+ * additional_zip / job_listing subs set it — so skip anything with an
+ * explicit non-membership type.
+ *
+ * Returns true when the sub was canceled (or was already canceled in Stripe).
+ */
+async function cancelMembershipSubForComp(
+  bizId: number,
+  subId: string,
+): Promise<boolean> {
+  if (!stripe) return false;
+  try {
+    const sub = await stripe.subscriptions.retrieve(subId);
+    const subType = sub.metadata?.type;
+    if (subType && subType !== "membership") {
+      console.warn(
+        `[comp] business ${bizId} subscription ${subId} is type='${subType}', not a membership sub — leaving it alone.`,
+      );
+      return false;
+    }
+    if (sub.status !== "canceled") {
+      await stripe.subscriptions.cancel(subId);
+      console.log(
+        `[comp] canceled paid membership subscription ${subId} for comped business ${bizId}.`,
+      );
+    }
+    await pgDb
+      .update(businesses)
+      .set({ stripeSubscriptionId: null })
+      .where(eq(businesses.id, bizId));
+    return true;
+  } catch (e: unknown) {
+    console.error(
+      `[comp] FAILED to cancel Stripe subscription ${subId} for comped business ${bizId} — it may be STILL BILLING; cancel/refund by hand:`,
+      e instanceof Error ? e.message : e,
+    );
+    return false;
+  }
+}
+
+/**
+ * Self-healing sweep: find every business whose comp Gold is currently
+ * ACTIVE (flag on, and either no expiry or expiry in the future) but that
+ * still holds a live paid Stripe subscription pointer, and cancel it.
+ *
+ * Why this exists: the grant-time auto-cancel above only fires when a comp
+ * is (re)saved. Comps granted before that fix shipped kept their paid subs
+ * silently billing every cycle (a real customer was double-charged this
+ * way). This sweep runs at startup and hourly so any such drift — legacy
+ * rows, a Stripe outage during grant, manual DB edits — is corrected
+ * automatically instead of depending on an admin re-saving each comp.
+ */
+export async function reconcileCompedSubscriptions(): Promise<void> {
+  if (!stripe) return;
+  const rows = await pgDb
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      stripeSubscriptionId: businesses.stripeSubscriptionId,
+      compedMembershipExpiresAt: businesses.compedMembershipExpiresAt,
+    })
+    .from(businesses)
+    .where(eq(businesses.isCompedMembership, true));
+
+  const now = Date.now();
+  for (const row of rows) {
+    if (!row.stripeSubscriptionId) continue;
+    // Skip expired comps — those businesses are back on a real paid tier,
+    // so their subscription is legitimate and must keep billing.
+    if (
+      row.compedMembershipExpiresAt &&
+      new Date(row.compedMembershipExpiresAt).getTime() <= now
+    ) {
+      continue;
+    }
+    console.warn(
+      `[comp] reconcile: comped business ${row.id} (${row.name}) still has live subscription ${row.stripeSubscriptionId} — canceling.`,
+    );
+    await cancelMembershipSubForComp(row.id, row.stripeSubscriptionId);
+  }
 }
