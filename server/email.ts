@@ -764,6 +764,37 @@ export async function notifyOwnerOfAdminMessage(args: {
   }
 }
 
+export async function notifyAdminGithubSyncFailed(errorMessage: string) {
+  const safeError = errorMessage
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .slice(0, 2000);
+  const subject = "⚠️ GitHub Backup Push Failed — Local List 365";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #b91c1c, #dc2626); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 20px;">GitHub Backup Push Failed</h1>
+      </div>
+      <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          The automatic push of the project to GitHub failed. The GitHub backup may start falling behind until this is fixed.
+        </p>
+        <p style="color: #333; font-size: 14px; line-height: 1.6;">
+          Common causes: the <strong>GITHUB_TOKEN</strong> secret expired or was revoked, or the token is missing the <strong>workflow</strong> scope (required because the repo history contains GitHub Actions files).
+        </p>
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin: 16px 0;">
+          <pre style="margin: 0; font-size: 12px; color: #7f1d1d; white-space: pre-wrap; word-break: break-word;">${safeError}</pre>
+        </div>
+        <p style="color: #666; font-size: 13px;">
+          This alert is rate-limited to once every 24 hours. The sync retries hourly and will stop alerting once a push succeeds.
+        </p>
+      </div>
+    </div>
+  `;
+  await sendAdminEmail(subject, html);
+}
+
 export async function notifyAdminNewBusiness(businessName: string, ownerEmail: string, tier: string) {
   const tierLabel = tier === "premium" ? "Gold" : tier === "standard" ? "Silver" : tier === "basic" ? "Bronze" : tier;
   const subject = `New Business Registered — ${businessName}`;

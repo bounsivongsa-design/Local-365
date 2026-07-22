@@ -19,6 +19,7 @@ import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
 import { shouldBypassCharges } from "./lib/founderRules";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike, notifyOwnerOfAdminMessage } from "./email";
+import { syncGithubBackup } from "./githubSync";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
 import { db as pgDb } from "./db";
@@ -6676,6 +6677,11 @@ Respond in this exact JSON format:
     } catch (e) {
       console.error("Bounce-spike owner alert check error:", e);
     }
+    try {
+      await syncGithubBackup();
+    } catch (e) {
+      console.error("GitHub backup sync error:", e);
+    }
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
@@ -6684,6 +6690,7 @@ Respond in this exact JSON format:
   setTimeout(() => reconcileCompedSubscriptions().catch(e => console.error("Initial comp subscription reconcile error:", e)), 16000);
   setTimeout(() => checkBounceRateAlerts().catch(e => console.error("Initial bounce-rate alert check error:", e)), 14000);
   setTimeout(() => checkBounceSpikeAlerts().catch(e => console.error("Initial bounce-spike owner alert check error:", e)), 15000);
+  setTimeout(() => syncGithubBackup().catch(e => console.error("Initial GitHub backup sync error:", e)), 20000);
 
   setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
