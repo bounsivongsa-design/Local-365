@@ -1,2 +1,1 @@
-- [Comp membership ↔ Stripe](comp-membership-stripe.md) — granting a comp must cancel the live paid Stripe subscription or the "free" customer keeps getting billed.
-- [NO_CHARGE_MODE growth switch](no-charge-mode.md) — waives membership + add-zip only; discrete purchases still charged except founders/founding/active-comp; AI/SMS stay metered.
+- [GitHub push quirks](github-push.md) — PATs need `workflow` scope (repo history touches .github/workflows); pane shows opaque PUSH_REJECTED without it; push via GITHUB_TOKEN from shell.
