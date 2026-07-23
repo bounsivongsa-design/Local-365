@@ -556,6 +556,70 @@ export async function notifyOwnerCompExpired(args: {
   });
 }
 
+/**
+ * Nudge someone who paid for a membership tier at checkout but never came
+ * back to finish creating their actual business listing — without this,
+ * they'd just keep getting charged for a plan that's doing nothing for
+ * them. Sent once (gated by users.pendingReminderSent) a few days into the
+ * pending window, before checkAbandonedBusinessCheckouts auto-cancels.
+ */
+export async function notifyAbandonedCheckoutReminder(args: {
+  recipientEmail: string | null | undefined;
+  firstName?: string | null;
+}): Promise<boolean> {
+  if (!args.recipientEmail) {
+    console.log(`[EMAIL SKIPPED] Abandoned checkout reminder — no recipient email`);
+    return false;
+  }
+  const greeting = args.firstName ? `Hi ${args.firstName},` : "Hi there,";
+  const body = `
+    <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">${greeting}</h2>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      You started a business membership on Local List 365, but never finished setting up your actual listing (business name, category, photos, description). Your card is being charged for the plan, but nothing is live yet — no one can find or see your business.
+    </p>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      It only takes a couple of minutes to finish. If we don't hear back soon, we'll cancel the subscription automatically so you're not paying for a listing that was never created.
+    </p>
+  `;
+  return sendCompEmail({
+    to: args.recipientEmail,
+    subject: "Finish setting up your Local List 365 business listing",
+    html: buildCompShell("Action Needed", "Finish Your Business Listing", body, "Finish My Listing"),
+    logLabel: "Abandoned checkout reminder",
+  });
+}
+
+/**
+ * Sent when checkAbandonedBusinessCheckouts auto-cancels a subscription for
+ * someone who never finished their listing, so the cancellation isn't a
+ * silent surprise — tells them plainly what happened and how to restart if
+ * they still want in.
+ */
+export async function notifyAbandonedCheckoutCancelled(args: {
+  recipientEmail: string | null | undefined;
+  firstName?: string | null;
+}): Promise<boolean> {
+  if (!args.recipientEmail) {
+    console.log(`[EMAIL SKIPPED] Abandoned checkout cancelled — no recipient email`);
+    return false;
+  }
+  const greeting = args.firstName ? `Hi ${args.firstName},` : "Hi there,";
+  const body = `
+    <h2 style="margin: 0 0 12px; font-size: 18px; color: #1a1a2e;">${greeting}</h2>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      A while back you started a business membership on Local List 365 but never finished creating your listing, so we've cancelled the subscription — you won't be charged for it going forward.
+    </p>
+    <p style="color: #333; font-size: 15px; line-height: 1.6;">
+      Still want a listing? You're welcome to sign up again any time — it just takes a couple of minutes to finish once you pick a plan.
+    </p>
+  `;
+  return sendCompEmail({
+    to: args.recipientEmail,
+    subject: "Your incomplete Local List 365 membership was cancelled",
+    html: buildCompShell("Subscription Cancelled", "Membership Cancelled — Listing Never Finished", body, "Sign Up Again"),
+    logLabel: "Abandoned checkout cancelled",
+  });
+}
 
 /**
  * Alert admins when a business's recent review-request blast bounce rate

@@ -18,7 +18,7 @@ import { registerMarketingHubRoutes } from "./marketingHub";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
 import { shouldBypassCharges } from "./lib/founderRules";
-import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike, notifyOwnerOfAdminMessage } from "./email";
+import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike, notifyOwnerOfAdminMessage, notifyAbandonedCheckoutReminder, notifyAbandonedCheckoutCancelled } from "./email";
 import { syncGithubBackup } from "./githubSync";
 import { getMembershipTier, MEMBERSHIP_TIERS, EVENT_2WEEK_AD_RATES, EVENT_MONTHLY_AD_RATES, isCompActive } from "@shared/config/membership";
 import db from "./lib/replitDb";
@@ -982,6 +982,8 @@ export async function registerRoutes(
           updateFields.pendingMembershipTier = null;
           updateFields.pendingStripeSubscriptionId = null;
           updateFields.pendingPaymentFrequency = null;
+          updateFields.pendingSince = null;
+          updateFields.pendingReminderSent = false;
         }
         updateFields.pendingBusinessName = null;
         await pgDb.update(users).set(updateFields).where(eq(users.id, userId));
@@ -6682,6 +6684,11 @@ Respond in this exact JSON format:
     } catch (e) {
       console.error("GitHub backup sync error:", e);
     }
+    try {
+      await checkAbandonedBusinessCheckouts();
+    } catch (e) {
+      console.error("Abandoned checkout check error:", e);
+    }
   }, 60 * 60 * 1000);
 
   setTimeout(() => checkExpiredGoldTrials().catch(e => console.error("Initial gold trial check error:", e)), 10000);
@@ -6691,6 +6698,7 @@ Respond in this exact JSON format:
   setTimeout(() => checkBounceRateAlerts().catch(e => console.error("Initial bounce-rate alert check error:", e)), 14000);
   setTimeout(() => checkBounceSpikeAlerts().catch(e => console.error("Initial bounce-spike owner alert check error:", e)), 15000);
   setTimeout(() => syncGithubBackup().catch(e => console.error("Initial GitHub backup sync error:", e)), 20000);
+  setTimeout(() => checkAbandonedBusinessCheckouts().catch(e => console.error("Initial abandoned checkout check error:", e)), 17000);
 
   setTimeout(() => seedAdminAccounts().catch(e => console.error("Admin seed error:", e)), 5000);
 
@@ -6914,6 +6922,116 @@ async function checkExpiredGoldTrials() {
 
   if (expired.length > 0) {
     console.log(`Gold trial check complete: ${expired.length} business(es) reverted`);
+  }
+}
+
+/**
+ * Safety net for the gap between "paid at Stripe checkout" and "actually
+ * finished creating a business listing" — those are two separate steps
+ * (see the CREATE-BIZ flow above), and nothing previously stopped someone
+ * from paying, abandoning the intake form, and sitting charged forever
+ * with zero listing info on file.
+ *
+ * Two-stage, same shape as the comp-expiry reminder/expire pair:
+ *   - PENDING_REMINDER_AFTER_MS pending, no listing yet → one reminder
+ *     email (gated by pendingReminderSent so it only sends once).
+ *   - PENDING_CANCEL_AFTER_MS pending, no listing yet → cancel the Stripe
+ *     subscription, clear the pending fields, email that it was cancelled.
+ *
+ * Rows from before this safety net existed have pendingSince=null even
+ * though they're clearly stuck (pendingStripeSubscriptionId set, no
+ * linkedBusinessId) — backfilled once from updatedAt/createdAt as a
+ * best-effort "how long has this actually been sitting" guess, so
+ * pre-existing stuck accounts get swept up too instead of being silently
+ * skipped forever just because the new column started out empty for them.
+ */
+const PENDING_REMINDER_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
+const PENDING_CANCEL_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type AbandonedCheckoutReminderNotifier = typeof notifyAbandonedCheckoutReminder;
+export type AbandonedCheckoutCancelledNotifier = typeof notifyAbandonedCheckoutCancelled;
+
+export async function checkAbandonedBusinessCheckouts(
+  reminderNotifier: AbandonedCheckoutReminderNotifier = notifyAbandonedCheckoutReminder,
+  cancelledNotifier: AbandonedCheckoutCancelledNotifier = notifyAbandonedCheckoutCancelled,
+) {
+  // One-time backfill for rows stuck in this state from before pendingSince
+  // existed — idempotent, since a row only matches once (pendingSince is no
+  // longer null on the next run).
+  await pgDb
+    .update(users)
+    .set({ pendingSince: sql`COALESCE(${users.updatedAt}, ${users.createdAt}, NOW())` })
+    .where(
+      and(
+        isNotNull(users.pendingStripeSubscriptionId),
+        isNull(users.linkedBusinessId),
+        isNull(users.pendingSince),
+      ),
+    );
+
+  const now = new Date();
+  const candidates = await pgDb
+    .select({
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      pendingMembershipTier: users.pendingMembershipTier,
+      pendingStripeSubscriptionId: users.pendingStripeSubscriptionId,
+      pendingSince: users.pendingSince,
+      pendingReminderSent: users.pendingReminderSent,
+    })
+    .from(users)
+    .where(and(isNotNull(users.pendingStripeSubscriptionId), isNull(users.linkedBusinessId)));
+
+  for (const u of candidates) {
+    if (!u.pendingSince) continue; // just backfilled above; will be picked up next pass
+    const pendingMs = now.getTime() - new Date(u.pendingSince).getTime();
+
+    if (pendingMs >= PENDING_CANCEL_AFTER_MS) {
+      try {
+        if (u.pendingStripeSubscriptionId) {
+          try {
+            const stripe = (await import("stripe")).default;
+            const stripeClient = new stripe(process.env.Stripeintegration || "");
+            await stripeClient.subscriptions.cancel(u.pendingStripeSubscriptionId);
+          } catch (e: any) {
+            // Already cancelled/missing on Stripe's side shouldn't block
+            // clearing our own state — the point is to stop double-billing
+            // going forward, not to fail loudly on a Stripe-side 404.
+            console.error(`Abandoned checkout: Stripe cancel failed for user ${u.id}:`, e?.message);
+          }
+        }
+        await pgDb
+          .update(users)
+          .set({
+            pendingMembershipTier: null,
+            pendingStripeSubscriptionId: null,
+            pendingPaymentFrequency: null,
+            pendingBusinessName: null,
+            pendingSince: null,
+            pendingReminderSent: false,
+          })
+          .where(eq(users.id, u.id));
+        console.log(
+          `Abandoned checkout: cancelled pending ${u.pendingMembershipTier} subscription for user ${u.id} (${u.email}) after ${Math.round(pendingMs / 86_400_000)}d`,
+        );
+        cancelledNotifier({ recipientEmail: u.email, firstName: u.firstName }).catch((e) =>
+          console.error(`Abandoned checkout cancel-notify failed for user ${u.id}:`, e),
+        );
+      } catch (e) {
+        console.error(`Abandoned checkout cancel processing failed for user ${u.id}:`, e);
+      }
+    } else if (pendingMs >= PENDING_REMINDER_AFTER_MS && !u.pendingReminderSent) {
+      let sent = false;
+      try {
+        sent = await reminderNotifier({ recipientEmail: u.email, firstName: u.firstName });
+      } catch (e) {
+        console.error(`Abandoned checkout reminder failed for user ${u.id}:`, e);
+      }
+      if (sent) {
+        await pgDb.update(users).set({ pendingReminderSent: true }).where(eq(users.id, u.id));
+      }
+    }
   }
 }
 

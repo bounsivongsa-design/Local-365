@@ -797,6 +797,9 @@ export function registerStripeRoutes(app: Express) {
             pendingStripeSubscriptionId: session.subscription as string,
             pendingPaymentFrequency: frequency || null,
             stripeCustomerId: session.customer as string,
+            // COALESCE so this doesn't reset the clock if the webhook already
+            // recorded when this pending state actually started.
+            pendingSince: sql`COALESCE(${users.pendingSince}, NOW())`,
           }).where(eq(users.id, checkoutUserId));
           console.log(`Pending membership stored via verify-session for user ${checkoutUserId} → ${tier}`);
           return res.json({ success: true, type: "pending_membership", tier: DB_TO_TIER[tier] || tier });
@@ -1340,6 +1343,7 @@ export function registerStripeRoutes(app: Express) {
                 pendingStripeSubscriptionId: session.subscription as string,
                 pendingPaymentFrequency: frequency || null,
                 stripeCustomerId: session.customer as string,
+                pendingSince: sql`COALESCE(${users.pendingSince}, NOW())`,
               }).where(eq(users.id, checkoutUserId));
               console.log(`Pending membership stored for user ${checkoutUserId} → ${tier} (business not yet created)`);
             }

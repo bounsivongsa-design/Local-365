@@ -59,6 +59,17 @@ export const users = pgTable("users", {
   pendingStripeSubscriptionId: varchar("pending_stripe_subscription_id"),
   pendingPaymentFrequency: varchar("pending_payment_frequency"),
   pendingBusinessName: varchar("pending_business_name"),
+  // When the pending-membership fields above were first set (checkout
+  // completed but the business listing was never finished). Lets the
+  // abandoned-checkout job (routes.ts: checkAbandonedBusinessCheckouts)
+  // know how long someone's been charged with nothing on file — without
+  // this, a paid-but-incomplete signup can sit charged forever.
+  pendingSince: timestamp("pending_since"),
+  // Gates the one-time "finish your listing" reminder email so it doesn't
+  // resend every hourly sweep. Reset to false whenever pendingSince is
+  // cleared (business completed, or subscription auto-cancelled) so a
+  // future pending cycle gets its own fresh reminder.
+  pendingReminderSent: boolean("pending_reminder_sent").default(false),
   
   // Community Engagement Badges (like Facebook Groups)
   // Badges: top_contributor, conversation_starter, rising_star, founding_member, helpful_neighbor
