@@ -1,17 +1,26 @@
+import { existsSync, readFileSync } from "node:fs";
 import Database from "@replit/database";
 
 type ReplitResult<T> = { ok: true; value: T } | { ok: false; error: { message: string } };
 
+const REPLIT_DB_FILE = "/tmp/replitdb";
+
 /**
- * Replit's Database client throws at construct time when REPLIT_DB_URL (or
- * /tmp/replitdb) is missing. GitHub Actions and local `npm test` do not have
- * that URL — importing routes.ts used to crash the whole file.
+ * Replit's Database client throws at construct time when neither
+ * REPLIT_DB_URL nor /tmp/replitdb is set. GitHub Actions and local
+ * `npm test` have neither — importing routes.ts used to crash the file.
  *
- * Use the real client when a URL exists; otherwise an in-memory stub with the
- * same get/set/delete shape so tests and non-Replit hosts can boot.
+ * Use the real client when the official lookup would succeed; otherwise
+ * an in-memory stub with the same get/set/delete shape.
  */
 function hasReplitDbUrl(): boolean {
-  return Boolean(process.env.REPLIT_DB_URL);
+  if (process.env.REPLIT_DB_URL) return true;
+  try {
+    if (!existsSync(REPLIT_DB_FILE)) return false;
+    return Boolean(readFileSync(REPLIT_DB_FILE, "utf8").trim());
+  } catch {
+    return false;
+  }
 }
 
 class MemoryReplitDb {
