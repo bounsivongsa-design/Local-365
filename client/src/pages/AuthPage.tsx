@@ -35,9 +35,7 @@ export default function AuthPage() {
   useEffect(() => {
     const nextMode = searchParams.get("mode") === "register" ? "register" : "login";
     setMode(nextMode);
-    if (searchParams.get("type") === "business") {
-      setAccountType("business");
-    }
+    setAccountType(searchParams.get("type") === "business" ? "business" : "customer");
   }, [searchParams]);
 
   useEffect(() => {

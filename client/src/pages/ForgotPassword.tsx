@@ -13,9 +13,8 @@ export default function ForgotPassword() {
   const [sent, setSent] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
+  const sendResetEmail = async () => {
+    if (!email.trim()) return false;
 
     setIsSubmitting(true);
     try {
@@ -27,14 +26,22 @@ export default function ForgotPassword() {
       const data = await res.json();
       if (!res.ok) {
         toast({ title: "Error", description: data.message || "Something went wrong.", variant: "destructive" });
-        return;
+        return false;
       }
       setSent(true);
+      toast({ title: "Email sent", description: "If an account exists for that address, a reset link is on its way. Check spam if you do not see it." });
+      return true;
     } catch {
       toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
+      return false;
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendResetEmail();
   };
 
   return (
@@ -72,11 +79,12 @@ export default function ForgotPassword() {
                 </p>
                 <div className="pt-2 space-y-2">
                   <Button
-                    onClick={() => { setSent(false); }}
+                    onClick={() => { void sendResetEmail(); }}
+                    disabled={isSubmitting}
                     className="w-full min-h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold"
                     data-testid="button-resend-reset-email"
                   >
-                    Resend email
+                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Resend email"}
                   </Button>
                   <Button
                     onClick={() => { setSent(false); setEmail(""); }}

@@ -253,11 +253,28 @@ export default function FAQ() {
     if (hash === "how-do-i-register") {
       setActiveCategory("getting-started");
       setOpenItems(new Set(["getting-started-0"]));
-      requestAnimationFrame(() => {
-        document.getElementById("how-do-i-register")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
     }
   }, [location.hash]);
+
+  useEffect(() => {
+    if (location.hash.replace("#", "") !== "how-do-i-register") return;
+    if (activeCategory !== "getting-started") return;
+
+    const headerOffset = 160;
+    const scrollToAnswer = () => {
+      const el = document.getElementById("how-do-i-register");
+      if (!el) return false;
+      const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      return true;
+    };
+
+    if (scrollToAnswer()) return;
+    const frame = requestAnimationFrame(() => {
+      scrollToAnswer();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location.hash, activeCategory]);
 
   const toggleItem = (id: string) => {
     setOpenItems((prev) => {
@@ -342,7 +359,7 @@ export default function FAQ() {
                       isOpen
                         ? "border-[#0a4a82]/20 bg-white dark:bg-slate-800 shadow-lg shadow-[#0a4a82]/5"
                         : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600"
-                    }`}
+                    } ${item.question === "How do I register?" ? "scroll-mt-40" : ""}`}
                     data-testid={`faq-item-${itemId}`}
                     id={item.question === "How do I register?" ? "how-do-i-register" : undefined}
                   >
