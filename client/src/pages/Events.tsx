@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Plus, Calendar, LayoutGrid, List, Megaphone, Clock, Crown, Users, Zap, Video, Lock, Info, Upload, Play, Trash2, X, AlertTriangle, Pencil, Building2, CreditCard, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { RegisterCta, GuestRegisterBanner } from "@/components/RegisterCta";
 import {
   Dialog,
   DialogContent,
@@ -440,6 +441,14 @@ export default function Events() {
               <p className="text-white/80 text-xl max-w-2xl leading-relaxed">
                 Discover what's happening in your neighborhood. Concerts, markets, meetups, and more.
               </p>
+              {!isAuthenticated && (
+                <div className="pt-2 space-y-2">
+                  <RegisterCta size="lg" className="min-h-12 px-8 text-base ring-2 ring-white" testId="button-events-hero-register" />
+                  <p className="text-white/85 text-sm max-w-md">
+                    Register for a free account. Event listings are open to browse — this is not a ticket signup.
+                  </p>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center gap-4">
@@ -546,7 +555,8 @@ export default function Events() {
               <Calendar className="h-10 w-10 text-muted-foreground/40" />
             </div>
             <h3 className="text-xl font-bold mb-2">No events scheduled</h3>
-            <p className="text-muted-foreground">Why not organize something yourself?</p>
+            <p className="text-muted-foreground mb-4">Why not organize something yourself?</p>
+            {!isAuthenticated && <RegisterCta testId="button-events-empty-register" />}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -709,7 +719,8 @@ export default function Events() {
                     />
                   </div>
                 )}
-                <Button variant="outline" className="w-full rounded-xl" onClick={() => setSelectedCalendarEvent(null)} data-testid="button-close-calendar-event">
+                <GuestRegisterBanner context="event" />
+                <Button variant="outline" className="w-full rounded-xl min-h-11" onClick={() => setSelectedCalendarEvent(null)} data-testid="button-close-calendar-event">
                   Close
                 </Button>
               </div>

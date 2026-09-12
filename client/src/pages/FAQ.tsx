@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { REGISTER_LABEL, REGISTER_PATH, REGISTER_BUSINESS_PATH, LOGIN_PATH, LOGIN_LABEL } from "@/lib/auth-copy";
 import { ChevronDown, HelpCircle, UserPlus, Building2, Search, Gavel, Calendar, Briefcase, CreditCard, Star, Shield, BarChart3, Megaphone } from "lucide-react";
 
 interface FAQItem {
@@ -23,14 +24,19 @@ const FAQ_DATA: FAQCategory[] = [
     icon: UserPlus,
     items: [
       {
+        question: "How do I register?",
+        answer: "Click Register at the top of any page (it stays visible on phones — you do not need to open the menu). That opens the one registration form on this site. Choose Customer (always free) or Business Owner, then enter your name, email, and password. There is no outside signup form. After you register, you can sign in with the same email and password.",
+        links: [{ label: REGISTER_LABEL, to: REGISTER_PATH }],
+      },
+      {
         question: "How do I create a customer account?",
-        answer: "Go to the Sign In page and click the \"Customer\" tab. Fill in your name, email, and create a password. Customer accounts are always free — you'll never be charged. Once signed up, you can browse businesses, request quotes, view events, and explore local job postings.",
-        links: [{ label: "Create an account", to: "/auth?mode=register" }],
+        answer: "Click Register, then choose Customer. Fill in your name, email, and create a password. Customer accounts are always free — you'll never be charged. Once registered, you can browse businesses, request quotes, view events, and explore local job postings.",
+        links: [{ label: REGISTER_LABEL, to: REGISTER_PATH }],
       },
       {
         question: "How do I create a business account?",
-        answer: "Go to the Sign In page and click the \"Business\" tab. Enter your business name, your name, email, and password. After registration, you'll be guided to set up your business listing with details like your services, hours, photos, and contact info. Your first 90 days are free — no charges for the first three months.",
-        links: [{ label: "Register your business", to: "/auth?mode=register&type=business" }],
+        answer: "Click Register, then choose Business Owner. Enter your business name, your name, email, and password. After you register, you'll be guided to set up your business listing. Your first 90 days are free — no charges for the first three months.",
+        links: [{ label: "Register — business", to: REGISTER_BUSINESS_PATH }],
       },
       {
         question: "What's the difference between a customer account and a business account?",
@@ -38,8 +44,11 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I sign in?",
-        answer: "Click \"Sign In\" in the top navigation. You can sign in with your email and password, or use Google sign-in if you registered that way. If you're a business owner, you can use the Customer or Business Owner toggle under Sign In — both use the same email and password you registered with.",
-        links: [{ label: "Go to Sign In", to: "/auth" }],
+        answer: "Click Sign In in the top navigation (or in the menu on phones). Use the email and password you registered with. If you're a business owner, you can use the Customer or Business Owner toggle under Sign In — both use the same email and password. New here? Use Register instead — it is on the same page.",
+        links: [
+          { label: LOGIN_LABEL, to: LOGIN_PATH },
+          { label: REGISTER_LABEL, to: REGISTER_PATH },
+        ],
       },
     ],
   },
@@ -235,8 +244,20 @@ const FAQ_DATA: FAQCategory[] = [
 ];
 
 export default function FAQ() {
+  const location = useLocation();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string>("getting-started");
+
+  useEffect(() => {
+    const hash = location.hash.replace("#", "");
+    if (hash === "how-do-i-register") {
+      setActiveCategory("getting-started");
+      setOpenItems(new Set(["getting-started-0"]));
+      requestAnimationFrame(() => {
+        document.getElementById("how-do-i-register")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location.hash]);
 
   const toggleItem = (id: string) => {
     setOpenItems((prev) => {
@@ -323,6 +344,7 @@ export default function FAQ() {
                         : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                     data-testid={`faq-item-${itemId}`}
+                    id={item.question === "How do I register?" ? "how-do-i-register" : undefined}
                   >
                     <button
                       onClick={() => toggleItem(itemId)}
@@ -411,12 +433,12 @@ export default function FAQ() {
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
-              to="/auth?mode=register"
-              className="inline-flex items-center gap-2 bg-[#0a4a82] hover:bg-[#083a6a] text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg shadow-[#0a4a82]/25"
+              to={REGISTER_PATH}
+              className="inline-flex items-center gap-2 bg-[#d4a373] hover:bg-[#c49363] text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg min-h-12"
               data-testid="faq-cta-register"
             >
               <UserPlus className="h-4 w-4" />
-              Create a Free Account
+              {REGISTER_LABEL}
             </Link>
             <Link
               to="/directory"

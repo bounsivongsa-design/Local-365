@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Building2 } from "lucide-react";
+import { AuthSwitchLinks } from "@/components/RegisterCta";
+import { LOGIN_LABEL, REGISTER_LABEL } from "@/lib/auth-copy";
 
 export default function AuthPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = searchParams.get("mode") === "register" ? "register" : "login";
   const accountTypeParam = searchParams.get("type");
   const initialLoginType = searchParams.get("loginType") === "business" ? "business" : "customer";
@@ -22,10 +24,21 @@ export default function AuthPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [existingAccount, setExistingAccount] = useState(false);
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
   }, []);
+
+  useEffect(() => {
+    const nextMode = searchParams.get("mode") === "register" ? "register" : "login";
+    setMode(nextMode);
+    if (searchParams.get("type") === "business") {
+      setAccountType("business");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -39,9 +52,31 @@ export default function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+  const goToRegister = (type: "customer" | "business" = "customer") => {
+    setMode("register");
+    setAccountType(type);
+    setLoginError(null);
+    setRegisterError(null);
+    setExistingAccount(false);
+    const next = new URLSearchParams();
+    next.set("mode", "register");
+    if (type === "business") next.set("type", "business");
+    setSearchParams(next, { replace: true });
+  };
+
+  const goToLogin = (type: "customer" | "business" = loginType) => {
+    setMode("login");
+    setLoginType(type);
+    setLoginError(null);
+    setRegisterError(null);
+    setExistingAccount(false);
+    setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setLoginError(null);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -51,12 +86,15 @@ export default function AuthPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        toast({ title: "Sign in failed", description: data.message || "Invalid email or password", variant: "destructive" });
+        const message = data.message || "Invalid email or password";
+        setLoginError(message);
+        toast({ title: "Sign in failed", description: message, variant: "destructive" });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       navigate("/");
     } catch {
+      setLoginError("Something went wrong. Please try again.");
       toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -82,6 +120,8 @@ export default function AuthPage() {
     }
 
     setIsSubmitting(true);
+    setRegisterError(null);
+    setExistingAccount(false);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -99,7 +139,11 @@ export default function AuthPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        toast({ title: "Registration failed", description: data.message || "Could not create account", variant: "destructive" });
+        const message = data.message || "Could not create account";
+        const alreadyExists = /already exists/i.test(message);
+        setRegisterError(message);
+        setExistingAccount(alreadyExists);
+        toast({ title: "Registration failed", description: message, variant: "destructive" });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -142,26 +186,26 @@ export default function AuthPage() {
           <CardHeader className={`pb-6 ${mode === "login" && loginType === "business" ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2]" : "bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90"} text-white`}>
             <div className="flex bg-white/10 rounded-xl p-1 mb-3">
               <button
-                onClick={() => { setMode("login"); setLoginType("customer"); }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                onClick={() => goToLogin("customer")}
+                className={`flex-1 py-3 rounded-lg text-base font-semibold min-h-11 transition-all ${
                   mode === "login"
                     ? "bg-white text-[#0a4a82] shadow-sm"
                     : "text-white/80 hover:text-white"
                 }`}
                 data-testid="tab-login"
               >
-                Sign In
+                {LOGIN_LABEL}
               </button>
               <button
-                onClick={() => { setMode("register"); setAccountType("customer"); }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                onClick={() => goToRegister("customer")}
+                className={`flex-1 py-3 rounded-lg text-base font-semibold min-h-11 transition-all ${
                   mode === "register"
                     ? "bg-white text-[#0a4a82] shadow-sm"
                     : "text-white/80 hover:text-white"
                 }`}
                 data-testid="tab-register"
               >
-                Register
+                {REGISTER_LABEL}
               </button>
             </div>
 
@@ -228,6 +272,30 @@ export default function AuthPage() {
 
             {mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4">
+                <AuthSwitchLinks mode="login" onRegister={() => goToRegister(loginType)} onLogin={() => goToLogin()} />
+                {loginError && (
+                  <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 space-y-3" data-testid="alert-login-failed">
+                    <p className="text-sm font-semibold text-red-800">{loginError}</p>
+                    <p className="text-sm text-red-700">
+                      Don't have an account yet? Register with this email, or reset your password if you already registered.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => goToRegister(loginType)}
+                        className="flex-1 min-h-11 rounded-xl bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold"
+                        data-testid="button-failed-login-register"
+                      >
+                        {REGISTER_LABEL}
+                      </Button>
+                      <a href="/forgot-password" className="flex-1">
+                        <Button type="button" variant="outline" className="w-full min-h-11 rounded-xl" data-testid="button-failed-login-reset">
+                          Reset password
+                        </Button>
+                      </a>
+                    </div>
+                  </div>
+                )}
                 {loginType === "business" && (
                   <div className="flex items-center gap-3 p-3 bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-xl">
                     <Building2 className="h-5 w-5 text-[#0a4a82] flex-shrink-0" />
@@ -313,6 +381,32 @@ export default function AuthPage() {
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">
+                <AuthSwitchLinks mode="register" onRegister={() => goToRegister()} onLogin={() => goToLogin(accountType)} />
+                {registerError && (
+                  <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 space-y-3" data-testid="alert-register-failed">
+                    <p className="text-sm font-semibold text-red-800">{registerError}</p>
+                    {existingAccount && (
+                      <>
+                        <p className="text-sm text-red-700">Already have an account? Sign in with that email, or reset your password.</p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            type="button"
+                            onClick={() => goToLogin(accountType)}
+                            className="flex-1 min-h-11 rounded-xl bg-[#0a4a82] text-white hover:bg-[#083a6a] font-semibold"
+                            data-testid="button-existing-account-signin"
+                          >
+                            {LOGIN_LABEL}
+                          </Button>
+                          <a href="/forgot-password" className="flex-1">
+                            <Button type="button" variant="outline" className="w-full min-h-11 rounded-xl" data-testid="button-existing-account-reset">
+                              Reset password
+                            </Button>
+                          </a>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 {accountType === "business" && (
                   <div className="space-y-2">
                     <Label htmlFor="register-business">Business Name</Label>
@@ -466,23 +560,23 @@ export default function AuthPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-white/70 text-sm mt-6 drop-shadow">
+        <p className="text-center text-white/80 text-sm mt-6 drop-shadow">
           {mode === "login" ? (
             <>
-              Don't have an account?{" "}
-              <button onClick={() => { setMode("register"); setAccountType("customer"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-register">
-                Customer account
+              New here?{" "}
+              <button type="button" onClick={() => goToRegister("customer")} className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline" data-testid="link-switch-to-register">
+                {REGISTER_LABEL} — customer
               </button>
-              {" | "}
-              <button onClick={() => { setMode("register"); setAccountType("business"); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-business">
-                Business account
+              {" · "}
+              <button type="button" onClick={() => goToRegister("business")} className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline" data-testid="link-switch-to-business">
+                {REGISTER_LABEL} — business
               </button>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <button onClick={() => { setMode("login"); setLoginType(accountType); }} className="text-[#d4a373] hover:text-[#c49363] font-semibold" data-testid="link-switch-to-login">
-                Sign in
+              <button type="button" onClick={() => goToLogin(accountType)} className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline" data-testid="link-switch-to-login">
+                {LOGIN_LABEL}
               </button>
             </>
           )}

@@ -72,19 +72,32 @@ export default function ForgotPassword() {
                 </p>
                 <div className="pt-2 space-y-2">
                   <Button
+                    onClick={() => { setSent(false); }}
+                    className="w-full min-h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold"
+                    data-testid="button-resend-reset-email"
+                  >
+                    Resend email
+                  </Button>
+                  <Button
                     onClick={() => { setSent(false); setEmail(""); }}
                     variant="outline"
-                    className="w-full rounded-xl border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5"
+                    className="w-full min-h-11 rounded-xl border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5"
                     data-testid="button-try-different-email"
                   >
                     Try a different email
                   </Button>
                   <Link to="/auth" className="block">
-                    <Button variant="ghost" className="w-full rounded-xl text-[#0a4a82]" data-testid="link-back-to-signin">
+                    <Button variant="ghost" className="w-full rounded-xl text-[#0a4a82] min-h-11" data-testid="link-back-to-signin">
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Back to Sign In
                     </Button>
                   </Link>
+                  <p className="text-sm text-slate-600 pt-2">
+                    Don't have an account?{" "}
+                    <Link to="/auth?mode=register" className="font-semibold text-[#0a4a82] hover:underline" data-testid="link-forgot-register">
+                      Register
+                    </Link>
+                  </p>
                 </div>
               </div>
             ) : (
@@ -121,11 +134,17 @@ export default function ForgotPassword() {
                     "Send Reset Link"
                   )}
                 </Button>
-                <div className="text-center pt-1">
-                  <Link to="/auth" className="text-sm text-[#0a4a82] hover:text-[#083a6a] hover:underline font-medium" data-testid="link-back-to-signin">
+                <div className="text-center pt-1 space-y-2">
+                  <Link to="/auth" className="text-sm text-[#0a4a82] hover:text-[#083a6a] hover:underline font-medium block" data-testid="link-back-to-signin">
                     <ArrowLeft className="h-3.5 w-3.5 inline mr-1" />
                     Back to Sign In
                   </Link>
+                  <p className="text-sm text-slate-600">
+                    New here?{" "}
+                    <Link to="/auth?mode=register" className="font-semibold text-[#0a4a82] hover:underline" data-testid="link-forgot-register-form">
+                      Register
+                    </Link>
+                  </p>
                 </div>
               </form>
             )}

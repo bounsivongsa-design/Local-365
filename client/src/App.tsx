@@ -8,6 +8,7 @@ import { FoundingUrgencyBanner } from "@/components/FoundingUrgencyBanner";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { LocationProvider, useLocation } from "@/context/LocationContext";
 import { footerTagline } from "@/lib/regionCopy";
+import { REGISTER_LABEL, REGISTER_PATH, LOGIN_LABEL, LOGIN_PATH, FAQ_REGISTER_PATH } from "@/lib/auth-copy";
 
 import Home from "@/pages/Home";
 import Directory from "@/pages/Directory";
@@ -129,8 +130,10 @@ function AppRouter() {
           <div>
             <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Company</h4>
             <ul className="space-y-2 text-sm">
+              <li><Link to={REGISTER_PATH} className="hover:text-[#d4a373] transition-colors font-semibold text-white" data-testid="link-footer-register">{REGISTER_LABEL}</Link></li>
+              <li><Link to={LOGIN_PATH} className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-signin">{LOGIN_LABEL}</Link></li>
+              <li><Link to={FAQ_REGISTER_PATH} className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-how-to-register">How do I register?</Link></li>
               <li><Link to="/dashboard" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-dashboard">My Dashboard</Link></li>
-              <li><Link to="/auth" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-signin">Sign In</Link></li>
               <li><Link to="/legal?section=terms" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-terms">Terms of Service</Link></li>
               <li><Link to="/legal?section=privacy" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
               <li><Link to="/legal?section=disclaimers" className="hover:text-[#d4a373] transition-colors" data-testid="link-footer-disclaimers">Disclaimers</Link></li>
