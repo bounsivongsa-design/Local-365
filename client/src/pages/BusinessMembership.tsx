@@ -293,7 +293,7 @@ export default function BusinessMembership() {
 
   const openCheckout = (tier: MembershipTier) => {
     if (!isAuthenticated) {
-      window.location.href = "/auth?mode=register&type=business";
+      window.location.href = "/register/business";
       return;
     }
     if ((user as any)?.accountType === "customer") {

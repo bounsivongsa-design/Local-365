@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { type EventWithTier } from "@shared/schema";
 import { ExampleEventBanner } from "@/components/ExampleBanner";
+import { GuestRegisterBanner } from "@/components/RegisterCta";
 
 function getAdSizeLevel(adSize: string | null | undefined): "small" | "medium" | "large" {
   if (adSize === "large") return "large";
@@ -362,6 +363,7 @@ export function EventCard({ event }: EventCardProps) {
               </div>
             )}
 
+            <GuestRegisterBanner context="event" />
             <div className="pt-2">
               <Button
                 className="w-full rounded-xl bg-gradient-to-r from-[#0a4a82] to-[#083a6a] hover:from-[#083a6a] hover:to-[#062d54] text-white font-semibold h-11 shadow-md"

@@ -90,13 +90,18 @@ export default function CreateBusiness() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Sign In Required</h2>
+            <h2 className="text-xl font-bold mb-2">Register to list your business</h2>
             <p className="text-muted-foreground mb-4">
-              Please sign in or create a business account to list your business.
+              Create a business account, or sign in if you already have one. Get listed opens the business registration form directly.
             </p>
-            <Link to="/auth?mode=register&type=business">
-              <Button data-testid="button-sign-in-to-create">Sign In / Register</Button>
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link to="/register/business">
+                <Button className="w-full min-h-11 bg-[#d4a373] hover:bg-[#c49363] text-white font-semibold" data-testid="button-sign-in-to-create">Register</Button>
+              </Link>
+              <Link to="/auth">
+                <Button variant="outline" className="w-full min-h-11" data-testid="button-signin-to-create">Sign In</Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

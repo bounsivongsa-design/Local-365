@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LocationPicker } from "./LocationPicker";
+import { REGISTER_LABEL, REGISTER_PATH, LOGIN_LABEL, LOGIN_PATH } from "@/lib/auth-copy";
 import logoImage from "@assets/logo_no_bg.png";
 
 export function Navigation() {
@@ -106,7 +107,7 @@ export function Navigation() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <LocationPicker />
           
           {isAuthenticated ? (
@@ -145,15 +146,22 @@ export function Navigation() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="hidden md:flex gap-3">
-              <Link to="/auth">
-                <Button variant="outline" className="rounded-full border-white/30 text-white hover:bg-white/10 hover:border-white/50">
-                  Sign In
+            <div className="flex items-center gap-2">
+              <Link to={LOGIN_PATH} className="hidden md:block">
+                <Button
+                  variant="outline"
+                  className="rounded-full border-white/30 text-white hover:bg-white/10 hover:border-white/50 min-h-11 px-5"
+                  data-testid="button-header-signin"
+                >
+                  {LOGIN_LABEL}
                 </Button>
               </Link>
-              <Link to="/auth?mode=register">
-                <Button className="rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] shadow-lg shadow-black/20">
-                  Join Community
+              <Link to={REGISTER_PATH}>
+                <Button
+                  className="rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] shadow-lg shadow-black/20 min-h-11 px-5 font-semibold"
+                  data-testid="button-header-register"
+                >
+                  {REGISTER_LABEL}
                 </Button>
               </Link>
             </div>
@@ -188,8 +196,15 @@ export function Navigation() {
                 ))}
                 {!isAuthenticated && (
                   <div className="flex flex-col gap-3 mt-4 pt-4 border-t">
-                    <Link to="/auth" onClick={() => setIsOpen(false)} className="w-full">
-                      <Button className="w-full rounded-full" size="lg">Sign In</Button>
+                    <Link to={REGISTER_PATH} onClick={() => setIsOpen(false)} className="w-full">
+                      <Button className="w-full rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] min-h-12 font-semibold" size="lg" data-testid="button-mobile-register">
+                        {REGISTER_LABEL}
+                      </Button>
+                    </Link>
+                    <Link to={LOGIN_PATH} onClick={() => setIsOpen(false)} className="w-full">
+                      <Button variant="outline" className="w-full rounded-full min-h-12" size="lg" data-testid="button-mobile-signin">
+                        {LOGIN_LABEL}
+                      </Button>
                     </Link>
                   </div>
                 )}

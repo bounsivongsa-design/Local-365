@@ -181,6 +181,11 @@ export function registerStripeRoutes(app: Express) {
     app.post("/api/stripe/ad-checkout", (req, res) => {
       res.status(503).json({ message: "Payment system not configured" });
     });
+    // Always expose the webhook so production fail-closed tests (and prod
+    // itself) never 404. Unsigned / unconfigured webhooks must be 400.
+    app.post("/api/stripe/webhook", (_req, res) => {
+      return res.status(400).json({ message: "Webhook signature verification failed" });
+    });
     return;
   }
 

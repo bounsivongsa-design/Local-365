@@ -18,6 +18,7 @@ const HIDDEN_PATH_PREFIXES = [
   "/account-setup",
   "/edit-listing",
   "/auth",
+  "/register",
   "/forgot-password",
   "/reset-password",
 ];

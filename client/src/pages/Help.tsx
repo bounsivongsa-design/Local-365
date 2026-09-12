@@ -21,10 +21,12 @@ import {
   Crown,
   Gift,
   CheckCircle2,
+  UserPlus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { REGISTER_LABEL, REGISTER_PATH, REGISTER_BUSINESS_PATH } from "@/lib/auth-copy";
 
 interface Step {
   text: string;
@@ -79,19 +81,19 @@ const TOP_TASKS: TopTask[] = [
   },
   {
     id: "create-account",
-    title: "Create a free customer account",
+    title: "Register for a free customer account",
     audience: "customer",
     icon: Users,
     summary:
       "Customer accounts are always free. You can request quotes, save favorites, and leave reviews.",
     steps: [
-      { text: "Click 'Sign In' in the top right." },
-      { text: "Pick the 'Customer' tab." },
-      { text: "Enter your name, email, and a password (or use Google)." },
-      { text: "You're in — start browsing." },
+      { text: "Click Register at the top of any page (visible on phones — not only in the menu)." },
+      { text: "Choose the customer door: looking for a local pro, sign up free forever." },
+      { text: "Enter your name, email, and a password." },
+      { text: "You're in — start browsing. Sign in later with the same email." },
     ],
-    ctaLabel: "Create a customer account",
-    ctaTo: "/auth?mode=register",
+    ctaLabel: "Register",
+    ctaTo: REGISTER_PATH,
     keywords: "signup register customer account free",
   },
   {
@@ -102,13 +104,13 @@ const TOP_TASKS: TopTask[] = [
     summary:
       "Get your business in front of locals. Your first 90 days of Gold features are free — no card required.",
     steps: [
-      { text: "Click 'For Business' or 'Sign In'." },
-      { text: "Pick the 'Business' tab and create an account." },
+      { text: "Click Register, then choose the business door — or use a Get listed link to skip the chooser." },
+      { text: "Enter your business name, your name, email, and a password." },
       { text: "Fill out your listing — name, services, photos, hours." },
       { text: "Done. Your free Gold trial starts the moment you publish." },
     ],
-    ctaLabel: "Register your business",
-    ctaTo: "/auth?mode=register&type=business",
+    ctaLabel: "Register",
+    ctaTo: REGISTER_BUSINESS_PATH,
     keywords: "list business signup register membership",
   },
   {
@@ -258,6 +260,13 @@ interface GlossaryItem {
 
 const GLOSSARY: GlossaryItem[] = [
   {
+    term: "Register",
+    icon: Users,
+    definition:
+      "Create a Locallist account. Click Register at the top of any page to open the two-door chooser. Customer accounts are free. Business owners pick the business door (or use a Get listed link to skip the chooser). There is no separate event or outside form.",
+    link: { label: "Register", to: REGISTER_PATH },
+  },
+  {
     term: "Bronze, Silver, Gold tiers",
     icon: Award,
     definition:
@@ -334,6 +343,14 @@ const GLOSSARY: GlossaryItem[] = [
 
 const PATHS = [
   {
+    title: "I need to register",
+    description: "Create a free customer account, or register your business. Two doors — pick one.",
+    icon: Users,
+    href: REGISTER_PATH,
+    cta: "Register",
+    accent: "from-[#d4a373] to-[#c49363]",
+  },
+  {
     title: "I'm looking for a business",
     description: "Find pros, request quotes, and read reviews.",
     icon: Users,
@@ -409,6 +426,17 @@ export default function Help() {
               className="pl-12 h-14 text-base rounded-full bg-white text-foreground border-0 shadow-xl"
               data-testid="input-help-search"
             />
+          </div>
+          <div className="mt-6">
+            <Button asChild size="lg" className="rounded-full bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold min-h-12 px-8">
+              <Link to={REGISTER_PATH} data-testid="button-help-hero-register">
+                <UserPlus className="h-5 w-5 mr-2" />
+                {REGISTER_LABEL}
+              </Link>
+            </Button>
+            <p className="text-white/80 text-sm mt-3">
+              New here? Register opens two doors — customer or business. No outside form.
+            </p>
           </div>
         </div>
       </section>

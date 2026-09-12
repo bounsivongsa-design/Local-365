@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MessageCircle, MapPin, ArrowRight, Compass, Sparkles, Calendar, Search, UtensilsCrossed, Home as HomeIcon, Car, HeartPulse, Scissors, Building2, Scale, Landmark, GraduationCap, Dumbbell, ShoppingBag, PawPrint, PartyPopper, Sparkle, TreePine, Monitor, Truck, Bug, Camera, Baby, Shield, Plus, Send, Hammer, DoorOpen, Wrench, Fence, Waves, Droplets, Anchor, Megaphone, ChevronLeft, ChevronRight, Music, MapPinned, Film } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { RegisterCta } from "@/components/RegisterCta";
 import { useLocation } from "@/context/LocationContext";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -163,6 +164,14 @@ export default function Home() {
                 Enter your town or zip to see verified businesses, events, and reviews near you.
               </p>
               <LocationSearchInput placeholder="Enter your town or zip…" autoFocus />
+              {!isAuthenticated && (
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <RegisterCta size="lg" className="min-h-12 px-8 text-base" testId="button-hero-register" />
+                  <p className="text-white/85 text-sm max-w-md">
+                    Free to register. Browse businesses, request quotes, and follow local events.
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -211,6 +220,9 @@ export default function Home() {
                 </details>
               </div>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+                {!isAuthenticated && (
+                  <RegisterCta size="lg" className="min-h-12 px-8 text-base" testId="button-hero-register" />
+                )}
                 <Link to="/events">
                   <Button
                     size="lg"
@@ -228,6 +240,11 @@ export default function Home() {
                   </Button>
                 </Link>
               </div>
+              {!isAuthenticated && (
+                <p className="text-white/85 text-sm mt-4">
+                  Register is free. You do not need an account just to browse — create one when you want quotes or reviews.
+                </p>
+              )}
             </>
           )}
         </div>
