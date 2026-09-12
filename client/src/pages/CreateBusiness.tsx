@@ -92,10 +92,10 @@ export default function CreateBusiness() {
             <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Register to list your business</h2>
             <p className="text-muted-foreground mb-4">
-              Create a business account, or sign in if you already have one. There is one registration form on this site.
+              Create a business account, or sign in if you already have one. Get listed opens the business registration form directly.
             </p>
             <div className="flex flex-col gap-2">
-              <Link to="/auth?mode=register&type=business">
+              <Link to="/register/business">
                 <Button className="w-full min-h-11 bg-[#d4a373] hover:bg-[#c49363] text-white font-semibold" data-testid="button-sign-in-to-create">Register</Button>
               </Link>
               <Link to="/auth">

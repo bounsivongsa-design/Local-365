@@ -28,6 +28,8 @@ import AdminReferrals from "@/pages/AdminReferrals";
 import AILab from "@/pages/AILab";
 import BusinessMembership from "@/pages/BusinessMembership";
 import AuthPage from "@/pages/AuthPage";
+import RegisterChooser from "@/pages/RegisterChooser";
+import RegisterAccountPage from "@/pages/RegisterAccountPage";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Legal from "@/pages/Legal";
@@ -100,6 +102,8 @@ function AppRouter() {
           <Route path="/sms" element={<SmsPage />} />
           <Route path="/deals" element={<DealsPage />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/register" element={<RegisterChooser />} />
+          <Route path="/register/:accountType" element={<RegisterAccountPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/legal" element={<Legal />} />

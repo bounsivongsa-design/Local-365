@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { REGISTER_LABEL, REGISTER_PATH } from "@/lib/auth-copy";
+import { REGISTER_LABEL, REGISTER_PATH, REGISTER_BUSINESS_PATH } from "@/lib/auth-copy";
 
 interface Step {
   text: string;
@@ -88,12 +88,12 @@ const TOP_TASKS: TopTask[] = [
       "Customer accounts are always free. You can request quotes, save favorites, and leave reviews.",
     steps: [
       { text: "Click Register at the top of any page (visible on phones — not only in the menu)." },
-      { text: "Choose Customer." },
+      { text: "Choose the customer door: looking for a local pro, sign up free forever." },
       { text: "Enter your name, email, and a password." },
       { text: "You're in — start browsing. Sign in later with the same email." },
     ],
     ctaLabel: "Register",
-    ctaTo: "/auth?mode=register",
+    ctaTo: REGISTER_PATH,
     keywords: "signup register customer account free",
   },
   {
@@ -104,13 +104,13 @@ const TOP_TASKS: TopTask[] = [
     summary:
       "Get your business in front of locals. Your first 90 days of Gold features are free — no card required.",
     steps: [
-      { text: "Click Register at the top of any page, then choose Business Owner." },
+      { text: "Click Register, then choose the business door — or use a Get listed link to skip the chooser." },
       { text: "Enter your business name, your name, email, and a password." },
       { text: "Fill out your listing — name, services, photos, hours." },
       { text: "Done. Your free Gold trial starts the moment you publish." },
     ],
     ctaLabel: "Register",
-    ctaTo: "/auth?mode=register&type=business",
+    ctaTo: REGISTER_BUSINESS_PATH,
     keywords: "list business signup register membership",
   },
   {
@@ -263,8 +263,8 @@ const GLOSSARY: GlossaryItem[] = [
     term: "Register",
     icon: Users,
     definition:
-      "Create a Locallist account. Click Register at the top of any page. Customer accounts are free. Business owners use the same Register form and choose Business Owner. There is one registration path on this site — not a separate event or outside form.",
-    link: { label: "Register", to: "/auth?mode=register" },
+      "Create a Locallist account. Click Register at the top of any page to open the two-door chooser. Customer accounts are free. Business owners pick the business door (or use a Get listed link to skip the chooser). There is no separate event or outside form.",
+    link: { label: "Register", to: REGISTER_PATH },
   },
   {
     term: "Bronze, Silver, Gold tiers",
@@ -344,9 +344,9 @@ const GLOSSARY: GlossaryItem[] = [
 const PATHS = [
   {
     title: "I need to register",
-    description: "Create a free customer account, or register your business. One form on this site.",
+    description: "Create a free customer account, or register your business. Two doors — pick one.",
     icon: Users,
-    href: "/auth?mode=register",
+    href: REGISTER_PATH,
     cta: "Register",
     accent: "from-[#d4a373] to-[#c49363]",
   },
@@ -435,7 +435,7 @@ export default function Help() {
               </Link>
             </Button>
             <p className="text-white/80 text-sm mt-3">
-              New here? Register is the one signup path — no outside form.
+              New here? Register opens two doors — customer or business. No outside form.
             </p>
           </div>
         </div>

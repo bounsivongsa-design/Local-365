@@ -25,17 +25,17 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I register?",
-        answer: "Click Register at the top of any page (it stays visible on phones — you do not need to open the menu). That opens the one registration form on this site. Choose Customer (always free) or Business Owner, then enter your name, email, and password. There is no outside signup form. After you register, you can sign in with the same email and password.",
+        answer: "Click Register at the top of any page (it stays visible on phones — you do not need to open the menu). That opens a two-door chooser: Customer (always free) or Business Owner (free 90-day trial to get listed). Pick a door, then enter your name, email, and password. There is no outside signup form. After you register, you can sign in with the same email and password.",
         links: [{ label: REGISTER_LABEL, to: REGISTER_PATH }],
       },
       {
         question: "How do I create a customer account?",
-        answer: "Click Register, then choose Customer. Fill in your name, email, and create a password. Customer accounts are always free — you'll never be charged. Once registered, you can browse businesses, request quotes, view events, and explore local job postings.",
+        answer: "Click Register, then choose the customer door. Fill in your name, email, and create a password. Customer accounts are always free — you'll never be charged. Once registered, you can browse businesses, request quotes, view events, and explore local job postings.",
         links: [{ label: REGISTER_LABEL, to: REGISTER_PATH }],
       },
       {
         question: "How do I create a business account?",
-        answer: "Click Register, then choose Business Owner. Enter your business name, your name, email, and password. After you register, you'll be guided to set up your business listing. Your first 90 days are free — no charges for the first three months.",
+        answer: "Click Register, then choose the business door — or use a Get listed / For Business link, which opens the business form directly. Enter your business name, your name, email, and password. After you register, you'll be guided to set up your business listing. Your first 90 days are free — no charges for the first three months.",
         links: [{ label: "Register — business", to: REGISTER_BUSINESS_PATH }],
       },
       {
@@ -44,7 +44,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I sign in?",
-        answer: "Click Sign In in the top navigation (or in the menu on phones). Use the email and password you registered with. If you're a business owner, you can use the Customer or Business Owner toggle under Sign In — both use the same email and password. New here? Use Register instead — it is on the same page.",
+        answer: "Click Sign In in the top navigation (or in the menu on phones). Use the email and password you registered with. If you're a business owner, you can use the Customer or Business Owner toggle under Sign In — both use the same email and password. New here? Use Register instead — it opens the two-door chooser.",
         links: [
           { label: LOGIN_LABEL, to: LOGIN_PATH },
           { label: REGISTER_LABEL, to: REGISTER_PATH },

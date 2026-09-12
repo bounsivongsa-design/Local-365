@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -9,34 +9,26 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Building2 } from "lucide-react";
 import { AuthSwitchLinks } from "@/components/RegisterCta";
-import { LOGIN_LABEL, REGISTER_LABEL } from "@/lib/auth-copy";
+import {
+  LOGIN_LABEL,
+  REGISTER_BUSINESS_PATH,
+  REGISTER_CUSTOMER_PATH,
+  REGISTER_LABEL,
+  REGISTER_PATH,
+} from "@/lib/auth-copy";
 
 export default function AuthPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialMode = searchParams.get("mode") === "register" ? "register" : "login";
-  const accountTypeParam = searchParams.get("type");
+  const [searchParams] = useSearchParams();
   const initialLoginType = searchParams.get("loginType") === "business" ? "business" : "customer";
-  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [loginType, setLoginType] = useState<"customer" | "business">(initialLoginType);
-  const [accountType, setAccountType] = useState<"customer" | "business">(
-    accountTypeParam === "business" ? "business" : "customer"
-  );
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [registerError, setRegisterError] = useState<string | null>(null);
-  const [existingAccount, setExistingAccount] = useState(false);
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
   }, []);
-
-  useEffect(() => {
-    const nextMode = searchParams.get("mode") === "register" ? "register" : "login";
-    setMode(nextMode);
-    setAccountType(searchParams.get("type") === "business" ? "business" : "customer");
-  }, [searchParams]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -45,31 +37,15 @@ export default function AuthPage() {
   }, [isAuthenticated, authLoading, navigate]);
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "", firstName: "", lastName: "", businessName: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  const goToRegister = (type: "customer" | "business" = "customer") => {
-    setMode("register");
-    setAccountType(type);
-    setLoginError(null);
-    setRegisterError(null);
-    setExistingAccount(false);
-    const next = new URLSearchParams();
-    next.set("mode", "register");
-    if (type === "business") next.set("type", "business");
-    setSearchParams(next, { replace: true });
-  };
-
-  const goToLogin = (type: "customer" | "business" = loginType) => {
-    setMode("login");
-    setLoginType(type);
-    setLoginError(null);
-    setRegisterError(null);
-    setExistingAccount(false);
-    setSearchParams(new URLSearchParams(), { replace: true });
-  };
+  if (searchParams.get("mode") === "register") {
+    const type = searchParams.get("type");
+    if (type === "business") return <Navigate to={REGISTER_BUSINESS_PATH} replace />;
+    if (type === "customer") return <Navigate to={REGISTER_CUSTOMER_PATH} replace />;
+    return <Navigate to={REGISTER_PATH} replace />;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,485 +75,203 @@ export default function AuthPage() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!acceptedTerms) {
-      toast({ title: "Terms Required", description: "You must agree to the Terms of Service, Privacy Policy, and Disclaimers to create an account.", variant: "destructive" });
-      return;
-    }
-
-    if (registerData.password !== registerData.confirmPassword) {
-      toast({ title: "Passwords don't match", description: "Please make sure your passwords match.", variant: "destructive" });
-      return;
-    }
-
-    if (registerData.password.length < 6) {
-      toast({ title: "Password too short", description: "Password must be at least 6 characters.", variant: "destructive" });
-      return;
-    }
-
-    setIsSubmitting(true);
-    setRegisterError(null);
-    setExistingAccount(false);
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: registerData.email,
-          password: registerData.password,
-          firstName: registerData.firstName,
-          lastName: registerData.lastName,
-          accountType: accountType,
-          businessName: accountType === "business" ? registerData.businessName : undefined,
-          acceptedTerms: true,
-        }),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        const message = data.message || "Could not create account";
-        const alreadyExists = /already exists/i.test(message);
-        setRegisterError(message);
-        setExistingAccount(alreadyExists);
-        toast({ title: "Registration failed", description: message, variant: "destructive" });
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({ title: "Welcome!", description: accountType === "business" ? "Your business account has been created. Set up your membership to get listed!" : "Your account has been created." });
-      if (accountType === "business") {
-        navigate("/membership");
-      } else {
-        navigate("/");
-      }
-    } catch {
-      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const inputStyle = { color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e' };
+  const inputStyle = { color: "#1a1a2e", WebkitTextFillColor: "#1a1a2e" };
   const inputClass = "h-12 rounded-xl bg-white dark:bg-gray-900";
+  const registerFromLogin = loginType === "business" ? REGISTER_BUSINESS_PATH : REGISTER_PATH;
 
   return (
     <div className="min-h-[calc(100vh-144px)] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="text-center mb-2">
-            <span className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">Local List <span className="text-[#d4a373]">365</span></span>
+            <span className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">
+              Local List <span className="text-[#d4a373]">365</span>
+            </span>
           </div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg" data-testid="heading-auth">
-            {mode === "login"
-              ? loginType === "business" ? "Business Sign In" : "Welcome Back"
-              : accountType === "business" ? "Business Account" : "Customer Account"}
+            {loginType === "business" ? "Business Sign In" : "Welcome Back"}
           </h1>
           <p className="text-white/80 mt-2 drop-shadow">
-            {mode === "login"
-              ? loginType === "business" ? "Access your business dashboard & manage your listing" : "Sign in to your Local List 365 account"
-              : accountType === "business" ? "Create a business account — first 90 days FREE" : "Always free — browse, discover, and connect locally"}
+            {loginType === "business"
+              ? "Access your business dashboard & manage your listing"
+              : "Sign in to your Local List 365 account"}
           </p>
         </div>
 
         <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden">
-          <CardHeader className={`pb-6 ${mode === "login" && loginType === "business" ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2]" : "bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90"} text-white`}>
+          <CardHeader className={`pb-6 ${loginType === "business" ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2]" : "bg-gradient-to-r from-[#0a4a82] to-[#0a4a82]/90"} text-white`}>
             <div className="flex bg-white/10 rounded-xl p-1 mb-3">
-              <button
-                onClick={() => goToLogin("customer")}
-                className={`flex-1 py-3 rounded-lg text-base font-semibold min-h-11 transition-all ${
-                  mode === "login"
-                    ? "bg-white text-[#0a4a82] shadow-sm"
-                    : "text-white/80 hover:text-white"
-                }`}
+              <span
+                className="flex-1 py-3 rounded-lg text-base font-semibold min-h-11 bg-white text-[#0a4a82] shadow-sm text-center"
                 data-testid="tab-login"
               >
                 {LOGIN_LABEL}
-              </button>
-              <button
-                onClick={() => goToRegister("customer")}
-                className={`flex-1 py-3 rounded-lg text-base font-semibold min-h-11 transition-all ${
-                  mode === "register"
-                    ? "bg-white text-[#0a4a82] shadow-sm"
-                    : "text-white/80 hover:text-white"
-                }`}
+              </span>
+              <Link
+                to={REGISTER_PATH}
+                className="flex-1 py-3 rounded-lg text-base font-semibold min-h-11 transition-all text-white/80 hover:text-white text-center"
                 data-testid="tab-register"
               >
                 {REGISTER_LABEL}
-              </button>
+              </Link>
             </div>
 
-            {mode === "login" && (
-              <div className="flex bg-white/10 rounded-lg p-1">
-                <button
-                  onClick={() => setLoginType("customer")}
-                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    loginType === "customer"
-                      ? "bg-white/20 text-white shadow-sm"
-                      : "text-white/60 hover:text-white/80"
-                  }`}
-                  data-testid="tab-login-customer"
-                >
-                  <User className="h-3.5 w-3.5" />
-                  Customer
-                </button>
-                <button
-                  onClick={() => setLoginType("business")}
-                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    loginType === "business"
-                      ? "bg-white/20 text-white shadow-sm"
-                      : "text-white/60 hover:text-white/80"
-                  }`}
-                  data-testid="tab-login-business"
-                >
-                  <Building2 className="h-3.5 w-3.5" />
-                  Business Owner
-                </button>
-              </div>
-            )}
-
-            {mode === "register" && (
-              <div className="flex bg-white/10 rounded-lg p-1">
-                <button
-                  onClick={() => setAccountType("customer")}
-                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    accountType === "customer"
-                      ? "bg-white/20 text-white shadow-sm"
-                      : "text-white/60 hover:text-white/80"
-                  }`}
-                  data-testid="tab-register-customer"
-                >
-                  <User className="h-3.5 w-3.5" />
-                  Customer
-                </button>
-                <button
-                  onClick={() => setAccountType("business")}
-                  className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    accountType === "business"
-                      ? "bg-white/20 text-white shadow-sm"
-                      : "text-white/60 hover:text-white/80"
-                  }`}
-                  data-testid="tab-register-business"
-                >
-                  <Building2 className="h-3.5 w-3.5" />
-                  Business Owner
-                </button>
-              </div>
-            )}
+            <div className="flex bg-white/10 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setLoginType("customer")}
+                className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                  loginType === "customer"
+                    ? "bg-white/20 text-white shadow-sm"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+                data-testid="tab-login-customer"
+              >
+                <User className="h-3.5 w-3.5" />
+                Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginType("business")}
+                className={`flex-1 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                  loginType === "business"
+                    ? "bg-white/20 text-white shadow-sm"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+                data-testid="tab-login-business"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                Business Owner
+              </button>
+            </div>
           </CardHeader>
 
           <CardContent className="p-6 space-y-5">
-
-            {mode === "login" ? (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <AuthSwitchLinks mode="login" onRegister={() => goToRegister(loginType)} onLogin={() => goToLogin()} />
-                {loginError && (
-                  <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 space-y-3" data-testid="alert-login-failed">
-                    <p className="text-sm font-semibold text-red-800">{loginError}</p>
-                    <p className="text-sm text-red-700">
-                      Don't have an account yet? Register with this email, or reset your password if you already registered.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button
-                        type="button"
-                        onClick={() => goToRegister(loginType)}
-                        className="flex-1 min-h-11 rounded-xl bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold"
-                        data-testid="button-failed-login-register"
-                      >
+            <form onSubmit={handleLogin} className="space-y-4">
+              <AuthSwitchLinks mode="login" />
+              {loginError && (
+                <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 space-y-3" data-testid="alert-login-failed">
+                  <p className="text-sm font-semibold text-red-800">{loginError}</p>
+                  <p className="text-sm text-red-700">
+                    Don't have an account yet? Register with this email, or reset your password if you already registered.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button asChild className="flex-1 min-h-11 rounded-xl bg-[#d4a373] text-white hover:bg-[#c49363] font-semibold">
+                      <Link to={registerFromLogin} data-testid="button-failed-login-register">
                         {REGISTER_LABEL}
+                      </Link>
+                    </Button>
+                    <a href="/forgot-password" className="flex-1">
+                      <Button type="button" variant="outline" className="w-full min-h-11 rounded-xl" data-testid="button-failed-login-reset">
+                        Reset password
                       </Button>
-                      <a href="/forgot-password" className="flex-1">
-                        <Button type="button" variant="outline" className="w-full min-h-11 rounded-xl" data-testid="button-failed-login-reset">
-                          Reset password
-                        </Button>
-                      </a>
-                    </div>
-                  </div>
-                )}
-                {loginType === "business" && (
-                  <div className="flex items-center gap-3 p-3 bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-xl">
-                    <Building2 className="h-5 w-5 text-[#0a4a82] flex-shrink-0" />
-                    <p className="text-sm text-[#0a4a82]">
-                      Sign in with the email used to register your business account
-                    </p>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">{loginType === "business" ? "Business Email" : "Email"}</Label>
-                  <div className="relative">
-                    {loginType === "business" ? (
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    )}
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder={loginType === "business" ? "owner@yourbusiness.com" : "you@example.com"}
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      className={`pl-10 ${inputClass}`}
-                      style={inputStyle}
-                      required
-                      data-testid="input-login-email"
-                    />
+                    </a>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      className={`pl-10 pr-10 ${inputClass}`}
-                      style={inputStyle}
-                      required
-                      data-testid="input-login-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      data-testid="button-toggle-password"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
+              )}
+              {loginType === "business" && (
+                <div className="flex items-center gap-3 p-3 bg-[#0a4a82]/5 border border-[#0a4a82]/15 rounded-xl">
+                  <Building2 className="h-5 w-5 text-[#0a4a82] flex-shrink-0" />
+                  <p className="text-sm text-[#0a4a82]">
+                    Sign in with the email used to register your business account
+                  </p>
                 </div>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`w-full h-12 rounded-xl font-semibold text-base ${
-                    loginType === "business"
-                      ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2] hover:from-[#083a6a] hover:to-[#155a9a] text-white"
-                      : "bg-[#0a4a82] hover:bg-[#083a6a] text-white"
-                  }`}
-                  data-testid="button-login-submit"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="login-email">{loginType === "business" ? "Business Email" : "Email"}</Label>
+                <div className="relative">
+                  {loginType === "business" ? (
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <>
-                      {loginType === "business" ? "Sign In to Dashboard" : "Sign In"}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-                <div className="text-center">
-                  <a
-                    href="/forgot-password"
-                    className="text-sm text-[#0a4a82] hover:text-[#083a6a] hover:underline font-medium"
-                    data-testid="link-forgot-password"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-4">
-                <AuthSwitchLinks mode="register" onRegister={() => goToRegister()} onLogin={() => goToLogin(accountType)} />
-                {registerError && (
-                  <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 space-y-3" data-testid="alert-register-failed">
-                    <p className="text-sm font-semibold text-red-800">{registerError}</p>
-                    {existingAccount && (
-                      <>
-                        <p className="text-sm text-red-700">Already have an account? Sign in with that email, or reset your password.</p>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button
-                            type="button"
-                            onClick={() => goToLogin(accountType)}
-                            className="flex-1 min-h-11 rounded-xl bg-[#0a4a82] text-white hover:bg-[#083a6a] font-semibold"
-                            data-testid="button-existing-account-signin"
-                          >
-                            {LOGIN_LABEL}
-                          </Button>
-                          <a href="/forgot-password" className="flex-1">
-                            <Button type="button" variant="outline" className="w-full min-h-11 rounded-xl" data-testid="button-existing-account-reset">
-                              Reset password
-                            </Button>
-                          </a>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                {accountType === "business" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="register-business">Business Name</Label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-business"
-                        placeholder="Your Business Name"
-                        value={registerData.businessName}
-                        onChange={(e) => setRegisterData({ ...registerData, businessName: e.target.value })}
-                        className={`pl-10 ${inputClass}`}
-                        style={inputStyle}
-                        required
-                        data-testid="input-register-business"
-                      />
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-first">First Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-first"
-                        placeholder="First"
-                        value={registerData.firstName}
-                        onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                        className={`pl-10 ${inputClass}`}
-                        style={inputStyle}
-                        data-testid="input-register-firstname"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-last">Last Name</Label>
-                    <Input
-                      id="register-last"
-                      placeholder="Last"
-                      value={registerData.lastName}
-                      onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
-                      className={inputClass}
-                      style={inputStyle}
-                      data-testid="input-register-lastname"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
-                  <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                      className={`pl-10 ${inputClass}`}
-                      style={inputStyle}
-                      required
-                      data-testid="input-register-email"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="At least 6 characters"
-                      value={registerData.password}
-                      onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      className={`pl-10 pr-10 ${inputClass}`}
-                      style={inputStyle}
-                      required
-                      data-testid="input-register-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-confirm">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-confirm"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
-                      value={registerData.confirmPassword}
-                      onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                      className={`pl-10 pr-10 ${inputClass}`}
-                      style={inputStyle}
-                      required
-                      data-testid="input-register-confirm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <input
-                    type="checkbox"
-                    id="accept-terms"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-[#0a4a82] focus:ring-[#0a4a82] cursor-pointer"
-                    data-testid="checkbox-accept-terms"
-                  />
-                  <label htmlFor="accept-terms" className="text-xs text-slate-600 leading-relaxed cursor-pointer">
-                    I agree to the{" "}
-                    <a href="/legal?section=terms" target="_blank" className="text-[#0a4a82] font-semibold hover:underline">Terms of Service</a>,{" "}
-                    <a href="/legal?section=privacy" target="_blank" className="text-[#0a4a82] font-semibold hover:underline">Privacy Policy</a>, and{" "}
-                    <a href="/legal?section=disclaimers" target="_blank" className="text-[#0a4a82] font-semibold hover:underline">Disclaimers</a>.
-                  </label>
-                </div>
-
-                {accountType === "business" ? (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm text-center">
-                    <span className="font-semibold">First 90 days FREE!</span> No charges for the first 90 days. Cancel anytime.
-                  </div>
-                ) : (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[#0a4a82] text-sm text-center">
-                    <span className="font-semibold">Customer accounts are always free!</span> Browse businesses, request quotes, and discover local events.
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full h-12 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold text-base"
-                  data-testid="button-register-submit"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      {accountType === "business" ? "Create Business Account" : "Create Account"}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
                   )}
-                </Button>
-              </form>
-            )}
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder={loginType === "business" ? "owner@yourbusiness.com" : "you@example.com"}
+                    value={loginData.email}
+                    onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                    className={`pl-10 ${inputClass}`}
+                    style={inputStyle}
+                    required
+                    data-testid="input-login-email"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={loginData.password}
+                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                    className={`pl-10 pr-10 ${inputClass}`}
+                    style={inputStyle}
+                    required
+                    data-testid="input-login-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    data-testid="button-toggle-password"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full h-12 rounded-xl font-semibold text-base ${
+                  loginType === "business"
+                    ? "bg-gradient-to-r from-[#0a4a82] to-[#1a6ab2] hover:from-[#083a6a] hover:to-[#155a9a] text-white"
+                    : "bg-[#0a4a82] hover:bg-[#083a6a] text-white"
+                }`}
+                data-testid="button-login-submit"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    {loginType === "business" ? "Sign In to Dashboard" : "Sign In"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+              <div className="text-center">
+                <a
+                  href="/forgot-password"
+                  className="text-sm text-[#0a4a82] hover:text-[#083a6a] hover:underline font-medium"
+                  data-testid="link-forgot-password"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+            </form>
           </CardContent>
         </Card>
 
         <p className="text-center text-white/80 text-sm mt-6 drop-shadow">
-          {mode === "login" ? (
-            <>
-              New here?{" "}
-              <button type="button" onClick={() => goToRegister("customer")} className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline" data-testid="link-switch-to-register">
-                {REGISTER_LABEL} — customer
-              </button>
-              {" · "}
-              <button type="button" onClick={() => goToRegister("business")} className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline" data-testid="link-switch-to-business">
-                {REGISTER_LABEL} — business
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button type="button" onClick={() => goToLogin(accountType)} className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline" data-testid="link-switch-to-login">
-                {LOGIN_LABEL}
-              </button>
-            </>
-          )}
+          New here?{" "}
+          <Link
+            to={REGISTER_PATH}
+            className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline"
+            data-testid="link-switch-to-register"
+          >
+            {REGISTER_LABEL}
+          </Link>
+          {" · "}
+          <Link
+            to={REGISTER_BUSINESS_PATH}
+            className="text-[#d4a373] hover:text-[#c49363] font-semibold underline-offset-2 hover:underline"
+            data-testid="link-switch-to-business"
+          >
+            {REGISTER_LABEL} — business
+          </Link>
         </p>
       </div>
     </div>

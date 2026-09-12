@@ -700,7 +700,7 @@ export default function HelpWanted() {
               </Dialog>
             )}
             {!isAuthenticated && (
-              <Link to="/auth?mode=register&type=business">
+              <Link to="/register/business">
                 <Button
                   className="bg-[#d4a373] hover:bg-[#c49363] text-white rounded-xl px-6 h-11 font-semibold"
                   data-testid="button-register-to-post"

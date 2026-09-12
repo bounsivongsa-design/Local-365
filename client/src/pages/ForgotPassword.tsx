@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
+import { REGISTER_PATH } from "@/lib/auth-copy";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -119,7 +120,7 @@ export default function ForgotPassword() {
                   </Link>
                   <p className="text-sm text-slate-600 pt-2">
                     Don't have an account?{" "}
-                    <Link to="/auth?mode=register" className="font-semibold text-[#0a4a82] hover:underline" data-testid="link-forgot-register">
+                    <Link to={REGISTER_PATH} className="font-semibold text-[#0a4a82] hover:underline" data-testid="link-forgot-register">
                       Register
                     </Link>
                   </p>
@@ -166,7 +167,7 @@ export default function ForgotPassword() {
                   </Link>
                   <p className="text-sm text-slate-600">
                     New here?{" "}
-                    <Link to="/auth?mode=register" className="font-semibold text-[#0a4a82] hover:underline" data-testid="link-forgot-register-form">
+                    <Link to={REGISTER_PATH} className="font-semibold text-[#0a4a82] hover:underline" data-testid="link-forgot-register-form">
                       Register
                     </Link>
                   </p>
