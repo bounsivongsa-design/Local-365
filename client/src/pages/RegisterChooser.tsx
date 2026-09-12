@@ -38,7 +38,7 @@ export default function RegisterChooser() {
             {REGISTER_LABEL}
           </h1>
           <p className="text-white/80 mt-2 drop-shadow">
-            Choose how you want to join. This is not a quiet toggle — pick a door.
+            Choose how you want to join. Pick the door that matches you.
           </p>
         </div>
 
