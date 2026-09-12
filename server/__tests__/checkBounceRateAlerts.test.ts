@@ -80,8 +80,9 @@ async function seedRequest(opts: {
 }) {
   seedSeq += 1;
   const ageMs = (opts.ageMinutes ?? 60) * 60 * 1000;
-  // Unique (businessId, sentAt) — same-minute batches must not share a timestamp.
-  const ts = new Date(Date.now() - ageMs - seedSeq);
+  // Unique (businessId, sentAt). Driver/schema store sent_at at second
+  // precision, so stagger by seconds — not milliseconds.
+  const ts = new Date(Date.now() - ageMs - seedSeq * 1000);
   await pgDb.insert(reviewRequests).values({
     businessId: opts.businessId,
     recipientEmail: `r-${crypto.randomBytes(4).toString("hex")}@example.com`,
