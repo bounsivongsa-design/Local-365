@@ -27,7 +27,7 @@ export default function RegisterChooser() {
 
   return (
     <div className="min-h-[calc(100vh-144px)] flex items-center justify-center py-12 px-4">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-lg md:max-w-4xl">
         <div className="text-center mb-8">
           <div className="text-center mb-2">
             <span className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">
@@ -42,33 +42,33 @@ export default function RegisterChooser() {
           </p>
         </div>
 
-        <div className="space-y-4">
-          <Link to={REGISTER_CUSTOMER_PATH} data-testid="door-register-customer" className="block">
-            <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden transition hover:scale-[1.01] hover:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-              <CardContent className="p-6 flex items-start gap-4">
-                <div className="h-12 w-12 rounded-xl bg-[#0a4a82]/10 text-[#0a4a82] flex items-center justify-center shrink-0">
-                  <User className="h-6 w-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <Link to={REGISTER_CUSTOMER_PATH} data-testid="door-register-customer" className="block h-full">
+            <Card className="h-full shadow-2xl border-0 rounded-2xl overflow-hidden transition hover:scale-[1.01] hover:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+              <CardContent className="p-6 md:p-8 flex items-start gap-4 md:flex-col md:gap-5 md:min-h-[14rem] h-full">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl bg-[#0a4a82]/10 text-[#0a4a82] flex items-center justify-center shrink-0">
+                  <User className="h-6 w-6 md:h-7 md:w-7" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-bold text-lg text-[#1a1a2e]">{REGISTER_CUSTOMER_HEADLINE}</p>
-                  <p className="text-slate-600 mt-1 leading-relaxed">{REGISTER_CUSTOMER_BODY}</p>
+                  <p className="font-bold text-lg md:text-xl text-[#1a1a2e]">{REGISTER_CUSTOMER_HEADLINE}</p>
+                  <p className="text-slate-600 mt-1 md:mt-2 leading-relaxed">{REGISTER_CUSTOMER_BODY}</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-[#d4a373] shrink-0 mt-1" />
+                <ArrowRight className="h-5 w-5 md:h-6 md:w-6 text-[#d4a373] shrink-0 mt-1 md:mt-auto md:self-end" />
               </CardContent>
             </Card>
           </Link>
 
-          <Link to={REGISTER_BUSINESS_PATH} data-testid="door-register-business" className="block">
-            <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden transition hover:scale-[1.01] hover:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-              <CardContent className="p-6 flex items-start gap-4 bg-gradient-to-br from-white to-[#fff6eb]">
-                <div className="h-12 w-12 rounded-xl bg-[#d4a373]/20 text-[#0a4a82] flex items-center justify-center shrink-0">
-                  <Building2 className="h-6 w-6" />
+          <Link to={REGISTER_BUSINESS_PATH} data-testid="door-register-business" className="block h-full">
+            <Card className="h-full shadow-2xl border-0 rounded-2xl overflow-hidden transition hover:scale-[1.01] hover:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+              <CardContent className="p-6 md:p-8 flex items-start gap-4 md:flex-col md:gap-5 md:min-h-[14rem] h-full bg-gradient-to-br from-white to-[#fff6eb]">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl bg-[#d4a373]/20 text-[#0a4a82] flex items-center justify-center shrink-0">
+                  <Building2 className="h-6 w-6 md:h-7 md:w-7" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-bold text-lg text-[#1a1a2e]">{REGISTER_BUSINESS_HEADLINE}</p>
-                  <p className="text-slate-600 mt-1 leading-relaxed">{REGISTER_BUSINESS_BODY}</p>
+                  <p className="font-bold text-lg md:text-xl text-[#1a1a2e]">{REGISTER_BUSINESS_HEADLINE}</p>
+                  <p className="text-slate-600 mt-1 md:mt-2 leading-relaxed">{REGISTER_BUSINESS_BODY}</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-[#d4a373] shrink-0 mt-1" />
+                <ArrowRight className="h-5 w-5 md:h-6 md:w-6 text-[#d4a373] shrink-0 mt-1 md:mt-auto md:self-end" />
               </CardContent>
             </Card>
           </Link>
