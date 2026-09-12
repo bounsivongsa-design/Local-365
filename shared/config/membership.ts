@@ -176,7 +176,7 @@ export const PAYMENT_FREQUENCIES: PaymentFrequency[] = [
     name: "Monthly",
     label: "per month",
     discount: 0,
-    trialInfo: "First 90 days FREE for new members",
+    trialInfo: "First 90 days free for new members (card required; billing starts after the trial)",
     billingCycles: 1,
   },
   {

@@ -168,7 +168,7 @@ export default function Home() {
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <RegisterCta size="lg" className="min-h-12 px-8 text-base" testId="button-hero-register" />
                   <p className="text-white/85 text-sm max-w-md">
-                    Free to register. Browse businesses, request quotes, and follow local events.
+                    Customer accounts are free. Browse businesses, request quotes, and follow local events.
                   </p>
                 </div>
               )}
@@ -242,7 +242,7 @@ export default function Home() {
               </div>
               {!isAuthenticated && (
                 <p className="text-white/85 text-sm mt-4">
-                  Register is free. You do not need an account just to browse — create one when you want quotes or reviews.
+                  Customer accounts are free. You do not need an account just to browse — create one when you want quotes or reviews.
                 </p>
               )}
             </>

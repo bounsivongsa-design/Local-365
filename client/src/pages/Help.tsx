@@ -102,12 +102,12 @@ const TOP_TASKS: TopTask[] = [
     audience: "business",
     icon: Building2,
     summary:
-      "Get your business in front of locals. Your first 90 days of Gold features are free — no card required.",
+      "Get your business in front of locals. Your first 90 days of Gold features are free. A credit card is required to start the trial; after 90 days, billing starts automatically.",
     steps: [
       { text: "Click Register, then choose the business door — or use a Get listed link to skip the chooser." },
       { text: "Enter your business name, your name, email, and a password." },
+      { text: "Choose a membership plan and add a credit card at checkout. The first 90 days are free; billing starts automatically after that." },
       { text: "Fill out your listing — name, services, photos, hours." },
-      { text: "Done. Your free Gold trial starts the moment you publish." },
     ],
     ctaLabel: "Register",
     ctaTo: REGISTER_BUSINESS_PATH,
@@ -277,7 +277,7 @@ const GLOSSARY: GlossaryItem[] = [
     term: "Gold Trial",
     icon: Crown,
     definition:
-      "Every new business gets 90 days of full Gold access for free — no credit card required. After it ends, you choose a paid tier or downgrade to Bronze.",
+      "Every new business gets 90 days of full Gold access. A credit card is required to start the trial. After 90 days, billing for the plan you chose starts automatically. You can cancel anytime before then.",
   },
   {
     term: "AI Credits",

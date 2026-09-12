@@ -140,7 +140,7 @@ export default function RegisterAccountPage() {
           </h1>
           <p className="text-white/80 mt-2 drop-shadow">
             {accountType === "business"
-              ? "Create a business account — first 90 days FREE"
+              ? "Create a business account — 90-day Gold trial (card required)"
               : "Always free — browse, discover, and connect locally"}
           </p>
         </div>
@@ -332,7 +332,7 @@ export default function RegisterAccountPage() {
 
               {accountType === "business" ? (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm text-center">
-                  <span className="font-semibold">First 90 days FREE!</span> No charges for the first 90 days. Cancel anytime.
+                  <span className="font-semibold">First 90 days FREE.</span> A credit card is required to start the trial; after 90 days, billing starts automatically. Cancel anytime.
                 </div>
               ) : (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[#0a4a82] text-sm text-center">
