@@ -69,6 +69,8 @@ async function seedBusiness(name: string) {
   return row;
 }
 
+let seedSeq = 0;
+
 async function seedRequest(opts: {
   businessId: number;
   status: "sent" | "failed" | "queued" | "clicked" | "completed";
@@ -76,8 +78,10 @@ async function seedRequest(opts: {
   channel?: "email" | "both" | "sms";
   ageMinutes?: number;
 }) {
+  seedSeq += 1;
   const ageMs = (opts.ageMinutes ?? 60) * 60 * 1000;
-  const ts = new Date(Date.now() - ageMs);
+  // Unique (businessId, sentAt) — same-minute batches must not share a timestamp.
+  const ts = new Date(Date.now() - ageMs - seedSeq);
   await pgDb.insert(reviewRequests).values({
     businessId: opts.businessId,
     recipientEmail: `r-${crypto.randomBytes(4).toString("hex")}@example.com`,

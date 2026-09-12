@@ -165,7 +165,9 @@ function App() {
           <Toaster />
           <AppRouter />
           <CookieConsent />
-          <DevModePanel />
+          {import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_PANEL === "true" ? (
+            <DevModePanel />
+          ) : null}
         </LocationProvider>
       </TooltipProvider>
     </QueryClientProvider>

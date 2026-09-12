@@ -1,18 +1,42 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth, devModeLogin, devModeLogout } from "@/hooks/use-auth";
 import { User, Building2, LogOut, Wrench } from "lucide-react";
 
+function isLocalDevHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
+}
+
+/**
+ * Off by default — including `npm run dev` and hosted Vite previews.
+ * Opt in only on a true local machine: DEV + localhost + VITE_ENABLE_DEV_PANEL=true.
+ */
+export function isDevModePanelEnabled(): boolean {
+  return (
+    import.meta.env.DEV === true &&
+    import.meta.env.VITE_ENABLE_DEV_PANEL === "true" &&
+    isLocalDevHost()
+  );
+}
+
 export function DevModePanel() {
   const { user, isAuthenticated } = useAuth();
+  const [enabled, setEnabled] = useState(false);
 
-  if (!import.meta.env.DEV) {
+  useEffect(() => {
+    setEnabled(isDevModePanelEnabled());
+  }, []);
+
+  if (!enabled) {
     return null;
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-[calc(100vw-2rem)]">
+    <div className="fixed bottom-4 right-4 z-50 max-w-[calc(100vw-2rem)]" data-testid="dev-mode-panel">
       <Card className="w-72 max-w-full shadow-lg border-2 border-orange-400">
         <CardHeader className="py-3 bg-orange-100 dark:bg-orange-900/30">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -37,9 +61,9 @@ export function DevModePanel() {
                   <span className="font-medium">{user?.firstName} {user?.lastName}</span>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="w-full"
                 onClick={() => devModeLogout()}
               >
@@ -53,8 +77,8 @@ export function DevModePanel() {
                 Quick login as test user:
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => devModeLogin("customer")}
                   data-testid="button-dev-login-customer"
@@ -62,8 +86,8 @@ export function DevModePanel() {
                   <User className="h-4 w-4 mr-1" />
                   Customer
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => devModeLogin("business")}
                   data-testid="button-dev-login-business"
