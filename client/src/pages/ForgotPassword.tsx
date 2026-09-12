@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,39 +9,55 @@ import { Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
+  const [sentEmail, setSentEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const requestIdRef = useRef(0);
   const { toast } = useToast();
 
-  const sendResetEmail = async () => {
-    if (!email.trim()) return false;
+  const sendResetEmail = async (address = email) => {
+    const target = address.trim();
+    if (!target) return false;
 
+    const requestId = ++requestIdRef.current;
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: target }),
       });
       const data = await res.json();
+      if (requestId !== requestIdRef.current) return false;
       if (!res.ok) {
         toast({ title: "Error", description: data.message || "Something went wrong.", variant: "destructive" });
         return false;
       }
+      setSentEmail(target);
+      setEmail(target);
       setSent(true);
       toast({ title: "Email sent", description: "If an account exists for that address, a reset link is on its way. Check spam if you do not see it." });
       return true;
     } catch {
+      if (requestId !== requestIdRef.current) return false;
       toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
       return false;
     } finally {
-      setIsSubmitting(false);
+      if (requestId === requestIdRef.current) setIsSubmitting(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await sendResetEmail();
+    await sendResetEmail(email);
+  };
+
+  const handleTryDifferentEmail = () => {
+    requestIdRef.current += 1;
+    setIsSubmitting(false);
+    setSent(false);
+    setSentEmail("");
+    setEmail("");
   };
 
   return (
@@ -72,14 +88,14 @@ export default function ForgotPassword() {
                 </div>
                 <h3 className="text-lg font-bold text-[#1a1a2e]">Check Your Email</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  If an account exists for <strong>{email}</strong>, you'll receive an email with a link to reset your password. The link expires in 1 hour.
+                  If an account exists for <strong>{sentEmail || email}</strong>, you'll receive an email with a link to reset your password. The link expires in 1 hour.
                 </p>
                 <p className="text-xs text-gray-400">
                   Don't see it? Check your spam folder.
                 </p>
                 <div className="pt-2 space-y-2">
                   <Button
-                    onClick={() => { void sendResetEmail(); }}
+                    onClick={() => { void sendResetEmail(sentEmail || email); }}
                     disabled={isSubmitting}
                     className="w-full min-h-11 rounded-xl bg-[#0a4a82] hover:bg-[#083a6a] text-white font-semibold"
                     data-testid="button-resend-reset-email"
@@ -87,7 +103,8 @@ export default function ForgotPassword() {
                     {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Resend email"}
                   </Button>
                   <Button
-                    onClick={() => { setSent(false); setEmail(""); }}
+                    onClick={handleTryDifferentEmail}
+                    disabled={isSubmitting}
                     variant="outline"
                     className="w-full min-h-11 rounded-xl border-[#0a4a82]/20 text-[#0a4a82] hover:bg-[#0a4a82]/5"
                     data-testid="button-try-different-email"
