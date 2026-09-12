@@ -14,4 +14,4 @@ export const REGISTER_CUSTOMER_BODY =
   "Sign up free — forever. Takes about a minute.";
 export const REGISTER_BUSINESS_HEADLINE = "Own a business?";
 export const REGISTER_BUSINESS_BODY =
-  "Start your free 90-day trial to get listed and get leads.";
+  "Start a 90-day Gold trial to get listed and get leads. A credit card is required; billing starts automatically after 90 days.";

@@ -847,7 +847,7 @@ export default function BusinessMembership() {
                                   )}
                                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                                     <Gift className="h-3 w-3 text-emerald-500" />
-                                    {checkoutPricing.trialDays}-day free trial included — no charge until trial ends
+                                    {checkoutPricing.trialDays}-day free trial included. A credit card is required; billing starts automatically when the trial ends.
                                   </p>
                                 </div>
                               </>
@@ -964,7 +964,7 @@ export default function BusinessMembership() {
               Welcome to Gold!
             </h2>
             <p className="text-white/90 text-lg">
-              Enjoy <span className="font-bold">90 days of Gold access</span> — completely free.
+              Enjoy <span className="font-bold">90 days of Gold access</span> — no charge today.
             </p>
           </div>
           <div className="p-6 space-y-4">
@@ -990,7 +990,7 @@ export default function BusinessMembership() {
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-center">
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                After 90 days, you'll automatically transition to your purchased plan at no extra cost.
+                After 90 days, you'll automatically transition to your purchased plan and billing starts.
               </p>
             </div>
             <Button

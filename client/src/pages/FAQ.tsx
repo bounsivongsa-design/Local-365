@@ -25,7 +25,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I register?",
-        answer: "Click Register at the top of any page (it stays visible on phones — you do not need to open the menu). That opens a two-door chooser: Customer (always free) or Business Owner (free 90-day trial to get listed). Pick a door, then enter your name, email, and password. There is no outside signup form. After you register, you can sign in with the same email and password.",
+        answer: "Click Register at the top of any page (it stays visible on phones — you do not need to open the menu). That opens a two-door chooser: Customer (always free, no card) or Business Owner (90-day Gold trial — a credit card is required; billing starts automatically after 90 days). Pick a door, then enter your name, email, and password. There is no outside signup form. After you register, you can sign in with the same email and password.",
         links: [{ label: REGISTER_LABEL, to: REGISTER_PATH }],
       },
       {
@@ -35,12 +35,12 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "How do I create a business account?",
-        answer: "Click Register, then choose the business door — or use a Get listed / For Business link, which opens the business form directly. Enter your business name, your name, email, and password. After you register, you'll be guided to set up your business listing. Your first 90 days are free — no charges for the first three months.",
+        answer: "Click Register, then choose the business door — or use a Get listed / For Business link, which opens the business form directly. Enter your business name, your name, email, and password. After you register, you'll be guided to choose a membership plan and set up your listing. Your first 90 days of Gold access are free. A credit card is required to start the trial; after 90 days, billing for the plan you chose starts automatically.",
         links: [{ label: "Register — business", to: REGISTER_BUSINESS_PATH }],
       },
       {
         question: "What's the difference between a customer account and a business account?",
-        answer: "A customer account is always free. You can search the directory, request quotes from businesses, view events, browse job listings, and leave reviews. A business account lets you create and manage a listing in the directory, respond to quote requests, post job openings, and access analytics about your listing. Business accounts require a membership subscription (Bronze, Silver, or Gold).",
+        answer: "A customer account is always free — no credit card needed. You can search the directory, request quotes from businesses, view events, browse job listings, and leave reviews. A business account lets you create and manage a listing in the directory, respond to quote requests, post job openings, and access analytics about your listing. Business accounts require a membership subscription (Bronze, Silver, or Gold). A credit card is required for the 90-day trial; billing starts automatically after 90 days.",
       },
       {
         question: "How do I sign in?",
@@ -156,7 +156,7 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "Is there a free trial?",
-        answer: "Yes! Every new business gets 90 days of Gold-tier access completely free — no matter which tier you choose. Even if you purchase Bronze or Silver, you'll enjoy top search placement, featured badge, promo video upload, advanced analytics, and first-round quote access for a full three months. After 90 days, your listing automatically transitions to the tier you purchased. No extra charges, no action needed.",
+        answer: "Yes. Every new business gets 90 days of Gold-tier access — no matter which tier you choose. A credit card is required to start the trial. Even if you choose Bronze or Silver, you'll enjoy top search placement, featured badge, promo video upload, advanced analytics, and first-round quote access for a full three months. After 90 days, billing for the plan you chose starts automatically. You can cancel anytime before then.",
       },
       {
         question: "How do I cancel my membership?",
