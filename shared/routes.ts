@@ -59,6 +59,35 @@ export const api = {
       },
     },
   },
+  favorites: {
+    list: {
+      method: "GET" as const,
+      path: "/api/user/favorites",
+      responses: {
+        200: z.array(z.custom<any>()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    add: {
+      method: "POST" as const,
+      path: "/api/businesses/:id/favorite",
+      responses: {
+        200: z.object({ businessId: z.number(), favorited: z.literal(true) }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    remove: {
+      method: "DELETE" as const,
+      path: "/api/businesses/:id/favorite",
+      responses: {
+        200: z.object({ businessId: z.number(), favorited: z.literal(false) }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+  },
   events: {
     list: {
       method: 'GET' as const,

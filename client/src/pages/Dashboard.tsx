@@ -76,6 +76,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_CATEGORIES } from "@shared/config/categories";
 import { getMembershipTier, isCompActive } from "@shared/config/membership";
 import { DashboardInbox } from "@/components/DashboardInbox";
+import { FavoritesSection } from "@/components/FavoritesSection";
 import { AdminMessagesInbox } from "@/components/AdminMessagesInbox";
 import { ListingZipSwitcher } from "@/components/ListingZipSwitcher";
 import { apiRequest } from "@/lib/queryClient";
@@ -3623,6 +3624,10 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+          )}
+
+          {user?.accountType === "customer" && user?.id && (
+            <FavoritesSection />
           )}
 
           {user?.accountType === "customer" && user?.id && (

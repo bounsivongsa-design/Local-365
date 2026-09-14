@@ -4,6 +4,7 @@ import {
   events,
   posts,
   reviews,
+  businessFavorites,
   users,
   jobListings,
   adminMessages,
@@ -14,6 +15,7 @@ import {
   type Post,
   type CreatePostRequest,
   type Review,
+  type BusinessFavorite,
   type CreateReviewRequest,
   type BusinessWithRating,
   type PostWithAuthor,
@@ -45,6 +47,11 @@ export interface IStorage {
   getReviewsForBusiness(businessId: number): Promise<(Review & { user: typeof users.$inferSelect })[]>;
   getRecentReviews(limit?: number): Promise<(Review & { user: typeof users.$inferSelect; business: typeof businesses.$inferSelect })[]>;
   createReview(review: CreateReviewRequest & { userId: string, businessId: number }): Promise<Review>;
+
+  // Customer favorites
+  getUserFavorites(userId: string): Promise<BusinessWithRating[]>;
+  addBusinessFavorite(userId: string, businessId: number): Promise<BusinessFavorite>;
+  removeBusinessFavorite(userId: string, businessId: number): Promise<void>;
 
   // Job Listings
   getActiveJobListings(): Promise<JobListingWithBusiness[]>;
@@ -241,6 +248,76 @@ export class DatabaseStorage implements IStorage {
   async createReview(review: CreateReviewRequest & { userId: string, businessId: number }): Promise<Review> {
     const [newReview] = await db.insert(reviews).values(review).returning();
     return newReview;
+  }
+
+  async getUserFavorites(userId: string): Promise<BusinessWithRating[]> {
+    const rows = await db
+      .select({
+        business: businesses,
+        averageRating: sql<number>`COALESCE((
+          SELECT AVG(${reviews.rating})
+          FROM ${reviews}
+          WHERE ${reviews.businessId} = ${businesses.id}
+        ), 0)`,
+        reviewCount: sql<number>`COALESCE((
+          SELECT COUNT(*)
+          FROM ${reviews}
+          WHERE ${reviews.businessId} = ${businesses.id}
+        ), 0)`,
+      })
+      .from(businessFavorites)
+      .innerJoin(businesses, eq(businessFavorites.businessId, businesses.id))
+      .where(
+        and(
+          eq(businessFavorites.userId, userId),
+          sql`COALESCE(${businesses.status}, 'active') != 'archived'`,
+        ),
+      )
+      .orderBy(desc(businessFavorites.createdAt));
+
+    return rows.map(({ business, averageRating, reviewCount }) => ({
+      ...business,
+      averageRating: Number(averageRating),
+      reviewCount: Number(reviewCount),
+    }));
+  }
+
+  async addBusinessFavorite(userId: string, businessId: number): Promise<BusinessFavorite> {
+    const [favorite] = await db
+      .insert(businessFavorites)
+      .values({ userId, businessId })
+      .onConflictDoNothing({
+        target: [businessFavorites.userId, businessFavorites.businessId],
+      })
+      .returning();
+
+    if (favorite) return favorite;
+
+    const [existing] = await db
+      .select()
+      .from(businessFavorites)
+      .where(
+        and(
+          eq(businessFavorites.userId, userId),
+          eq(businessFavorites.businessId, businessId),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new Error("Favorite could not be saved");
+    }
+    return existing;
+  }
+
+  async removeBusinessFavorite(userId: string, businessId: number): Promise<void> {
+    await db
+      .delete(businessFavorites)
+      .where(
+        and(
+          eq(businessFavorites.userId, userId),
+          eq(businessFavorites.businessId, businessId),
+        ),
+      );
   }
 
   async getActiveJobListings(): Promise<JobListingWithBusiness[]> {

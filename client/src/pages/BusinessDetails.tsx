@@ -8,6 +8,7 @@ import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { FoundingMemberBadge } from "@/components/FoundingMemberBadge";
 import { ExampleBanner } from "@/components/ExampleBanner";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,7 +92,13 @@ export default function BusinessDetails() {
                    <FoundingMemberBadge number={(business as any).foundingMemberNumber} />
                  )}
                </div>
-               <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
+               <div className="flex items-center gap-3">
+                 <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-lg">{business.name}</h1>
+                 <FavoriteButton
+                   businessId={business.id}
+                   className="shrink-0 bg-white/95"
+                 />
+               </div>
                {business.address && (
                  <p className="text-white/90 mt-2 flex items-center gap-1.5 text-sm drop-shadow-sm">
                    <MapPin className="h-4 w-4" /> {business.address}

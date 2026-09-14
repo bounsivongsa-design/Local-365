@@ -6,6 +6,7 @@ import { TrustBadges } from "@/components/TrustBadges";
 import { MembershipBadge } from "@/components/MembershipBadge";
 import { FoundingMemberBadge } from "@/components/FoundingMemberBadge";
 import { ExampleBanner } from "@/components/ExampleBanner";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 function StarRating({ rating, reviewCount }: { rating: number; reviewCount: number }) {
   const stars = [];
@@ -105,6 +106,10 @@ export function BusinessCard({ business }: BusinessCardProps) {
               New
             </div>
           )}
+           <FavoriteButton
+             businessId={business.id}
+             className="absolute bottom-3 right-3"
+           />
         </div>
         
         <div className="p-5">

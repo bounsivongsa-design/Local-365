@@ -148,6 +148,9 @@ export function useAuth() {
     mutationFn: logout,
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
+      // Favorites are keyed by user id, but remove them on logout as an
+      // additional guard against a later session rendering old account data.
+      queryClient.removeQueries({ queryKey: ["/api/user/favorites"] });
     },
   });
 

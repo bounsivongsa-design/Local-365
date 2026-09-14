@@ -17,6 +17,7 @@ import { registerReviewRequestRoutes } from "./reviewRequests";
 import { registerMarketingHubRoutes } from "./marketingHub";
 import { registerMultiZipRoutes } from "./multiZip";
 import { registerDealRoutes } from "./deals";
+import { registerFavoriteRoutes } from "./favorites";
 import { shouldBypassCharges } from "./lib/founderRules";
 import { notifyAdminNewEvent, notifyAdminNewAd, notifyAdminNewBusiness, notifyCompGranted, notifyCompRevoked, notifyCompExpiring, notifyOwnerCompExpired, notifyAdminBounceRateSpike, notifyOwnerBounceSpike, notifyOwnerOfAdminMessage, notifyAbandonedCheckoutReminder, notifyAbandonedCheckoutCancelled } from "./email";
 import { syncGithubBackup } from "./githubSync";
@@ -524,6 +525,7 @@ export async function registerRoutes(
   registerMarketingHubRoutes(app);
   registerMultiZipRoutes(app);
   registerDealRoutes(app);
+  registerFavoriteRoutes(app);
 
   // ============ LOCATION ROUTES ============
   

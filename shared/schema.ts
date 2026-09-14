@@ -234,6 +234,31 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Customer-saved vendor listings. The composite unique index makes POST
+// idempotent while the user/business foreign keys keep favorites tied to
+// existing accounts and listings.
+export const businessFavorites = pgTable(
+  "business_favorites",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    businessId: integer("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userBusinessUnique: uniqueIndex("business_favorites_user_business_idx").on(
+      table.userId,
+      table.businessId,
+    ),
+    userIdx: index("business_favorites_user_idx").on(table.userId),
+    businessIdx: index("business_favorites_business_idx").on(table.businessId),
+  }),
+);
+
 export const jobListings = pgTable("job_listings", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").references(() => businesses.id),
@@ -268,6 +293,7 @@ export type CompMembershipAuditEntry = typeof compMembershipAudit.$inferSelect;
 export const businessesRelations = relations(businesses, ({ many }) => ({
   events: many(events),
   reviews: many(reviews),
+  favorites: many(businessFavorites),
   jobListings: many(jobListings),
 }));
 
@@ -304,6 +330,17 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
   business: one(businesses, {
     fields: [reviews.businessId],
+    references: [businesses.id],
+  }),
+}));
+
+export const businessFavoritesRelations = relations(businessFavorites, ({ one }) => ({
+  user: one(users, {
+    fields: [businessFavorites.userId],
+    references: [users.id],
+  }),
+  business: one(businesses, {
+    fields: [businessFavorites.businessId],
     references: [businesses.id],
   }),
 }));
@@ -508,6 +545,7 @@ export type Event = typeof events.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type BusinessFavorite = typeof businessFavorites.$inferSelect;
 export type Location = typeof locations.$inferSelect;
 export type AdPlacement = typeof adPlacements.$inferSelect;
 export type AdPricing = typeof adPricing.$inferSelect;
